@@ -325,3 +325,14 @@ dl.terms dd .cnt { display: inline-block; }
 mark.kwm { background: color-mix(in srgb, var(--mark) 70%, transparent); }
 mark.kwm.cur { background: var(--mark); outline: 2px solid var(--warn); border-radius: 3px; }
 @media (max-width: 700px) { .kwbar-l { display: none; } }
+
+/* ---------- 핵심 내용 글머리: 머리말 · 번호 줄 · ↳ 설명 줄 ---------- */
+.b-body { line-height: 1.65; }
+.b-lead { font-weight: 700; color: var(--accent); margin-bottom: 1px; }
+.b-lead code { color: var(--accent); }
+.b-line.num { padding-left: 1.35em; text-indent: -1.35em; margin-top: 2px; }
+.b-line.sub { color: var(--ink-2); padding-left: 1.35em; text-indent: -1.35em; margin-top: 2px; font-size: .96em; }
+.b-line.sub .arr { color: var(--ink-3); }
+.core-list > li + li { border-top: 1px dashed var(--line); padding-top: 9px; }
+.core-list > li > ul { margin-top: 4px; }
+.pk-item .b-body { margin-bottom: 2px; }

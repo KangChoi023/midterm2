@@ -170,10 +170,46 @@
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
     return parts.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">${parts.join(' · ')} ›</button>` : '';
   }
+  /* 핵심 내용 글머리 한 개를 읽기 좋게: 머리말 강조 · ①② 줄바꿈 · " — " 뒤 설명은 ↳ 다음 줄
+   *   "**핸들러 작성 규칙 3가지**: ① A ② B ③ C — 이유"  →  [머리말] / ① A / ② B / ③ C / ↳ 이유
+   * 코드(`…`) 안의 ①·—·: 는 건드리지 않는다. 둘째 줄부터(하위 글머리 등)는 그대로 markdown. */
+  const CIRC_RE = /[①②③④⑤⑥⑦⑧⑨⑩]/;
+  function bulletBody(src) {
+    const nl = src.indexOf('\n');
+    let first = nl < 0 ? src : src.slice(0, nl); const tail = nl < 0 ? '' : src.slice(nl + 1);
+    const codes = [];
+    first = first.replace(/`[^`]*`/g, m => `\u0001${codes.push(m) - 1}\u0001`);
+    const back = t => t.replace(/\u0001(\d+)\u0001/g, (_, i) => codes[+i]);
+    let lead = '';
+    // 굵은 머리말: "**제목**: …" 은 항상, "**제목** …" 은 뒤가 조사(를·이·은…)로 이어지는 문장이 아닐 때만
+    let m = first.match(/^\*\*([^*]+?)\*\*\s*[:：]\s*/) || first.match(/^\*\*([^*]+?)\*\*\s+(?!(?:을|를|이|가|은|는|의|에|에서|로|으로|와|과|도|만|이다|다|라|하면|하고|해서)(?=[\s.,)]|$))/);
+    if (m && !first.slice(m[0].length).trim()) m = null;              // 굵은 글씨만 있는 줄은 그대로
+    if (m) { lead = m[1]; first = first.slice(m[0].length); }
+    else if ((m = first.match(/^([^\s:*\u0001][^:\u0001]{0,22}?)\s*:\s+/)) && !/[.。]/.test(m[1])) { lead = m[1]; first = first.slice(m[0].length); }
+    // ①② 가 두 개 이상이면 번호마다 줄 바꿈, " — " 뒤는 ↳ 줄
+    let parts = [first];
+    // 괄호 밖, 줄 처음이나 띄어쓰기 뒤의 ①② 만 항목 번호로 본다 ("(…①이 유지되도록)" 같은 참조는 그대로)
+    const cuts = []; let depth = 0;
+    for (let i = 0; i < first.length; i++) {
+      const ch = first[i];
+      if (ch === '(' || ch === '（') depth++; else if ((ch === ')' || ch === '）') && depth) depth--;
+      else if (!depth && CIRC_RE.test(ch) && (i === 0 || /\s/.test(first[i - 1]))) cuts.push(i);
+    }
+    if (cuts.length >= 2) parts = [first.slice(0, cuts[0]), ...cuts.map((c, k) => first.slice(c, cuts[k + 1]))].filter(x => x.trim());
+    const lines = [];
+    parts.forEach(pt => {
+      const seg = pt.split(/\s+—\s+/);
+      lines.push({ t: seg[0], cls: CIRC_RE.test(pt.trim()[0]) ? 'num' : '' });
+      seg.slice(1).forEach(x => lines.push({ t: x, cls: 'sub' }));
+    });
+    let h = lead ? `<div class="b-lead">${mdInline(back(lead))}</div>` : '';
+    h += lines.filter(l => l.t.trim()).map(l => `<div class="b-line ${l.cls}">${l.cls === 'sub' ? '<span class="arr">↳</span> ' : ''}${mdInline(back(l.t.trim()))}</div>`).join('');
+    return `<div class="b-body${lead ? ' has-lead' : ''}">${h}</div>` + (tail.trim() ? md(tail) : '');
+  }
   function bulletLi(b, skip) {
     const cs = b.concepts.slice().sort((x, y) => (x === b.primary ? -1 : y === b.primary ? 1 : 0)).filter(x => x !== skip).slice(0, 4);
     const rel = cs.map(x => cChip(x)).join('') + b.examples.map(exChip).join('');
-    return `<li id="${b.id}">${md(b.md)}${rel ? `<div class="rel">${rel}</div>` : ''}</li>`;
+    return `<li id="${b.id}">${bulletBody(b.md)}${rel ? `<div class="rel">${rel}</div>` : ''}</li>`;
   }
   function coreHtml(sec) {
     let h = '', open = false;
@@ -262,7 +298,7 @@
       const c = LK.byId[id]; if (!c) return closePeek();
       title = `<span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span> ${esc(c.name)}`;
       h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>`;
-      if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${md(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
+      if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, c.examples.map((tid, i) => { const t = L.topics[tid]; const r = rowOf(tid);
         return `<details class="box ex" ${i === 0 ? 'open' : ''}><summary><span class="t">${esc(t.title)}</span></summary><div class="in">${r && r.cells[1] ? `<p class="pk-what">${mdInline(r.cells[1])}</p>` : ''}${exampleBody(t)}<button type="button" class="go" data-go="X${tid}">부록 A ↗</button></div></details>`; }).join(''));
@@ -280,7 +316,7 @@
       const cs = (LK.topicConcepts[id] || []).filter(x => LK.byId[x]);
       if (cs.length) h += pkSec('이 예제의 개념', `<div class="rel">${cs.map(x => cChip(x)).join('')}</div>`);
       const bs = LK.sections.filter(x => x.blocks).flatMap(x => x.blocks.filter(b => b.bullet && b.examples.includes(+id)));
-      if (bs.length) h += pkSec('이어지는 핵심 내용', bs.map(b => `<div class="pk-item">${md(b.md)}<button type="button" class="go" data-go="${b.id}">본문 ↗</button></div>`).join(''));
+      if (bs.length) h += pkSec('이어지는 핵심 내용', bs.map(b => `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${b.id}">본문 ↗</button></div>`).join(''));
       h += pkSec('코드', exampleBody(t) + `<button type="button" class="go" data-go="L${t.id}">강의 원문 ↗</button>`);
     }
     peekEl.innerHTML = `<div class="pk-h">${peekStack.length > 1 ? '<button type="button" class="icon-btn" data-pk-back aria-label="뒤로">←</button>' : ''}<div class="pk-t">${title}</div><button type="button" class="icon-btn" data-pk-close aria-label="닫기">✕</button></div><div class="pk-b">${h}</div>`;
