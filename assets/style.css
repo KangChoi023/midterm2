@@ -314,11 +314,14 @@ dl.terms dd .cnt { display: inline-block; }
 }
 .peek[hidden] { display: none; }
 
-/* ---------- 좌측 목차 접기 (데스크톱) ---------- */
+/* ---------- 좌측 목차: ☰ 또는 목차 위에 마우스가 있을 때만 (데스크톱) ---------- */
 @media (min-width: 901px) {
-  body.side-off .layout { grid-template-columns: minmax(0, 1fr); }
-  body.side-off .side { display: none; }
-  body.side-off .main { margin: 0 auto; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .main { margin: 0 auto; }
+  .side { position: fixed; left: 0; top: var(--top-h); bottom: 0; height: auto; width: var(--side-w); z-index: 43;
+    transform: translateX(-102%); visibility: hidden; transition: transform .18s ease, box-shadow .18s, visibility 0s linear .18s; }
+  body.side-peek .side { transform: none; visibility: visible; box-shadow: 10px 0 30px rgba(0,0,0,.16); transition: transform .18s ease, box-shadow .18s, visibility 0s; }
+  #menuBtn[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
 }
 
 /* ---------- 상단 고정 바의 키워드 줄 ---------- */

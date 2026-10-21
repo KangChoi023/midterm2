@@ -99,7 +99,7 @@
     $$('details', sideToc).forEach(dt => dt.addEventListener('toggle', () => {
       const o = store.get('sideOpen', {}); o[dt.dataset.s || dt.dataset.k] = dt.open; store.set('sideOpen', o);
     }));
-    const on = $('.les.on', sideToc); if (on && !sideToc.hidden) on.scrollIntoView({ block: 'nearest' });
+    const on = $('.les.on', sideToc); if (on) side.scrollTop = Math.max(0, on.offsetTop - side.clientHeight / 2);   // 창은 움직이지 않고 목차 안에서만
     SIDE_CUR = cur; rpRefresh();
   }
 
@@ -1081,7 +1081,7 @@
     const raw = location.hash.replace(/^#/, '') || '/';
     const [path, qs] = raw.split('?'); const params = new URLSearchParams(qs || '');
     const seg = path.split('/').filter(Boolean);
-    document.body.classList.remove('menu'); $('#scrim').hidden = true;
+    document.body.classList.remove('menu', 'side-peek'); $('#scrim').hidden = true;
     closePeek(); CX = null;
     if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete('dictmark');
     $$('.top-nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#/' + (seg[0] || '')));
@@ -1108,13 +1108,21 @@
     (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(() => { b.textContent = '복사됨'; setTimeout(() => (b.textContent = '복사'), 1200); }, () => { b.textContent = '실패'; });
   });
   const narrow = () => matchMedia('(max-width: 900px)').matches;
-  if (store.get('sideOff', false)) document.body.classList.add('side-off');
-  $('#menuBtn').addEventListener('click', () => {
+  /* 좌측 목차: 데스크톱은 ☰ 또는 목차 위에 마우스가 있을 때만 펼침 (본문 위에 겹쳐 뜸)
+   * ☰ → 목차로 옮겨 가는 사이 닫히지 않게 잠깐 기다린다. 터치는 ☰ 클릭으로 열고 닫기, 모바일은 서랍 */
+  const menuBtn = $('#menuBtn'); let sideTimer = 0;
+  const sideShow = () => { if (narrow()) return; clearTimeout(sideTimer); document.body.classList.add('side-peek'); menuBtn.setAttribute('aria-expanded', 'true'); };
+  const sideHide = (delay = 250) => { if (narrow()) return; clearTimeout(sideTimer); sideTimer = setTimeout(() => { document.body.classList.remove('side-peek'); menuBtn.setAttribute('aria-expanded', 'false'); }, delay); };
+  [menuBtn, side].forEach(el => { el.addEventListener('mouseenter', sideShow); el.addEventListener('mouseleave', () => sideHide()); });
+  side.addEventListener('focusin', sideShow);
+  side.addEventListener('focusout', e => { if (!side.contains(e.relatedTarget)) sideHide(0); });
+  menuBtn.addEventListener('click', () => {
     if (narrow()) { const o = document.body.classList.toggle('menu'); $('#scrim').hidden = !o; return; }
-    const off = document.body.classList.toggle('side-off'); store.set('sideOff', off);
-    $('#menuBtn').setAttribute('aria-expanded', String(!off));
+    const touch = matchMedia('(hover: none)').matches;                   // 마우스가 없으면 클릭으로 열고 닫기
+    if (touch && document.body.classList.contains('side-peek')) sideHide(0); else sideShow();
   });
-  $('#menuBtn').setAttribute('aria-expanded', String(!document.body.classList.contains('side-off')));
+  menuBtn.setAttribute('aria-expanded', 'false');
+  try { localStorage.removeItem('wiki.sideOff'); } catch (e) { /* 예전 '접기' 상태 정리 */ }
   $('#dictBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'dict') ? rpSet(false) : rpSet(true, 'dict', true));
   $('#codeBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'code') ? rpSet(false) : rpSet(true, 'code'));
   document.addEventListener('click', e => { if (e.target.closest('[data-code-list]')) { CODE.view = 'list'; rpSet(true, 'code'); } });
