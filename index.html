@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임베디드 학습 위키</title>
+<meta name="description" content="C · LINUX · MCU · Embedded IO 시험 대비 정리 위키 — 교시별 핵심 정리, 강의 개념, 예제 코드, 연관 문제, 통합 검색">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('wiki.theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<header class="top">
+  <button class="icon-btn" id="menuBtn" aria-label="목차 열기">☰</button>
+  <a class="brand" href="#/">학습 위키</a>
+  <div class="search-wrap">
+    <input id="q" type="search" placeholder="개념·함수·명령 검색  ( / )" autocomplete="off" spellcheck="false" aria-label="검색">
+    <div id="drop" class="drop" hidden></div>
+  </div>
+  <nav class="top-nav">
+    <a href="#/terms">용어</a>
+    <a href="#/funcs">함수·명령</a>
+    <a href="#/links">연결</a>
+    <a href="#/quiz">퀴즈</a>
+  </nav>
+  <button class="icon-btn" id="themeBtn" aria-label="테마 전환">◐</button>
+</header>
+<div class="layout">
+  <nav id="side" class="side" aria-label="목차"></nav>
+  <main id="main" class="main" tabindex="-1"></main>
+</div>
+<div id="scrim" class="scrim" hidden></div>
+<script src="data/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
