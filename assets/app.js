@@ -308,6 +308,8 @@
     const box = $('#notes-body', main); if (!box) return;
     box.innerHTML = notesHtml(view);
     $$('[data-view]', main).forEach(x => x.classList.toggle('on', x.dataset.view === view));
+    const vn = $('#viewName', main); if (vn) vn.textContent = view === 'concept' ? '개념별 묶어 보기' : '노트 순서';
+    const nt = $('#notes', main); if (nt && nt.getBoundingClientRect().top < 0) nt.scrollIntoView();
     highlightIn(box);
   }
 
@@ -370,18 +372,18 @@
     if (!L) return notFound();
     const exTopics = L.topics.filter(t => t.blocks.some(b => b.kind !== 'out'));
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
+    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek();
+    const anchor = params.get('a');
+    // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
+    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
     let h = `<article class="lesson sc-${s}"><div class="l-head"><div class="crumb"><a href="#/">홈</a> › <a href="#/${s}">${esc(S.name)}</a> › Day ${d} ${esc(D.title)}</div>
       <h1>${n}교시 · ${esc(L.title)}</h1><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a></nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}</nav>`;
 
-    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek();
-    const anchor = params.get('a');
-    // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
-    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
-    h += `<section class="part" id="notes"><h2>정리 노트 ${L.sections.length ? `<span class="view-tg"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}</h2>`;
+    h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
     else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>summary/.src/${{ c: 'C', linux: 'LINUX', mcu: 'MCU', eio: 'EIO' }[s]}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
