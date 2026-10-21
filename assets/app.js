@@ -238,10 +238,13 @@
         return `<div id="t${s.t0 + i}"><dt>${mdInline(t.name)}</dt><dd>${mdInline(t.def)}${c && c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}${c ? countBtn(c) : ''}</dd></div>`;
       }).join('') + '</dl>' + md(s.rest);
     } else if (s.key === 'funcs' && s.fn) {
-      body = '<table class="ftab"><thead><tr><th>이름</th><th>기본형</th><th>용도</th></tr></thead><tbody>' +
+      // 한 칸에 이름 + 기본형, 옆 칸에 용도
+      const hasSig = f => f.sig && !/^[—–-]?$/.test(f.sig.replace(/`/g, '').trim());
+      body = '<table class="ftab"><thead><tr><th>이름 · 기본형</th><th>용도</th></tr></thead><tbody>' +
         L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => {
           const id = 'f' + (s.f0 + i);
-          return `<tr id="${id}"><td><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button></td><td>${mdInline(f.sig)}</td><td>${mdInline(f.use)}</td></tr>`;
+          const sig = hasSig(f) ? `<code class="fsig">${esc(f.sig.replace(/`\s*·\s*`/g, '\n').replace(/`/g, '').replace(/\*\*/g, '').trim())}</code>` : '';
+          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button>${sig}</td><td>${mdInline(f.use)}</td></tr>`;
         }).join('') + '</tbody></table>' + md(s.rest);
     } else if (s.key === 'core' && LS.blocks) body = coreHtml(LS);
     else if (s.key === 'examples' && LS.rows) body = examplesTable(LS);
