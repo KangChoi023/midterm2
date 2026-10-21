@@ -11,7 +11,7 @@
   const W = (window.WIKI = window.WIKI || {});
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
-  const main = $('#main'), side = $('#side'), sideToc = $('#sideToc'), sideDict = $('#sideDict');
+  const main = $('#main'), side = $('#side'), sideToc = $('#sideToc'), sideDict = $('#sideDict');   // sideDict = 오른쪽 사전 패널 본문
   const SUBJ = IDX.subjects;
   const SORDER = Object.fromEntries(SUBJ.map((s, i) => [s.id, i]));
   const sById = id => SUBJ.find(s => s.id === id);
@@ -100,7 +100,7 @@
       const o = store.get('sideOpen', {}); o[dt.dataset.s || dt.dataset.k] = dt.open; store.set('sideOpen', o);
     }));
     const on = $('.les.on', sideToc); if (on && !sideToc.hidden) on.scrollIntoView({ block: 'nearest' });
-    SIDE_CUR = cur; if (!sideDict.hidden) dictRender();
+    SIDE_CUR = cur; if (dictIsOpen()) dictRender();
   }
 
   /* ---------- 왼쪽 사전 패널: 용어 + 함수·명령을 한 목록으로 ----------
@@ -170,13 +170,17 @@
     box.innerHTML = h;
     if (words.length === 1 && box.querySelectorAll('.dent').length === 1) box.querySelector('.dent').open = true;   // 하나뿐이면 바로 펼침
   }
-  function sideTab(tab, focus) {
-    $$('.side-tabs button', side).forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-    sideToc.hidden = tab !== 'toc'; sideDict.hidden = tab !== 'dict';
-    store.set('sideTab', tab);
-    if (tab === 'dict') { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
+  /* 오른쪽 사전 사이드바 열기/닫기 (열린 상태 기억) */
+  const dictPanel = $('#dictPanel');
+  const dictIsOpen = () => !dictPanel.hidden;
+  function dictOpen(open, focus) {
+    dictPanel.hidden = !open;
+    document.body.classList.toggle('dict-on', open);
+    $('#dictBtn').classList.toggle('on', open); $('#dictBtn').setAttribute('aria-expanded', String(open));
+    store.set('dictOn', open);
+    if (open) { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
   }
-  $('.side-tabs', side).addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) sideTab(b.dataset.tab, b.dataset.tab === 'dict'); });
+  $('#dictClose').addEventListener('click', () => dictOpen(false));
 
   /* ---------- 홈 ---------- */
   function renderHome() {
@@ -503,7 +507,12 @@
     else if (b.dataset.pkClose !== undefined) closePeek();
     else if (b.dataset.view) { store.set('noteView', b.dataset.view); renderNotesBody(b.dataset.view); }
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !peekEl.hidden) closePeek(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!peekEl.hidden) closePeek();
+    else if (!dictPanel.hidden && narrowDict()) dictOpen(false);
+  });
+  const narrowDict = () => matchMedia('(max-width: 900px)').matches;
   /* 키워드 → 이 페이지 안에서 언급된 곳 (노트 · 부록 A · 부록 B · 문항) */
   let KW = { hits: [], i: -1, k: -1 };
   const KW_STOP = new Set(['검사', '사용', '함정', '관용구', '규칙', '방법', '차이', '구분', '초기화', '반환', '주소', '파일', '함수', '변수', '값', '두', '배', '수', '읽기', '쓰기']);
@@ -1012,12 +1021,8 @@
     $('#menuBtn').setAttribute('aria-expanded', String(!off));
   });
   $('#menuBtn').setAttribute('aria-expanded', String(!document.body.classList.contains('side-off')));
-  $('#dictBtn').addEventListener('click', () => {
-    if (narrow()) { document.body.classList.add('menu'); $('#scrim').hidden = false; }
-    else { document.body.classList.remove('side-off'); store.set('sideOff', false); }
-    sideTab('dict', true);
-  });
-  sideTab(store.get('sideTab', 'toc'));
+  $('#dictBtn').addEventListener('click', () => dictOpen(!dictIsOpen(), true));
+  if (store.get('dictOn', false)) dictOpen(true);
   $('#scrim').addEventListener('click', () => { document.body.classList.remove('menu'); $('#scrim').hidden = true; });
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;

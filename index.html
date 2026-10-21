@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=2610220204">
+<link rel="stylesheet" href="assets/style.css?v=2610220208">
 <script>try{var t=localStorage.getItem('wiki.theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
@@ -20,26 +20,23 @@
     <div id="drop" class="drop" hidden></div>
   </div>
   <nav class="top-nav">
-    <button type="button" class="nav-btn" id="dictBtn" title="용어·함수·명령 사전을 왼쪽에 열기">📖 사전</button>
     <a href="#/links">연결</a>
     <a href="#/quiz">퀴즈</a>
   </nav>
+  <button type="button" class="nav-btn dict-btn" id="dictBtn" title="용어·함수·명령 사전 (오른쪽)" aria-expanded="false">📖<span> 사전</span></button>
   <button class="icon-btn" id="themeBtn" aria-label="테마 전환">◐</button>
 </header>
 <div class="layout">
-  <nav id="side" class="side" aria-label="목차와 사전">
-    <div class="side-tabs" role="tablist"><button type="button" role="tab" data-tab="toc">목차</button><button type="button" role="tab" data-tab="dict">📖 사전</button></div>
-    <div id="sideToc" class="side-pane"></div>
-    <div id="sideDict" class="side-pane" hidden></div>
-  </nav>
+  <nav id="side" class="side" aria-label="목차"><div id="sideToc"></div></nav>
   <main id="main" class="main" tabindex="-1"></main>
 </div>
+<aside id="dictPanel" class="dictp" hidden aria-label="사전"><div class="dictp-h"><b>📖 사전</b><span class="dictp-sub">용어 · 함수 · 명령</span><button type="button" class="icon-btn sm" id="dictClose" aria-label="사전 닫기">✕</button></div><div id="sideDict" class="dictp-b"></div></aside>
 <aside id="peek" class="peek" hidden aria-label="관련 내용"></aside>
 <div id="scrim" class="scrim" hidden></div>
-<script src="data/index.js?v=2610220204"></script>
+<script src="data/index.js?v=2610220208"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="assets/concepts.js?v=2610220204"></script>
-<script src="assets/app.js?v=2610220204"></script>
+<script src="assets/concepts.js?v=2610220208"></script>
+<script src="assets/app.js?v=2610220208"></script>
 </body>
 </html>
