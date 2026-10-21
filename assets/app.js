@@ -376,6 +376,11 @@
   }
   function exLabel(t) { const x = exInfo(t); if (x.name) return x.name; const m = t.title.match(/예제\s*([\d-]+)/); return m ? '예제 ' + m[1] : t.title.replace(/^\d+-\d+\.\s*/, '').slice(0, 16); }
   function exChip(tid) { const t = CX.L.topics[tid]; return t ? `<button type="button" class="xchip" data-peek-x="${tid}" title="${esc(t.title)}">▶ ${esc(exLabel(t))}</button>` : ''; }
+  // 개념 블록 오른쪽 위의 "코드) 04_affinity.c" 버튼 → 오른쪽 💻 코드 패널에 그 예제
+  function codeBtns(tids) {
+    const ts = [...new Set(tids)].map(id => CX.L.topics[id]).filter(Boolean);
+    return ts.length ? `<span class="cbtns">${ts.map(t => `<button type="button" class="cbtn" data-peek-x="${t.id}" title="${esc(t.title)} — 오른쪽 코드 패널에서 보기"><b>코드)</b> ${esc(exLabel(t))}</button>`).join('')}</span>` : '';
+  }
   function countBtn(c) {
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
     return parts.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">${parts.join(' · ')} ›</button>` : '';
@@ -422,10 +427,10 @@
     h += lines.filter(l => l.t.trim()).map(l => `<div class="b-line ${l.cls}">${l.cls === 'sub' ? '<span class="arr">↳</span> ' : ''}${mdInline(back(l.t.trim()))}</div>`).join('');
     return `<div class="b-body${lead ? ' has-lead' : ''}">${h}</div>` + (tail.trim() ? md(tail) : '');
   }
-  function bulletLi(b, skip, bare) {
+  function bulletLi(b, skip, bare, noEx) {
     if (bare) return `<li id="${b.id}">${bulletBody(b.md)}</li>`;            // 레퍼런스 카드: 칩 없이 내용만
     const cs = b.concepts.slice().sort((x, y) => (x === b.primary ? -1 : y === b.primary ? 1 : 0)).filter(x => x !== skip).slice(0, 4);
-    const rel = cs.map(x => cChip(x)).join('') + b.examples.map(exChip).join('');
+    const rel = cs.map(x => cChip(x)).join('') + (noEx ? '' : b.examples.map(exChip).join(''));   // 카드 안에선 코드 버튼이 머리에 있으니 생략
     return `<li id="${b.id}">${bulletBody(b.md)}${rel ? `<div class="rel">${rel}</div>` : ''}</li>`;
   }
   const moreBox = mdText => `<details class="cg-more"><summary>자세히 · 왜 그런지</summary><div class="in">${md(mdText)}</div></details>`;
@@ -498,14 +503,13 @@
       const funcs = cs.filter(c => c.sig), terms = cs.filter(c => !c.sig && c.kind === 'term');
       const usage = [...new Set(cs.flatMap(c => c.usage.map(u => u.line)))];
       const exs = [...new Set([...g.bullets.flatMap(b => b.examples), ...cs.flatMap(c => c.examples)])];
-      return `<section class="ccard gcard" id="gc${gi}"><h3>${mdInline(g.title)}</h3>
+      return `<section class="ccard gcard" id="gc${gi}"><div class="ccard-h"><h3>${mdInline(g.title)}</h3>${codeBtns(exs)}</div>
         ${g.sum ? `<p class="cg-sum">${mdInline(g.sum)}</p>` : ''}
         ${normal.length ? `<ul class="core-list">${normal.map(b => bulletLi(b, null, true)).join('')}</ul>` : ''}
         ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code></div>`).join('')}</div>` : ''}
         ${terms.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${terms.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : ''}
         ${usage.length ? `<div class="gsec"><div class="gsec-h">사용형태</div><pre><code data-lang="${esc((cs.find(c => c.usage.length) || { usage: [{ lang: 'c' }] }).usage[0].lang)}">${esc(usage.join('\n'))}</code></pre></div>` : ''}
         ${traps.length ? `<div class="gsec trap"><div class="gsec-h">⚠ 함정</div><ul class="core-list">${traps.map(b => bulletLi(Object.assign({}, b, { md: b.md.replace(/^\s*⚠\s*/, '') }), null, true)).join('')}</ul></div>` : ''}
-        ${exs.length ? `<div class="gsec"><div class="gsec-h">예제 코드</div><div class="rel">${exs.map(exChip).join('')}</div></div>` : ''}
         ${g.more ? moreBox(g.more) : ''}</section>`;
     }).join('');
     const rest = LK.concepts.filter(c => home[c.id] === undefined && (c.kind === 'term' || c.sig));
@@ -524,12 +528,11 @@
     let h = list.map(c => {
       const bs = own[c.id] || [];
       const usage = c.usage.length ? `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>` : '';
-      const exs = c.examples.map(tid => { const t = L.topics[tid]; return `<details class="box ex xbox"><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}</div></details>`; }).join('');
       const more = [...c.bullets.filter(id => !bs.some(b => b.id === id)).map(id => `<button type="button" class="cnt" data-go="${id}">다른 글머리에서도 언급 ↗</button>`).slice(0, 1),
         c.quiz.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">문항 ${c.quiz.length} ›</button>` : ''].join('');
-      return `<section class="ccard" id="${c.id}"><h3>${esc(c.name)} <span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span></h3>
+      return `<section class="ccard" id="${c.id}"><div class="ccard-h"><h3>${esc(c.name)} <span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span></h3>${codeBtns(c.examples)}</div>
         <div class="cdef">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>
-        ${bs.length ? `<ul class="core-list">${bs.map(b => bulletLi(b, c.id)).join('')}</ul>` : ''}${usage}${exs}${more ? `<div class="rel">${more}</div>` : ''}</section>`;
+        ${bs.length ? `<ul class="core-list">${bs.map(b => bulletLi(b, c.id, false, true)).join('')}</ul>` : ''}${usage}${more ? `<div class="rel">${more}</div>` : ''}</section>`;
     }).join('');
     if (loose.length) h += `<section class="ccard loose"><h3>그 밖의 핵심 내용</h3><ul class="core-list">${loose.map(b => bulletLi(b)).join('')}</ul></section>`;
     return h;
@@ -563,8 +566,7 @@
       h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>`;
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
-      if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, c.examples.map((tid, i) => { const t = L.topics[tid]; const r = rowOf(tid);
-        return `<details class="box ex xbox" ${i === 0 ? 'open' : ''}><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}<button type="button" class="go" data-peek-x="${tid}">💻 코드 패널에서 ↗</button></div></details>`; }).join(''));
+      if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, `<div class="cbtn-col">${codeBtns(c.examples)}</div>`);
       const co = {}; c.bullets.forEach(bid => { const b = findBullet(bid); b && b.concepts.forEach(x => { if (x !== id) co[x] = (co[x] || 0) + 1; }); });
       const coIds = Object.keys(co).sort((a, b) => co[b] - co[a]).slice(0, 8);
       if (coIds.length) h += pkSec('함께 나오는 개념', `<div class="rel">${coIds.map(x => cChip(x)).join('')}</div>`);

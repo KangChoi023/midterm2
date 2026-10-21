@@ -486,3 +486,13 @@ details.ctree.l > .citem { margin-left: 12px; width: calc(100% - 12px); }
 .code-head .xname { font-size: 15.5px; }
 .cchip.static { cursor: default; border-style: solid; }
 #sideCode .cb pre code { font-size: 12.5px; }
+
+/* ---------- 개념 블록 오른쪽 위 "코드) 파일명" 버튼 ---------- */
+.ccard-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ccard-h > h3 { margin: 0 0 4px; }
+.cbtns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; max-width: 60%; }
+.cbtn { font: inherit; font-family: var(--mono); font-size: 12px; line-height: 1.6; padding: 1px 9px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--line)); background: var(--ok-soft); color: var(--ok); cursor: pointer; white-space: nowrap; }
+.cbtn b { font-family: var(--sans); font-weight: 700; margin-right: 2px; }
+.cbtn:hover { border-color: var(--ok); }
+.cbtn-col .cbtns { justify-content: flex-start; max-width: none; margin-left: 0; }
+@media (max-width: 700px) { .cbtns { max-width: none; justify-content: flex-start; margin-left: 0; } }
