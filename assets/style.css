@@ -524,3 +524,32 @@ mark.chl.cur { background: var(--mark); outline: 2px solid var(--warn); }
 .hlbar { position: sticky; top: 42px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 6px 0; padding: 5px 8px 5px 12px; font-size: 12.5px; border-radius: 8px; background: var(--warn-soft); color: var(--ink); }
 .hlbar .hlpos { color: var(--ink-2); margin-right: auto; }
 .hlbar b { font-family: var(--mono); }
+
+/* ---------- 함수·명령 상세 ---------- */
+.apid { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); font-size: 13px; display: grid; gap: 5px; }
+.apid-row { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: baseline; line-height: 1.55; }
+.apid-row .k { font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+.apid-args { display: table; width: 100%; margin: 0; font-size: 12.5px; }
+.apid-args th { font-size: 11.5px; padding: 3px 7px; }
+.apid-args td { padding: 4px 7px; }
+.apid-args td:first-child { white-space: nowrap; width: 1%; }
+details.fdet { margin-top: 5px; }
+details.fdet > summary { cursor: pointer; font-size: 12px; color: var(--accent); }
+.ddef.note { margin-top: 4px; font-size: 12px; color: var(--ink-2); }
+.gfn > div { min-width: 0; }
+
+/* ---------- 🧭 코드 읽기 가이드 ---------- */
+details.guide { margin: 8px 0 10px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 10px; background: var(--panel); }
+details.guide > summary { cursor: pointer; padding: 7px 12px; font-size: 13.5px; font-weight: 700; }
+details.guide > summary small { font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+details.guide ol { margin: 0; padding: 0 8px 8px 30px; display: grid; gap: 2px; }
+.gstep { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "t l" "d d"; gap: 1px 8px; width: 100%; text-align: left; font: inherit; border: 1px solid transparent; background: none; color: var(--ink); padding: 5px 8px; border-radius: 7px; cursor: pointer; }
+.gstep:hover { background: var(--panel-2); }
+.gstep.on { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.gstep .gt { grid-area: t; font-weight: 700; font-size: 13.5px; }
+.gstep .gl { grid-area: l; font-size: 11.5px; color: var(--ink-3); font-family: var(--mono); }
+.gstep .gd { grid-area: d; font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+#sideCode .cb pre { position: relative; }
+.gband { position: absolute; left: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--accent) 13%, transparent); border-left: 3px solid var(--accent); }
+.gband span { position: absolute; right: 8px; top: -1px; font-size: 10.5px; font-family: var(--sans); color: var(--accent); background: var(--panel); padding: 0 5px; border-radius: 4px; transform: translateY(-100%); white-space: nowrap; }
+#sideCode .cb pre code { position: relative; z-index: 1; display: inline-block; min-width: 100%; }

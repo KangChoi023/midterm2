@@ -186,8 +186,54 @@ def code_index(sid, d, n, topics, sections):
         num = (re.match(r'^(\d+-\d+)\.', tp['title']) or re.search(r'예제\s*(\d+-\d+)', tp['title']))
         bare = re.sub(r'^예제\s*[\d-]+\s*[·—-]\s*', '', re.sub(r'^\d+-\d+\.\s*', '', tp['title'])).strip()
         what = strip_md(row[1]) if row else (tp.get('desc') or bare)
-        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0])
+        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0, len(tp.get('guide', []))])
     return out
+
+def load_json(name):
+    p = os.path.join(NOTES, name)
+    if not os.path.exists(p): return {}
+    try: return {k: v for k, v in json.load(open(p, encoding='utf8')).items() if not k.startswith('_')}
+    except Exception as e: print('  !', name, e); return {}
+
+API = {}      # api_detail.json  (main 에서 읽음)
+GUIDE = {}    # code_guide.json
+
+def api_detail(name):
+    """함수 표 이름 → 상세. 이름 전체 → 첫 낱말(sudo 건너뜀) → 괄호 앞 식별자 순서로 찾는다."""
+    n = name.replace('`', '').strip()
+    if n in API: return API[n]
+    words = [w for w in n.split() if w != 'sudo']
+    if words and words[0] in API: return API[words[0]]
+    m = re.match(r'^([A-Za-z_][\w.]*)\s*\(', n)
+    if m and m.group(1) in API: return API[m.group(1)]
+    return None
+
+def attach_guides(sid, d, topics):
+    """code_guide.json 의 단계(at/to 글자)를 실제 코드 블록의 줄 범위로 바꿔 topic['guide'] 에."""
+    for tp in topics:
+        for f in tp.get('files', []):
+            steps = GUIDE.get(f'{sid}/{d}/{f}')
+            if not steps: continue
+            out, pos = [], {}
+            for st in steps:
+                hit = None
+                order = [i for i, b in enumerate(tp['blocks']) if b['kind'] == 'code' and b.get('file') == f] + \
+                        [i for i, b in enumerate(tp['blocks']) if b['kind'] == 'code' and b.get('file') != f]
+                for bi in order:
+                    lines = tp['blocks'][bi]['text'].split('\n')
+                    start = pos.get(bi, 0)
+                    a = next((i for i in range(start, len(lines)) if st['at'] in lines[i]), None)
+                    if a is None: continue
+                    z = a
+                    if st.get('to'):
+                        z = next((i for i in range(a, len(lines)) if st['to'] in lines[i]), None)
+                        if z is None: continue
+                    hit = (bi, a, z); break
+                if not hit:
+                    print(f'  ! 코드 가이드 못 찾음: {sid}/{d}/{f} — {st["t"]} (at={st["at"]!r})'); continue
+                bi, a, z = hit; pos[bi] = z + 1
+                out.append({'b': bi, 'from': a, 'to': z, 't': st['t'], 'd': st.get('d', '')})
+            if out: tp['guide'] = out
 
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
@@ -219,7 +265,11 @@ def build_subject(cfg, index):
                     got = parse_terms(s['md']); s['t0'] = len(terms); s['tn'] = len(got); terms += got
                     s['rest'] = '\n'.join(l for l in s['md'].split('\n') if not TERM_RE.match(l)).strip() if got else s['md']
                 if s['key'] == 'funcs':
-                    got = parse_funcs(s['md']); s['f0'] = len(funcs); s['fn'] = len(got); funcs += got
+                    got = parse_funcs(s['md'])
+                    for f in got:
+                        det = api_detail(f['name'])
+                        if det: f['detail'] = det
+                    s['f0'] = len(funcs); s['fn'] = len(got); funcs += got
                     s['rest'] = '\n'.join(l for l in s['md'].split('\n') if not l.startswith('|')).strip() if got else s['md']
                 if s['key'] == 'kw': kws += parse_kw(s['md'])
                 if s['key'] == 'links': links += parse_links(s['md'])
@@ -227,6 +277,7 @@ def build_subject(cfg, index):
             quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps') if q.get(k) is not None} for q in Q]
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)
+            attach_guides(sid, d, topics)
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
                    'keywords': kws, 'topics': topics, 'quiz': quiz,
@@ -240,7 +291,7 @@ def build_subject(cfg, index):
                 index['terms'].append(loc + [t['name'], t['def'], i])
                 index['search'].append(loc + ['term', f't{i}', t['name'], strip_md(t['def'])])
             for i, f in enumerate(funcs):
-                index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i])
+                index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i, f.get('detail')])
                 index['search'].append(loc + ['func', f'f{i}', f['name'], strip_md(f['sig'] + ' ' + f['use'])])
             if kws: index['search'].append(loc + ['kw', 's-kw', '키워드', ' · '.join(kws)])
             for si, s in enumerate(sections):
@@ -283,6 +334,8 @@ def copy_anim(cfg, d):
     return rel
 
 def main():
+    global API, GUIDE
+    API, GUIDE = load_json('api_detail.json'), load_json('code_guide.json')
     want = [a.lower() for a in sys.argv[1:]]
     index = {'built': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), 'subjects': [],
              'search': [], 'terms': [], 'funcs': [], 'links': [], 'code': []}

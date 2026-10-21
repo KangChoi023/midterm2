@@ -51,6 +51,15 @@ C → LINUX → MCU → Embedded IO 시험 대비 정리 위키.
 <<QA M>>                              ← worksheet M교시 문항
 ```
 
+## 내용 보강 데이터 (`summary/.src/`)
+
+| 파일 | 형식 | 화면 |
+|---|---|---|
+| `api_detail.json` | `"sched_getaffinity": {role, args: [[인자, 한글 뜻]…], flow, ret, hdr}` — 키는 함수 표 이름 그대로 · 첫 낱말 · 괄호 앞 식별자 | 사전 항목, 교시 함수 표 '인자 · 동작', 큰 개념 카드, 용어 패널 |
+| `code_guide.json` | `"linux/2/04_affinity.c": [{at, to, t, d}…]` — at/to = 블록 첫·끝 줄에 들어 있는 글자 | 💻 코드 패널 '🧭 코드 읽기 가이드', 단계를 누르면 그 줄들에 띠 |
+
+빌드 때 가이드의 at/to 를 못 찾으면 `! 코드 가이드 못 찾음` 경고가 뜬다.
+
 ## 빌드
 
 ```bash

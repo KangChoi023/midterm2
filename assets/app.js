@@ -115,7 +115,7 @@
       map.get(k).src.push({ s, d, n, a });
     };
     IDX.terms.forEach(r => add('term', r[0], r[1], r[2], r[3], r[4], '', 't' + r[5]));
-    IDX.funcs.forEach(r => add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]));
+    IDX.funcs.forEach(r => { add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]); if (r[7]) { const e = map.get('code|' + r[3].toLowerCase().replace(/\s+/g, ' ').trim()); if (e && !e.detail) e.detail = r[7]; } });
     DICT = [...map.values()].sort((a, b) => a.o - b.o);
     DICT.forEach((e, i) => { e.i = i; e.nameLo = e.name.toLowerCase(); e.key = (e.name + ' ' + stripTags(e.def) + ' ' + stripTags(e.sig)).toLowerCase(); e.subj = [...new Set(e.src.map(x => x.s))]; });
   }
@@ -142,7 +142,7 @@
     const hl = t => { let h = esc(t); words.forEach(w => { h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); }); return h; };
     const srcs = e.src.map(x => `<a href="${href(x.s, x.d, x.n, x.a)}">${loc(x.s, x.d, x.n)}</a>`).join('');
     return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span></summary>
-      <div class="dbody">${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}<div class="ddef">${mdInline(e.def || '')}</div><div class="dsrc">${srcs}</div></div></details>`;
+      <div class="dbody">${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>`}<div class="dsrc">${srcs}</div></div></details>`;
   }
   function dictRender() {
     if (!DICT) dictBuild();
@@ -207,7 +207,7 @@
   }
   function openCode(s, d, n, tid) { CODE = Object.assign(CODE, { view: 'detail', s, d, n, tid: +tid }); rpSet(true, 'code'); sideCode.scrollTop = 0; }
   function codeItem(r, cur) {
-    const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '');
+    const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '') + (r[9] ? ' <span class="cfig" title="코드 읽기 가이드 있음">🧭</span>' : '');
     return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
   }
   function codeRender() {
@@ -329,6 +329,36 @@
     const v = +n.dataset.hlnav; if (v === 0) codeHlClear(); else codeHlGo(CODEHL.i + v);
   });
 
+  /* 🧭 코드 읽기 가이드 (summary/.src/code_guide.json → 빌드 때 줄 범위로): 단계를 누르면 그 줄들에 띠 */
+  let CODEGUIDE = [];
+  function guideHtml(t) {
+    const g = t.guide || []; if (!g.length) return '';
+    const multi = new Set(g.map(x => x.b)).size > 1;
+    return `<details class="guide" open><summary>🧭 코드 읽기 가이드 <small>${g.length}단계 · 누르면 코드에서 표시</small></summary><ol>${g.map((x, i) =>
+      `<li><button type="button" class="gstep" data-gi="${i}"><span class="gt">${esc(x.t)}</span><span class="gl">${multi && t.blocks[x.b].file ? esc(t.blocks[x.b].file) + ' ' : ''}${x.from + 1}${x.to > x.from ? '–' + (x.to + 1) : ''}줄</span><span class="gd">${mdInline(x.d)}</span></button></li>`).join('')}</ol></details>`;
+  }
+  function guideShow(i) {
+    $$('.gband', sideCode).forEach(x => x.remove());
+    $$('.gstep.on', sideCode).forEach(x => x.classList.remove('on'));
+    const g = CODEGUIDE[i]; if (!g) return;
+    const pre = $(`.cb[data-bi="${g.b}"] pre`, sideCode); if (!pre) return;
+    $(`.gstep[data-gi="${i}"]`, sideCode).classList.add('on');
+    // 실제 그려진 코드 높이 ÷ 줄 수 = 줄 높이 (글꼴 계산과 화면이 어긋나지 않게)
+    const code = $('code', pre);
+    const nLines = code.textContent.replace(/\n$/, '').split('\n').length;
+    const cr = code.getBoundingClientRect(), pr = pre.getBoundingClientRect();
+    const lh = cr.height / nLines, top0 = cr.top - pr.top + pre.scrollTop;
+    const band = document.createElement('div'); band.className = 'gband';
+    band.style.top = (top0 + g.from * lh - 1) + 'px';
+    band.style.height = ((g.to - g.from + 1) * lh + 2) + 'px';
+    band.style.width = pre.scrollWidth + 'px';
+    band.innerHTML = `<span>${i + 1}. ${esc(g.t)}</span>`;
+    pre.appendChild(band);
+    const box = sideCode.getBoundingClientRect(), r = band.getBoundingClientRect();
+    sideCode.scrollTop += r.top - box.top - box.height * 0.28;
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('#sideCode .gstep'); if (b) guideShow(+b.dataset.gi); });
+
   let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
   async function codeDetail() {
     const my = ++codeSeq, want = { s: CODE.s, d: CODE.d, n: CODE.n, tid: CODE.tid };
@@ -358,7 +388,9 @@
         ${cs ? `<div><dt>${x.concepts.length ? '핵심 개념' : '주요 호출'}</dt><dd class="rel">${cs}</dd></div>` : ''}
         <div><dt>강의</dt><dd>${esc(t.title)}</dd></div></dl>
       ${figsHtml(t, ctx)}
+      ${guideHtml(t)}
       ${exampleBody(t)}`;
+    CODEGUIDE = t.guide || [];
     highlightIn(sideCode);
   }
 
@@ -399,15 +431,16 @@
 
   /* ---------- 코드 블록 ---------- */
   const BLK_LABEL = { code: '코드', cmd: '빌드·실행', out: '출력·결과' };
-  function codeBlock(b) {
+  function codeBlock(b, bi) {
     const lang = b.kind === 'cmd' ? 'bash' : b.lang;
-    return `<div class="cb ${b.kind}"><div class="cb-h"><span class="k ${b.kind}">${BLK_LABEL[b.kind]}</span>${b.file ? `<span class="cb-file">${esc(b.file)}</span>` : `<span>${esc(b.lang === 'text' ? '' : b.lang)}</span>`}<button type="button" data-copy>복사</button></div><pre><code data-lang="${esc(lang)}">${esc(b.text)}</code></pre></div>`;
+    return `<div class="cb ${b.kind}"${bi !== undefined ? ` data-bi="${bi}"` : ''}><div class="cb-h"><span class="k ${b.kind}">${BLK_LABEL[b.kind]}</span>${b.file ? `<span class="cb-file">${esc(b.file)}</span>` : `<span>${esc(b.lang === 'text' ? '' : b.lang)}</span>`}<button type="button" data-copy>복사</button></div><pre><code data-lang="${esc(lang)}">${esc(b.text)}</code></pre></div>`;
   }
   function exampleBody(t) {
-    const codes = t.blocks.filter(b => b.kind === 'code');
-    const run = t.blocks.filter(b => b.kind !== 'code');
-    let h = codes.map(codeBlock).join('');
-    if (run.length) h += `<div class="runbox"><div class="rh">${codes.length ? '부록 · ' : ''}빌드·실행 / 결과</div>${run.map(codeBlock).join('')}</div>`;
+    const ix = t.blocks.map((b, i) => [b, i]);
+    const codes = ix.filter(([b]) => b.kind === 'code');
+    const run = ix.filter(([b]) => b.kind !== 'code');
+    let h = codes.map(([b, i]) => codeBlock(b, i)).join('');
+    if (run.length) h += `<div class="runbox"><div class="rh">빌드·실행 / 결과</div>${run.map(([b, i]) => codeBlock(b, i)).join('')}</div>`;
     return h;
   }
   function lectureBody(t) {
@@ -468,6 +501,13 @@
   function codeBtns(tids) {
     const ts = [...new Set(tids)].map(id => CX.L.topics[id]).filter(Boolean);
     return ts.length ? `<span class="cbtns">${ts.map(t => `<button type="button" class="cbtn" data-peek-x="${t.id}" title="${esc(t.title)} — 오른쪽 코드 패널에서 보기"><b>코드)</b> ${esc(exLabel(t))}</button>`).join('')}</span>` : '';
+  }
+  /* 함수·명령 상세 (summary/.src/api_detail.json): 역할 · 인자별 뜻 · 동작 · 반환 · 준비 */
+  function detailHtml(det) {
+    if (!det) return '';
+    const args = (det.args || []).length ? `<table class="apid-args"><thead><tr><th>인자</th><th>뜻</th></tr></thead><tbody>${det.args.map(a => `<tr><td><code>${esc(a[0])}</code></td><td>${mdInline(a[1])}</td></tr>`).join('')}</tbody></table>` : '';
+    const row = (k, v) => v ? `<div class="apid-row"><span class="k">${k}</span><span>${mdInline(v)}</span></div>` : '';
+    return `<div class="apid">${row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
   }
   function countBtn(c) {
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
@@ -559,7 +599,7 @@
         L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => {
           const id = 'f' + (s.f0 + i);
           const sig = hasSig(f) ? `<code class="fsig">${esc(f.sig.replace(/`\s*·\s*`/g, '\n').replace(/`/g, '').replace(/\*\*/g, '').trim())}</code>` : '';
-          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button>${sig}</td><td>${mdInline(f.use)}</td></tr>`;
+          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button>${sig}</td><td>${mdInline(f.use)}${f.detail ? `<details class="fdet"><summary>인자 · 동작</summary>${detailHtml(f.detail)}</details>` : ''}</td></tr>`;
         }).join('') + '</tbody></table>' + md(s.rest);
     } else if (s.key === 'core' && LS.blocks) body = coreHtml(LS);
     else if (s.key === 'examples' && LS.rows) body = examplesTable(LS);
@@ -594,7 +634,7 @@
       return `<section class="ccard gcard" id="gc${gi}"><div class="ccard-h"><h3>${mdInline(g.title)}</h3>${codeBtns(exs)}</div>
         ${g.sum ? `<p class="cg-sum">${mdInline(g.sum)}</p>` : ''}
         ${normal.length ? `<ul class="core-list">${normal.map(b => bulletLi(b, null, true)).join('')}</ul>` : ''}
-        ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code></div>`).join('')}</div>` : ''}
+        ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>${c.detail ? `<details class="fdet"><summary>인자 · 동작</summary>${detailHtml(c.detail)}</details>` : ''}</div></div>`).join('')}</div>` : ''}
         ${terms.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${terms.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : ''}
         ${usage.length ? `<div class="gsec"><div class="gsec-h">사용형태</div><pre><code data-lang="${esc((cs.find(c => c.usage.length) || { usage: [{ lang: 'c' }] }).usage[0].lang)}">${esc(usage.join('\n'))}</code></pre></div>` : ''}
         ${traps.length ? `<div class="gsec trap"><div class="gsec-h">⚠ 함정</div><ul class="core-list">${traps.map(b => bulletLi(Object.assign({}, b, { md: b.md.replace(/^\s*⚠\s*/, '') }), null, true)).join('')}</ul></div>` : ''}
@@ -651,7 +691,7 @@
     if (kind === 'c') {
       const c = LK.byId[id]; if (!c) return closePeek();
       title = `<span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span> ${esc(c.name)}`;
-      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>`;
+      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>${detailHtml(c.detail)}`;
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, `<div class="cbtn-col">${codeBtns(c.examples)}</div>`);
