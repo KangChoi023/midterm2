@@ -319,6 +319,8 @@
     const firstCb = $('.cb', sideCode);
     if (firstCb) firstCb.insertAdjacentHTML('beforebegin', `<div class="hlbar">${marks.length ? `<b>${esc(btn.firstChild.textContent)}</b> 코드에서 <span class="hlpos">0/${marks.length}</span>
       <button type="button" class="icon-btn sm" data-hlnav="-1" aria-label="이전 위치">‹</button><button type="button" class="icon-btn sm" data-hlnav="1" aria-label="다음 위치">›</button>` : `<b>${esc(btn.firstChild.textContent)}</b> 은(는) 이 코드에 직접 나오지 않습니다`}<button type="button" class="icon-btn sm" data-hlnav="0" aria-label="강조 지우기">✕</button></div>`);
+    const nav = $('.code-nav', sideCode), bar = $('.hlbar', sideCode);       // 강조 막대는 고정 헤더 바로 아래
+    if (nav && bar) bar.style.top = nav.offsetHeight + 'px';
     if (marks.length) codeHlGo(0);
   }
   document.addEventListener('click', e => {
