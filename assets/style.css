@@ -386,3 +386,21 @@ dl.gterms dd { margin: 0; font-size: 14px; }
 .gtoc button { font: inherit; font-size: 13px; padding: 3px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
 .gtoc button:hover { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 700px) { .gfn, dl.gterms > div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* ---------- 예제 토글: 원본 파일명 · 무엇을 보나 · 핵심 개념 ---------- */
+details.xbox > summary { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "arrow name meta" "arrow purpose purpose"; column-gap: 10px; row-gap: 2px; align-items: baseline; font-weight: 400; }
+details.xbox > summary::before { grid-area: arrow; }
+.xname { grid-area: name; font-family: var(--mono); font-weight: 700; font-size: 14.5px; color: var(--ink); }
+.xname small { font-family: var(--sans); font-weight: 400; color: var(--ink-3); font-size: 12px; }
+.xname.nofile { font-family: var(--sans); }
+.xmeta { grid-area: meta; display: flex; gap: 4px; }
+.xpurpose { grid-area: purpose; font-size: 13.5px; color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+details.xbox[open] > summary .xpurpose { display: none; }
+dl.xinfo { margin: 10px 0 6px; display: grid; gap: 4px; font-size: 14px; }
+dl.xinfo > div { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: baseline; }
+dl.xinfo dt { color: var(--ink-3); font-size: 12.5px; font-weight: 700; }
+dl.xinfo dd { margin: 0; }
+.callchip { font-family: var(--mono); font-size: 12px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); line-height: 1.8; }
+.callchip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.cb-file { font-family: var(--mono); font-weight: 700; color: var(--ink); font-size: 12.5px; }
+@media (max-width: 700px) { dl.xinfo > div { grid-template-columns: 1fr; gap: 0; } }

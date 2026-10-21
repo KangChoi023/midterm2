@@ -141,7 +141,7 @@
   const BLK_LABEL = { code: '코드', cmd: '빌드·실행', out: '출력·결과' };
   function codeBlock(b) {
     const lang = b.kind === 'cmd' ? 'bash' : b.lang;
-    return `<div class="cb ${b.kind}"><div class="cb-h"><span class="k ${b.kind}">${BLK_LABEL[b.kind]}</span><span>${esc(b.lang === 'text' ? '' : b.lang)}</span><button type="button" data-copy>복사</button></div><pre><code data-lang="${esc(lang)}">${esc(b.text)}</code></pre></div>`;
+    return `<div class="cb ${b.kind}"><div class="cb-h"><span class="k ${b.kind}">${BLK_LABEL[b.kind]}</span>${b.file ? `<span class="cb-file">${esc(b.file)}</span>` : `<span>${esc(b.lang === 'text' ? '' : b.lang)}</span>`}<button type="button" data-copy>복사</button></div><pre><code data-lang="${esc(lang)}">${esc(b.text)}</code></pre></div>`;
   }
   function exampleBody(t) {
     const codes = t.blocks.filter(b => b.kind === 'code');
@@ -164,7 +164,44 @@
     const c = CX.LK.byId[cid(id)]; if (!c) return '';
     return `<button type="button" class="cchip ${c.kind} ${cls}" data-peek-c="${c.id}" title="${esc(c.name)} — 관련 내용 모아 보기">${esc(shortName(c))}</button>`;
   }
-  function exLabel(t) { const m = t.title.match(/예제\s*([\d-]+)/); return m ? '예제 ' + m[1] : t.title.replace(/^\d+-\d+\.\s*/, '').slice(0, 16); }
+  /* 예제 하나의 이름표: 원본 파일명 · 무엇을 보는 코드인지 · 핵심 개념
+   *   이름   강의 코드 첫 줄 주석/앞 본문/빌드 명령 (lecture_parse) → 노트 "예제 코드가 하는 일" 표의 파일명
+   *   목적   노트 표의 "하는 일" → 강의 코드 첫 줄 주석의 설명 → 강의 제목
+   *   개념   노트의 용어·함수 중 이 예제에 나오는 것 / 노트가 없으면 코드에서 부르는 주요 함수 */
+  const CALL_SKIP = new Set(['if', 'for', 'while', 'switch', 'return', 'sizeof', 'main', 'printf', 'defined', 'setup', 'loop']);
+  function codeCalls(t) {
+    const code = t.blocks.filter(b => b.kind === 'code').map(b => b.text).join('\n');
+    const defs = new Set([...code.matchAll(/^[\w \t*]*?\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*\{/gm)].map(m => m[1]));
+    const cnt = {};
+    for (const m of code.matchAll(/\b([A-Za-z_]\w{2,})\s*\(/g)) { const f = m[1]; if (!CALL_SKIP.has(f) && !defs.has(f)) cnt[f] = (cnt[f] || 0) + 1; }
+    return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).slice(0, 6);
+  }
+  function exInfo(t) {
+    const r = CX && CX.LK ? rowOf(t.id) : null;
+    const rowFile = r ? (window.WikiLink.stripMd(r.cells[0] || '').match(/[\w./-]+\.(?:c|h|py|sh|ino|cpp)\b/) || [])[0] : null;
+    const files = t.files && t.files.length ? t.files : (rowFile ? [rowFile.split('/').pop()] : []);
+    const num = (t.title.match(/^(\d+-\d+)\./) || t.title.match(/예제\s*(\d+-\d+)/) || [])[1] || '';
+    const bare = t.title.replace(/^\d+-\d+\.\s*/, '').replace(/^예제\s*[\d-]+\s*[·—-]\s*/, '').trim();
+    const purpose = r && r.cells[1] ? r.cells[1] : (t.desc || bare);
+    let cs = CX && CX.LK ? (CX.LK.topicConcepts[t.id] || []).filter(x => CX.LK.byId[x]) : [];
+    cs = cs.sort((a, b) => (CX.LK.byId[b].examples.includes(t.id) ? 1 : 0) - (CX.LK.byId[a].examples.includes(t.id) ? 1 : 0)).slice(0, 6);
+    return { files, name: files[0] || '', num, bare, purpose, concepts: cs, calls: cs.length ? [] : codeCalls(t) };
+  }
+  function exHead(t) {
+    const x = exInfo(t);
+    const name = x.name ? `<span class="xname">📄 ${esc(x.name)}${x.files.length > 1 ? `<small> 외 ${x.files.length - 1}개</small>` : ''}</span>` : `<span class="xname nofile">${esc(x.bare)}</span>`;
+    return `${name}<span class="xmeta">${x.num ? `<span class="tag">강의 ${esc(x.num)}</span>` : ''}</span><span class="xpurpose">${mdInline(x.purpose)}</span>`;
+  }
+  function exInfoBox(t) {
+    const x = exInfo(t);
+    const cs = x.concepts.length ? x.concepts.map(c => cChip(c)).join('') : x.calls.map(f => `<a class="callchip" href="#/search?q=${encodeURIComponent(f)}">${esc(f)}()</a>`).join('');
+    return `<dl class="xinfo">
+      ${x.files.length > 1 ? `<div><dt>파일</dt><dd>${x.files.map(f => `<code>${esc(f)}</code>`).join(' ')}</dd></div>` : ''}
+      <div><dt>무엇을 보나</dt><dd>${mdInline(x.purpose)}</dd></div>
+      ${cs ? `<div><dt>${x.concepts.length ? '핵심 개념' : '주요 호출'}</dt><dd class="rel">${cs}</dd></div>` : ''}
+      <div><dt>강의</dt><dd>${esc(t.title)}</dd></div></dl>`;
+  }
+  function exLabel(t) { const x = exInfo(t); if (x.name) return x.name; const m = t.title.match(/예제\s*([\d-]+)/); return m ? '예제 ' + m[1] : t.title.replace(/^\d+-\d+\.\s*/, '').slice(0, 16); }
   function exChip(tid) { const t = CX.L.topics[tid]; return t ? `<button type="button" class="xchip" data-peek-x="${tid}" title="${esc(t.title)}">▶ ${esc(exLabel(t))}</button>` : ''; }
   function countBtn(c) {
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
@@ -314,7 +351,7 @@
     let h = list.map(c => {
       const bs = own[c.id] || [];
       const usage = c.usage.length ? `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>` : '';
-      const exs = c.examples.map(tid => { const t = L.topics[tid]; return `<details class="box ex"><summary><span class="t">${esc(t.title)}</span></summary><div class="in">${exampleBody(t)}</div></details>`; }).join('');
+      const exs = c.examples.map(tid => { const t = L.topics[tid]; return `<details class="box ex xbox"><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}</div></details>`; }).join('');
       const more = [...c.bullets.filter(id => !bs.some(b => b.id === id)).map(id => `<button type="button" class="cnt" data-go="${id}">다른 글머리에서도 언급 ↗</button>`).slice(0, 1),
         c.quiz.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">문항 ${c.quiz.length} ›</button>` : ''].join('');
       return `<section class="ccard" id="${c.id}"><h3>${esc(c.name)} <span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span></h3>
@@ -354,7 +391,7 @@
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, c.examples.map((tid, i) => { const t = L.topics[tid]; const r = rowOf(tid);
-        return `<details class="box ex" ${i === 0 ? 'open' : ''}><summary><span class="t">${esc(t.title)}</span></summary><div class="in">${r && r.cells[1] ? `<p class="pk-what">${mdInline(r.cells[1])}</p>` : ''}${exampleBody(t)}<button type="button" class="go" data-go="X${tid}">부록 A ↗</button></div></details>`; }).join(''));
+        return `<details class="box ex xbox" ${i === 0 ? 'open' : ''}><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}<button type="button" class="go" data-go="X${tid}">부록 A ↗</button></div></details>`; }).join(''));
       const co = {}; c.bullets.forEach(bid => { const b = findBullet(bid); b && b.concepts.forEach(x => { if (x !== id) co[x] = (co[x] || 0) + 1; }); });
       const coIds = Object.keys(co).sort((a, b) => co[b] - co[a]).slice(0, 8);
       if (coIds.length) h += pkSec('함께 나오는 개념', `<div class="rel">${coIds.map(x => cChip(x)).join('')}</div>`);
@@ -363,11 +400,9 @@
       h += `<p class="pk-foot"><a href="#/search?q=${encodeURIComponent(shortName(c))}">다른 교시에서 찾기 →</a></p>`;
     } else {
       const t = L.topics[id]; if (!t) return closePeek();
-      title = esc(t.title);
-      const r = rowOf(+id);
-      if (r && r.cells[1]) h += `<div class="pk-def">${mdInline(r.cells[1])}</div>`;
-      const cs = (LK.topicConcepts[id] || []).filter(x => LK.byId[x]);
-      if (cs.length) h += pkSec('이 예제의 개념', `<div class="rel">${cs.map(x => cChip(x)).join('')}</div>`);
+      const xi = exInfo(t);
+      title = xi.name ? `📄 ${esc(xi.name)}` : esc(xi.bare);
+      h += exInfoBox(t);
       const bs = LK.sections.filter(x => x.blocks).flatMap(x => x.blocks.filter(b => b.bullet && b.examples.includes(+id)));
       if (bs.length) h += pkSec('이어지는 핵심 내용', bs.map(b => `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${b.id}">본문 ↗</button></div>`).join(''));
       h += pkSec('코드', exampleBody(t) + `<button type="button" class="go" data-go="L${t.id}">강의 원문 ↗</button>`);
@@ -554,9 +589,7 @@
       <div class="tools-row"><button class="btn" data-all="examples">모두 펼치기</button></div>`;
     h += exTopics.length ? exTopics.map(t => {
       const kinds = [...new Set(t.blocks.map(b => b.kind))].map(k => `<span class="tag">${BLK_LABEL[k]}</span>`).join('');
-      const cs = (CX.LK.topicConcepts[t.id] || []).filter(x => CX.LK.byId[x]);
-      const r = rowOf(t.id);
-      return `<details class="box ex" id="X${t.id}"><summary><span class="t">${esc(t.title)}</span><span class="sp">${kinds}</span></summary><div class="in">${r && r.cells[1] ? `<p class="pk-what">${mdInline(r.cells[1])}</p>` : ''}${cs.length ? `<div class="rel">${cs.map(x => cChip(x)).join('')}</div>` : ''}${exampleBody(t)}</div></details>`;
+      return `<details class="box ex xbox" id="X${t.id}"><summary>${exHead(t)}</summary><div class="in">${exInfoBox(t)}${exampleBody(t)}</div></details>`;
     }).join('') : '<div class="empty">이 교시에는 강의 예제 코드가 없습니다.</div>';
     h += '</section>';
 

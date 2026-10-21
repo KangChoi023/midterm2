@@ -104,6 +104,8 @@
     const files = t.match(/[\w./-]+\.(?:c|h|py|sh|ino|cpp)\b/g) || [];
     for (const f of files) {
       const base = f.split('/').pop(); const stem = base.replace(/\.\w+$/, '');
+      const byFile = topics.find(tp => (tp.files || []).includes(base));          // 강의 코드의 원본 파일명과 같으면 바로
+      if (byFile) return byFile.id;
       const k = stem.match(/^0?(\d+)_/);
       if (k) {
         const id = byTitle(new RegExp('예제\\s*(' + n + '-' + k[1] + '|0?' + k[1] + ')(?!\\d)'));
