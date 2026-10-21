@@ -108,6 +108,7 @@ def parse_funcs(md):
         if not line.startswith('|') or re.match(r'^\|[\s:|-]+\|$', line): continue
         cells = [c.strip().replace('\x00', '|') for c in line.replace('\\|', '\x00').strip().strip('|').split('|')]
         if len(cells) < 2 or cells[0] in ('함수', '명령', '이름', '항목', '것', '문법', '함수/명령', '명령 · 옵션'): continue
+        if not re.search(r'[A-Za-z0-9가-힣_]', cells[0]): continue       # "→" 같은 기호만 있는 행은 함수가 아님
         out.append({'name': cells[0].replace('`', '').strip(), 'sig': cells[1] if len(cells) > 2 else '',
                     'use': cells[-1]})
     return out

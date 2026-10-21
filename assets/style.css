@@ -404,3 +404,36 @@ dl.xinfo dd { margin: 0; }
 .callchip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 .cb-file { font-family: var(--mono); font-weight: 700; color: var(--ink); font-size: 12.5px; }
 @media (max-width: 700px) { dl.xinfo > div { grid-template-columns: 1fr; gap: 0; } }
+
+/* ---------- 왼쪽 사이드바: 목차 / 사전 탭 ---------- */
+.side { padding-top: 0; display: flex; flex-direction: column; }
+.side-tabs { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; padding: 10px 2px 8px; background: var(--panel); border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.side-tabs button { flex: 1; font: inherit; font-size: 13.5px; font-weight: 600; padding: 5px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; }
+.side-tabs button.on { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.side-pane[hidden] { display: none; }
+.nav-btn { font: inherit; font-size: 14.5px; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; border: 0; background: none; cursor: pointer; white-space: nowrap; }
+.nav-btn:hover { background: var(--panel-2); color: var(--ink); }
+.dict-top { position: sticky; top: 52px; z-index: 1; background: var(--panel); padding: 2px 2px 8px; }
+.dict-q { width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--panel-2); color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+.dict-q:focus { border-color: var(--accent); background: var(--panel); }
+.dict-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.dict-chips button { font: inherit; font-size: 12.5px; padding: 1px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; }
+.dict-chips.sm button { font-size: 11.5px; padding: 0 8px; }
+.dict-chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dict-h { font-size: 11.5px; font-weight: 700; color: var(--ink-3); padding: 8px 4px 4px; }
+.dict-empty { font-size: 13px; color: var(--ink-3); padding: 6px 4px; }
+details.dent { border-radius: 7px; }
+details.dent > summary { list-style: none; cursor: pointer; display: flex; gap: 6px; align-items: baseline; padding: 4px 6px; border-radius: 7px; line-height: 1.4; }
+details.dent > summary::-webkit-details-marker { display: none; }
+details.dent > summary:hover { background: var(--panel-2); }
+details.dent[open] { background: var(--panel-2); margin: 2px 0; }
+.dk { flex: none; font-size: 10.5px; font-weight: 700; padding: 0 5px; border-radius: 4px; line-height: 1.6; }
+.dk.term { background: var(--accent-soft); color: var(--accent); }
+.dk.code { background: var(--ok-soft); color: var(--ok); }
+.dn { font-size: 13.5px; color: var(--ink); word-break: break-word; }
+.dn.mono { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
+.dbody { padding: 2px 8px 8px 8px; font-size: 13px; }
+.dbody .fsig { display: block; margin: 2px 0 6px; padding: 4px 7px; font-size: 11.5px; white-space: pre-wrap; word-break: break-word; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; color: var(--code-ink); }
+.ddef { color: var(--ink); line-height: 1.55; }
+.dsrc { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; font-size: 12px; }
+.dict-foot { font-size: 12px; color: var(--ink-3); padding: 12px 4px 30px; }

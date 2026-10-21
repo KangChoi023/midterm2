@@ -11,7 +11,7 @@
   const W = (window.WIKI = window.WIKI || {});
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
-  const main = $('#main'), side = $('#side');
+  const main = $('#main'), side = $('#side'), sideToc = $('#sideToc'), sideDict = $('#sideDict');
   const SUBJ = IDX.subjects;
   const SORDER = Object.fromEntries(SUBJ.map((s, i) => [s.id, i]));
   const sById = id => SUBJ.find(s => s.id === id);
@@ -77,7 +77,7 @@
   /* ---------- 사이드바 ---------- */
   function renderSide(cur) {
     const openS = store.get('sideOpen', {});
-    let h = '<div class="mobile-nav"><a class="tool" href="#/terms">📖 용어 사전</a><a class="tool" href="#/funcs">🔧 함수·명령 사전</a><a class="tool" href="#/links">🔗 과목 연결</a><a class="tool" href="#/quiz">📝 퀴즈</a></div>';
+    let h = '<div class="mobile-nav"><a class="tool" href="#/links">🔗 과목 연결</a><a class="tool" href="#/quiz">📝 퀴즈</a></div>';
     h += '<div class="stitle">과목</div>';
     SUBJ.forEach((S, si) => {
       const isCur = cur && cur.s === S.id;
@@ -95,12 +95,88 @@
       h += '</details>';
     });
     h += `<div class="stitle">빌드 ${esc(IDX.built)}</div>`;
-    side.innerHTML = h;
-    $$('details', side).forEach(dt => dt.addEventListener('toggle', () => {
+    sideToc.innerHTML = h;
+    $$('details', sideToc).forEach(dt => dt.addEventListener('toggle', () => {
       const o = store.get('sideOpen', {}); o[dt.dataset.s || dt.dataset.k] = dt.open; store.set('sideOpen', o);
     }));
-    const on = $('.les.on', side); if (on) on.scrollIntoView({ block: 'nearest' });
+    const on = $('.les.on', sideToc); if (on && !sideToc.hidden) on.scrollIntoView({ block: 'nearest' });
+    SIDE_CUR = cur; if (!sideDict.hidden) dictRender();
   }
+
+  /* ---------- 왼쪽 사전 패널: 용어 + 함수·명령을 한 목록으로 ----------
+   * 페이지를 옮겨도 남아 있어 교시 본문과 나란히 본다. 항목을 누르면 그 자리에서 정의·기본형·나온 교시가 펼쳐진다.
+   * 검색어가 없고 교시 페이지면 "이 교시의 용어·코드" 를 먼저 보여 준다. */
+  let SIDE_CUR = null, DICT = null, dictKind = 'all', dictSubj = 'all', dictRaf = 0;
+  function dictBuild() {
+    const map = new Map();
+    const add = (kind, s, d, n, name, def, sig, a) => {
+      const k = kind + '|' + name.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!map.has(k)) map.set(k, { kind, name, def, sig, src: [], o: SORDER[s] * 1e4 + d * 100 + n });
+      map.get(k).src.push({ s, d, n, a });
+    };
+    IDX.terms.forEach(r => add('term', r[0], r[1], r[2], r[3], r[4], '', 't' + r[5]));
+    IDX.funcs.forEach(r => add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]));
+    DICT = [...map.values()].sort((a, b) => a.o - b.o);
+    DICT.forEach((e, i) => { e.i = i; e.nameLo = e.name.toLowerCase(); e.key = (e.name + ' ' + stripTags(e.def) + ' ' + stripTags(e.sig)).toLowerCase(); e.subj = [...new Set(e.src.map(x => x.s))]; });
+  }
+  function dictSetup() {
+    sideDict.innerHTML = `<div class="dict-top">
+        <input class="dict-q" type="search" placeholder="용어·함수·명령 걸러 보기" autocomplete="off" spellcheck="false" aria-label="사전 검색">
+        <div class="dict-chips" data-g="kind"><button data-v="all" class="on">전체</button><button data-v="term">용어</button><button data-v="code">코드</button></div>
+        <div class="dict-chips sm" data-g="subj"><button data-v="all" class="on">전 과목</button>${SUBJ.map(x => `<button data-v="${x.id}">${esc(x.short)}</button>`).join('')}</div>
+      </div><div class="dict-list"></div>
+      <div class="dict-foot"><a href="#/terms">용어 전체 화면</a> · <a href="#/funcs">함수·명령 전체 화면</a></div>`;
+    const q = $('.dict-q', sideDict);
+    const sched = () => { if (!dictRaf) dictRaf = requestAnimationFrame(() => { dictRaf = 0; dictRender(); }); };
+    q.addEventListener('input', e => { if (!e.isComposing) sched(); });
+    q.addEventListener('compositionend', sched);
+    q.addEventListener('keydown', e => { if (e.key === 'Escape') { q.value = ''; sched(); } });
+    $$('.dict-chips', sideDict).forEach(g => g.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      $$('button', g).forEach(x => x.classList.toggle('on', x === b));
+      if (g.dataset.g === 'kind') dictKind = b.dataset.v; else dictSubj = b.dataset.v;
+      sched();
+    }));
+  }
+  function dictItem(e, words) {
+    const hl = t => { let h = esc(t); words.forEach(w => { h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); }); return h; };
+    const srcs = e.src.map(x => `<a href="${href(x.s, x.d, x.n, x.a)}">${loc(x.s, x.d, x.n)}</a>`).join('');
+    return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span></summary>
+      <div class="dbody">${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}<div class="ddef">${mdInline(e.def || '')}</div><div class="dsrc">${srcs}</div></div></details>`;
+  }
+  function dictRender() {
+    if (!DICT) dictBuild();
+    if (!$('.dict-q', sideDict)) dictSetup();
+    const v = $('.dict-q', sideDict).value.trim().toLowerCase();
+    const words = v.split(/\s+/).filter(Boolean);
+    const ok = e => (dictKind === 'all' || e.kind === dictKind) && (dictSubj === 'all' || e.subj.includes(dictSubj));
+    const box = $('.dict-list', sideDict);
+    let h = '';
+    if (!words.length && SIDE_CUR && SIDE_CUR.n) {                      // 교시 페이지: 이 교시 것 먼저
+      const here = DICT.filter(e => ok(e) && e.src.some(x => x.s === SIDE_CUR.s && x.d === SIDE_CUR.d && x.n === SIDE_CUR.n));
+      h += `<div class="dict-h">이 교시 (${loc(SIDE_CUR.s, SIDE_CUR.d, SIDE_CUR.n)}) · ${here.length}</div>` + (here.map(e => dictItem(e, [])).join('') || '<div class="dict-empty">이 교시에 정리된 용어·코드가 없습니다.</div>');
+      h += '<div class="dict-h">검색하면 전 과목에서 찾습니다</div>';
+    } else {
+      const hits = DICT.filter(e => ok(e) && words.every(w => e.key.includes(w)));
+      // 이름이 입력어로 시작 → 이름에 포함 → 설명에만, 같은 순위면 지금 과목 먼저, 그다음 처음 나온 순
+      const rank = e => !words.length ? 0 : e.nameLo.startsWith(words[0]) ? 0 : words.every(w => e.nameLo.includes(w)) ? 1 : 2;
+      const subjFirst = e => (SIDE_CUR && e.subj.includes(SIDE_CUR.s)) ? 0 : 1;
+      hits.sort((a, b) => rank(a) - rank(b) || subjFirst(a) - subjFirst(b) || a.o - b.o);
+      const LIM = 120;
+      h += `<div class="dict-h">${words.length ? `“${esc(v)}” ` : ''}${hits.length}개</div>` + hits.slice(0, LIM).map(e => dictItem(e, words)).join('');
+      if (hits.length > LIM) h += `<div class="dict-empty">… ${hits.length - LIM}개 더 — 검색어를 더 입력해 좁혀 보세요</div>`;
+      if (!hits.length) h += `<div class="dict-empty">없습니다. <a href="#/search?q=${encodeURIComponent(v)}">전체 검색 →</a></div>`;
+    }
+    box.innerHTML = h;
+    if (words.length === 1 && box.querySelectorAll('.dent').length === 1) box.querySelector('.dent').open = true;   // 하나뿐이면 바로 펼침
+  }
+  function sideTab(tab, focus) {
+    $$('.side-tabs button', side).forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    sideToc.hidden = tab !== 'toc'; sideDict.hidden = tab !== 'dict';
+    store.set('sideTab', tab);
+    if (tab === 'dict') { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
+  }
+  $('.side-tabs', side).addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) sideTab(b.dataset.tab, b.dataset.tab === 'dict'); });
 
   /* ---------- 홈 ---------- */
   function renderHome() {
@@ -936,6 +1012,12 @@
     $('#menuBtn').setAttribute('aria-expanded', String(!off));
   });
   $('#menuBtn').setAttribute('aria-expanded', String(!document.body.classList.contains('side-off')));
+  $('#dictBtn').addEventListener('click', () => {
+    if (narrow()) { document.body.classList.add('menu'); $('#scrim').hidden = false; }
+    else { document.body.classList.remove('side-off'); store.set('sideOff', false); }
+    sideTab('dict', true);
+  });
+  sideTab(store.get('sideTab', 'toc'));
   $('#scrim').addEventListener('click', () => { document.body.classList.remove('menu'); $('#scrim').hidden = true; });
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
