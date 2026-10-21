@@ -57,16 +57,29 @@
     return t => t.indexOf(lo);
   }
 
-  // 핵심 내용 md → 블록 [{bullet:true, md}] (하위 글머리는 위 글머리에 포함) / [{bullet:false, md}] (표·문단)
+  // 핵심 내용 md → 블록 목록
+  //   {bullet:true, md}  글머리 (하위 글머리 포함)      {bullet:false, md}  표·문단
+  //   {head:'제목'}      "#### 큰 개념" (개념별 보기의 카드 하나)
+  //   {sum:'한 줄'}      제목 바로 아래 "> 한 줄 정의"
+  //   {more:md}          "##### 자세히" 부터 다음 #### 전까지 (접어 두는 이해용 내용)
   function splitBlocks(md) {
-    const blocks = []; let cur = null;
+    const blocks = []; let cur = null, inFence = false;
     for (const ln of String(md || '').split('\n')) {
+      if (cur && cur.more !== undefined) {                       // 자세히 블록: 다음 #### 까지 통째로
+        if (!inFence && /^####\s+(?!#)/.test(ln)) { cur = null; }
+        else { if (/^```/.test(ln)) inFence = !inFence; cur.more += (cur.more ? '\n' : '') + ln; continue; }
+      }
+      let m;
+      if ((m = ln.match(/^####\s+(?!#)(.+)$/))) { cur = { head: m[1].trim() }; blocks.push(cur); cur = null; continue; }
+      if (/^#####\s+/.test(ln)) { cur = { more: '' }; blocks.push(cur); continue; }
+      if ((m = ln.match(/^>\s?(.*)$/)) && blocks.length && (blocks[blocks.length - 1].head !== undefined)) { blocks.push({ sum: m[1] }); cur = null; continue; }
       if (/^[-*] /.test(ln)) { cur = { bullet: true, md: ln.slice(2) }; blocks.push(cur); }
-      else if (cur && cur.bullet && (/^\s+\S/.test(ln) || (ln.trim() === '' && false))) cur.md += '\n' + ln.replace(/^ {2}/, '');
+      else if (cur && cur.bullet && /^\s+\S/.test(ln)) cur.md += '\n' + ln.replace(/^ {2}/, '');
       else if (ln.trim() === '' && cur && cur.bullet) { /* 글머리 사이 빈 줄 */ }
+      else if (ln.trim() === '' && !cur) { /* 빈 줄 */ }
       else { if (!cur || cur.bullet) { cur = { bullet: false, md: '' }; blocks.push(cur); } cur.md += (cur.md ? '\n' : '') + ln; }
     }
-    return blocks.filter(b => b.md.trim());
+    return blocks.filter(b => b.head !== undefined || b.sum !== undefined || (b.more !== undefined ? b.more.trim() : b.md.trim()));
   }
 
   // "예제 코드가 하는 일" 표 → 행 [{cells:[md…]}], 나머지 md
@@ -135,8 +148,12 @@
     // 노트 섹션별 단위
     const sections = L.sections.map((s, si) => {
       if (s.key === 'core') {
-        let k = 0;
+        let k = 0, g = -1;
+        const groups = [];
         const blocks = splitBlocks(s.md).map(b => {
+          if (b.head !== undefined) { groups.push({ title: b.head, sum: '', bullets: [], more: '' }); g = groups.length - 1; return Object.assign({ g }, b); }
+          if (b.sum !== undefined) { if (g >= 0) groups[g].sum = b.sum; return Object.assign({ g }, b); }
+          if (b.more !== undefined) { if (g >= 0) groups[g].more += b.more; return Object.assign({ g }, b); }
           if (!b.bullet) return b;
           const id = `c${si}-${k++}`; const text = stripMd(b.md);
           const hp = hitsPos(text);
@@ -152,9 +169,11 @@
             const sh = cs.filter(cid => byId[cid].examples.includes(t.id)).length;
             return { id: t.id, sc: sp * 2 + sh };
           }).filter(x => x.sc >= 2).sort((a, b) => b.sc - a.sc).slice(0, 2).map(x => x.id);
-          return Object.assign({}, b, { id, text, concepts: cs, primary, examples: scored });
+          const out = Object.assign({}, b, { id, text, concepts: cs, primary, examples: scored, g });
+          if (g >= 0) groups[g].bullets.push(out);
+          return out;
         });
-        return { si, key: s.key, blocks };
+        return { si, key: s.key, blocks, groups };
       }
       if (s.key === 'usage') {
         const fences = [];

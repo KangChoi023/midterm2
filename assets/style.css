@@ -355,3 +355,34 @@ mark.kwm.cur { background: var(--mark); outline: 2px solid var(--warn); border-r
 ::highlight(dictmark) { background-color: var(--mark); color: inherit; }
 .fnone { margin-top: 10px; }
 .fnone[hidden] { display: none; }
+
+/* ---------- 큰 개념 (#### 제목 · > 한 줄 정의 · ##### 자세히) ---------- */
+.cg-h { margin: 18px 0 2px; font-size: 15.5px; color: var(--ink); padding-left: 10px; border-left: 3px solid var(--accent); }
+.nsec .cg-h:first-of-type { margin-top: 6px; }
+.cg-sum { margin: 4px 0 6px; padding: 6px 10px; background: var(--accent-soft); border-radius: 8px; font-size: 14.5px; }
+details.cg-more { margin: 6px 0 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--panel); }
+details.cg-more > summary { cursor: pointer; padding: 6px 10px; font-size: 13px; color: var(--ink-2); }
+details.cg-more > .in { padding: 0 12px 8px; }
+details.cg-more pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; color: var(--code-ink); }
+details.cg-more pre code { font-size: 13px; background: none; padding: 0; }
+.b-body.kv .b-line { display: block; }
+.b-key { font-weight: 700; color: var(--accent); }
+.b-key code { color: var(--accent); }
+.b-arr { color: var(--ink-3); margin: 0 6px; }
+.gcard > h3 { font-size: 17px; }
+.gcard .cg-sum { margin-top: 6px; }
+.gsec { margin-top: 10px; }
+.gsec-h { font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .03em; margin-bottom: 4px; }
+.gsec.trap { background: var(--warn-soft); border-radius: 8px; padding: 6px 12px 4px; }
+.gsec.trap .gsec-h { color: var(--warn); }
+.gsec.trap .core-list > li + li { border-top-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.gfn { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 10px; align-items: baseline; margin: 4px 0; }
+.gfn code.fsig { display: block; padding: 4px 8px; font-size: 12.5px; white-space: pre-wrap; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; color: var(--code-ink); }
+.gcard pre { margin: 0; }
+dl.gterms { margin: 0; }
+dl.gterms > div { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 10px; align-items: baseline; padding: 3px 0; }
+dl.gterms dd { margin: 0; font-size: 14px; }
+.gtoc { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.gtoc button { font: inherit; font-size: 13px; padding: 3px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.gtoc button:hover { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 700px) { .gfn, dl.gterms > div { grid-template-columns: 1fr; gap: 2px; } }

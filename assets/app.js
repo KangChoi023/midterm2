@@ -182,6 +182,12 @@
     const back = t => t.replace(/\u0001(\d+)\u0001/g, (_, i) => codes[+i]);
     let lead = '';
     // 굵은 머리말: "**제목**: …" 은 항상, "**제목** …" 은 뒤가 조사(를·이·은…)로 이어지는 문장이 아닐 때만
+    const kv = first.match(/^\*\*([^*]+?)\*\*\s*→\s*([\s\S]*)$/);     // "**실패하면** → NULL …" : 키워드 → 결과 (한 줄)
+    if (kv) {
+      const rest = kv[2].split(/\s+—\s+/);
+      return `<div class="b-body kv"><div class="b-line"><span class="b-key">${mdInline(back(kv[1]))}</span><span class="b-arr">→</span>${mdInline(back(rest[0]))}</div>` +
+        rest.slice(1).map(x => `<div class="b-line sub"><span class="arr">↳</span> ${mdInline(back(x))}</div>`).join('') + '</div>' + (tail.trim() ? md(tail) : '');
+    }
     let m = first.match(/^\*\*([^*]+?)\*\*\s*[:：]\s*/) || first.match(/^\*\*([^*]+?)\*\*\s+(?!(?:을|를|이|가|은|는|의|에|에서|로|으로|와|과|도|만|이다|다|라|하면|하고|해서)(?=[\s.,)]|$))/);
     if (m && !first.slice(m[0].length).trim()) m = null;              // 굵은 글씨만 있는 줄은 그대로
     if (m) { lead = m[1]; first = first.slice(m[0].length); }
@@ -206,16 +212,22 @@
     h += lines.filter(l => l.t.trim()).map(l => `<div class="b-line ${l.cls}">${l.cls === 'sub' ? '<span class="arr">↳</span> ' : ''}${mdInline(back(l.t.trim()))}</div>`).join('');
     return `<div class="b-body${lead ? ' has-lead' : ''}">${h}</div>` + (tail.trim() ? md(tail) : '');
   }
-  function bulletLi(b, skip) {
+  function bulletLi(b, skip, bare) {
+    if (bare) return `<li id="${b.id}">${bulletBody(b.md)}</li>`;            // 레퍼런스 카드: 칩 없이 내용만
     const cs = b.concepts.slice().sort((x, y) => (x === b.primary ? -1 : y === b.primary ? 1 : 0)).filter(x => x !== skip).slice(0, 4);
     const rel = cs.map(x => cChip(x)).join('') + b.examples.map(exChip).join('');
     return `<li id="${b.id}">${bulletBody(b.md)}${rel ? `<div class="rel">${rel}</div>` : ''}</li>`;
   }
+  const moreBox = mdText => `<details class="cg-more"><summary>자세히 · 왜 그런지</summary><div class="in">${md(mdText)}</div></details>`;
   function coreHtml(sec) {
     let h = '', open = false;
     sec.blocks.forEach(b => {
-      if (b.bullet) { if (!open) { h += '<ul class="core-list">'; open = true; } h += bulletLi(b); }
-      else { if (open) { h += '</ul>'; open = false; } h += md(b.md); }
+      if (b.bullet) { if (!open) { h += '<ul class="core-list">'; open = true; } h += bulletLi(b); return; }
+      if (open) { h += '</ul>'; open = false; }
+      if (b.head !== undefined) h += `<h4 class="cg-h" id="g${sec.si}-${b.g}">${mdInline(b.head)}</h4>`;
+      else if (b.sum !== undefined) h += `<p class="cg-sum">${mdInline(b.sum)}</p>`;
+      else if (b.more !== undefined) h += moreBox(b.more);
+      else h += md(b.md);
     });
     return h + (open ? '</ul>' : '');
   }
@@ -254,8 +266,46 @@
   }
 
   // 개념별 묶어 보기: 핵심 용어·새 함수·핵심 내용을 개념 카드로 재배치 (카드 = 정의 + 그 개념의 글머리 + 사용형태 + 예제 코드)
+  // 큰 개념 카드 (노트에 "#### 큰 개념" 이 있는 교시)
+  // 모양 고정: 제목 → 한 줄 정의 → 핵심 → 관련 함수·용어 → 사용형태 → ⚠ 함정 → 예제 칩 → 자세히(접힘)
+  function groupCards(groups) {
+    const { L, LK } = CX;
+    // 용어·함수는 처음 언급된 큰 개념 한 곳에만 붙인다 (카드마다 중복되지 않게)
+    // 가장 많이 언급된 큰 개념 한 곳 (같으면 먼저 나온 쪽)
+    const cnt = {};
+    groups.forEach((g, gi) => g.bullets.forEach(b => b.concepts.forEach(c => { (cnt[c] = cnt[c] || {})[gi] = (cnt[c][gi] || 0) + 1; })));
+    const home = {};
+    Object.entries(cnt).forEach(([c, m]) => {
+      const keys = (LK.byId[c] ? LK.byId[c].keys : []).map(k => k.toLowerCase());
+      // 제목에 이름이 있는 카드가 우선, 그중(없으면 전체 중) 가장 많이 언급된 카드
+      const titled = groups.map((g, gi) => gi).filter(gi => keys.some(k => groups[gi].title.replace(/`/g, '').toLowerCase().includes(k)));
+      const pool = titled.length ? titled : Object.keys(m).map(Number);
+      home[c] = pool.sort((a, b) => (m[b] || 0) - (m[a] || 0) || a - b)[0];
+    });
+    let h = groups.map((g, gi) => {
+      const cs = LK.concepts.filter(c => home[c.id] === gi);
+      const normal = g.bullets.filter(b => !/^⚠/.test(b.md.trim())), traps = g.bullets.filter(b => /^⚠/.test(b.md.trim()));
+      const funcs = cs.filter(c => c.sig), terms = cs.filter(c => !c.sig && c.kind === 'term');
+      const usage = [...new Set(cs.flatMap(c => c.usage.map(u => u.line)))];
+      const exs = [...new Set([...g.bullets.flatMap(b => b.examples), ...cs.flatMap(c => c.examples)])];
+      return `<section class="ccard gcard" id="gc${gi}"><h3>${mdInline(g.title)}</h3>
+        ${g.sum ? `<p class="cg-sum">${mdInline(g.sum)}</p>` : ''}
+        ${normal.length ? `<ul class="core-list">${normal.map(b => bulletLi(b, null, true)).join('')}</ul>` : ''}
+        ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code></div>`).join('')}</div>` : ''}
+        ${terms.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${terms.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : ''}
+        ${usage.length ? `<div class="gsec"><div class="gsec-h">사용형태</div><pre><code data-lang="${esc((cs.find(c => c.usage.length) || { usage: [{ lang: 'c' }] }).usage[0].lang)}">${esc(usage.join('\n'))}</code></pre></div>` : ''}
+        ${traps.length ? `<div class="gsec trap"><div class="gsec-h">⚠ 함정</div><ul class="core-list">${traps.map(b => bulletLi(Object.assign({}, b, { md: b.md.replace(/^\s*⚠\s*/, '') }), null, true)).join('')}</ul></div>` : ''}
+        ${exs.length ? `<div class="gsec"><div class="gsec-h">예제 코드</div><div class="rel">${exs.map(exChip).join('')}</div></div>` : ''}
+        ${g.more ? moreBox(g.more) : ''}</section>`;
+    }).join('');
+    const rest = LK.concepts.filter(c => home[c.id] === undefined && (c.kind === 'term' || c.sig));
+    if (rest.length) h += `<section class="ccard loose"><h3>그 밖의 용어·함수</h3><dl class="gterms">${rest.map(c => `<div><dt><button type="button" class="cchip ${c.kind}" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def || '')}</dd></div>`).join('')}</dl></section>`;
+    return h;
+  }
   function conceptCards() {
     const { L, LK } = CX;
+    const gs = LK.sections.filter(x => x.groups && x.groups.length).flatMap(x => x.groups);
+    if (gs.length) return groupCards(gs);
     const bullets = LK.sections.filter(x => x.blocks).flatMap(x => x.blocks.filter(b => b.bullet));
     const own = {}; const loose = [];
     bullets.forEach((b, i) => { if (b.primary) (own[b.primary] = own[b.primary] || []).push(Object.assign({ i }, b)); else loose.push(b); });
@@ -280,7 +330,7 @@
     if (view !== 'concept') return L.sections.map((x, i) => x.key === 'kw' ? '' : noteSection(x, i, L)).join('');
     let h = '', placed = false;
     L.sections.forEach((x, i) => {
-      if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { h += `<div class="cards-h">개념별 정리 <small>정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에</small></div>` + conceptCards(); placed = true; } return; }
+      if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { const grouped = CX.LK.sections.some(y => y.groups && y.groups.length); h += `<div class="cards-h">개념별 정리 <small>${grouped ? '큰 개념마다 정의 · 핵심 · 함수 · 사용형태 · 함정을 한 카드에' : '정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에'}</small></div>` + (grouped ? `<nav class="gtoc">${CX.LK.sections.filter(y => y.groups).flatMap(y => y.groups).map((g, gi) => `<button type="button" data-go="gc${gi}">${mdInline(g.title)}</button>`).join('')}</nav>` : '') + conceptCards(); placed = true; } return; }
       if (x.key !== 'kw') h += noteSection(x, i, L);
     });
     return h;
