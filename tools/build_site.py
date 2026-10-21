@@ -204,6 +204,12 @@ def main():
         done = sum(l['status'] == 'done' for d in meta['days'] for l in d['lessons'])
         tot = sum(len(d['lessons']) for d in meta['days'])
         print(f"{p}  {os.path.getsize(p) // 1024}KB  정리 {done}/{tot}교시")
+    # 캐시 무효화: index.html 의 로컬 스크립트·스타일 주소에 빌드 버전을 붙인다 (Pages 는 10분 캐시)
+    ver = datetime.datetime.now().strftime('%y%m%d%H%M')
+    ip = os.path.join(REPO, 'index.html')
+    html = open(ip, encoding='utf8').read()
+    html = re.sub(r'((?:src|href)="(?:assets|data)/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', r'\1?v=' + ver + '"', html)
+    open(ip, 'w', encoding='utf8').write(html)
     p = os.path.join(REPO, 'data', 'index.js')
     with open(p, 'w', encoding='utf8') as f:
         f.write('window.WIKI_INDEX=')
