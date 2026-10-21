@@ -700,33 +700,58 @@
       <div class="dict">${list.map((e, i) => `<div data-i="${i}"><span class="nm">${isT ? esc(e.name) : `<code>${esc(e.name)}</code>`}</span><span class="df">${mdInline(e.def)}</span><span class="src">${e.src.map(r => `<a href="${href(r.s, r.d, r.n, r.a)}">${loc(r.s, r.d, r.n)}</a>`).join('')}</span></div>`).join('') || '<div class="empty">아직 없습니다.</div>'}</div>
       <div class="empty fnone" hidden>맞는 항목이 없습니다. <a class="fsearch" href="#/search">전체 검색으로 찾기 →</a></div></div>`;
     highlightIn(main);
-    // 행·검색 문자열은 한 번만 만들어 두고, 입력마다 보이기/숨기기와 강조만 바꾼다
+    // 행·검색 문자열·텍스트 노드는 한 번만 만들어 둔다. 입력마다 DOM 은 건드리지 않고(보이기 토글 + CSS 강조만)
+    const HL = typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight !== 'undefined';
+    const textNodes = root => { const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), a = []; while (tw.nextNode()) a.push(tw.currentNode); return a; };
     const rowsEl = $$('.dict > div[data-i]', main).map(el => {
       const e = list[+el.dataset.i];
-      return { el, subj: subjOf(e), nmLen: e.name.length, key: (e.name + ' ' + stripTags(e.def)).toLowerCase(), nm: $('.nm', el), df: $('.df', el), nmH: null, dfH: null };
+      const r = { el, subj: subjOf(e), nmLen: e.name.length, key: (e.name + ' ' + stripTags(e.def)).toLowerCase(), nm: $('.nm', el), df: $('.df', el), nmH: null, dfH: null, vis: true, ord: '', tn: null };
+      r.nmH = r.nm.innerHTML; r.dfH = r.df.innerHTML;
+      if (HL) r.tn = textNodes(el).filter(n => !n.parentNode.closest('.src')).map(n => ({ n, lo: n.nodeValue.toLowerCase() }));
+      return r;
     });
-    rowsEl.forEach(r => { r.nmH = r.nm.innerHTML; r.dfH = r.df.innerHTML; });
-    const input = $('.filter', main), cnt = $('.fcount', main), none = $('.fnone', main);
-    let sf = 'all', marked = [], raf = 0;
+    const input = $('.filter', main), cnt = $('.fcount', main), none = $('.fnone', main), fsearch = $('.fsearch', main);
+    let sf = 'all', marked = [], raf = 0, lastKey = null;
+    const hlRanges = words => {
+      const ranges = [];
+      for (const r of rowsEl) {
+        if (!r.vis) continue;
+        for (const { n, lo } of r.tn) {
+          let i = 0;
+          while (true) {
+            let best = -1, bw = 0;
+            for (const w of words) { const j = lo.indexOf(w, i); if (j >= 0 && (best < 0 || j < best)) { best = j; bw = w.length; } }
+            if (best < 0) break;
+            const rg = new Range(); rg.setStart(n, best); rg.setEnd(n, best + bw); ranges.push(rg); i = best + bw;
+          }
+        }
+      }
+      return ranges;
+    };
     const apply = () => {
       raf = 0;
       const v = input.value.trim().toLowerCase();
+      const key = sf + '\n' + v;
+      if (key === lastKey) return;                       // 같은 조건이면 아무것도 안 함
+      lastKey = key;
       const words = v.split(/\s+/).filter(Boolean);
-      marked.forEach(r => { r.nm.innerHTML = r.nmH; r.df.innerHTML = r.dfH; }); marked = [];
+      if (!HL) { marked.forEach(r => { r.nm.innerHTML = r.nmH; r.df.innerHTML = r.dfH; }); marked = []; }
       let shown = 0;
       for (const r of rowsEl) {
         const ok = (sf === 'all' || r.subj.includes(sf)) && words.every(w => r.key.includes(w));
-        r.el.style.display = ok ? '' : 'none';
+        if (ok !== r.vis) { r.vis = ok; r.el.hidden = !ok; }
         if (!ok) continue;
         // 이름이 입력어로 시작 → 이름에 포함 → 설명에만 있음 순서 (같은 순위 안에서는 처음 나온 순서)
         const nmLo = r.key.slice(0, r.nmLen);
-        r.el.style.order = !words.length ? '' : nmLo.startsWith(words[0]) ? 0 : words.every(w => nmLo.includes(w)) ? 1 : 2;
+        const ord = !words.length ? '' : nmLo.startsWith(words[0]) ? '0' : words.every(w => nmLo.includes(w)) ? '1' : '2';
+        if (ord !== r.ord) { r.ord = ord; r.el.style.order = ord; }
         shown++;
-        if (words.length) { markText(r.nm, v); markText(r.df, v); marked.push(r); }
+        if (!HL && words.length && shown <= 80) { markText(r.nm, v); markText(r.df, v); marked.push(r); }
       }
+      if (HL) { CSS.highlights.delete('dictmark'); if (words.length) CSS.highlights.set('dictmark', new Highlight(...hlRanges(words))); }
       cnt.textContent = words.length || sf !== 'all' ? `${shown} / ${rowsEl.length}` : '';
       none.hidden = shown > 0 || !rowsEl.length;
-      $('.fsearch', main).href = `#/search?q=${encodeURIComponent(input.value.trim())}`;
+      fsearch.href = `#/search?q=${encodeURIComponent(input.value.trim())}`;
     };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(apply); };
     input.addEventListener('input', e => { if (!e.isComposing) schedule(); });
@@ -796,6 +821,7 @@
     const seg = path.split('/').filter(Boolean);
     document.body.classList.remove('menu'); $('#scrim').hidden = true;
     closePeek(); CX = null;
+    if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete('dictmark');
     $$('.top-nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#/' + (seg[0] || '')));
     let cur = null;
     if (!seg.length) renderHome();

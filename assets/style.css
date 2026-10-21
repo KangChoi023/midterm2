@@ -346,5 +346,7 @@ mark.kwm.cur { background: var(--mark); outline: 2px solid var(--warn); border-r
 .filter-row { display: flex; align-items: center; gap: 10px; }
 .fcount { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
 .dict > div[hidden] { display: none; }
+.dict > div { content-visibility: auto; contain-intrinsic-size: auto 48px; }
+::highlight(dictmark) { background-color: var(--mark); color: inherit; }
 .fnone { margin-top: 10px; }
 .fnone[hidden] { display: none; }
