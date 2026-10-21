@@ -238,11 +238,11 @@
   function notesHtml(view) {
     const { L } = CX;
     if (!L.sections.length) return '';
-    if (view !== 'concept') return L.sections.map((x, i) => noteSection(x, i, L)).join('');
+    if (view !== 'concept') return L.sections.map((x, i) => x.key === 'kw' ? '' : noteSection(x, i, L)).join('');
     let h = '', placed = false;
     L.sections.forEach((x, i) => {
       if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { h += `<div class="cards-h">개념별 정리 <small>정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에</small></div>` + conceptCards(); placed = true; } return; }
-      h += noteSection(x, i, L);
+      if (x.key !== 'kw') h += noteSection(x, i, L);
     });
     return h;
   }
@@ -304,8 +304,81 @@
     else if (b.dataset.view) { store.set('noteView', b.dataset.view); renderNotesBody(b.dataset.view); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !peekEl.hidden) closePeek(); });
+  /* 키워드 → 이 페이지 안에서 언급된 곳 (노트 · 부록 A · 부록 B · 문항) */
+  let KW = { hits: [], i: -1, k: -1 };
+  const KW_STOP = new Set(['검사', '사용', '함정', '관용구', '규칙', '방법', '차이', '구분', '초기화', '반환', '주소', '파일', '함수', '변수', '값', '두', '배', '수', '읽기', '쓰기']);
+  function kwClear() {
+    $$('mark.kwm', main).forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+    main.normalize();
+    KW = { hits: [], i: -1, k: -1 };
+    $$('.kwc.on', main).forEach(b => b.classList.remove('on'));
+    const nav = $('.kwnav', main); if (nav) nav.hidden = true;
+  }
+  function kwRoots() {
+    return [...$$('#notes-body > section, #notes-body > .ccard', main), ...$$('#examples details, #lecture details, #quiz .q', main)];
+  }
+  function kwMark(term) {
+    const lo = term.toLowerCase(); const out = [];
+    const ascii = /^[\x20-\x7e]+$/.test(term) && /^\w/.test(term) && /\w$/.test(term);
+    const re = ascii ? new RegExp('(^|[^A-Za-z0-9_])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![A-Za-z0-9_])', 'gi') : null;
+    kwRoots().forEach(root => {
+      const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('summary .chk, button.cnt, .rel, script, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+      const nodes = []; while (tw.nextNode()) nodes.push(tw.currentNode);
+      nodes.forEach(nd => {
+        const t = nd.nodeValue; const spans = [];
+        if (re) { re.lastIndex = 0; let m; while ((m = re.exec(t))) spans.push([m.index + m[1].length, m[2].length]); }
+        else { let j = 0, low = t.toLowerCase(); while ((j = low.indexOf(lo, j)) >= 0) { spans.push([j, lo.length]); j += lo.length; } }
+        if (!spans.length) return;
+        const frag = document.createDocumentFragment(); let p = 0;
+        spans.forEach(([a, l]) => {
+          frag.appendChild(document.createTextNode(t.slice(p, a)));
+          const mk = document.createElement('mark'); mk.className = 'kwm'; mk.textContent = t.slice(a, a + l); frag.appendChild(mk); out.push(mk);
+          p = a + l;
+        });
+        frag.appendChild(document.createTextNode(t.slice(p)));
+        nd.parentNode.replaceChild(frag, nd);
+      });
+    });
+    return out;
+  }
+  function kwCandidates(k) {
+    const c = [k.trim()];
+    // "죽은 스택 주소 반환", "모드 r w a r+", "int main(void)" 처럼 문장에 그대로 없을 때 쓸 조각들 (긴 것부터)
+    const toks = k.split(/[\s,/·()（）=]+/).map(x => x.trim()).filter(x => x.length >= 2 && !KW_STOP.has(x));
+    toks.sort((a, b) => b.length - a.length).forEach(x => { if (!c.includes(x)) c.push(x); });
+    return c;
+  }
+  function kwGo(i) {
+    const hits = KW.hits; if (!hits.length) return;
+    KW.i = (i + hits.length) % hits.length;
+    hits.forEach(h => h.classList.remove('cur'));
+    const m = hits[KW.i]; m.classList.add('cur');
+    let p = m; while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }
+    m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    $('.kwpos', main).textContent = `${KW.i + 1}/${hits.length}`;
+  }
+  function kwFind(ki) {
+    const k = CX.L.keywords[ki];
+    if (KW.k === ki && KW.hits.length) return kwGo(KW.i + 1);     // 같은 칩을 다시 누르면 다음 위치
+    kwClear(); KW.k = ki;
+    $(`.kwc[data-kw="${ki}"]`, main).classList.add('on');
+    let used = '';
+    for (const c of kwCandidates(k)) { const h = kwMark(c); if (h.length) { KW.hits = h; used = c; break; } }
+    const nav = $('.kwnav', main); nav.hidden = false;
+    if (!KW.hits.length) { $('.kwpos', main).innerHTML = `이 페이지엔 없음 · <a href="#/search?q=${encodeURIComponent(k)}">전체 검색</a>`; return; }
+    nav.title = used !== k ? `“${k}” 그대로는 없어서 “${used}” 로 찾음` : '';
+    kwGo(0);
+  }
+  document.addEventListener('click', e => {
+    if (!CX) return;
+    const c = e.target.closest('.kwc'); if (c) return kwFind(+c.dataset.kw);
+    const n = e.target.closest('[data-kwnav]'); if (!n) return;
+    const v = +n.dataset.kwnav; if (v === 0) kwClear(); else kwGo(KW.i + v);
+  });
+
   function renderNotesBody(view) {
     const box = $('#notes-body', main); if (!box) return;
+    kwClear();
     box.innerHTML = notesHtml(view);
     $$('[data-view]', main).forEach(x => x.classList.toggle('on', x.dataset.view === view));
     const vn = $('#viewName', main); if (vn) vn.textContent = view === 'concept' ? '개념별 묶어 보기' : '노트 순서';
@@ -372,7 +445,7 @@
     if (!L) return notFound();
     const exTopics = L.topics.filter(t => t.blocks.some(b => b.kind !== 'out'));
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
-    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek();
+    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
     const anchor = params.get('a');
     // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
     const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
@@ -381,7 +454,7 @@
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
@@ -435,6 +508,8 @@
     $$('[data-jump]', main).forEach(a => a.addEventListener('click', e => { e.preventDefault(); $(a.getAttribute('href'), main).scrollIntoView({ behavior: 'smooth' }); }));
     const pk = (params.get('p') || '').match(/^([cx]):(\w+)$/);   // #/c/4/1?p=c:t3 → 그 개념 패널을 연 채로
     if (pk) openPeek(pk[1], pk[1] === 'x' ? +pk[2] : pk[2]);
+    const kq = params.get('k');                                      // #/c/2/7?k=realloc → 그 키워드 위치로
+    if (kq) { const ki = L.keywords.findIndex(x => x === kq); if (ki >= 0) { kwFind(ki); return; } }
     jumpTo(anchor && CX.LK.alias[anchor] && !document.getElementById(anchor) ? CX.LK.alias[anchor] : anchor, params.get('q'));
   }
 
@@ -666,7 +741,14 @@
     const code = b.closest('.cb').querySelector('code').textContent;
     (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(() => { b.textContent = '복사됨'; setTimeout(() => (b.textContent = '복사'), 1200); }, () => { b.textContent = '실패'; });
   });
-  $('#menuBtn').addEventListener('click', () => { const o = document.body.classList.toggle('menu'); $('#scrim').hidden = !o; });
+  const narrow = () => matchMedia('(max-width: 900px)').matches;
+  if (store.get('sideOff', false)) document.body.classList.add('side-off');
+  $('#menuBtn').addEventListener('click', () => {
+    if (narrow()) { const o = document.body.classList.toggle('menu'); $('#scrim').hidden = !o; return; }
+    const off = document.body.classList.toggle('side-off'); store.set('sideOff', off);
+    $('#menuBtn').setAttribute('aria-expanded', String(!off));
+  });
+  $('#menuBtn').setAttribute('aria-expanded', String(!document.body.classList.contains('side-off')));
   $('#scrim').addEventListener('click', () => { document.body.classList.remove('menu'); $('#scrim').hidden = true; });
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
