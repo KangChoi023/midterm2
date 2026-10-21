@@ -44,8 +44,15 @@ def strip_md(t):
     return re.sub(r'\s+', ' ', t).strip()
 
 def fix_links(md):
-    """로컬 폴더 링크(예: [02_shell/](Linux_day1/02_shell/))는 사이트에서 깨지므로 코드 표기로."""
-    return re.sub(r'\[([^\]]+)\]\((?!#|https?:)([^)]+)\)', r'`\1`', md)
+    """로컬 폴더 링크(예: [02_shell/](Linux_day1/02_shell/))는 사이트에서 깨지므로 코드 표기로.
+    코드 블록(```)과 인라인 코드(`…`) 안의 `a[i](x)` 같은 코드는 건드리지 않는다."""
+    out = []
+    for i, part in enumerate(re.split(r'(```[\s\S]*?```)', md)):
+        if i % 2: out.append(part); continue
+        segs = re.split(r'(`[^`\n]*`)', part)
+        out.append(''.join(seg if j % 2 else re.sub(r'\[([^\]]+)\]\((?!#|https?:)([^)\s]+)\)', r'`\1`', seg)
+                           for j, seg in enumerate(segs)))
+    return ''.join(out)
 
 def parse_notes(path):
     """Day 노트 하나 -> {title, lessons:{n:{title, sections:[{key,label,inline,md}]}}}"""

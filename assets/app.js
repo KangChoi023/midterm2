@@ -154,22 +154,161 @@
     return t.html.replace(/\[\[BLOCK (\d+)\]\]/g, (_, i) => codeBlock(t.blocks[+i]));
   }
 
-  /* ---------- 교시 페이지 ---------- */
-  function noteSection(s, si, L, cur) {
+  /* ---------- 교시 페이지: 같은 개념끼리 연결 ----------
+   * CX = 지금 보고 있는 교시 { s, d, n, L, LK }.  LK = WikiLink.build(L) (assets/concepts.js)
+   * 칩(data-peek-c / data-peek-x)을 누르면 옆 패널에 그 개념/예제의 정의·핵심 내용·코드·문항을 모아 보여 준다. */
+  let CX = null;
+  const shortName = c => c.name.replace(/`/g, '').replace(/\s*[(（][^)）]*[)）]\s*/g, ' ').trim() || c.name;
+  const cid = id => (CX.LK.alias[id] || id);
+  function cChip(id, cls = '') {
+    const c = CX.LK.byId[cid(id)]; if (!c) return '';
+    return `<button type="button" class="cchip ${c.kind} ${cls}" data-peek-c="${c.id}" title="${esc(c.name)} — 관련 내용 모아 보기">${esc(shortName(c))}</button>`;
+  }
+  function exLabel(t) { const m = t.title.match(/예제\s*([\d-]+)/); return m ? '예제 ' + m[1] : t.title.replace(/^\d+-\d+\.\s*/, '').slice(0, 16); }
+  function exChip(tid) { const t = CX.L.topics[tid]; return t ? `<button type="button" class="xchip" data-peek-x="${tid}" title="${esc(t.title)}">▶ ${esc(exLabel(t))}</button>` : ''; }
+  function countBtn(c) {
+    const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
+    return parts.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">${parts.join(' · ')} ›</button>` : '';
+  }
+  function bulletLi(b, skip) {
+    const cs = b.concepts.slice().sort((x, y) => (x === b.primary ? -1 : y === b.primary ? 1 : 0)).filter(x => x !== skip).slice(0, 4);
+    const rel = cs.map(x => cChip(x)).join('') + b.examples.map(exChip).join('');
+    return `<li id="${b.id}">${md(b.md)}${rel ? `<div class="rel">${rel}</div>` : ''}</li>`;
+  }
+  function coreHtml(sec) {
+    let h = '', open = false;
+    sec.blocks.forEach(b => {
+      if (b.bullet) { if (!open) { h += '<ul class="core-list">'; open = true; } h += bulletLi(b); }
+      else { if (open) { h += '</ul>'; open = false; } h += md(b.md); }
+    });
+    return h + (open ? '</ul>' : '');
+  }
+  function examplesTable(sec) {
+    if (!sec.rows.length) return md(sec.rest);
+    const head = sec.head ? sec.head.cells : ['예제', '하는 일'];
+    return `<table class="ex-tab"><thead><tr>${head.map(c => `<th>${mdInline(c)}</th>`).join('')}</tr></thead><tbody>` +
+      sec.rows.map(r => `<tr>${r.cells.map((c, i) => `<td>${i === 0 && r.topic !== null ? `<button type="button" class="xrow" data-peek-x="${r.topic}" title="예제 코드 옆에 펼치기">${mdInline(c)} <span>▶</span></button>` : mdInline(c)}</td>`).join('')}</tr>`).join('') +
+      '</tbody></table>' + md(sec.rest);
+  }
+  function noteSection(s, si, L) {
+    const LS = CX.LK.sections[si] || {};
     const cls = s.key === 'overview' ? 'nsec overview' : 'nsec';
     let body = '';
     if (s.key === 'kw') {
       body = '<div class="kw">' + L.keywords.map(k => `<a href="#/search?q=${encodeURIComponent(k)}">${esc(k)}</a>`).join('') + '</div>';
     } else if (s.key === 'terms' && s.tn) {
-      body = '<dl class="terms">' + L.terms.slice(s.t0, s.t0 + s.tn).map((t, i) =>
-        `<div id="t${s.t0 + i}"><dt>${mdInline(t.name)}</dt><dd>${mdInline(t.def)}</dd></div>`).join('') + '</dl>' + md(s.rest);
+      body = '<dl class="terms">' + L.terms.slice(s.t0, s.t0 + s.tn).map((t, i) => {
+        const c = CX.LK.byId['t' + (s.t0 + i)];
+        return `<div id="t${s.t0 + i}"><dt>${mdInline(t.name)}</dt><dd>${mdInline(t.def)}${c && c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}${c ? countBtn(c) : ''}</dd></div>`;
+      }).join('') + '</dl>' + md(s.rest);
     } else if (s.key === 'funcs' && s.fn) {
       body = '<table class="ftab"><thead><tr><th>이름</th><th>기본형</th><th>용도</th></tr></thead><tbody>' +
-        L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => `<tr id="f${s.f0 + i}"><td>${esc(f.name)}</td><td>${mdInline(f.sig)}</td><td>${mdInline(f.use)}</td></tr>`).join('') +
-        '</tbody></table>' + md(s.rest);
-    } else body = md(s.md);
+        L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => {
+          const id = 'f' + (s.f0 + i);
+          return `<tr id="${id}"><td><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button></td><td>${mdInline(f.sig)}</td><td>${mdInline(f.use)}</td></tr>`;
+        }).join('') + '</tbody></table>' + md(s.rest);
+    } else if (s.key === 'core' && LS.blocks) body = coreHtml(LS);
+    else if (s.key === 'examples' && LS.rows) body = examplesTable(LS);
+    else body = md(s.md);
     const id = s.key === 'kw' ? 's-kw' : 's' + si;
     return `<section class="${cls}" id="${id}">${s.label ? `<h3>${mdInline(s.label)}</h3>` : ''}${body}</section>`;
+  }
+
+  // 개념별 묶어 보기: 핵심 용어·새 함수·핵심 내용을 개념 카드로 재배치 (카드 = 정의 + 그 개념의 글머리 + 사용형태 + 예제 코드)
+  function conceptCards() {
+    const { L, LK } = CX;
+    const bullets = LK.sections.filter(x => x.blocks).flatMap(x => x.blocks.filter(b => b.bullet));
+    const own = {}; const loose = [];
+    bullets.forEach((b, i) => { if (b.primary) (own[b.primary] = own[b.primary] || []).push(Object.assign({ i }, b)); else loose.push(b); });
+    const first = c => (own[c.id] ? own[c.id][0].i : 1e3 + LK.concepts.indexOf(c));
+    const list = LK.concepts.filter(c => c.kind === 'term' || own[c.id] || c.examples.length).sort((a, b) => first(a) - first(b));
+    let h = list.map(c => {
+      const bs = own[c.id] || [];
+      const usage = c.usage.length ? `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>` : '';
+      const exs = c.examples.map(tid => { const t = L.topics[tid]; return `<details class="box ex"><summary><span class="t">${esc(t.title)}</span></summary><div class="in">${exampleBody(t)}</div></details>`; }).join('');
+      const more = [...c.bullets.filter(id => !bs.some(b => b.id === id)).map(id => `<button type="button" class="cnt" data-go="${id}">다른 글머리에서도 언급 ↗</button>`).slice(0, 1),
+        c.quiz.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">문항 ${c.quiz.length} ›</button>` : ''].join('');
+      return `<section class="ccard" id="${c.id}"><h3>${esc(c.name)} <span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span></h3>
+        <div class="cdef">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>
+        ${bs.length ? `<ul class="core-list">${bs.map(b => bulletLi(b, c.id)).join('')}</ul>` : ''}${usage}${exs}${more ? `<div class="rel">${more}</div>` : ''}</section>`;
+    }).join('');
+    if (loose.length) h += `<section class="ccard loose"><h3>그 밖의 핵심 내용</h3><ul class="core-list">${loose.map(b => bulletLi(b)).join('')}</ul></section>`;
+    return h;
+  }
+  function notesHtml(view) {
+    const { L } = CX;
+    if (!L.sections.length) return '';
+    if (view !== 'concept') return L.sections.map((x, i) => noteSection(x, i, L)).join('');
+    let h = '', placed = false;
+    L.sections.forEach((x, i) => {
+      if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { h += `<div class="cards-h">개념별 정리 <small>정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에</small></div>` + conceptCards(); placed = true; } return; }
+      h += noteSection(x, i, L);
+    });
+    return h;
+  }
+
+  /* 옆 패널 */
+  const peekEl = $('#peek'); let peekStack = [];
+  function openPeek(kind, id) { peekStack.push([kind, id]); renderPeek(); }
+  function closePeek() { peekStack = []; peekEl.hidden = true; document.body.classList.remove('peek-on'); }
+  function findBullet(id) { for (const s of CX.LK.sections) if (s.blocks) { const b = s.blocks.find(x => x.id === id); if (b) return b; } return null; }
+  function rowOf(tid) { for (const s of CX.LK.sections) if (s.rows) { const r = s.rows.find(x => x.topic === tid); if (r) return r; } return null; }
+  const pkSec = (t, body) => `<section class="pk-sec"><h4>${t}</h4>${body}</section>`;
+  function renderPeek() {
+    if (!peekStack.length || !CX) return closePeek();
+    const [kind, id] = peekStack[peekStack.length - 1]; const { L, LK } = CX;
+    let title = '', h = '';
+    if (kind === 'c') {
+      const c = LK.byId[id]; if (!c) return closePeek();
+      title = `<span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span> ${esc(c.name)}`;
+      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>`;
+      if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${md(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
+      if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
+      if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, c.examples.map((tid, i) => { const t = L.topics[tid]; const r = rowOf(tid);
+        return `<details class="box ex" ${i === 0 ? 'open' : ''}><summary><span class="t">${esc(t.title)}</span></summary><div class="in">${r && r.cells[1] ? `<p class="pk-what">${mdInline(r.cells[1])}</p>` : ''}${exampleBody(t)}<button type="button" class="go" data-go="X${tid}">부록 A ↗</button></div></details>`; }).join(''));
+      const co = {}; c.bullets.forEach(bid => { const b = findBullet(bid); b && b.concepts.forEach(x => { if (x !== id) co[x] = (co[x] || 0) + 1; }); });
+      const coIds = Object.keys(co).sort((a, b) => co[b] - co[a]).slice(0, 8);
+      if (coIds.length) h += pkSec('함께 나오는 개념', `<div class="rel">${coIds.map(x => cChip(x)).join('')}</div>`);
+      if (c.lecture.length) h += pkSec('강의에서 언급', `<div class="rel">${c.lecture.map(t => `<button type="button" class="cnt" data-go="L${t}">${esc(L.topics[t].title)} ↗</button>`).join('')}</div>`);
+      if (c.quiz.length) h += pkSec(`연관 문제 ${c.quiz.length}`, `<div class="rel">${c.quiz.map(q => `<button type="button" class="cnt" data-go="q${q}">Q${q + 1} ↗</button>`).join('')}</div>`);
+      h += `<p class="pk-foot"><a href="#/search?q=${encodeURIComponent(shortName(c))}">다른 교시에서 찾기 →</a></p>`;
+    } else {
+      const t = L.topics[id]; if (!t) return closePeek();
+      title = esc(t.title);
+      const r = rowOf(+id);
+      if (r && r.cells[1]) h += `<div class="pk-def">${mdInline(r.cells[1])}</div>`;
+      const cs = (LK.topicConcepts[id] || []).filter(x => LK.byId[x]);
+      if (cs.length) h += pkSec('이 예제의 개념', `<div class="rel">${cs.map(x => cChip(x)).join('')}</div>`);
+      const bs = LK.sections.filter(x => x.blocks).flatMap(x => x.blocks.filter(b => b.bullet && b.examples.includes(+id)));
+      if (bs.length) h += pkSec('이어지는 핵심 내용', bs.map(b => `<div class="pk-item">${md(b.md)}<button type="button" class="go" data-go="${b.id}">본문 ↗</button></div>`).join(''));
+      h += pkSec('코드', exampleBody(t) + `<button type="button" class="go" data-go="L${t.id}">강의 원문 ↗</button>`);
+    }
+    peekEl.innerHTML = `<div class="pk-h">${peekStack.length > 1 ? '<button type="button" class="icon-btn" data-pk-back aria-label="뒤로">←</button>' : ''}<div class="pk-t">${title}</div><button type="button" class="icon-btn" data-pk-close aria-label="닫기">✕</button></div><div class="pk-b">${h}</div>`;
+    peekEl.hidden = false; document.body.classList.add('peek-on');
+    highlightIn(peekEl); $('.pk-b', peekEl).scrollTop = 0;
+  }
+  function revealInMain(id) {
+    const el = document.getElementById(id); if (!el || !main.contains(el)) return;
+    if (matchMedia('(max-width: 1199px)').matches) closePeek();
+    let p = el; while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-peek-c],[data-peek-x],[data-go],[data-pk-back],[data-pk-close],[data-view]'); if (!b || !CX) return;
+    if (b.dataset.peekC) { e.preventDefault(); openPeek('c', b.dataset.peekC); }
+    else if (b.dataset.peekX !== undefined) { e.preventDefault(); openPeek('x', +b.dataset.peekX); }
+    else if (b.dataset.go) revealInMain(b.dataset.go);
+    else if (b.dataset.pkBack !== undefined) { peekStack.pop(); renderPeek(); }
+    else if (b.dataset.pkClose !== undefined) closePeek();
+    else if (b.dataset.view) { store.set('noteView', b.dataset.view); renderNotesBody(b.dataset.view); }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !peekEl.hidden) closePeek(); });
+  function renderNotesBody(view) {
+    const box = $('#notes-body', main); if (!box) return;
+    box.innerHTML = notesHtml(view);
+    $$('[data-view]', main).forEach(x => x.classList.toggle('on', x.dataset.view === view));
+    highlightIn(box);
   }
 
   function quizCard(q, i, key) {
@@ -238,8 +377,12 @@
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
       <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a></nav>`;
 
-    h += `<section class="part" id="notes"><h2>정리 노트</h2>`;
-    if (L.sections.length) h += L.sections.map((x, i) => noteSection(x, i, L)).join('');
+    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek();
+    const anchor = params.get('a');
+    // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
+    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
+    h += `<section class="part" id="notes"><h2>정리 노트 ${L.sections.length ? `<span class="view-tg"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}</h2>`;
+    if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
     else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>summary/.src/${{ c: 'C', linux: 'LINUX', mcu: 'MCU', eio: 'EIO' }[s]}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
 
@@ -247,7 +390,9 @@
       <div class="tools-row"><button class="btn" data-all="examples">모두 펼치기</button></div>`;
     h += exTopics.length ? exTopics.map(t => {
       const kinds = [...new Set(t.blocks.map(b => b.kind))].map(k => `<span class="tag">${BLK_LABEL[k]}</span>`).join('');
-      return `<details class="box ex" id="X${t.id}"><summary><span class="t">${esc(t.title)}</span><span class="sp">${kinds}</span></summary><div class="in">${exampleBody(t)}</div></details>`;
+      const cs = (CX.LK.topicConcepts[t.id] || []).filter(x => CX.LK.byId[x]);
+      const r = rowOf(t.id);
+      return `<details class="box ex" id="X${t.id}"><summary><span class="t">${esc(t.title)}</span><span class="sp">${kinds}</span></summary><div class="in">${r && r.cells[1] ? `<p class="pk-what">${mdInline(r.cells[1])}</p>` : ''}${cs.length ? `<div class="rel">${cs.map(x => cChip(x)).join('')}</div>` : ''}${exampleBody(t)}</div></details>`;
     }).join('') : '<div class="empty">이 교시에는 강의 예제 코드가 없습니다.</div>';
     h += '</section>';
 
@@ -286,7 +431,9 @@
     }));
     bindQuiz($('#quiz', main), L.quiz, recordResult);
     $$('[data-jump]', main).forEach(a => a.addEventListener('click', e => { e.preventDefault(); $(a.getAttribute('href'), main).scrollIntoView({ behavior: 'smooth' }); }));
-    jumpTo(params.get('a'), params.get('q'));
+    const pk = (params.get('p') || '').match(/^([cx]):(\w+)$/);   // #/c/4/1?p=c:t3 → 그 개념 패널을 연 채로
+    if (pk) openPeek(pk[1], pk[1] === 'x' ? +pk[2] : pk[2]);
+    jumpTo(anchor && CX.LK.alias[anchor] && !document.getElementById(anchor) ? CX.LK.alias[anchor] : anchor, params.get('q'));
   }
 
   function jumpTo(anchor, q) {
@@ -493,6 +640,7 @@
     const [path, qs] = raw.split('?'); const params = new URLSearchParams(qs || '');
     const seg = path.split('/').filter(Boolean);
     document.body.classList.remove('menu'); $('#scrim').hidden = true;
+    closePeek(); CX = null;
     $$('.top-nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#/' + (seg[0] || '')));
     let cur = null;
     if (!seg.length) renderHome();
