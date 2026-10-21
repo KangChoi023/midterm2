@@ -180,7 +180,6 @@
     sideDict.hidden = rTab !== 'dict'; sideCode.hidden = rTab !== 'code';
     $$('.rtabs button', dictPanel).forEach(b => b.classList.toggle('on', b.dataset.rt === rTab));
     document.body.classList.toggle('dict-on', open);
-    document.body.classList.toggle('rp-wide', open && rTab === 'code' && CODE.view === 'detail');
     [['dictBtn', 'dict'], ['codeBtn', 'code']].forEach(([id, t]) => { const on = open && rTab === t; $('#' + id).classList.toggle('on', on); $('#' + id).setAttribute('aria-expanded', String(on)); });
     store.set('dictOn', open); store.set('rTab', rTab);
     if (!open) return;
@@ -212,7 +211,6 @@
   }
   function codeRender() {
     if (CODE.view === 'detail') return codeDetail();
-    document.body.classList.remove('rp-wide');
     const cur = SIDE_CUR && SIDE_CUR.n ? SIDE_CUR : null;
     const q = CODE.q.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
     let h = `<div class="dict-top"><input class="dict-q code-q" type="search" placeholder="파일명·하는 일 걸러 보기" autocomplete="off" spellcheck="false" value="${esc(CODE.q)}"></div>`;
@@ -362,7 +360,6 @@
   let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
   async function codeDetail() {
     const my = ++codeSeq, want = { s: CODE.s, d: CODE.d, n: CODE.n, tid: CODE.tid };
-    document.body.classList.add('rp-wide');
     sideCode.innerHTML = '<div class="dict-empty">불러오는 중…</div>';
     const ctx = await lessonCtx(want.s, want.d, want.n);
     if (my !== codeSeq) return;

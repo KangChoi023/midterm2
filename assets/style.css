@@ -436,10 +436,9 @@ details.dent[open] { background: var(--panel-2); margin: 2px 0; }
 .dsrc { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; font-size: 12px; }
 .dict-foot { font-size: 12px; color: var(--ink-3); padding: 12px 4px 30px; }
 
-:root { --dict-w: 330px; --rp-w: 330px; }
-body.rp-wide { --rp-w: 600px; }
+:root { --dict-w: 600px; --rp-w: 600px; }      /* 사전 · 코드 목록 · 코드 보기 모두 같은 폭 */
 .dict-btn.on { background: var(--accent-soft); color: var(--accent); }
-.dictp { position: fixed; z-index: 44; right: 0; top: var(--top-h); bottom: 0; width: var(--rp-w); transition: width .15s; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+.dictp { position: fixed; z-index: 44; right: 0; top: var(--top-h); bottom: 0; width: var(--rp-w); background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
 .dictp[hidden] { display: none; }
 .dictp-h { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--line); }
 .dictp-sub { font-size: 12px; color: var(--ink-3); flex: 1; }
@@ -451,7 +450,7 @@ body.rp-wide { --rp-w: 600px; }
   body.dict-on.peek-on .layout { margin-right: var(--rp-w); }
 }
 @media (min-width: 1700px) { body.dict-on.peek-on .layout { margin-right: calc(var(--rp-w) + var(--peek-w)); } }
-@media (min-width: 901px) and (max-width: 1199px) { body.dict-on .peek { right: var(--rp-w); width: min(var(--peek-w), calc(100vw - var(--rp-w) - 40px)); } body.rp-wide { --rp-w: min(600px, 62vw); } }
+@media (min-width: 901px) and (max-width: 1199px) { body.dict-on .peek { right: var(--rp-w); width: min(var(--peek-w), calc(100vw - var(--rp-w) - 40px)); } :root { --rp-w: min(600px, 62vw); } }
 @media (max-width: 900px) {
   .dict-btn span { display: none; }
   .dictp { width: 100%; z-index: 46; }
