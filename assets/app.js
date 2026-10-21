@@ -489,7 +489,7 @@
     // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
     const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
     let h = `<article class="lesson sc-${s}"><div class="l-head"><div class="crumb"><a href="#/">홈</a> › <a href="#/${s}">${esc(S.name)}</a> › Day ${d} ${esc(D.title)}</div>
-      <h1>${n}교시 · ${esc(L.title)}</h1><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
+      <div class="l-title"><h1>${n}교시 · ${esc(L.title)}</h1>${L.anim ? `<a class="btn anim-btn" href="${esc(L.anim)}" target="_blank" rel="noopener" title="이 교시의 강의 애니메이션을 새 탭에서 엽니다">🎬 애니메이션 보기</a>` : ''}</div><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>

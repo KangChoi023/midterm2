@@ -119,6 +119,11 @@ blockquote { margin: .6em 0; padding: .4em 1em; border-left: 3px solid var(--acc
 .crumb { font-size: 13.5px; color: var(--ink-3); margin-bottom: 4px; }
 .crumb a { color: var(--ink-2); }
 .l-head h1 { font-size: 27px; margin: 0 0 8px; }
+.l-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.l-title h1 { flex: 1 1 260px; min-width: 0; }
+.anim-btn { flex: none; margin-top: 4px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; font-weight: 600;
+  border-color: color-mix(in srgb, var(--sc, var(--accent)) 45%, var(--line)); color: var(--sc, var(--accent)); background: color-mix(in srgb, var(--sc, var(--accent)) 10%, var(--panel)); }
+.anim-btn:hover { background: color-mix(in srgb, var(--sc, var(--accent)) 18%, var(--panel)); }
 .l-head .tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .goals { margin: 14px 0 0; padding: 12px 16px 12px 34px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 14.5px; color: var(--ink-2); }
 .goals b { display: block; margin-left: -18px; color: var(--ink); font-size: 13px; }

@@ -21,13 +21,13 @@ NOTES = os.path.join(ROOT, 'summary', '.src')
 
 SUBJECTS = [
     dict(id='c', name='C 언어', short='C', days=4,
-         lecture='C-day{d}/C_Day{d}_lecture.html', ws='C-day{d}/anim/worksheet.html', note='C_day{d}.md'),
+         lecture='C-day{d}/C_Day{d}_lecture.html', ws='C-day{d}/anim/worksheet.html', note='C_day{d}.md', anim='C-day{d}/anim/index.html'),
     dict(id='linux', name='LINUX', short='LINUX', days=5,
-         lecture='Linux-day{d}/lecture.html', ws='Linux-day{d}/worksheet.html', note='LINUX_day{d}.md'),
+         lecture='Linux-day{d}/lecture.html', ws='Linux-day{d}/worksheet.html', note='LINUX_day{d}.md', anim='Linux-day{d}/animation.html'),
     dict(id='mcu', name='MCU', short='MCU', days=4,
-         lecture='MCU-day{d}/MCU_Day{d}_lecture.html', ws='MCU-day{d}/worksheet.html', note='MCU_day{d}.md'),
+         lecture='MCU-day{d}/MCU_Day{d}_lecture.html', ws='MCU-day{d}/worksheet.html', note='MCU_day{d}.md', anim='MCU-day{d}/index.html'),
     dict(id='eio', name='Embedded IO', short='EIO', days=5,
-         lecture='EmbeddedIO-day{d}/lecture.html', ws='EmbeddedIO-day{d}/worksheet.html', note='EIO_day{d}.md'),
+         lecture='EmbeddedIO-day{d}/lecture.html', ws='EmbeddedIO-day{d}/worksheet.html', note='EIO_day{d}.md', anim='EmbeddedIO-day{d}/animation.html'),
 ]
 
 # 노트 소제목 -> 정해진 키 (앞부분 일치)
@@ -138,6 +138,7 @@ def build_subject(cfg, index):
         notes = parse_notes(np_) if os.path.exists(np_) else {'title': '', 'lessons': {}}
         dtitle = notes['title'] or (lecture_parse.day_title(lp) if os.path.exists(lp) else '')
         D = {'n': d, 'title': dtitle, 'lessons': []}
+        anim = copy_anim(cfg, d)
         dm = {'n': d, 'title': dtitle, 'lessons': []}
         for n in range(1, 9):
             L = lec[n - 1] if n - 1 < len(lec) else None
@@ -161,7 +162,8 @@ def build_subject(cfg, index):
             topics = L['topics'] if L else []
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
-                   'keywords': kws, 'topics': topics, 'quiz': quiz}
+                   'keywords': kws, 'topics': topics, 'quiz': quiz,
+                   'anim': f'{anim}#l{n}' if anim else ''}
             D['lessons'].append(S_l)
             dm['lessons'].append({'n': n, 'title': title, 'status': status, 'nq': len(quiz),
                                   'nex': sum(1 for t in topics if any(b['kind'] in ('code', 'cmd') for b in t['blocks']))})
@@ -187,6 +189,21 @@ def build_subject(cfg, index):
                 index['search'].append(loc + ['quiz', f'q{qi}', f'Q{qi + 1}', re.sub(r'<[^>]+>', '', body)])
         S['days'].append(D); meta['days'].append(dm)
     return S, meta
+
+def copy_anim(cfg, d):
+    """강의 애니메이션(교시별 #l1~#l8)을 위키 저장소 anim/<과목>/dayN.html 로 복사. 없으면 None."""
+    src = os.path.join(CAMPUS, cfg['anim'].format(d=d))
+    if not os.path.exists(src): return None
+    html = open(src, encoding='utf8').read()
+    sid = cfg['id']
+    # 애니메이션 안의 강의 자료 · 워크시트 상대 링크는 위키에서 깨지므로 위키 교시 · 퀴즈로 바꾼다
+    html = html.replace('href="lecture.html"', f'href="../../index.html#/{sid}/{d}/1"')
+    html = html.replace('href="worksheet.html"', f'href="../../index.html#/quiz?s={sid}&d={d}&m=all"')
+    rel = f'anim/{sid}/day{d}.html'
+    dst = os.path.join(REPO, rel)
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, 'w', encoding='utf8') as f: f.write(html)
+    return rel
 
 def main():
     want = [a.lower() for a in sys.argv[1:]]
