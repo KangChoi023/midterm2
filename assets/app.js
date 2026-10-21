@@ -652,11 +652,16 @@
     const q = qIn.value.trim(); if (!q) { drop.hidden = true; return; }
     const hits = search(q).sort((a, b) => b.sc - a.sc || a.r.o - b.r.o);
     const top = hits.slice(0, 8);
-    drop.innerHTML = top.map(x => hitHtml(x.r, q, '')).join('') + `<a class="more" href="#/search?q=${encodeURIComponent(q)}">전체 결과 ${hits.length}건 · 처음 나온 곳 보기 (Enter)</a>`;
+    const html = top.map(x => hitHtml(x.r, q, '')).join('') + `<a class="more" href="#/search?q=${encodeURIComponent(q)}">전체 결과 ${hits.length}건 · 처음 나온 곳 보기 (Enter)</a>`;
+    if (html !== lastDrop || drop.hidden) { drop.innerHTML = html; lastDrop = html; }      // 같은 결과면 다시 그리지 않음
     drop.hidden = false; dropSel = -1;
   }
-  qIn.addEventListener('input', updateDrop);
-  qIn.addEventListener('focus', updateDrop);
+  // 입력마다 바로 그리지 않고 프레임당 한 번만, 한글 조합 중(ㅍ→포→폰)에는 조합이 끝날 때까지 기다린다
+  let dropRaf = 0, lastDrop = '';
+  const scheduleDrop = () => { if (!dropRaf) dropRaf = requestAnimationFrame(() => { dropRaf = 0; updateDrop(); }); };
+  qIn.addEventListener('input', e => { if (!e.isComposing) scheduleDrop(); });
+  qIn.addEventListener('compositionend', scheduleDrop);
+  qIn.addEventListener('focus', () => { lastDrop = ''; scheduleDrop(); });
   qIn.addEventListener('keydown', e => {
     const items = $$('a', drop);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
