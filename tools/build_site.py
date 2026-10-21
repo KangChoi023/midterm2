@@ -103,7 +103,7 @@ def parse_terms(md):
     return out
 
 # 일정·설정·핀 분류·비교 표 — 노트에는 남기고 함수 색인에서만 뺀다
-NON_FUNC_TABLES = {'Day', '설정', '분류', '모드', '구성', '값', '필요'}
+NON_FUNC_TABLES = {'', 'Day', '설정', '분류', '모드', '구성', '값', '필요'}
 
 def parse_funcs(md):
     out = []

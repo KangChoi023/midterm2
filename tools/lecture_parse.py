@@ -71,6 +71,15 @@ def _clean_html(h, blocks):
 FILE_RE = r'[\w.-]*\w\.(?:c|h|py|sh|ino|cpp|dts|txt|mk)'
 HEAD_COMMENT = re.compile(r'^\s*(?:/\*+|//+|#+)\s*(?:src/)?(' + FILE_RE + r')\b\s*(?:[—–:-]+\s*(.*?))?\s*(?:\*/)?\s*$')
 
+MAKE_HEAD = re.compile(r'^\s*#\s*Makefile\b')
+
+def _is_makefile(text):
+    """머리 주석이 "# Makefile" 이거나, 규칙 줄(타깃: … + 탭 명령)과 $(CC) 가 함께 있으면 Makefile"""
+    lines = text.split('\n')
+    if any(MAKE_HEAD.match(l) for l in lines[:2]): return True
+    return bool(re.search(r'^\t\S', text, re.M) and re.search(r'^[\w.%$()/ -]+:', text, re.M)
+                and re.search(r'\$\((?:CC|CFLAGS)\)', text))
+
 def _name_blocks(h, blocks):
     """코드 블록마다 원본 파일 이름(b['file'])을 붙이고, 토픽의 (파일 목록, 설명)을 돌려준다.
     ① 코드 첫 줄 주석 "/* 02_nice_race.c — 설명" ② 블록 바로 앞 본문의 파일명 ("sensor.h — 선언")
@@ -88,7 +97,9 @@ def _name_blocks(h, blocks):
         for line in b['text'].split('\n')[:2]:
             m = HEAD_COMMENT.match(line)
             if m: break
-        if m:
+        if not m and _is_makefile(b['text']):
+            b['file'] = 'Makefile'
+        elif m:
             b['file'] = m.group(1)
             if not desc and m.group(2): desc = m.group(2).strip().rstrip('*/').strip()
         elif before.get(i):
