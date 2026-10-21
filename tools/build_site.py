@@ -102,12 +102,20 @@ def parse_terms(md):
             out.append({'name': name, 'def': m.group(3).strip()})
     return out
 
+# 일정·설정·핀 분류·비교 표 — 노트에는 남기고 함수 색인에서만 뺀다
+NON_FUNC_TABLES = {'Day', '설정', '분류', '모드', '구성', '값', '필요'}
+
 def parse_funcs(md):
     out = []
-    for line in md.split('\n'):
-        if not line.startswith('|') or re.match(r'^\|[\s:|-]+\|$', line): continue
+    lines = md.split('\n')
+    sep = re.compile(r'^\|[\s:|-]+\|$')
+    skip = False
+    for k, line in enumerate(lines):
+        if not line.startswith('|') or sep.match(line): continue
         cells = [c.strip().replace('\x00', '|') for c in line.replace('\\|', '\x00').strip().strip('|').split('|')]
-        if len(cells) < 2 or cells[0] in ('함수', '명령', '이름', '항목', '것', '문법', '함수/명령', '명령 · 옵션'): continue
+        if k + 1 < len(lines) and sep.match(lines[k + 1].strip()):              # 표 머리글 행
+            skip = cells[0] in NON_FUNC_TABLES; continue
+        if skip or len(cells) < 2: continue
         if not re.search(r'[A-Za-z0-9가-힣_]', cells[0]): continue       # "→" 같은 기호만 있는 행은 함수가 아님
         out.append({'name': cells[0].replace('`', '').strip(), 'sig': cells[1] if len(cells) > 2 else '',
                     'use': cells[-1]})
@@ -216,12 +224,12 @@ def api_detail(name):
 GUIDE_MISS = {}   # 키 → 못 찾은 단계 (어느 토픽에서도 못 찾았을 때만 경고)
 GUIDE_HIT = set()
 
-def attach_guides(sid, d, topics):
+def attach_guides(sid, d, topics, n=0):
     """code_guide.json 의 단계(at/to 글자)를 실제 코드 블록의 줄 범위로 바꿔 topic['guide'] 에.
     같은 파일명이 본문에만 언급된 토픽도 있으므로, 그 파일의 코드 블록이 실제로 있는 토픽에만 붙인다."""
     for tp in topics:
         for f in tp.get('files', []):
-            key = f'{sid}/{d}/{f}'
+            key = f'{sid}/{d}/{n}/{f}' if f'{sid}/{d}/{n}/{f}' in GUIDE else f'{sid}/{d}/{f}'   # 같은 Day 에 같은 파일명이 있으면 교시 번호로 구분
             steps = GUIDE.get(key)
             if not steps: continue
             if not any(b['kind'] == 'code' and b.get('file') == f for b in tp['blocks']): continue
@@ -290,7 +298,7 @@ def build_subject(cfg, index):
             quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps') if q.get(k) is not None} for q in Q]
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)
-            attach_guides(sid, d, topics)
+            attach_guides(sid, d, topics, n)
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
                    'keywords': kws, 'topics': topics, 'quiz': quiz,
