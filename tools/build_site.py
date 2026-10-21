@@ -190,10 +190,15 @@ def code_index(sid, d, n, topics, sections):
     return out
 
 def load_json(name):
-    p = os.path.join(NOTES, name)
-    if not os.path.exists(p): return {}
-    try: return {k: v for k, v in json.load(open(p, encoding='utf8')).items() if not k.startswith('_')}
-    except Exception as e: print('  !', name, e); return {}
+    """name.json 과 name.*.json (Day 별로 나눠 쓴 파일) 을 모두 합친다. 키가 겹치면 뒤 파일이 이김."""
+    import glob
+    base = os.path.join(NOTES, name)
+    out = {}
+    for p in [base] + sorted(glob.glob(base[:-5] + '.*.json')):
+        if not os.path.exists(p): continue
+        try: out.update({k: v for k, v in json.load(open(p, encoding='utf8')).items() if k != '_설명'})   # _exit 같은 이름은 살린다
+        except Exception as e: print('  !', os.path.basename(p), e)
+    return out
 
 API = {}      # api_detail.json  (main 에서 읽음)
 GUIDE = {}    # code_guide.json
@@ -208,12 +213,19 @@ def api_detail(name):
     if m and m.group(1) in API: return API[m.group(1)]
     return None
 
+GUIDE_MISS = {}   # 키 → 못 찾은 단계 (어느 토픽에서도 못 찾았을 때만 경고)
+GUIDE_HIT = set()
+
 def attach_guides(sid, d, topics):
-    """code_guide.json 의 단계(at/to 글자)를 실제 코드 블록의 줄 범위로 바꿔 topic['guide'] 에."""
+    """code_guide.json 의 단계(at/to 글자)를 실제 코드 블록의 줄 범위로 바꿔 topic['guide'] 에.
+    같은 파일명이 본문에만 언급된 토픽도 있으므로, 그 파일의 코드 블록이 실제로 있는 토픽에만 붙인다."""
     for tp in topics:
         for f in tp.get('files', []):
-            steps = GUIDE.get(f'{sid}/{d}/{f}')
+            key = f'{sid}/{d}/{f}'
+            steps = GUIDE.get(key)
             if not steps: continue
+            if not any(b['kind'] == 'code' and b.get('file') == f for b in tp['blocks']): continue
+            miss = []
             out, pos = [], {}
             for st in steps:
                 hit = None
@@ -230,10 +242,11 @@ def attach_guides(sid, d, topics):
                         if z is None: continue
                     hit = (bi, a, z); break
                 if not hit:
-                    print(f'  ! 코드 가이드 못 찾음: {sid}/{d}/{f} — {st["t"]} (at={st["at"]!r})'); continue
+                    miss.append(f'{st["t"]} (at={st["at"]!r})'); continue
                 bi, a, z = hit; pos[bi] = z + 1
                 out.append({'b': bi, 'from': a, 'to': z, 't': st['t'], 'd': st.get('d', '')})
-            if out: tp['guide'] = out
+            if out: tp['guide'] = out; GUIDE_HIT.add(key)
+            if miss: GUIDE_MISS.setdefault(key, miss)
 
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
@@ -357,6 +370,10 @@ def main():
     html = open(ip, encoding='utf8').read()
     html = re.sub(r'((?:src|href)="(?:assets|data)/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', r'\1?v=' + ver + '"', html)
     open(ip, 'w', encoding='utf8').write(html)
+    for k in GUIDE:
+        if k not in GUIDE_HIT: print(f'  ! 코드 가이드 파일을 못 찾음: {k}')
+    for k, ms in GUIDE_MISS.items():
+        for m in ms: print(f'  ! 코드 가이드 단계 못 찾음: {k} — {m}')
     p = os.path.join(REPO, 'data', 'index.js')
     with open(p, 'w', encoding='utf8') as f:
         f.write('window.WIKI_INDEX=')
