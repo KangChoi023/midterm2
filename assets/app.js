@@ -271,6 +271,64 @@
     const ov = e.target.closest('.figov'); if (ov) ov.remove();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const ov = $('.figov'); if (ov) ov.remove(); } });
+  /* 코드 강조: 핵심 개념 칩 → 아래 코드(.cb)에서 그 용어가 쓰인 곳에 배경색, 같은 칩을 다시 누르면 다음 위치 */
+  let CODECTX = null, CODEHL = { key: '', marks: [], i: -1 };
+  function codeHlClear() {
+    $$('mark.chl', sideCode).forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+    $$('.cb code', sideCode).forEach(c => c.normalize());
+    $$('[data-hlc].on, [data-hl-word].on', sideCode).forEach(b => { b.classList.remove('on'); const n = b.querySelector('.hln'); if (n) n.remove(); });
+    const x = $('.hlbar', sideCode); if (x) x.remove();
+    CODEHL = { key: '', marks: [], i: -1 };
+  }
+  function codeHlGo(i) {
+    const ms = CODEHL.marks; if (!ms.length) return;
+    CODEHL.i = (i + ms.length) % ms.length;
+    ms.forEach(m => m.classList.remove('cur'));
+    const m = ms[CODEHL.i]; m.classList.add('cur');
+    const box = sideCode.getBoundingClientRect(), r = m.getBoundingClientRect();
+    sideCode.scrollTop += r.top - box.top - box.height / 2;                    // 창이 아니라 코드 패널 안에서만 스크롤
+    const pos = $('.hlbar .hlpos', sideCode); if (pos) pos.textContent = `${CODEHL.i + 1}/${ms.length}`;
+  }
+  function codeHl(btn) {
+    const key = btn.dataset.hlc || ('w:' + btn.dataset.hlWord);
+    if (CODEHL.key === key && CODEHL.marks.length) return codeHlGo(CODEHL.i + 1);
+    codeHlClear();
+    let keys = [];
+    if (btn.dataset.hlc && CODECTX) { const c = CODECTX.LK.byId[btn.dataset.hlc]; keys = c ? c.keys.slice() : []; }
+    else if (btn.dataset.hlWord) keys = [btn.dataset.hlWord];
+    keys = [...new Set(keys.filter(Boolean))].sort((a, b) => b.length - a.length);       // 긴 키 먼저 (sched_getaffinity > sched)
+    if (!keys.length) return;
+    const pats = keys.map(k => { const e = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return /^[\x20-\x7e]+$/.test(k) ? (/^\w/.test(k) ? '(?<![A-Za-z0-9_])' : '') + e + (/\w$/.test(k) ? '(?![A-Za-z0-9_])' : '') : e; });
+    const re = new RegExp(pats.join('|'), 'gi');
+    const marks = [];
+    $$('.cb pre code', sideCode).forEach(code => {
+      const tw = document.createTreeWalker(code, NodeFilter.SHOW_TEXT); const nodes = [];
+      while (tw.nextNode()) nodes.push(tw.currentNode);
+      nodes.forEach(nd => {
+        const t = nd.nodeValue; re.lastIndex = 0; let m, p = 0; const frag = document.createDocumentFragment(); let hit = false;
+        while ((m = re.exec(t))) {
+          if (!m[0]) { re.lastIndex++; continue; }
+          hit = true; frag.appendChild(document.createTextNode(t.slice(p, m.index)));
+          const mk = document.createElement('mark'); mk.className = 'chl'; mk.textContent = m[0]; frag.appendChild(mk); marks.push(mk);
+          p = m.index + m[0].length;
+        }
+        if (hit) { frag.appendChild(document.createTextNode(t.slice(p))); nd.parentNode.replaceChild(frag, nd); }
+      });
+    });
+    CODEHL = { key, marks, i: -1 };
+    btn.classList.add('on'); btn.insertAdjacentHTML('beforeend', `<span class="hln"> · ${marks.length}곳</span>`);
+    const firstCb = $('.cb', sideCode);
+    if (firstCb) firstCb.insertAdjacentHTML('beforebegin', `<div class="hlbar">${marks.length ? `<b>${esc(btn.firstChild.textContent)}</b> 코드에서 <span class="hlpos">0/${marks.length}</span>
+      <button type="button" class="icon-btn sm" data-hlnav="-1" aria-label="이전 위치">‹</button><button type="button" class="icon-btn sm" data-hlnav="1" aria-label="다음 위치">›</button>` : `<b>${esc(btn.firstChild.textContent)}</b> 은(는) 이 코드에 직접 나오지 않습니다`}<button type="button" class="icon-btn sm" data-hlnav="0" aria-label="강조 지우기">✕</button></div>`);
+    if (marks.length) codeHlGo(0);
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('#sideCode [data-hlc], #sideCode [data-hl-word]'); if (b) { codeHl(b); return; }
+    const n = e.target.closest('#sideCode [data-hlnav]'); if (!n) return;
+    const v = +n.dataset.hlnav; if (v === 0) codeHlClear(); else codeHlGo(CODEHL.i + v);
+  });
+
   let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
   async function codeDetail() {
     const my = ++codeSeq, want = { s: CODE.s, d: CODE.d, n: CODE.n, tid: CODE.tid };
@@ -278,6 +336,7 @@
     sideCode.innerHTML = '<div class="dict-empty">불러오는 중…</div>';
     const ctx = await lessonCtx(want.s, want.d, want.n);
     if (my !== codeSeq) return;
+    CODEHL = { key: '', marks: [], i: -1 };
     const t = ctx && ctx.L.topics[CODE.tid];
     if (!t) { sideCode.innerHTML = '<div class="dict-empty">코드를 찾지 못했습니다.</div>'; return; }
     const rows = CODE_BY[CODE.s + '|' + CODE.d + '|' + CODE.n] || [];
@@ -285,7 +344,11 @@
     const pv = rows[k - 1], nx = rows[k + 1];
     const x = exInfo(t, ctx);
     const same = CX && CX.s === CODE.s && CX.d === CODE.d && CX.n === CODE.n;
-    const cs = x.concepts.length ? x.concepts.map(c => same ? cChip(c) : `<span class="cchip static">${esc(shortName(ctx.LK.byId[c]))}</span>`).join('') : x.calls.map(f => `<a class="callchip" href="#/search?q=${encodeURIComponent(f)}">${esc(f)}()</a>`).join('');
+    // 칩: 누르면 (같은 교시면) 용어 설명 패널 + 아래 코드에서 쓰인 곳 강조
+    const cs = x.concepts.length ? x.concepts.map(c => { const cc = ctx.LK.byId[c];
+        return `<button type="button" class="cchip ${cc.kind}" ${same ? `data-peek-c="${c}"` : ''} data-hlc="${c}" title="코드에서 쓰인 곳 강조${same ? ' · 용어 설명' : ''}">${esc(shortName(cc))}</button>`; }).join('')
+      : x.calls.map(f => `<button type="button" class="callchip" data-hl-word="${esc(f)}" title="코드에서 쓰인 곳 강조">${esc(f)}()</button>`).join('');
+    CODECTX = ctx;
     sideCode.innerHTML = `<div class="code-nav"><button type="button" class="btn sm" data-code-back>← 목록</button><a href="${href(CODE.s, CODE.d, CODE.n)}">${loc(CODE.s, CODE.d, CODE.n)}</a><span class="sp"></span>
         <button type="button" class="icon-btn sm" ${pv ? `data-code-open="${pv[0]}|${pv[1]}|${pv[2]}|${pv[3]}"` : 'disabled'} aria-label="이전 예제">‹</button><span class="cpos">${k + 1}/${rows.length}</span><button type="button" class="icon-btn sm" ${nx ? `data-code-open="${nx[0]}|${nx[1]}|${nx[2]}|${nx[3]}"` : 'disabled'} aria-label="다음 예제">›</button></div>
       <div class="code-head"><span class="xname">${x.name ? '📄 ' + esc(x.name) : esc(x.bare)}${x.files.length > 1 ? `<small> 외 ${x.files.length - 1}개</small>` : ''}</span>${x.num ? `<span class="tag">강의 ${esc(x.num)}</span>` : ''}</div>

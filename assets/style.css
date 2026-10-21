@@ -514,3 +514,13 @@ details.figbox > summary small { font-weight: 400; color: var(--ink-3); margin-l
 .figov-in { background: #fff; border-radius: 12px; padding: 10px; max-width: 96vw; max-height: 90vh; overflow: auto; }
 .figov-in svg { display: block; width: min(1400px, 92vw); height: auto; max-width: none; }
 .figov-x { position: fixed; top: 14px; right: 20px; color: #fff; font-size: 14px; }
+
+/* ---------- 코드 패널: 개념 칩 → 코드에서 쓰인 곳 강조 ---------- */
+mark.chl { background: color-mix(in srgb, var(--mark) 75%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+mark.chl.cur { background: var(--mark); outline: 2px solid var(--warn); }
+#sideCode .cchip.on, #sideCode .callchip.on { background: var(--mark); border-style: solid; color: var(--ink); }
+#sideCode .callchip { font: inherit; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.hln { font-family: var(--sans); font-size: 11px; color: var(--ink-2); }
+.hlbar { position: sticky; top: 42px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 6px 0; padding: 5px 8px 5px 12px; font-size: 12.5px; border-radius: 8px; background: var(--warn-soft); color: var(--ink); }
+.hlbar .hlpos { color: var(--ink-2); margin-right: auto; }
+.hlbar b { font-family: var(--mono); }
