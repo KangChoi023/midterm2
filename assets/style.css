@@ -499,3 +499,18 @@ details.ctree.l > .citem { margin-left: 12px; width: calc(100% - 12px); }
 .cbtn:hover { border-color: var(--ok); }
 .cbtn-col .cbtns { justify-content: flex-start; max-width: none; margin-left: 0; }
 @media (max-width: 700px) { .cbtns { max-width: none; justify-content: flex-start; margin-left: 0; } }
+
+/* ---------- 코드 패널의 배선 · 보드 그림 ---------- */
+.cfig { font-size: 11px; }
+details.figbox { margin: 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+details.figbox > summary { cursor: pointer; padding: 7px 12px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+details.figbox > summary small { font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+.figitem { padding: 0 10px 10px; }
+.figcap { font-size: 12.5px; color: var(--ink-2); margin: 2px 0 4px; }
+.figcap small { color: var(--ink-3); }
+.figzoom { display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: zoom-in; overflow: hidden; }
+.figzoom svg { display: block; width: 100%; height: auto; max-width: 100%; }
+.figov { position: fixed; inset: 0; z-index: 100; background: rgba(10,14,20,.78); display: flex; align-items: center; justify-content: center; padding: 30px; cursor: zoom-out; }
+.figov-in { background: #fff; border-radius: 12px; padding: 10px; max-width: 96vw; max-height: 90vh; overflow: auto; }
+.figov-in svg { display: block; width: min(1400px, 92vw); height: auto; max-width: none; }
+.figov-x { position: fixed; top: 14px; right: 20px; color: #fff; font-size: 14px; }

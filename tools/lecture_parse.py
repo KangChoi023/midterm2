@@ -157,6 +157,26 @@ def parse(path):
         out.append({'n': n, 'title': title, 'goals': goals, 'topics': topics})
     return out
 
+def fig_label(fig):
+    """그림 제목: svg aria-label → figcaption → svg <title> (없으면 '')"""
+    for pat in (r'aria-label="([^"]+)"', r'<figcaption[^>]*>([\s\S]*?)</figcaption>', r'<title>([\s\S]*?)</title>'):
+        m = re.search(pat, fig)
+        if m: return _text(m.group(1)).strip()
+    return ''
+
+def intro_figs(path):
+    """강의 맨 앞(1교시 앞) 공통 그림. "(3·4·5·6·7·8교시 공통)" 처럼 적힌 교시 번호를 lessons 로."""
+    s = open(path, encoding='utf8').read()
+    i = s.find('<section id="sec1"')
+    out = []
+    for f in re.findall(r'<figure[\s\S]*?</figure>', s[:i] if i > 0 else ''):
+        label = fig_label(f)
+        m = re.search(r'\(([\d·,\s]+)교시', label)
+        lessons = [int(x) for x in re.findall(r'\d+', m.group(1))] if m else []
+        inner = re.sub(r'<script[\s\S]*?</script>', '', f[f.index('>') + 1:f.rindex('<')])
+        out.append({'label': label, 'html': inner, 'lessons': lessons})
+    return out
+
 def day_title(path):
     s = open(path, encoding='utf8').read()
     m = re.search(r'<title>(.*?)</title>', s, re.S)

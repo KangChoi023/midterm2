@@ -203,11 +203,11 @@
     if (ctxCache[k]) return ctxCache[k];
     const data = await loadSubject(s); const D = data.days.find(x => x.n === d); const L = D && D.lessons.find(x => x.n === n);
     if (!L) return null;
-    return (ctxCache[k] = { s, d, n, L, LK: window.WikiLink.build(L, n) });
+    return (ctxCache[k] = { s, d, n, L, D, LK: window.WikiLink.build(L, n) });
   }
   function openCode(s, d, n, tid) { CODE = Object.assign(CODE, { view: 'detail', s, d, n, tid: +tid }); rpSet(true, 'code'); sideCode.scrollTop = 0; }
   function codeItem(r, cur) {
-    const name = r[4] ? `📄 ${esc(r[4])}` : esc(r[7]);
+    const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '');
     return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
   }
   function codeRender() {
@@ -250,10 +250,34 @@
     qi.addEventListener('compositionend', sched);
     $$('details.ctree', sideCode).forEach(dt => dt.addEventListener('toggle', () => { const o = store.get('codeOpen', {}); o[dt.dataset.k] = dt.open; store.set('codeOpen', o); }));
   }
+  // 예제의 배선·보드 그림 (빌드 때 정한 figRefs: 자기 그림 / 같은 교시 앞 토픽 / Day 공통)
+  const figsIn = h => (String(h).match(/<figure>[\s\S]*?<\/figure>/g) || []);
+  function figsHtml(t, ctx) {
+    const items = [];
+    (t.figRefs || []).forEach(ref => {
+      if (ref.t === 'self') figsIn(t.html).forEach(f => items.push({ f, from: '' }));
+      else if (ref.t === 'topic') { const p = ctx.L.topics[ref.id]; if (p) figsIn(p.html).forEach(f => items.push({ f, from: p.title })); }
+      else if (ref.t === 'other') { const ol = ctx.D && ctx.D.lessons.find(x => x.n === ref.n); const p = ol && ol.topics[ref.id]; if (p) figsIn(p.html).forEach(f => items.push({ f, from: `${ref.n}교시 · ${p.title}` })); }
+      else if (ref.t === 'intro') { const g = ctx.D && ctx.D.figs && ctx.D.figs[ref.k]; if (g) items.push({ f: `<figure>${g.html}</figure>`, from: `Day ${ctx.d} 공통` }); }
+    });
+    if (!items.length) return '';
+    const label = f => ((f.match(/aria-label="([^"]+)"/) || [])[1] || '');
+    return `<details class="figbox" open><summary>🔌 배선 · 보드 <small>${items.length > 1 ? items.length + '장 · ' : ''}그림을 누르면 크게</small></summary>${items.map(it =>
+      `<div class="figitem">${(label(it.f) || it.from) ? `<div class="figcap">${esc(label(it.f) || it.from)}${it.from && label(it.f) ? ` <small>· ${esc(it.from)}</small>` : ''}</div>` : ''}<button type="button" class="figzoom" aria-label="그림 크게 보기">${it.f}</button></div>`).join('')}</details>`;
+  }
+  document.addEventListener('click', e => {                                   // 그림 크게 보기 / 닫기
+    const z = e.target.closest('.figzoom');
+    if (z) { const ov = document.createElement('div'); ov.className = 'figov'; ov.innerHTML = `<div class="figov-in">${z.innerHTML}</div><span class="figov-x">✕ 닫기 (Esc)</span>`; document.body.appendChild(ov); return; }
+    const ov = e.target.closest('.figov'); if (ov) ov.remove();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const ov = $('.figov'); if (ov) ov.remove(); } });
+  let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
   async function codeDetail() {
+    const my = ++codeSeq, want = { s: CODE.s, d: CODE.d, n: CODE.n, tid: CODE.tid };
     document.body.classList.add('rp-wide');
     sideCode.innerHTML = '<div class="dict-empty">불러오는 중…</div>';
-    const ctx = await lessonCtx(CODE.s, CODE.d, CODE.n);
+    const ctx = await lessonCtx(want.s, want.d, want.n);
+    if (my !== codeSeq) return;
     const t = ctx && ctx.L.topics[CODE.tid];
     if (!t) { sideCode.innerHTML = '<div class="dict-empty">코드를 찾지 못했습니다.</div>'; return; }
     const rows = CODE_BY[CODE.s + '|' + CODE.d + '|' + CODE.n] || [];
@@ -270,6 +294,7 @@
         <div><dt>무엇을 보나</dt><dd>${mdInline(x.purpose)}</dd></div>
         ${cs ? `<div><dt>${x.concepts.length ? '핵심 개념' : '주요 호출'}</dt><dd class="rel">${cs}</dd></div>` : ''}
         <div><dt>강의</dt><dd>${esc(t.title)}</dd></div></dl>
+      ${figsHtml(t, ctx)}
       ${exampleBody(t)}`;
     highlightIn(sideCode);
   }
@@ -754,7 +779,7 @@
     if (!L) return notFound();
     const exTopics = L.topics.filter(t => t.blocks.some(b => b.kind !== 'out'));
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
-    CX = { s, d, n, L, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
+    CX = { s, d, n, L, D, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
     const anchor = params.get('a');
     // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
     const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
@@ -1082,6 +1107,7 @@
     const [path, qs] = raw.split('?'); const params = new URLSearchParams(qs || '');
     const seg = path.split('/').filter(Boolean);
     document.body.classList.remove('menu', 'side-peek'); $('#scrim').hidden = true;
+    const fo = $('.figov'); if (fo) fo.remove();
     closePeek(); CX = null;
     if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete('dictmark');
     $$('.top-nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#/' + (seg[0] || '')));

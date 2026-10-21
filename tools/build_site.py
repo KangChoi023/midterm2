@@ -161,6 +161,17 @@ def row_topic(cell, n, topics):
             if r is not None: return r
     return None
 
+def attach_figs(topics, n, intro):
+    """예제마다 붙일 배선·보드 그림: ① 자기 그림 ② 같은 교시에서 가장 가까운 앞 토픽의 그림 ③ 이 교시가 포함된 Day 공통 그림
+    결과는 topic['figRefs'] = [{'t': 'self'} | {'t': 'topic', 'id': n} | {'t': 'intro', 'k': n}]"""
+    for i, tp in enumerate(topics):
+        if not any(b['kind'] in ('code', 'cmd') for b in tp['blocks']): continue
+        if '<figure>' in tp['html']: tp['figRefs'] = [{'t': 'self'}]; continue
+        prev = next((p for p in reversed(topics[:i]) if '<figure>' in p['html']), None)
+        if prev: tp['figRefs'] = [{'t': 'topic', 'id': prev['id']}]; continue
+        ks = [k for k, f in enumerate(intro) if n in f['lessons']]
+        if ks: tp['figRefs'] = [{'t': 'intro', 'k': k} for k in ks]
+
 def code_index(sid, d, n, topics, sections):
     """오른쪽 💻 코드 목차용: 코드·명령이 있는 토픽마다 [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호]"""
     rows = {}
@@ -175,7 +186,7 @@ def code_index(sid, d, n, topics, sections):
         num = (re.match(r'^(\d+-\d+)\.', tp['title']) or re.search(r'예제\s*(\d+-\d+)', tp['title']))
         bare = re.sub(r'^예제\s*[\d-]+\s*[·—-]\s*', '', re.sub(r'^\d+-\d+\.\s*', '', tp['title'])).strip()
         what = strip_md(row[1]) if row else (tp.get('desc') or bare)
-        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare])
+        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0])
     return out
 
 def build_subject(cfg, index):
@@ -190,7 +201,9 @@ def build_subject(cfg, index):
         except Exception as e: print('  ! worksheet', wp, e); ws = []
         notes = parse_notes(np_) if os.path.exists(np_) else {'title': '', 'lessons': {}}
         dtitle = notes['title'] or (lecture_parse.day_title(lp) if os.path.exists(lp) else '')
-        D = {'n': d, 'title': dtitle, 'lessons': []}
+        figs = lecture_parse.intro_figs(lp) if os.path.exists(lp) else []
+        D = {'n': d, 'title': dtitle, 'lessons': [], 'figs': figs}
+        pending_code = []
         anim = copy_anim(cfg, d)
         dm = {'n': d, 'title': dtitle, 'lessons': []}
         for n in range(1, 9):
@@ -213,6 +226,7 @@ def build_subject(cfg, index):
             status = 'done' if N else 'todo'
             quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps') if q.get(k) is not None} for q in Q]
             topics = L['topics'] if L else []
+            attach_figs(topics, n, figs)
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
                    'keywords': kws, 'topics': topics, 'quiz': quiz,
@@ -233,7 +247,7 @@ def build_subject(cfg, index):
                 if s['key'] in ('kw', 'terms', 'funcs'): continue
                 index['search'].append(loc + ['note', f's{si}', s['label'] or '노트', strip_md(s['md'])])
             for l in links: index['links'].append(loc + [l['text'], l['href']])
-            index['code'] += code_index(sid, d, n, topics, sections)
+            pending_code.append((n, topics, sections))
             for t in topics:
                 index['search'].append(loc + ['topic', f'L{t["id"]}', t['title'], t['text']])
                 code = '\n'.join(b['text'] for b in t['blocks'] if b['kind'] in ('code', 'cmd'))
@@ -241,6 +255,15 @@ def build_subject(cfg, index):
             for qi, q in enumerate(quiz):
                 body = ' '.join([q.get('p', ''), q.get('c', '') or '', ' '.join(q.get('o') or []), q.get('w', '')])
                 index['search'].append(loc + ['quiz', f'q{qi}', f'Q{qi + 1}', re.sub(r'<[^>]+>', '', body)])
+        # ④ 그래도 그림이 없는 '코드가 있는' 예제: 같은 Day 앞 교시의 가장 가까운 그림 (보드를 이어서 쓰는 경우)
+        last = None
+        for ln, tps, _ in pending_code:
+            for tp in tps:
+                if '<figure>' in tp['html']: last = (ln, tp['id'])
+                elif last and not tp.get('figRefs') and any(b['kind'] == 'code' for b in tp['blocks']) and last[0] != ln:
+                    tp['figRefs'] = [{'t': 'other', 'n': last[0], 'id': last[1]}]
+        for ln, tps, secs in pending_code:
+            index['code'] += code_index(sid, d, ln, tps, secs)
         S['days'].append(D); meta['days'].append(dm)
     return S, meta
 
