@@ -674,7 +674,8 @@
   });
 
   /* ---------- 용어 / 함수 / 연결 사전 ---------- */
-  function dictPage(kind) {
+  const stripTags = t => String(t || '').replace(/[`*]/g, '').replace(/<[^>]+>/g, '');
+  function dictPage(kind, params) {
     const isT = kind === 'terms';
     const rows = isT ? IDX.terms.map(r => ({ s: r[0], d: r[1], n: r[2], name: r[3], def: r[4], a: 't' + r[5] }))
                      : IDX.funcs.map(r => ({ s: r[0], d: r[1], n: r[2], name: r[3], def: (r[4] ? r[4] + ' — ' : '') + r[5], a: 'f' + r[6] }));
@@ -686,16 +687,49 @@
       map.get(key).src.push(r);
     });
     const list = [...map.values()].sort((a, b) => a.o - b.o);
+    const subjOf = e => [...new Set(e.src.map(r => r.s))];
     main.innerHTML = `<div class="page"><h1>${isT ? '📖 용어 사전' : '🔧 함수·명령 사전'}</h1>
       <p class="sub">교시 노트의 <b>${isT ? '핵심 용어' : '새로 나온 함수/명령'}</b>에서 자동으로 모은 ${list.length}개 · 처음 나온 순서. 이름을 누르면 그 교시로 이동</p>
-      <input class="filter" placeholder="걸러 보기…" autofocus>
+      <div class="filter-row"><input class="filter" type="search" placeholder="걸러 보기… (이름·설명)" autocomplete="off" spellcheck="false"><span class="fcount"></span></div>
       <div class="chips">${['all', ...SUBJ.map(s => s.id)].map(k => `<button class="chip${k === 'all' ? ' on' : ''}" data-s="${k}">${k === 'all' ? '전체' : sById(k).short}</button>`).join('')}</div>
-      <div class="dict">${list.map(e => `<div data-s="${e.s}" data-f="${esc((e.name + ' ' + e.def).toLowerCase())}"><span class="nm">${isT ? esc(e.name) : `<code>${esc(e.name)}</code>`}</span><span>${mdInline(e.def)}</span><span class="src">${e.src.map(r => `<a href="${href(r.s, r.d, r.n, r.a)}">${loc(r.s, r.d, r.n)}</a>`).join('')}</span></div>`).join('') || '<div class="empty">아직 없습니다.</div>'}</div></div>`;
+      <div class="dict">${list.map((e, i) => `<div data-i="${i}"><span class="nm">${isT ? esc(e.name) : `<code>${esc(e.name)}</code>`}</span><span class="df">${mdInline(e.def)}</span><span class="src">${e.src.map(r => `<a href="${href(r.s, r.d, r.n, r.a)}">${loc(r.s, r.d, r.n)}</a>`).join('')}</span></div>`).join('') || '<div class="empty">아직 없습니다.</div>'}</div>
+      <div class="empty fnone" hidden>맞는 항목이 없습니다. <a class="fsearch" href="#/search">전체 검색으로 찾기 →</a></div></div>`;
     highlightIn(main);
-    let sf = 'all';
-    const apply = () => { const v = $('.filter', main).value.trim().toLowerCase(); $$('.dict > div[data-f]', main).forEach(x => { x.hidden = (sf !== 'all' && x.dataset.s !== sf) || (v && !x.dataset.f.includes(v)); }); };
-    $('.filter', main).addEventListener('input', apply);
-    $$('.chip', main).forEach(c => c.addEventListener('click', () => { sf = c.dataset.s; $$('.chip', main).forEach(x => x.classList.toggle('on', x === c)); apply(); }));
+    // 행·검색 문자열은 한 번만 만들어 두고, 입력마다 보이기/숨기기와 강조만 바꾼다
+    const rowsEl = $$('.dict > div[data-i]', main).map(el => {
+      const e = list[+el.dataset.i];
+      return { el, subj: subjOf(e), nmLen: e.name.length, key: (e.name + ' ' + stripTags(e.def)).toLowerCase(), nm: $('.nm', el), df: $('.df', el), nmH: null, dfH: null };
+    });
+    rowsEl.forEach(r => { r.nmH = r.nm.innerHTML; r.dfH = r.df.innerHTML; });
+    const input = $('.filter', main), cnt = $('.fcount', main), none = $('.fnone', main);
+    let sf = 'all', marked = [], raf = 0;
+    const apply = () => {
+      raf = 0;
+      const v = input.value.trim().toLowerCase();
+      const words = v.split(/\s+/).filter(Boolean);
+      marked.forEach(r => { r.nm.innerHTML = r.nmH; r.df.innerHTML = r.dfH; }); marked = [];
+      let shown = 0;
+      for (const r of rowsEl) {
+        const ok = (sf === 'all' || r.subj.includes(sf)) && words.every(w => r.key.includes(w));
+        r.el.style.display = ok ? '' : 'none';
+        if (!ok) continue;
+        // 이름이 입력어로 시작 → 이름에 포함 → 설명에만 있음 순서 (같은 순위 안에서는 처음 나온 순서)
+        const nmLo = r.key.slice(0, r.nmLen);
+        r.el.style.order = !words.length ? '' : nmLo.startsWith(words[0]) ? 0 : words.every(w => nmLo.includes(w)) ? 1 : 2;
+        shown++;
+        if (words.length) { markText(r.nm, v); markText(r.df, v); marked.push(r); }
+      }
+      cnt.textContent = words.length || sf !== 'all' ? `${shown} / ${rowsEl.length}` : '';
+      none.hidden = shown > 0 || !rowsEl.length;
+      $('.fsearch', main).href = `#/search?q=${encodeURIComponent(input.value.trim())}`;
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    input.addEventListener('input', e => { if (!e.isComposing) schedule(); });
+    input.addEventListener('compositionend', schedule);                    // 한글 조합이 끝났을 때
+    input.addEventListener('keydown', e => { if (e.key === 'Escape') { input.value = ''; schedule(); } });
+    $$('.chip', main).forEach(c => c.addEventListener('click', () => { sf = c.dataset.s; $$('.chip', main).forEach(x => x.classList.toggle('on', x === c)); schedule(); }));
+    if (params && params.get('f')) { input.value = params.get('f'); apply(); }
+    input.focus();
   }
   function linksPage() {
     const rows = IDX.links;
@@ -761,7 +795,7 @@
     let cur = null;
     if (!seg.length) renderHome();
     else if (seg[0] === 'search') { qIn.value = params.get('q') || ''; renderSearch(params.get('q') || '', params.get('k')); }
-    else if (seg[0] === 'terms' || seg[0] === 'funcs') dictPage(seg[0]);
+    else if (seg[0] === 'terms' || seg[0] === 'funcs') dictPage(seg[0], params);
     else if (seg[0] === 'links') linksPage();
     else if (seg[0] === 'quiz') renderQuiz(params);
     else if (sById(seg[0]) && seg.length >= 3) { cur = { s: seg[0], d: +seg[1], n: +seg[2] }; renderLesson(cur.s, cur.d, cur.n, params); }

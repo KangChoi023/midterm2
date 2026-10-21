@@ -227,7 +227,7 @@ details.box.read > summary .t { color: var(--ink-3); text-decoration: line-throu
 .hit:hover { border-color: var(--accent); text-decoration: none; }
 .hit .hit-x { -webkit-line-clamp: 3; }
 .group-h { font-size: 14px; font-weight: 700; color: var(--ink-2); margin: 20px 0 6px; }
-.dict { display: grid; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.dict { display: flex; flex-direction: column; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .dict > div { padding: 10px 16px; display: grid; grid-template-columns: minmax(140px, 28%) 1fr auto; gap: 14px; align-items: baseline; }
 .dict > div + div { border-top: 1px solid var(--line); }
 .dict .nm { font-weight: 700; }
@@ -341,3 +341,10 @@ mark.kwm.cur { background: var(--mark); outline: 2px solid var(--warn); border-r
 .core-list > li + li { border-top: 1px dashed var(--line); padding-top: 9px; }
 .core-list > li > ul { margin-top: 4px; }
 .pk-item .b-body { margin-bottom: 2px; }
+
+/* ---------- 사전 걸러 보기 ---------- */
+.filter-row { display: flex; align-items: center; gap: 10px; }
+.fcount { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+.dict > div[hidden] { display: none; }
+.fnone { margin-top: 10px; }
+.fnone[hidden] { display: none; }
