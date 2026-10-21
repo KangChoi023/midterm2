@@ -100,7 +100,7 @@
       const o = store.get('sideOpen', {}); o[dt.dataset.s || dt.dataset.k] = dt.open; store.set('sideOpen', o);
     }));
     const on = $('.les.on', sideToc); if (on && !sideToc.hidden) on.scrollIntoView({ block: 'nearest' });
-    SIDE_CUR = cur; if (dictIsOpen()) dictRender();
+    SIDE_CUR = cur; rpRefresh();
   }
 
   /* ---------- 왼쪽 사전 패널: 용어 + 함수·명령을 한 목록으로 ----------
@@ -170,17 +170,109 @@
     box.innerHTML = h;
     if (words.length === 1 && box.querySelectorAll('.dent').length === 1) box.querySelector('.dent').open = true;   // 하나뿐이면 바로 펼침
   }
-  /* 오른쪽 사전 사이드바 열기/닫기 (열린 상태 기억) */
-  const dictPanel = $('#dictPanel');
+  /* ---------- 오른쪽 패널: 📖 사전 | 💻 코드 (열림·탭 상태 기억) ---------- */
+  const dictPanel = $('#dictPanel'), sideCode = $('#sideCode');
   const dictIsOpen = () => !dictPanel.hidden;
-  function dictOpen(open, focus) {
+  let rTab = store.get('rTab', 'dict');
+  function rpSet(open, tab, focus) {
+    if (tab) rTab = tab;
     dictPanel.hidden = !open;
+    sideDict.hidden = rTab !== 'dict'; sideCode.hidden = rTab !== 'code';
+    $$('.rtabs button', dictPanel).forEach(b => b.classList.toggle('on', b.dataset.rt === rTab));
     document.body.classList.toggle('dict-on', open);
-    $('#dictBtn').classList.toggle('on', open); $('#dictBtn').setAttribute('aria-expanded', String(open));
-    store.set('dictOn', open);
-    if (open) { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
+    document.body.classList.toggle('rp-wide', open && rTab === 'code' && CODE.view === 'detail');
+    [['dictBtn', 'dict'], ['codeBtn', 'code']].forEach(([id, t]) => { const on = open && rTab === t; $('#' + id).classList.toggle('on', on); $('#' + id).setAttribute('aria-expanded', String(on)); });
+    store.set('dictOn', open); store.set('rTab', rTab);
+    if (!open) return;
+    if (rTab === 'dict') { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
+    else codeRender();
   }
-  $('#dictClose').addEventListener('click', () => dictOpen(false));
+  const rpRefresh = () => { if (dictIsOpen()) (rTab === 'dict' ? dictRender() : codeRender()); };
+  $('#dictClose').addEventListener('click', () => rpSet(false));
+  $('.rtabs', dictPanel).addEventListener('click', e => { const b = e.target.closest('[data-rt]'); if (b) rpSet(true, b.dataset.rt, true); });
+
+  /* 💻 코드 탭: 과목 → Day → 교시 → 예제 목차, 누르면 그 자리에서 코드 (패널이 넓어짐)
+   *   목록 데이터 = data/index.js 의 code [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호, 제목] */
+  let CODE = { view: 'list', s: null, d: 0, n: 0, tid: 0, q: '' };
+  const CODE_BY = {};
+  (IDX.code || []).forEach(r => { const k = r[0] + '|' + r[1] + '|' + r[2]; (CODE_BY[k] = CODE_BY[k] || []).push(r); });
+  const ctxCache = {};
+  async function lessonCtx(s, d, n) {
+    const k = s + '|' + d + '|' + n;
+    if (CX && CX.s === s && CX.d === d && CX.n === n) return CX;
+    if (ctxCache[k]) return ctxCache[k];
+    const data = await loadSubject(s); const D = data.days.find(x => x.n === d); const L = D && D.lessons.find(x => x.n === n);
+    if (!L) return null;
+    return (ctxCache[k] = { s, d, n, L, LK: window.WikiLink.build(L, n) });
+  }
+  function openCode(s, d, n, tid) { CODE = Object.assign(CODE, { view: 'detail', s, d, n, tid: +tid }); rpSet(true, 'code'); sideCode.scrollTop = 0; }
+  function codeItem(r, cur) {
+    const name = r[4] ? `📄 ${esc(r[4])}` : esc(r[7]);
+    return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
+  }
+  function codeRender() {
+    if (CODE.view === 'detail') return codeDetail();
+    document.body.classList.remove('rp-wide');
+    const cur = SIDE_CUR && SIDE_CUR.n ? SIDE_CUR : null;
+    const q = CODE.q.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+    let h = `<div class="dict-top"><input class="dict-q code-q" type="search" placeholder="파일명·하는 일 걸러 보기" autocomplete="off" spellcheck="false" value="${esc(CODE.q)}"></div>`;
+    if (words.length) {
+      const hits = (IDX.code || []).filter(r => words.every(w => (r[4] + ' ' + r[5] + ' ' + r[7]).toLowerCase().includes(w)));
+      h += `<div class="dict-h">${hits.length}개</div>` + hits.slice(0, 150).map(r => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` + codeItem(r)).join('');
+    } else {
+      if (cur) {
+        const here = CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || [];
+        h += `<div class="dict-h">이 교시 (${loc(cur.s, cur.d, cur.n)}) · ${here.length}</div>` + (here.map(r => codeItem(r)).join('') || '<div class="dict-empty">이 교시에는 예제 코드가 없습니다.</div>');
+        h += '<div class="dict-h">전체 목차</div>';
+      }
+      const openK = store.get('codeOpen', {});
+      SUBJ.forEach(S => {
+        const sOpen = cur ? cur.s === S.id : openK[S.id];
+        h += `<details class="ctree s" data-k="${S.id}" ${sOpen ? 'open' : ''}><summary>${esc(S.name)}</summary>`;
+        S.days.forEach(D => {
+          const dOpen = cur ? cur.s === S.id && cur.d === D.n : openK[S.id + D.n];
+          h += `<details class="ctree d" data-k="${S.id}${D.n}" ${dOpen ? 'open' : ''}><summary>Day ${D.n} <small>${esc(D.title)}</small></summary>`;
+          D.lessons.forEach(L => {
+            const rows = CODE_BY[S.id + '|' + D.n + '|' + L.n] || []; if (!rows.length) return;
+            const isCur = cur && cur.s === S.id && cur.d === D.n && cur.n === L.n;
+            h += `<details class="ctree l" data-k="${S.id}${D.n}-${L.n}" ${isCur || openK[S.id + D.n + '-' + L.n] ? 'open' : ''}><summary>${L.n}. ${esc(L.title)} <small>${rows.length}</small></summary>${rows.map(r => codeItem(r, false)).join('')}</details>`;
+          });
+          h += '</details>';
+        });
+        h += '</details>';
+      });
+    }
+    sideCode.innerHTML = h;
+    const qi = $('.code-q', sideCode);
+    let raf = 0;
+    const sched = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; CODE.q = qi.value; const pos = qi.selectionStart; codeRender(); const n = $('.code-q', sideCode); n.focus(); n.setSelectionRange(pos, pos); }); };
+    qi.addEventListener('input', e => { if (!e.isComposing) sched(); });
+    qi.addEventListener('compositionend', sched);
+    $$('details.ctree', sideCode).forEach(dt => dt.addEventListener('toggle', () => { const o = store.get('codeOpen', {}); o[dt.dataset.k] = dt.open; store.set('codeOpen', o); }));
+  }
+  async function codeDetail() {
+    document.body.classList.add('rp-wide');
+    sideCode.innerHTML = '<div class="dict-empty">불러오는 중…</div>';
+    const ctx = await lessonCtx(CODE.s, CODE.d, CODE.n);
+    const t = ctx && ctx.L.topics[CODE.tid];
+    if (!t) { sideCode.innerHTML = '<div class="dict-empty">코드를 찾지 못했습니다.</div>'; return; }
+    const rows = CODE_BY[CODE.s + '|' + CODE.d + '|' + CODE.n] || [];
+    const k = rows.findIndex(r => r[3] === CODE.tid);
+    const pv = rows[k - 1], nx = rows[k + 1];
+    const x = exInfo(t, ctx);
+    const same = CX && CX.s === CODE.s && CX.d === CODE.d && CX.n === CODE.n;
+    const cs = x.concepts.length ? x.concepts.map(c => same ? cChip(c) : `<span class="cchip static">${esc(shortName(ctx.LK.byId[c]))}</span>`).join('') : x.calls.map(f => `<a class="callchip" href="#/search?q=${encodeURIComponent(f)}">${esc(f)}()</a>`).join('');
+    sideCode.innerHTML = `<div class="code-nav"><button type="button" class="btn sm" data-code-back>← 목록</button><a href="${href(CODE.s, CODE.d, CODE.n)}">${loc(CODE.s, CODE.d, CODE.n)}</a><span class="sp"></span>
+        <button type="button" class="icon-btn sm" ${pv ? `data-code-open="${pv[0]}|${pv[1]}|${pv[2]}|${pv[3]}"` : 'disabled'} aria-label="이전 예제">‹</button><span class="cpos">${k + 1}/${rows.length}</span><button type="button" class="icon-btn sm" ${nx ? `data-code-open="${nx[0]}|${nx[1]}|${nx[2]}|${nx[3]}"` : 'disabled'} aria-label="다음 예제">›</button></div>
+      <div class="code-head"><span class="xname">${x.name ? '📄 ' + esc(x.name) : esc(x.bare)}${x.files.length > 1 ? `<small> 외 ${x.files.length - 1}개</small>` : ''}</span>${x.num ? `<span class="tag">강의 ${esc(x.num)}</span>` : ''}</div>
+      <dl class="xinfo">
+        ${x.files.length > 1 ? `<div><dt>파일</dt><dd>${x.files.map(f => `<code>${esc(f)}</code>`).join(' ')}</dd></div>` : ''}
+        <div><dt>무엇을 보나</dt><dd>${mdInline(x.purpose)}</dd></div>
+        ${cs ? `<div><dt>${x.concepts.length ? '핵심 개념' : '주요 호출'}</dt><dd class="rel">${cs}</dd></div>` : ''}
+        <div><dt>강의</dt><dd>${esc(t.title)}</dd></div></dl>
+      ${exampleBody(t)}`;
+    highlightIn(sideCode);
+  }
 
   /* ---------- 홈 ---------- */
   function renderHome() {
@@ -196,7 +288,7 @@
     });
     h += `</div><div class="howto"><h3>이렇게 쓰면 된다</h3><ul>
       <li><b>검색</b>(<kbd>/</kbd>): 생소한 단어를 치면 <b>정의(용어 사전)</b>와 <b>처음 나온 교시</b>가 맨 위에 뜬다. 결과를 누르면 그 자리로 이동해 강조된다.</li>
-      <li><b>교시 페이지</b> = ① 정리 노트(개요 → 핵심 용어 → 새 함수 → 핵심 내용 → 사용형태) ② 부록 A 예제 코드 + 빌드·실행 ③ 부록 B 강의 개념 목록(읽은 것 체크) ④ 연관 문제.</li>
+      <li><b>교시 페이지</b> = ① 정리 노트(개념별 묶어 보기 가능) ② 강의 원문(읽은 것 체크) ③ 연관 문제. 오른쪽 <b>📖 사전</b> · <b>💻 코드</b> 패널을 본문과 나란히 띄워 둘 수 있다.</li>
       <li>아직 정리 전인 교시(<span class="dot"></span>)도 강의 개념·예제·문항은 미리 볼 수 있고 검색에도 걸린다. 정리를 마친 교시는 <span class="dot done"></span>.</li>
       <li><a href="#/terms">용어 사전</a> · <a href="#/funcs">함수·명령 사전</a>은 교시 노트에서 자동으로 모인다. <a href="#/quiz">퀴즈</a>는 오답을 이 브라우저에 기억한다.</li></ul></div>`;
     main.innerHTML = h;
@@ -256,15 +348,16 @@
     for (const m of code.matchAll(/\b([A-Za-z_]\w{2,})\s*\(/g)) { const f = m[1]; if (!CALL_SKIP.has(f) && !defs.has(f)) cnt[f] = (cnt[f] || 0) + 1; }
     return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).slice(0, 6);
   }
-  function exInfo(t) {
-    const r = CX && CX.LK ? rowOf(t.id) : null;
+  function exInfo(t, ctx = CX) {
+    const r = ctx && ctx.LK ? rowOf(t.id, ctx.LK) : null;
     const rowFile = r ? (window.WikiLink.stripMd(r.cells[0] || '').match(/[\w./-]+\.(?:c|h|py|sh|ino|cpp)\b/) || [])[0] : null;
     const files = t.files && t.files.length ? t.files : (rowFile ? [rowFile.split('/').pop()] : []);
     const num = (t.title.match(/^(\d+-\d+)\./) || t.title.match(/예제\s*(\d+-\d+)/) || [])[1] || '';
     const bare = t.title.replace(/^\d+-\d+\.\s*/, '').replace(/^예제\s*[\d-]+\s*[·—-]\s*/, '').trim();
     const purpose = r && r.cells[1] ? r.cells[1] : (t.desc || bare);
-    let cs = CX && CX.LK ? (CX.LK.topicConcepts[t.id] || []).filter(x => CX.LK.byId[x]) : [];
-    cs = cs.sort((a, b) => (CX.LK.byId[b].examples.includes(t.id) ? 1 : 0) - (CX.LK.byId[a].examples.includes(t.id) ? 1 : 0)).slice(0, 6);
+    const LKx = ctx && ctx.LK;
+    let cs = LKx ? (LKx.topicConcepts[t.id] || []).filter(x => LKx.byId[x]) : [];
+    cs = cs.sort((a, b) => (LKx.byId[b].examples.includes(t.id) ? 1 : 0) - (LKx.byId[a].examples.includes(t.id) ? 1 : 0)).slice(0, 6);
     return { files, name: files[0] || '', num, bare, purpose, concepts: cs, calls: cs.length ? [] : codeCalls(t) };
   }
   function exHead(t) {
@@ -458,7 +551,7 @@
   function openPeek(kind, id) { peekStack.push([kind, id]); renderPeek(); }
   function closePeek() { peekStack = []; peekEl.hidden = true; document.body.classList.remove('peek-on'); }
   function findBullet(id) { for (const s of CX.LK.sections) if (s.blocks) { const b = s.blocks.find(x => x.id === id); if (b) return b; } return null; }
-  function rowOf(tid) { for (const s of CX.LK.sections) if (s.rows) { const r = s.rows.find(x => x.topic === tid); if (r) return r; } return null; }
+  function rowOf(tid, LK = CX.LK) { for (const s of LK.sections) if (s.rows) { const r = s.rows.find(x => x.topic === tid); if (r) return r; } return null; }
   const pkSec = (t, body) => `<section class="pk-sec"><h4>${t}</h4>${body}</section>`;
   function renderPeek() {
     if (!peekStack.length || !CX) return closePeek();
@@ -471,7 +564,7 @@
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, c.examples.map((tid, i) => { const t = L.topics[tid]; const r = rowOf(tid);
-        return `<details class="box ex xbox" ${i === 0 ? 'open' : ''}><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}<button type="button" class="go" data-go="X${tid}">부록 A ↗</button></div></details>`; }).join(''));
+        return `<details class="box ex xbox" ${i === 0 ? 'open' : ''}><summary>${exHead(t)}</summary><div class="in">${exampleBody(t)}<button type="button" class="go" data-peek-x="${tid}">💻 코드 패널에서 ↗</button></div></details>`; }).join(''));
       const co = {}; c.bullets.forEach(bid => { const b = findBullet(bid); b && b.concepts.forEach(x => { if (x !== id) co[x] = (co[x] || 0) + 1; }); });
       const coIds = Object.keys(co).sort((a, b) => co[b] - co[a]).slice(0, 8);
       if (coIds.length) h += pkSec('함께 나오는 개념', `<div class="rel">${coIds.map(x => cChip(x)).join('')}</div>`);
@@ -499,9 +592,14 @@
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   }
   document.addEventListener('click', e => {
+    const cb = e.target.closest('[data-code-open],[data-code-back]');
+    if (cb) {
+      if (cb.dataset.codeBack !== undefined) { CODE.view = 'list'; rpSet(true, 'code'); return; }
+      const [cs_, cd, cn, ct] = cb.dataset.codeOpen.split('|'); openCode(cs_, +cd, +cn, +ct); return;
+    }
     const b = e.target.closest('[data-peek-c],[data-peek-x],[data-go],[data-pk-back],[data-pk-close],[data-view]'); if (!b || !CX) return;
     if (b.dataset.peekC) { e.preventDefault(); openPeek('c', b.dataset.peekC); }
-    else if (b.dataset.peekX !== undefined) { e.preventDefault(); openPeek('x', +b.dataset.peekX); }
+    else if (b.dataset.peekX !== undefined) { e.preventDefault(); if (narrowDict()) closePeek(); openCode(CX.s, CX.d, CX.n, +b.dataset.peekX); }
     else if (b.dataset.go) revealInMain(b.dataset.go);
     else if (b.dataset.pkBack !== undefined) { peekStack.pop(); renderPeek(); }
     else if (b.dataset.pkClose !== undefined) closePeek();
@@ -510,10 +608,10 @@
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!peekEl.hidden) closePeek();
-    else if (!dictPanel.hidden && narrowDict()) dictOpen(false);
+    else if (!dictPanel.hidden && narrowDict()) rpSet(false);
   });
   const narrowDict = () => matchMedia('(max-width: 900px)').matches;
-  /* 키워드 → 이 페이지 안에서 언급된 곳 (노트 · 부록 A · 부록 B · 문항) */
+  /* 키워드 → 이 페이지 안에서 언급된 곳 (노트 · 강의 원문 · 문항) */
   let KW = { hits: [], i: -1, k: -1 };
   const KW_STOP = new Set(['검사', '사용', '함정', '관용구', '규칙', '방법', '차이', '구분', '초기화', '반환', '주소', '파일', '함수', '변수', '값', '두', '배', '수', '읽기', '쓰기']);
   function kwClear() {
@@ -524,7 +622,7 @@
     const nav = $('.kwnav', main); if (nav) nav.hidden = true;
   }
   function kwRoots() {
-    return [...$$('#notes-body > section, #notes-body > .ccard', main), ...$$('#examples details, #lecture details, #quiz .q', main)];
+    return [...$$('#notes-body > section, #notes-body > .ccard', main), ...$$('#lecture details, #quiz .q', main)];
   }
   function kwMark(term) {
     const lo = term.toLowerCase(); const out = [];
@@ -663,22 +761,14 @@
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><a href="#examples" data-jump>부록 A · 예제 코드 ${exTopics.length}</a><a href="#lecture" data-jump>부록 B · 강의 개념 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
     else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>summary/.src/${{ c: 'C', linux: 'LINUX', mcu: 'MCU', eio: 'EIO' }[s]}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
 
-    h += `<section class="part" id="examples"><h2>부록 A · 예제 코드 모음 <small>강의 예제의 핵심 코드와 빌드·실행 명령, 결과</small></h2>
-      <div class="tools-row"><button class="btn" data-all="examples">모두 펼치기</button></div>`;
-    h += exTopics.length ? exTopics.map(t => {
-      const kinds = [...new Set(t.blocks.map(b => b.kind))].map(k => `<span class="tag">${BLK_LABEL[k]}</span>`).join('');
-      return `<details class="box ex xbox" id="X${t.id}"><summary>${exHead(t)}</summary><div class="in">${exInfoBox(t)}${exampleBody(t)}</div></details>`;
-    }).join('') : '<div class="empty">이 교시에는 강의 예제 코드가 없습니다.</div>';
-    h += '</section>';
-
-    h += `<section class="part" id="lecture"><h2>부록 B · 강의 개념 목록 <small>강의 원문을 주제별로. 읽고 정리했으면 체크</small></h2>
+    h += `<section class="part" id="lecture"><h2>강의 원문 <small>강의 자료를 주제별로. 읽고 정리했으면 체크 · 예제 코드는 오른쪽 💻 코드 패널</small></h2>
       <div class="tools-row"><button class="btn" data-all="lecture">모두 펼치기</button><span class="hit-loc" id="readCnt"></span></div>`;
     h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
     h += '</section>';
@@ -713,8 +803,10 @@
     }));
     bindQuiz($('#quiz', main), L.quiz, recordResult);
     $$('[data-jump]', main).forEach(a => a.addEventListener('click', e => { e.preventDefault(); $(a.getAttribute('href'), main).scrollIntoView({ behavior: 'smooth' }); }));
-    const pk = (params.get('p') || '').match(/^([cx]):(\w+)$/);   // #/c/4/1?p=c:t3 → 그 개념 패널을 연 채로
-    if (pk) openPeek(pk[1], pk[1] === 'x' ? +pk[2] : pk[2]);
+    const pk = (params.get('p') || '').match(/^([cx]):(\w+)$/);   // #/c/4/1?p=c:t3 → 개념 패널, ?p=x:2 → 코드 패널
+    if (pk) { if (pk[1] === 'x') openCode(s, d, n, +pk[2]); else openPeek('c', pk[2]); }
+    const xa = (anchor || '').match(/^X(\d+)$/);                     // 검색의 코드 결과 → 코드 패널로
+    if (xa) { openCode(s, d, n, +xa[1]); window.scrollTo(0, 0); return; }
     const kq = params.get('k');                                      // #/c/2/7?k=realloc → 그 키워드 위치로
     if (kq) { const ki = L.keywords.findIndex(x => x === kq); if (ki >= 0) { kwFind(ki); return; } }
     jumpTo(anchor && CX.LK.alias[anchor] && !document.getElementById(anchor) ? CX.LK.alias[anchor] : anchor, params.get('q'));
@@ -1021,8 +1113,10 @@
     $('#menuBtn').setAttribute('aria-expanded', String(!off));
   });
   $('#menuBtn').setAttribute('aria-expanded', String(!document.body.classList.contains('side-off')));
-  $('#dictBtn').addEventListener('click', () => dictOpen(!dictIsOpen(), true));
-  if (store.get('dictOn', false)) dictOpen(true);
+  $('#dictBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'dict') ? rpSet(false) : rpSet(true, 'dict', true));
+  $('#codeBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'code') ? rpSet(false) : rpSet(true, 'code'));
+  document.addEventListener('click', e => { if (e.target.closest('[data-code-list]')) { CODE.view = 'list'; rpSet(true, 'code'); } });
+  if (store.get('dictOn', false)) rpSet(true);
   $('#scrim').addEventListener('click', () => { document.body.classList.remove('menu'); $('#scrim').hidden = true; });
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;

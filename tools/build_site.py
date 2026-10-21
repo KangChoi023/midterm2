@@ -126,6 +126,58 @@ def parse_kw(md):
 def parse_links(md):
     return [{'text': t, 'href': h} for t, h in re.findall(r'\[([^\]]+)\]\((#/[^)]+)\)', md)]
 
+CODE_FILE = re.compile(r'[\w./-]+\.(?:c|h|py|sh|ino|cpp)\b')
+
+def example_rows(sections):
+    """노트 '예제 코드가 하는 일' 표 → [(첫 칸, 하는 일)]"""
+    out = []
+    for s in sections:
+        if s['key'] != 'examples': continue
+        for line in s['md'].split('\n'):
+            if not line.startswith('|') or re.match(r'^\|[\s:|-]+\|$', line.strip()): continue
+            cells = [c.strip() for c in line.replace('\\|', '\x00').strip().strip('|').split('|')]
+            if len(cells) < 2 or re.match(r'^(예제|파일|프로그램|이름)$', strip_md(cells[0])): continue
+            out.append((cells[0].replace('\x00', '|'), cells[-1].replace('\x00', '|')))
+    return out
+
+def row_topic(cell, n, topics):
+    """표의 첫 칸("1-1 `hello.c`", "`02_nice_race.c`") → 강의 토픽 id  (assets/concepts.js rowTopic 과 같은 규칙)"""
+    t = strip_md(cell)
+    def by_title(pat):
+        for tp in topics:
+            if re.search(pat, tp['title']): return tp['id']
+        return None
+    m = re.search(r'(\d+)-(\d+)', t)
+    if m:
+        r = by_title(r'예제\s*' + m.group(1) + '-' + m.group(2) + r'(?!\d)')
+        if r is not None: return r
+    for f in CODE_FILE.findall(t):
+        base = f.split('/')[-1]
+        for tp in topics:
+            if base in tp.get('files', []): return tp['id']
+        k = re.match(r'^0?(\d+)_', base)
+        if k:
+            r = by_title(r'예제\s*(' + str(n) + '-' + k.group(1) + '|0?' + k.group(1) + r')(?!\d)')
+            if r is not None: return r
+    return None
+
+def code_index(sid, d, n, topics, sections):
+    """오른쪽 💻 코드 목차용: 코드·명령이 있는 토픽마다 [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호]"""
+    rows = {}
+    for cell, what in example_rows(sections):
+        tid = row_topic(cell, n, topics)
+        if tid is not None and tid not in rows: rows[tid] = (cell, what)
+    out = []
+    for tp in topics:
+        if not any(b['kind'] in ('code', 'cmd') for b in tp['blocks']): continue
+        row = rows.get(tp['id'])
+        files = tp.get('files') or ([CODE_FILE.findall(strip_md(row[0]))[0].split('/')[-1]] if row and CODE_FILE.findall(strip_md(row[0])) else [])
+        num = (re.match(r'^(\d+-\d+)\.', tp['title']) or re.search(r'예제\s*(\d+-\d+)', tp['title']))
+        bare = re.sub(r'^예제\s*[\d-]+\s*[·—-]\s*', '', re.sub(r'^\d+-\d+\.\s*', '', tp['title'])).strip()
+        what = strip_md(row[1]) if row else (tp.get('desc') or bare)
+        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare])
+    return out
+
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
     meta = {'id': sid, 'name': cfg['name'], 'short': cfg['short'], 'days': []}
@@ -181,6 +233,7 @@ def build_subject(cfg, index):
                 if s['key'] in ('kw', 'terms', 'funcs'): continue
                 index['search'].append(loc + ['note', f's{si}', s['label'] or '노트', strip_md(s['md'])])
             for l in links: index['links'].append(loc + [l['text'], l['href']])
+            index['code'] += code_index(sid, d, n, topics, sections)
             for t in topics:
                 index['search'].append(loc + ['topic', f'L{t["id"]}', t['title'], t['text']])
                 code = '\n'.join(b['text'] for b in t['blocks'] if b['kind'] in ('code', 'cmd'))
@@ -209,7 +262,7 @@ def copy_anim(cfg, d):
 def main():
     want = [a.lower() for a in sys.argv[1:]]
     index = {'built': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), 'subjects': [],
-             'search': [], 'terms': [], 'funcs': [], 'links': []}
+             'search': [], 'terms': [], 'funcs': [], 'links': [], 'code': []}
     os.makedirs(os.path.join(REPO, 'data'), exist_ok=True)
     for cfg in SUBJECTS:
         S, meta = build_subject(cfg, index)
@@ -232,7 +285,7 @@ def main():
     with open(p, 'w', encoding='utf8') as f:
         f.write('window.WIKI_INDEX=')
         json.dump(index, f, ensure_ascii=False, separators=(',', ':')); f.write(';\n')
-    print(f"{p}  {os.path.getsize(p) // 1024}KB  검색 {len(index['search'])}건 · 용어 {len(index['terms'])} · 함수 {len(index['funcs'])} · 연결 {len(index['links'])}")
+    print(f"{p}  {os.path.getsize(p) // 1024}KB  검색 {len(index['search'])}건 · 용어 {len(index['terms'])} · 함수 {len(index['funcs'])} · 연결 {len(index['links'])} · 예제 {len(index['code'])}")
 
 if __name__ == '__main__':
     main()
