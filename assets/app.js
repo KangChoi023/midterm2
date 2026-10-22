@@ -902,8 +902,10 @@
     if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
     if (ty === 'mc' || ty === 'multi') h += '<div class="opts">' + q.o.map((o, k) => `<button type="button" class="opt" data-k="${k}">${'①②③④⑤⑥⑦⑧'[k]} ${esc(o)}</button>`).join('') + '</div>' + (ty === 'multi' ? '<button class="btn" data-check>채점</button>' : '');
     else if (ty === 'ox') h += '<div class="opts" style="grid-template-columns:1fr 1fr"><button class="opt" data-k="1">O (참)</button><button class="opt" data-k="0">X (거짓)</button></div>';
-    else if (ty === 'match') h += `<div class="q-list">왼쪽: ${q.left.map(esc).join(' / ')}<br>오른쪽: ${q.right.map(esc).join(' / ')}</div><button class="btn" data-show>정답 보기</button>`;
-    else if (ty === 'order') h += `<div class="q-list">항목: ${q.steps.map(esc).join(' / ')}</div><button class="btn" data-show>정답 보기</button>`;
+    else if (ty === 'match') h += `<div class="mt">${q.left.map((l, k) => `<div class="mt-row" data-k="${k}"><span class="mt-l">${esc(l)}</span><span class="mt-ar">→</span><select class="mt-s" aria-label="${esc(l)} 의 짝"><option value="">— 고르기 —</option>${q.right.map((r, j) => `<option value="${j}">${esc(r)}</option>`).join('')}</select></div>`).join('')}</div>` +
+      '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
+    else if (ty === 'order') h += `<div class="od-tip">순서대로 누르세요 (다시 누르면 취소)</div><div class="od">${q.steps.map((s, k) => `<button type="button" class="od-i" data-k="${k}"><span class="od-n"></span><span>${esc(s)}</span></button>`).join('')}</div>` +
+      '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
     return h + '<div class="q-ans" hidden></div></div>';
   }
   function answerText(q) {
@@ -920,12 +922,50 @@
       const ty = q.ty || 'mc'; const ans = $('.q-ans', card);
       const show = ok => {
         ans.hidden = false; ans.className = 'q-ans' + (ok === true ? ' ok' : ok === false ? ' no' : '');
-        ans.innerHTML = `${ok === true ? '✅ 정답' : ok === false ? '❌ 오답' : '정답'} — <b>${esc(answerText(q))}</b><br>${mdInline(q.w || '')}`;
+        const body = ty === 'match' ? `<ul class="ans-l">${q.a.map((v, k) => `<li>${esc(q.left[k])} → <b>${esc(q.right[v])}</b></li>`).join('')}</ul>`
+          : ty === 'order' ? `<ol class="ans-l">${q.a.map(k => `<li><b>${esc(q.steps[k])}</b></li>`).join('')}</ol>` : ` — <b>${esc(answerText(q))}</b><br>`;
+        ans.innerHTML = `${ok === true ? '✅ 정답' : ok === false ? '❌ 오답' : '정답'}${body}${mdInline(q.w || '')}`;
         if (ok !== null && onResult) onResult(card.dataset.key, ok);
+      };
+      let seq = [];                                                         // 순서 문항: 누른 순서
+      const hint = t => { const x = $('.q-hint', card); if (x) x.textContent = t; };
+      const resetQ = () => {
+        seq = []; delete card.dataset.done; ans.hidden = true; hint('');
+        $$('.od-i', card).forEach(x => { x.classList.remove('on', 'right', 'wrong'); $('.od-n', x).textContent = ''; });
+        $$('.mt-row', card).forEach(r => { r.classList.remove('right', 'wrong'); $('.mt-s', r).value = ''; $('.mt-s', r).disabled = false; });
+        const fix = $('.mt-fix, .od-fix', card); if (fix) fix.remove();
       };
       card.addEventListener('click', e => {
         const b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.reset !== undefined) return resetQ();
         if (b.dataset.show !== undefined) return show(null);
+        if (ty === 'order') {
+          if (b.classList.contains('od-i')) {
+            if (card.dataset.done) return;
+            const k = +b.dataset.k, at = seq.indexOf(k);
+            if (at >= 0) seq.splice(at, 1); else seq.push(k);
+            $$('.od-i', card).forEach(x => { const p = seq.indexOf(+x.dataset.k); x.classList.toggle('on', p >= 0); $('.od-n', x).textContent = p >= 0 ? p + 1 : ''; });
+            hint(''); return;
+          }
+          if (b.dataset.check !== undefined) {
+            if (seq.length < q.steps.length) return hint(`${q.steps.length - seq.length}개를 더 고르세요`);
+            card.dataset.done = 1;
+            $$('.od-i', card).forEach(x => { const p = seq.indexOf(+x.dataset.k); x.classList.add(q.a[p] === +x.dataset.k ? 'right' : 'wrong'); });
+            return show(seq.every((k, p) => q.a[p] === k));
+          }
+          return;
+        }
+        if (ty === 'match') {
+          if (b.dataset.check !== undefined) {
+            const rows = $$('.mt-row', card);
+            if (rows.some(r => $('.mt-s', r).value === '')) return hint('모든 줄을 고르세요');
+            card.dataset.done = 1;
+            let all = true;
+            rows.forEach(r => { const k = +r.dataset.k, v = +$('.mt-s', r).value, ok = q.a[k] === v; all = all && ok; r.classList.add(ok ? 'right' : 'wrong'); $('.mt-s', r).disabled = true; });
+            return show(all);
+          }
+          return;
+        }
         if (ty === 'multi') {
           if (b.dataset.check !== undefined) {
             const sel = $$('.opt.sel', card).map(x => +x.dataset.k).sort().join(',');
