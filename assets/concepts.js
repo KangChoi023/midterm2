@@ -153,10 +153,10 @@
         let k = 0, g = -1;
         const groups = [];
         const blocks = splitBlocks(s.md).map(b => {
-          if (b.head !== undefined) { groups.push({ title: b.head, sum: '', bullets: [], more: '' }); g = groups.length - 1; return Object.assign({ g }, b); }
+          if (b.head !== undefined) { groups.push({ title: b.head, sum: '', bullets: [], more: '', plain: [] }); g = groups.length - 1; return Object.assign({ g }, b); }
           if (b.sum !== undefined) { if (g >= 0) groups[g].sum = b.sum; return Object.assign({ g }, b); }
           if (b.more !== undefined) { if (g >= 0) groups[g].more += b.more; return Object.assign({ g }, b); }
-          if (!b.bullet) return b;
+          if (!b.bullet) { if (g >= 0) groups[g].plain.push(b.md); return Object.assign({ g }, b); }   // 그룹 안의 표·코드 등
           const id = `c${si}-${k++}`; const text = stripMd(b.md);
           const hp = hitsPos(text);
           const cs = hp.map(x => x.id);

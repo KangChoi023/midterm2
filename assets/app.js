@@ -634,6 +634,7 @@
       const exs = [...new Set([...g.bullets.flatMap(b => b.examples), ...cs.flatMap(c => c.examples)])];
       return `<section class="ccard gcard" id="gc${gi}"><div class="ccard-h"><h3>${mdInline(g.title)}</h3>${codeBtns(exs)}</div>
         ${g.sum ? `<p class="cg-sum">${mdInline(g.sum)}</p>` : ''}
+        ${(g.plain || []).map(m => `<div class="gplain">${md(m)}</div>`).join('')}
         ${normal.length ? `<ul class="core-list">${normal.map(b => bulletLi(b, null, true)).join('')}</ul>` : ''}
         ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>${c.detail ? `<details class="fdet"><summary>인자 · 동작</summary>${detailHtml(c.detail)}</details>` : ''}</div></div>`).join('')}</div>` : ''}
         ${terms.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${terms.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : ''}

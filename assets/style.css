@@ -363,6 +363,7 @@ mark.kwm.cur { background: var(--mark); outline: 2px solid var(--warn); border-r
 .cg-h { margin: 18px 0 2px; font-size: 15.5px; color: var(--ink); padding-left: 10px; border-left: 3px solid var(--accent); }
 .nsec .cg-h:first-of-type { margin-top: 6px; }
 .cg-sum { margin: 4px 0 6px; padding: 6px 10px; background: var(--accent-soft); border-radius: 8px; font-size: 14.5px; }
+.gplain { margin: 6px 0; overflow-x: auto; } .gplain table { margin: 0; }
 details.cg-more { margin: 6px 0 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--panel); }
 details.cg-more > summary { cursor: pointer; padding: 6px 10px; font-size: 13px; color: var(--ink-2); }
 details.cg-more > .in { padding: 0 12px 8px; }
