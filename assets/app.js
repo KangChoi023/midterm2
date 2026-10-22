@@ -735,7 +735,7 @@
     else if (b.dataset.go) revealInMain(b.dataset.go);
     else if (b.dataset.pkBack !== undefined) { peekStack.pop(); renderPeek(); }
     else if (b.dataset.pkClose !== undefined) closePeek();
-    else if (b.dataset.view) { store.set('noteView', b.dataset.view); renderNotesBody(b.dataset.view); }
+    else if (b.dataset.view) renderNotesBody(b.dataset.view);                      // 이 페이지에서만 바꾼다 (기억하지 않음)
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -888,8 +888,8 @@
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
     CX = { s, d, n, L, D, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
     const anchor = params.get('a');
-    // 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서 보기로
-    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : store.get('noteView', 'flow'));
+    // 기본은 개념별 묶어 보기. 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서로
+    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : 'concept');
     let h = `<article class="lesson sc-${s}"><div class="l-head"><div class="crumb"><a href="#/">홈</a> › <a href="#/${s}">${esc(S.name)}</a> › Day ${d} ${esc(D.title)}</div>
       <div class="l-title"><h1>${n}교시 · ${esc(L.title)}</h1>${L.anim ? `<a class="btn anim-btn" href="${esc(L.anim)}" target="_blank" rel="noopener" title="이 교시의 강의 애니메이션을 새 탭에서 엽니다">🎬 애니메이션 보기</a>` : ''}</div><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
@@ -948,7 +948,15 @@
 
   function jumpTo(anchor, q) {
     if (!anchor) { window.scrollTo(0, 0); return; }
-    const el = document.getElementById(anchor);
+    let el = document.getElementById(anchor);
+    if (!el && /^[tf]\d+$/.test(anchor)) {
+      // 개념별 보기에는 용어·함수 표가 따로 없다 → 그 용어·함수가 들어 있는 카드의 줄로, 카드에 없으면 노트 순서 보기로
+      const id = (CX && CX.LK.alias[anchor]) || anchor;
+      const chip = $(`#notes-body .gcard .gsec [data-peek-c="${id}"]`, main) || $(`#notes-body [data-peek-c="${id}"]`, main);
+      el = chip ? (chip.closest('.gfn, .gterms > div, li, .gcard')) : null;
+      if (el && CX.LK.byId[id]) openPeek('c', id);                        // 정의는 옆 패널에
+      if (!el) { renderNotesBody('flow'); el = document.getElementById(anchor); }
+    }
     if (!el) { window.scrollTo(0, 0); return; }
     let p = el; while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }
     if (q) markText(el, q);
@@ -1259,7 +1267,7 @@
     if (touch && document.body.classList.contains('side-peek')) sideHide(0); else sideShow();
   });
   menuBtn.setAttribute('aria-expanded', 'false');
-  try { localStorage.removeItem('wiki.sideOff'); } catch (e) { /* 예전 '접기' 상태 정리 */ }
+  try { localStorage.removeItem('wiki.sideOff'); localStorage.removeItem('wiki.noteView'); } catch (e) { /* 예전 상태 정리 */ }
   $('#dictBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'dict') ? rpSet(false) : rpSet(true, 'dict', true));
   $('#codeBtn').addEventListener('click', () => (dictIsOpen() && rTab === 'code') ? rpSet(false) : rpSet(true, 'code'));
   document.addEventListener('click', e => { if (e.target.closest('[data-code-list]')) { CODE.view = 'list'; rpSet(true, 'code'); } });
