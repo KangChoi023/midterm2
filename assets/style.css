@@ -432,6 +432,7 @@ details.dent[open] { background: var(--panel-2); margin: 2px 0; }
 .dn { font-size: 13.5px; color: var(--ink); word-break: break-word; }
 .dn.mono { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
 .dbody { padding: 2px 8px 8px 8px; font-size: 13px; }
+.dbody .drole { font-weight: 700; font-size: 14px; margin: 2px 0 4px; }
 .dbody .fsig { display: block; margin: 2px 0 6px; padding: 4px 7px; font-size: 11.5px; white-space: pre-wrap; word-break: break-word; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; color: var(--code-ink); }
 .ddef { color: var(--ink); line-height: 1.55; }
 .dsrc { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; font-size: 12px; }

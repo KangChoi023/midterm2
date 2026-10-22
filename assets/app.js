@@ -142,7 +142,7 @@
     const hl = t => { let h = esc(t); words.forEach(w => { h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); }); return h; };
     const srcs = e.src.map(x => `<a href="${href(x.s, x.d, x.n, x.a)}">${loc(x.s, x.d, x.n)}</a>`).join('');
     return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span></summary>
-      <div class="dbody">${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>`}<div class="dsrc">${srcs}</div></div></details>`;
+      <div class="dbody">${e.detail && e.detail.role ? `<div class="drole">${esc(e.detail.role)}</div>` : ''}${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail, true) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>`}<div class="dsrc">${srcs}</div></div></details>`;
   }
   function dictRender() {
     if (!DICT) dictBuild();
