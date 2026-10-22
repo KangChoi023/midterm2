@@ -549,11 +549,20 @@
     return ts.length ? `<span class="cbtns">${ts.map(t => `<button type="button" class="cbtn" data-peek-x="${t.id}" title="${esc(t.title)} — 오른쪽 코드 패널에서 보기"><b>코드)</b> ${esc(exLabel(t))}</button>`).join('')}</span>` : '';
   }
   /* 함수·명령 상세 (summary/.src/api_detail.json): 역할 · 인자별 뜻 · 동작 · 반환 · 준비 */
-  function detailHtml(det) {
+  function detailHtml(det, noRole) {
     if (!det) return '';
     const args = (det.args || []).length ? `<table class="apid-args"><thead><tr><th>인자</th><th>뜻</th></tr></thead><tbody>${det.args.map(a => `<tr><td><code>${esc(a[0])}</code></td><td>${mdInline(a[1])}</td></tr>`).join('')}</tbody></table>` : '';
     const row = (k, v) => v ? `<div class="apid-row"><span class="k">${k}</span><span>${mdInline(v)}</span></div>` : '';
-    return `<div class="apid">${row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
+    return `<div class="apid">${noRole ? '' : row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
+  }
+  /* 함수·명령 한 줄: 보이는 것은 이름 + 역할, "인자 · 동작" 을 펼치면 기본형 · 노트 설명 · 인자 · 동작 · 반환 */
+  const sigText = sig => String(sig || '').replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, '').trim();
+  const hasSig = sig => sig && !/^[—–-]?$/.test(sigText(sig));
+  function fnRole(use, det) { return det && det.role ? `<span class="frole">${esc(det.role)}</span>` : `<span class="frole">${mdInline(use || '')}</span>`; }
+  function fnMore(sig, use, det) {
+    const inner = (hasSig(sig) ? `<code class="fsig">${esc(sigText(sig))}</code>` : '') +
+      (det && det.role && use ? `<div class="fnote">${mdInline(use)}</div>` : '') + (det ? detailHtml(det, true) : '');
+    return inner ? `<details class="fdet"><summary>${det ? '인자 · 동작' : '기본형'}</summary>${inner}</details>` : '';
   }
   function countBtn(c) {
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
@@ -639,13 +648,10 @@
         return `<div id="t${s.t0 + i}"><dt>${mdInline(t.name)}</dt><dd>${mdInline(t.def)}${c && c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}${c ? countBtn(c) : ''}</dd></div>`;
       }).join('') + '</dl>' + md(s.rest);
     } else if (s.key === 'funcs' && s.fn) {
-      // 한 칸에 이름 + 기본형, 옆 칸에 용도
-      const hasSig = f => f.sig && !/^[—–-]?$/.test(f.sig.replace(/`/g, '').trim());
-      body = '<table class="ftab"><thead><tr><th>이름 · 기본형</th><th>용도</th></tr></thead><tbody>' +
+      body = '<table class="ftab"><thead><tr><th>이름</th><th>역할</th></tr></thead><tbody>' +
         L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => {
           const id = 'f' + (s.f0 + i);
-          const sig = hasSig(f) ? `<code class="fsig">${esc(f.sig.replace(/`\s*·\s*`/g, '\n').replace(/`/g, '').replace(/\*\*/g, '').trim())}</code>` : '';
-          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button>${sig}</td><td>${mdInline(f.use)}${f.detail ? `<details class="fdet"><summary>인자 · 동작</summary>${detailHtml(f.detail)}</details>` : ''}</td></tr>`;
+          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button></td><td>${fnRole(f.use, f.detail)}${fnMore(f.sig, f.use, f.detail)}</td></tr>`;
         }).join('') + '</tbody></table>' + md(s.rest);
     } else if (s.key === 'core' && LS.blocks) body = coreHtml(LS);
     else if (s.key === 'examples' && LS.rows) body = examplesTable(LS);
@@ -671,24 +677,48 @@
       const pool = titled.length ? titled : Object.keys(m).map(Number);
       home[c] = pool.sort((a, b) => (m[b] || 0) - (m[a] || 0) || a - b)[0];
     });
+    // 글머리에 언급이 없으면 카드의 제목 · 정의 · 표 · 자세히에서 이름을 찾아 배정
+    // 노트가 줄여 쓴 이름도 찾는다: pthread_cond_wait → cond_wait, sudo systemctl enable --now x → systemctl enable
+    const gtext = groups.map(g => [g.title, g.sum, ...(g.plain || []), g.more, ...g.bullets.map(b => b.md)].join('\n').replace(/`|\*\*/g, '').toLowerCase());
+    const shortKeys = c => {
+      const out = new Set((c.keys || []).map(k => k.toLowerCase()).filter(k => k.length >= 2));
+      String(c.name || '').toLowerCase().split(/\s*\/\s*|\s*·\s*/).forEach(part => {
+        const w = part.replace(/^sudo\s+/, '').trim(); if (!w) return;
+        const id = (w.match(/^[a-z_][\w.]*/) || [''])[0];
+        if (id.length >= 3) out.add(id);
+        const seg = id.split('_'); if (seg.length >= 3) out.add(seg.slice(1).join('_'));   // 접두어(pthread_·gpiod_ …) 뺀 것
+        const words = w.split(/\s+/).filter(x => !/^-/.test(x)); if (words.length >= 2) out.add(words.slice(0, 2).join(' '));
+      });
+      return [...out].filter(k => k.length >= 3);
+    };
+    LK.concepts.forEach(c => {
+      if (home[c.id] !== undefined || !(c.kind === 'func' || c.kind === 'term' || c.sig)) return;
+      const keys = shortKeys(c);
+      const scores = gtext.map(t => keys.reduce((n, k) => n + (t.includes(k) ? k.length : 0), 0));
+      const best = Math.max(...scores);
+      if (best > 0) home[c.id] = scores.indexOf(best);
+    });
+    const fnList = fs => fs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${fs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div>${fnRole(c.def, c.detail)}${fnMore(c.sig, c.def, c.detail)}</div></div>`).join('')}</div>` : '';
+    const termList = ts => ts.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${ts.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : '';
+    const isFn = c => c.sig || c.kind === 'func';
     let h = groups.map((g, gi) => {
       const cs = LK.concepts.filter(c => home[c.id] === gi);
       const normal = g.bullets.filter(b => !/^⚠/.test(b.md.trim())), traps = g.bullets.filter(b => /^⚠/.test(b.md.trim()));
-      const funcs = cs.filter(c => c.sig), terms = cs.filter(c => !c.sig && c.kind === 'term');
+      const funcs = cs.filter(isFn), terms = cs.filter(c => !isFn(c) && c.kind === 'term');
       const usage = [...new Set(cs.flatMap(c => c.usage.map(u => u.line)))];
       const exs = [...new Set([...g.bullets.flatMap(b => b.examples), ...cs.flatMap(c => c.examples)])];
       return `<section class="ccard gcard" id="gc${gi}"><div class="ccard-h"><h3>${mdInline(g.title)}</h3>${codeBtns(exs)}</div>
         ${g.sum ? `<p class="cg-sum">${mdInline(g.sum)}</p>` : ''}
         ${(g.plain || []).map(m => `<div class="gplain">${md(m)}</div>`).join('')}
         ${normal.length ? `<ul class="core-list">${normal.map(b => bulletLi(b, null, true)).join('')}</ul>` : ''}
-        ${funcs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${funcs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div><code class="fsig">${esc(String(c.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>${c.detail ? `<details class="fdet"><summary>인자 · 동작</summary>${detailHtml(c.detail)}</details>` : ''}</div></div>`).join('')}</div>` : ''}
-        ${terms.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${terms.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : ''}
+        ${fnList(funcs)}
+        ${termList(terms)}
         ${usage.length ? `<div class="gsec"><div class="gsec-h">사용형태</div><pre><code data-lang="${esc((cs.find(c => c.usage.length) || { usage: [{ lang: 'c' }] }).usage[0].lang)}">${esc(usage.join('\n'))}</code></pre></div>` : ''}
         ${traps.length ? `<div class="gsec trap"><div class="gsec-h">⚠ 함정</div><ul class="core-list">${traps.map(b => bulletLi(Object.assign({}, b, { md: b.md.replace(/^\s*⚠\s*/, '') }), null, true)).join('')}</ul></div>` : ''}
         ${g.more ? moreBox(g.more) : ''}</section>`;
     }).join('');
-    const rest = LK.concepts.filter(c => home[c.id] === undefined && (c.kind === 'term' || c.sig));
-    if (rest.length) h += `<section class="ccard loose"><h3>그 밖의 용어·함수</h3><dl class="gterms">${rest.map(c => `<div><dt><button type="button" class="cchip ${c.kind}" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def || '')}</dd></div>`).join('')}</dl></section>`;
+    const rest = LK.concepts.filter(c => home[c.id] === undefined && (c.kind === 'term' || isFn(c)));
+    if (rest.length) h += `<section class="ccard gcard loose"><div class="ccard-h"><h3>그 밖의 함수·명령 · 용어</h3></div>${fnList(rest.filter(isFn))}${termList(rest.filter(c => !isFn(c)))}</section>`;
     return h;
   }
   function conceptCards() {
