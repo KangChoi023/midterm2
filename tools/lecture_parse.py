@@ -3,14 +3,14 @@
 
 각 강의 파일은 <section id="secN" class="lesson"> 하나가 N교시다.
 교시 안에서 <h3> 하나가 '강의 토픽'(개념 설명 또는 예제) 한 단위이고,
-<h4 class="fill"> 부터는 빈칸/괄호 문제라서 버린다.
+<h4 class="fill"> 부터는 빈칸/괄호 문제 → 본문에서는 빼고 fills 로 따로 (빈칸에 정답을 채워서).
 
     parse(path) -> [ {n, title, goals, topics:[{id,title,example,html,text,blocks}]} x8 ]
     blocks = [{kind: code|cmd|out, lang, text}]
 
 사용(확인용):  python3 -I lecture_parse.py <lecture.html> [교시]
 """
-import re, html, sys
+import re, html, sys, json
 
 KEEP = {'p', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
         'strong', 'b', 'em', 'i', 'code', 'br', 'blockquote', 'h5', 'h6', 'sup', 'sub', 'kbd'}
@@ -125,8 +125,54 @@ def _name_blocks(h, blocks):
         if f not in seen: seen.append(f)
     return seen, desc
 
+def _answers(s):
+    """강의 페이지 스크립트의 var ANS={"b1-1": [["정답", "다른 표기"…], …], …}"""
+    i = s.find('var ANS=')
+    if i < 0: return {}
+    i += len('var ANS=')
+    try: return json.loads(s[i:s.find(';\n', i)])
+    except ValueError: return {}
+
+def _fill_blanks(h, ans):
+    """<input class="blank" data-q data-i> · <select class="blank"> 자리에 정답(첫 표기)을 <mark class="fa"> 로"""
+    def put(m):
+        q, i = m.group(1), int(m.group(2))
+        a = (ans.get(q) or [])
+        v = a[i][0] if i < len(a) and a[i] else '?'
+        return f'<mark class="fa">{html.escape(v)}</mark>'
+    h = re.sub(r'<input[^>]*class="blank[^"]*"[^>]*data-q="([^"]+)"[^>]*data-i="(\d+)"[^>]*>', put, h)
+    h = re.sub(r'<select[^>]*class="blank[^"]*"[^>]*data-q="([^"]+)"[^>]*data-i="(\d+)"[^>]*>[\s\S]*?</select>', put, h)
+    return h
+
+def fill_items(part, ans):
+    """교시 끝의 ✏️ 빈칸 채우기 · 괄호 넣기 · ▶ 과제 → [{id, title, kind, q(html, 정답 채움), w(해설 html/markdown)}]"""
+    out = []
+    pieces = re.split(r'(<h4[^>]*class="fill"[^>]*>[\s\S]*?</h4>)', part)
+    for k in range(1, len(pieces), 2):
+        hid = (re.search(r'id="([^"]*)"', pieces[k]) or [None, ''])[1]
+        title = _text(pieces[k]).replace('✏️', '').replace('▶', '').strip()
+        body = re.split(r'<hr\s*/?>|</section>', pieces[k + 1])[0]
+        d = re.search(r'<details>\s*<summary[^>]*>[\s\S]*?</summary>([\s\S]*?)</details>', body)
+        q = body[:d.start()] if d else body
+        w = d.group(1) if d else ''
+        has_blank = 'class="blank' in q
+        q = re.sub(r'<div class="qbar">[\s\S]*?</div>', '', q)
+        q = re.sub(r'</?span[^>]*>', '', _fill_blanks(q, ans))
+        q = re.sub(r'<pre[^>]*>\s*<code[^>]*>', '<pre class="fillpre"><code data-hl="1">', q)   # 코드 강조가 <mark> 를 지우지 않게
+        if has_blank:                                  # 문제에 정답을 채웠으니 정답 코드 · 정답 번호 목록은 빼고 해설만
+            w = re.sub(r'<div class="hl">[\s\S]*?</div>', '', w)
+            w = re.sub(r'<ol>[\s\S]*?</ol>', '', w)
+            w = re.sub(r'(?m)^\s*\d+\.\s.*\n?', '', w)
+        w = re.sub(r'</?span[^>]*>', '', w).strip()
+        w = re.sub(r'<pre[^>]*>\s*<code[^>]*>', '<pre class="fillpre"><code>', w)
+        kind = 'blank' if '빈칸' in title else 'paren' if '괄호' in title else 'task'
+        text = re.sub(r'\s+', ' ', _text(q + ' ' + w)).strip()
+        out.append({'id': hid, 'title': title, 'kind': kind, 'q': q.strip(), 'w': w, 'text': text})
+    return out
+
 def parse(path):
     s = open(path, encoding='utf8').read()
+    ANS = _answers(s)
     out = []
     for n in range(1, 9):
         i = s.find(f'<section id="sec{n}"')
@@ -135,6 +181,7 @@ def parse(path):
         sec = s[i:j if j > 0 else len(s)]
         sec = sec[:sec.index('</section>')] if '</section>' in sec else sec
         m = re.search(r'<h4[^>]*class="fill"', sec)
+        fills = fill_items(sec[m.start():], ANS) if m else []
         if m: sec = sec[:m.start()]
         h1 = re.search(r'<h1[^>]*>(.*?)</h1>', sec, re.S)
         title = _text(h1.group(1)).strip() if h1 else f'{n}교시'
@@ -165,7 +212,7 @@ def parse(path):
             files, desc = _name_blocks(h, blocks)
             topics.append({'id': len(topics), 'title': t, 'example': '예제' in t,
                            'html': h, 'text': plain, 'blocks': blocks, 'files': files, 'desc': desc})
-        out.append({'n': n, 'title': title, 'goals': goals, 'topics': topics})
+        out.append({'n': n, 'title': title, 'goals': goals, 'topics': topics, 'fills': fills})
     return out
 
 def fig_label(fig):

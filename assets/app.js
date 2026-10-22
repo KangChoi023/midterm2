@@ -15,8 +15,8 @@
   const SUBJ = IDX.subjects;
   const SORDER = Object.fromEntries(SUBJ.map((s, i) => [s.id, i]));
   const sById = id => SUBJ.find(s => s.id === id);
-  const KIND = { term: '용어', func: '함수·명령', kw: '키워드', note: '정리 노트', topic: '강의 개념', code: '예제 코드', quiz: '문항' };
-  const KIND_W = { term: 40, func: 34, kw: 20, note: 14, topic: 12, code: 4, quiz: 0 };
+  const KIND = { term: '용어', func: '함수·명령', kw: '키워드', note: '정리 노트', topic: '강의 개념', code: '예제 코드', fill: '빈칸·괄호', quiz: '문항' };
+  const KIND_W = { term: 40, func: 34, kw: 20, note: 14, topic: 12, fill: 6, code: 4, quiz: 0 };
 
   /* ---------- 유틸 ---------- */
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1005,7 +1005,7 @@
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a><a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
@@ -1017,6 +1017,13 @@
     h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
     h += '</section>';
 
+    const fills = L.fills || [];
+    if (fills.length) {
+      h += `<section class="part" id="fills"><h2>빈칸 · 괄호 <small>강의 연습 ${fills.length}개 — 정답을 채워 둔 상태 (형광펜 = 빈칸이던 자리)</small></h2>
+        <div class="tools-row"><button class="btn" data-all="fills">모두 펼치기</button></div>`;
+      h += fills.map((f, i) => `<details class="box fillbox" id="F${i}"><summary><span class="fk ${f.k}">${{ blank: '빈칸', paren: '괄호', task: '과제' }[f.k] || '연습'}</span><span class="t">${esc(f.t)}</span></summary><div class="in fill-body">${f.q}${f.w ? `<div class="fill-w">${md(f.w)}</div>` : ''}</div></details>`).join('');
+      h += '</section>';
+    }
     h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => /^review/.test(q.src || '')).length; return `worksheet ${L.quiz.length - r}문항${r ? ` · 복습 퀴즈 ${r}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
       <div class="tools-row"><button class="btn" data-reveal>정답 모두 보기</button></div>`;
     h += L.quiz.map((q, i) => quizCard(q, i, `${s}|${d}|${n}|${i}`)).join('') || '<div class="empty">문항이 없습니다.</div>';

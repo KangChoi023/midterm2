@@ -595,3 +595,15 @@ details.guide ol { margin: 0; padding: 0 8px 8px 30px; display: grid; gap: 2px; 
 .btn.ghost { background: none; color: var(--ink-3); }
 .ans-l { margin: 6px 0 6px; padding-left: 22px; } .ans-l li { margin: 2px 0; }
 @media (max-width: 600px) { .mt-row { grid-template-columns: 1fr; } .mt-ar { display: none; } }
+
+/* 강의 빈칸 · 괄호 (정답 채움) */
+.fillbox summary { display: flex; align-items: center; gap: 8px; }
+.fk { flex: none; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 0 6px; background: var(--accent-soft); color: var(--accent); }
+.fk.paren { background: color-mix(in srgb, #7c3aed 14%, transparent); color: #7c3aed; }
+.fk.task { background: color-mix(in srgb, #d97706 14%, transparent); color: #b45309; }
+.fill-body pre.fillpre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; color: var(--code-ink); line-height: 1.55; }
+.fill-body pre.fillpre code { font-size: 13px; background: none; padding: 0; }
+mark.fa { background: color-mix(in srgb, #facc15 45%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; font-weight: 700; }
+.fill-body ol { padding-left: 22px; } .fill-body ol li { margin: 4px 0; }
+.fill-w { margin-top: 8px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel-2); border-radius: 0 8px 8px 0; font-size: 14.5px; }
+.fill-w p { margin: 4px 0; }

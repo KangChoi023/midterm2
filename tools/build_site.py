@@ -317,6 +317,7 @@ def build_subject(cfg, index):
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
                    'keywords': kws, 'topics': topics, 'quiz': quiz,
+                   'fills': [{'t': x['title'], 'k': x['kind'], 'q': x['q'], 'w': x['w']} for x in (L['fills'] if L else [])],
                    'anim': f'{anim}#l{n}' if anim else ''}
             D['lessons'].append(S_l)
             dm['lessons'].append({'n': n, 'title': title, 'status': status, 'nq': len(quiz),
@@ -342,6 +343,8 @@ def build_subject(cfg, index):
             for qi, q in enumerate(quiz):
                 body = ' '.join([q.get('p', ''), q.get('c', '') or '', ' '.join(q.get('o') or []), q.get('w', '')])
                 index['search'].append(loc + ['quiz', f'q{qi}', f'Q{qi + 1}', re.sub(r'<[^>]+>', '', body)])
+            for fi, x in enumerate(L['fills'] if L else []):
+                index['search'].append(loc + ['fill', f'F{fi}', x['title'], x['text']])
         # ④ 그래도 그림이 없는 '코드가 있는' 예제: 같은 Day 앞 교시의 가장 가까운 그림 (보드를 이어서 쓰는 경우)
         last = None
         for ln, tps, _ in pending_code:
