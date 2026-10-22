@@ -9,7 +9,7 @@
     data/index.js   과목·Day·교시 목차, 검색 색인, 용어/함수/연결 사전
     data/<id>.js    과목별 교시 본문(노트 섹션, 강의 토픽, 예제 코드, 문항)
 """
-import os, re, sys, json, datetime
+import os, re, sys, json, datetime, html as htmlmod
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import wsparse, lecture_parse
@@ -197,6 +197,19 @@ def code_index(sid, d, n, topics, sections):
         out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0, len(tp.get('guide', []))])
     return out
 
+def review_quiz(sid, d, n):
+    """summary/.src/review_quiz.json (tools/reviewquiz.py 가 만듦) 에서 이 교시 문항 → quiz 형식"""
+    out = []
+    for q in REVIEW.get(sid, {}).get(str(d), []):
+        if q.get('n') != n or q.get('a') is None: continue
+        w = re.sub(r'^\s*(정답입니다\.|정답:\s*[①②③④⑤]?[^—]*—)\s*', '', q.get('w', ''))
+        w = re.sub(r'\s*\[복습:[^\]]*\]\s*$', '', w).strip()
+        item = {'ty': 'mc', 'p': htmlmod.escape(q['p']), 'o': q['o'], 'a': q['a'], 'w': htmlmod.escape(w), 'src': 'review'}
+        if q.get('c'): item['c'] = q['c']
+        out.append(item)
+    return out
+
+
 def load_json(name):
     """name.json 과 name.*.json (Day 별로 나눠 쓴 파일) 을 모두 합친다. 키가 겹치면 뒤 파일이 이김."""
     import glob
@@ -209,6 +222,7 @@ def load_json(name):
     return out
 
 API = {}      # api_detail.json  (main 에서 읽음)
+REVIEW = {}   # review_quiz.json (복습 퀴즈, main 에서 읽음)
 GUIDE = {}    # code_guide.json
 
 def api_detail(name):
@@ -295,7 +309,8 @@ def build_subject(cfg, index):
                 if s['key'] == 'kw': kws += parse_kw(s['md'])
                 if s['key'] == 'links': links += parse_links(s['md'])
             status = 'done' if N else 'todo'
-            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps') if q.get(k) is not None} for q in Q]
+            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps', 'src') if q.get(k) is not None} for q in Q]
+            quiz += review_quiz(sid, d, n)                         # 복습 퀴즈는 worksheet 문항 뒤에 (오답 기록 번호 유지)
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)
             attach_guides(sid, d, topics, n)
@@ -357,6 +372,9 @@ def copy_anim(cfg, d):
 def main():
     global API, GUIDE
     API, GUIDE = load_json('api_detail.json'), load_json('code_guide.json')
+    global REVIEW
+    rq = os.path.join(NOTES, 'review_quiz.json')
+    REVIEW = json.load(open(rq, encoding='utf8')) if os.path.exists(rq) else {}
     want = [a.lower() for a in sys.argv[1:]]
     index = {'built': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), 'subjects': [],
              'search': [], 'terms': [], 'funcs': [], 'links': [], 'code': []}

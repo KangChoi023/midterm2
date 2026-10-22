@@ -897,8 +897,9 @@
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
     const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ' }[ty] || '';
-    let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${tag}${q.p}</div>`;
-    if (q.c) h += `<div class="q-body"><pre><code data-lang="c">${esc(q.c)}</code></pre></div>`;
+    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : '';
+    let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
+    if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
     if (ty === 'mc' || ty === 'multi') h += '<div class="opts">' + q.o.map((o, k) => `<button type="button" class="opt" data-k="${k}">${'①②③④⑤⑥⑦⑧'[k]} ${esc(o)}</button>`).join('') + '</div>' + (ty === 'multi' ? '<button class="btn" data-check>채점</button>' : '');
     else if (ty === 'ox') h += '<div class="opts" style="grid-template-columns:1fr 1fr"><button class="opt" data-k="1">O (참)</button><button class="opt" data-k="0">X (거짓)</button></div>';
     else if (ty === 'match') h += `<div class="q-list">왼쪽: ${q.left.map(esc).join(' / ')}<br>오른쪽: ${q.right.map(esc).join(' / ')}</div><button class="btn" data-show>정답 보기</button>`;
@@ -976,7 +977,7 @@
     h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
     h += '</section>';
 
-    h += `<section class="part" id="quiz"><h2>연관 문제 <small>worksheet ${L.quiz.length}문항 — 보기를 누르면 채점</small></h2>
+    h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => q.src === 'review').length; return `worksheet ${L.quiz.length - r}문항${r ? ` · 복습 퀴즈 ${r}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
       <div class="tools-row"><button class="btn" data-reveal>정답 모두 보기</button></div>`;
     h += L.quiz.map((q, i) => quizCard(q, i, `${s}|${d}|${n}|${i}`)).join('') || '<div class="empty">문항이 없습니다.</div>';
     h += '</section>';
