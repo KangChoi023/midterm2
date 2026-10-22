@@ -555,15 +555,9 @@
     const row = (k, v) => v ? `<div class="apid-row"><span class="k">${k}</span><span>${mdInline(v)}</span></div>` : '';
     return `<div class="apid">${noRole ? '' : row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
   }
-  /* 함수·명령 한 줄: 보이는 것은 이름 + 역할, "인자 · 동작" 을 펼치면 기본형 · 노트 설명 · 인자 · 동작 · 반환 */
-  const sigText = sig => String(sig || '').replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, '').trim();
-  const hasSig = sig => sig && !/^[—–-]?$/.test(sigText(sig));
+  /* 함수·명령 한 줄: 이름 + 역할만 (기본형 · 인자 · 동작은 이름을 누르면 옆 패널에) */
   function fnRole(use, det) { return det && det.role ? `<span class="frole">${esc(det.role)}</span>` : `<span class="frole">${mdInline(use || '')}</span>`; }
-  function fnMore(sig, use, det) {
-    const inner = (hasSig(sig) ? `<code class="fsig">${esc(sigText(sig))}</code>` : '') +
-      (det && det.role && use ? `<div class="fnote">${mdInline(use)}</div>` : '') + (det ? detailHtml(det, true) : '');
-    return inner ? `<details class="fdet"><summary>${det ? '인자 · 동작' : '기본형'}</summary>${inner}</details>` : '';
-  }
+
   function countBtn(c) {
     const parts = [c.bullets.length && `핵심 ${c.bullets.length}`, c.usage.length && `사용형태 ${c.usage.length}`, c.examples.length && `예제 ${c.examples.length}`, c.quiz.length && `문항 ${c.quiz.length}`].filter(Boolean);
     return parts.length ? `<button type="button" class="cnt" data-peek-c="${c.id}">${parts.join(' · ')} ›</button>` : '';
@@ -651,7 +645,7 @@
       body = '<table class="ftab"><thead><tr><th>이름</th><th>역할</th></tr></thead><tbody>' +
         L.funcs.slice(s.f0, s.f0 + s.fn).map((f, i) => {
           const id = 'f' + (s.f0 + i);
-          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button></td><td>${fnRole(f.use, f.detail)}${fnMore(f.sig, f.use, f.detail)}</td></tr>`;
+          return `<tr id="${id}"><td class="fcell"><button type="button" class="fname" data-peek-c="${cid(id)}">${esc(f.name)}</button></td><td>${fnRole(f.use, f.detail)}</td></tr>`;
         }).join('') + '</tbody></table>' + md(s.rest);
     } else if (s.key === 'core' && LS.blocks) body = coreHtml(LS);
     else if (s.key === 'examples' && LS.rows) body = examplesTable(LS);
@@ -698,7 +692,7 @@
       const best = Math.max(...scores);
       if (best > 0) home[c.id] = scores.indexOf(best);
     });
-    const fnList = fs => fs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${fs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div>${fnRole(c.def, c.detail)}${fnMore(c.sig, c.def, c.detail)}</div></div>`).join('')}</div>` : '';
+    const fnList = fs => fs.length ? `<div class="gsec"><div class="gsec-h">함수·명령</div>${fs.map(c => `<div class="gfn"><button type="button" class="fname" data-peek-c="${c.id}">${esc(c.name)}</button><div>${fnRole(c.def, c.detail)}</div></div>`).join('')}</div>` : '';
     const termList = ts => ts.length ? `<div class="gsec"><div class="gsec-h">용어</div><dl class="gterms">${ts.map(c => `<div><dt><button type="button" class="cchip" data-peek-c="${c.id}">${esc(shortName(c))}</button></dt><dd>${mdInline(c.def)}</dd></div>`).join('')}</dl></div>` : '';
     const isFn = c => c.sig || c.kind === 'func';
     let h = groups.map((g, gi) => {
