@@ -168,7 +168,9 @@
       if (!hits.length) h += `<div class="dict-empty">없습니다. <a href="#/search?q=${encodeURIComponent(v)}">전체 검색 →</a></div>`;
     }
     box.innerHTML = h;
-    if (words.length === 1 && box.querySelectorAll('.dent').length === 1) box.querySelector('.dent').open = true;   // 하나뿐이면 바로 펼침
+    const ds = box.querySelectorAll('.dent');                                  // 하나뿐이거나 이름이 그대로 맞으면 바로 펼침
+    const exact = [...ds].find(x => DICT[+x.dataset.i].nameLo === v);
+    if (exact) exact.open = true; else if (words.length === 1 && ds.length === 1) ds[0].open = true;
   }
   /* ---------- 오른쪽 패널: 📖 사전 | 💻 코드 (열림·탭 상태 기억) ---------- */
   const dictPanel = $('#dictPanel'), sideCode = $('#sideCode');
@@ -875,8 +877,10 @@
   async function renderLesson(s, d, n, params) {
     const S = sById(s); if (!S) return notFound();
     main.innerHTML = '<div class="empty">불러오는 중…</div>';
+    const my = ROUTE_N;
     let data;
-    try { data = await loadSubject(s); } catch (e) { main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    try { data = await loadSubject(s); } catch (e) { if (my === ROUTE_N) main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    if (my !== ROUTE_N) return;
     const D = data.days.find(x => x.n === d); const L = D && D.lessons.find(x => x.n === n);
     if (!L) return notFound();
     const exTopics = L.topics.filter(t => t.blocks.some(b => b.kind !== 'out'));
@@ -1171,9 +1175,11 @@
     store.set('wrong', wrong);
   }
   async function renderQuiz(params) {
-    const s = params.get('s') || 'c', dsel = params.get('d') || 'all', mode = params.get('m') || 'rand';
+    const s = sById(params.get('s')) ? params.get('s') : 'c', dsel = params.get('d') || 'all', mode = params.get('m') || 'rand';
     main.innerHTML = '<div class="empty">문항 불러오는 중…</div>';
-    let data; try { data = await loadSubject(s); } catch (e) { main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    const my = ROUTE_N;
+    let data; try { data = await loadSubject(s); } catch (e) { if (my === ROUTE_N) main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    if (my !== ROUTE_N) return;
     const wrong = store.get('wrong', {});
     let pool = [];
     data.days.forEach(D => D.lessons.forEach(L => {
@@ -1204,7 +1210,9 @@
   function notFound() { main.innerHTML = '<div class="empty">페이지를 찾지 못했습니다. <a href="#/">홈으로</a></div>'; }
 
   /* ---------- 라우터 ---------- */
+  let ROUTE_N = 0;                                                             // 늦게 끝난 이전 페이지가 화면을 덮어쓰지 않게
   function route() {
+    ROUTE_N++;
     const raw = location.hash.replace(/^#/, '') || '/';
     const [path, qs] = raw.split('?'); const params = new URLSearchParams(qs || '');
     const seg = path.split('/').filter(Boolean);

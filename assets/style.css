@@ -30,7 +30,7 @@
 
 * { box-sizing: border-box; }
 html { scroll-padding-top: calc(var(--top-h) + 16px); }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.7 var(--sans); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.7 var(--sans); -webkit-text-size-adjust: 100%; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }   /* 합자 끔: -> |= == 가 화살표·기호로 합쳐 보이지 않게 */
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, pre, kbd { font-family: var(--mono); font-size: .88em; }
