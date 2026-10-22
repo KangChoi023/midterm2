@@ -18,7 +18,7 @@ const T = {
       for (const v of ['flow', 'concept']) { const b = $('[data-view="' + v + '"]'); if (b) { click(b); await sleep(15); if (!$('#notes-body') || !$('#notes-body').children.length) P('empty ' + v + ' ' + location.hash); } }
       const kw = $('.kwc'); if (kw) { click(kw); await sleep(5); click($('[data-kwnav="0"]')); }
       const c = $('#notes-body [data-peek-c]'); if (c) { click(c); await sleep(5); if ($('#peek').hidden) P('peek ' + location.hash); click($('[data-pk-close]')); }
-      for (const q of $$('#quiz .q')) { const o = $('.opt', q); if (o) { click(o); if ($('.q-ans', q).hidden) P('quiz answer ' + location.hash + ' ' + q.id); } }
+      for (const q of $$('#quiz .q')) { if ($('[data-check], [data-show]', q)) continue; const o = $('.opt', q); if (o) { click(o); if ($('.q-ans', q).hidden) P('quiz answer ' + location.hash + ' ' + q.id); } }
     }
     out.n = n; return out;`,
   code: `

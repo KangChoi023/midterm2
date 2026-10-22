@@ -66,6 +66,16 @@ C → LINUX → MCU → Embedded IO 시험 대비 정리 위키.
 
 빌드 때 가이드의 at/to 를 못 찾으면 `! 코드 가이드 단계 못 찾음` 경고가 뜬다.
 
+## 복습 퀴즈 (Google 설문지)
+
+```bash
+python3 -I tools/reviewquiz.py "<복습퀴즈 폴더>"   # 저장한 .html → summary/.src/review_quiz.json
+python3 -I tools/build_site.py
+```
+- 채점 결과 화면을 저장한 파일은 **공식 정답 · 해설 · 교시**(`[복습: D2-3 …]`)를 그대로 쓴다 → 배지 `복습`
+- 채점 전 화면(정답 없음)은 `summary/.src/review_quiz_answers.<과목><Day>.json` 의 `[교시, 정답 번호(0부터), 해설]` 로 채운다 → 배지 `복습 · 위키 풀이` (공식 아님)
+- 교시 문항은 worksheet 뒤에 붙는다 (오답 기록 번호 유지)
+
 ## 빌드
 
 ```bash

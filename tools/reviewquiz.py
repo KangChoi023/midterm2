@@ -4,7 +4,8 @@
 
 문항·코드·보기는 페이지 안의 FB_PUBLIC_LOAD_DATA_ 에서, 정답·해설은 채점 결과 화면 글자에서 읽는다.
 교시는 해설 끝의 "[복습: D2-3 …]" · "[복습: 4교시 4-2]" · "[복습: 빈칸 7-1]" 표시로 정한다.
-채점 전 화면(정답 없음)은 건너뛰고 이름만 보고한다.
+채점 전 화면(정답 없음)은 summary/.src/review_quiz_answers*.json 의 풀이 [교시, 정답 번호(0부터), 해설] 를
+같은 순서로 붙이고 by="wiki" 로 표시한다 (공식 정답이 아님). 풀이가 없으면 건너뛴다.
 """
 import html, json, os, re, sys
 
@@ -45,7 +46,9 @@ def parse(path):
     sid = next((v for p, v in SUBJ if re.search(p, name)), None)
     day = int(re.search(r'Day\s*(\d+)', name).group(1))
     items, lines = fb_items(s), text_lines(s)
-    if '맞음' not in lines and '정답' not in lines: return sid, day, None
+    if '맞음' not in lines and '정답' not in lines:                 # 채점 전 화면: 문항만
+        return sid, day, [{'n': None, 'p': re.sub(r'^\d+\.\s*', '', q['title']), 'c': q['code'] or None,
+                           'o': q['opts'], 'a': None, 'w': '', 'by': 'wiki'} for q in items]
     norm = lambda x: re.sub(r'\s+', ' ', x).strip()
     starts = []
     for q in items:
@@ -68,16 +71,29 @@ def parse(path):
     return sid, day, out
 
 
+def load_answers():
+    import glob
+    ans = {}
+    for f in sorted(glob.glob(os.path.join(os.path.dirname(OUT), 'review_quiz_answers*.json'))):
+        for sid, days in json.load(open(f)).items():
+            for d, rows in days.items(): ans.setdefault(sid, {})[d] = rows
+    return ans
+
+
 def main(folder):
     data = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    ANS = load_answers()
     for f in sorted(os.listdir(folder)):
         if not f.endswith('.html'): continue
         sid, day, qs = parse(os.path.join(folder, f))
-        if qs is None:
-            print(f'  - 정답 없음(채점 전 화면) 건너뜀: {f}'); continue
+        if qs and qs[0].get('by') == 'wiki':
+            rows = ANS.get(sid, {}).get(str(day))
+            if not rows or len(rows) != len(qs):
+                print(f'  - 정답 없음(채점 전 화면), 풀이 파일도 없음 → 건너뜀: {f}'); continue
+            for q, (n, a, w) in zip(qs, rows): q.update(n=n, a=a, w=w)
         bad = [i + 1 for i, q in enumerate(qs) if q['a'] is None or q['n'] is None]
         data.setdefault(sid, {})[str(day)] = qs
-        print(f'  {sid} D{day}: {len(qs)}문항' + (f'  ! 정답/교시 못 찾음: {bad}' if bad else ''))
+        print(f'  {sid} D{day}: {len(qs)}문항' + (' (위키 풀이)' if qs[0].get('by') else '') + (f'  ! 정답/교시 못 찾음: {bad}' if bad else ''))
     json.dump(data, open(OUT, 'w'), ensure_ascii=False, indent=1)
     print('→', OUT)
 

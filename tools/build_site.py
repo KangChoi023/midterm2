@@ -204,7 +204,7 @@ def review_quiz(sid, d, n):
         if q.get('n') != n or q.get('a') is None: continue
         w = re.sub(r'^\s*(정답입니다\.|정답:\s*[①②③④⑤]?[^—]*—)\s*', '', q.get('w', ''))
         w = re.sub(r'\s*\[복습:[^\]]*\]\s*$', '', w).strip()
-        item = {'ty': 'mc', 'p': htmlmod.escape(q['p']), 'o': q['o'], 'a': q['a'], 'w': htmlmod.escape(w), 'src': 'review'}
+        item = {'ty': 'mc', 'p': htmlmod.escape(q['p']), 'o': q['o'], 'a': q['a'], 'w': htmlmod.escape(w), 'src': 'review-wiki' if q.get('by') == 'wiki' else 'review'}
         if q.get('c'): item['c'] = q['c']
         out.append(item)
     return out

@@ -897,7 +897,7 @@
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
     const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ' }[ty] || '';
-    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : '';
+    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 위키에서 푼 정답·해설 (공식 아님)">복습 · 위키 풀이</span>' : '';
     let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
     if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
     if (ty === 'mc' || ty === 'multi') h += '<div class="opts">' + q.o.map((o, k) => `<button type="button" class="opt" data-k="${k}">${'①②③④⑤⑥⑦⑧'[k]} ${esc(o)}</button>`).join('') + '</div>' + (ty === 'multi' ? '<button class="btn" data-check>채점</button>' : '');
@@ -977,7 +977,7 @@
     h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
     h += '</section>';
 
-    h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => q.src === 'review').length; return `worksheet ${L.quiz.length - r}문항${r ? ` · 복습 퀴즈 ${r}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
+    h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => /^review/.test(q.src || '')).length; return `worksheet ${L.quiz.length - r}문항${r ? ` · 복습 퀴즈 ${r}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
       <div class="tools-row"><button class="btn" data-reveal>정답 모두 보기</button></div>`;
     h += L.quiz.map((q, i) => quizCard(q, i, `${s}|${d}|${n}|${i}`)).join('') || '<div class="empty">문항이 없습니다.</div>';
     h += '</section>';
