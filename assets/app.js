@@ -331,35 +331,79 @@
     const v = +n.dataset.hlnav; if (v === 0) codeHlClear(); else codeHlGo(CODEHL.i + v);
   });
 
-  /* 🧭 코드 읽기 가이드 (summary/.src/code_guide.json → 빌드 때 줄 범위로): 단계를 누르면 그 줄들에 띠 */
-  let CODEGUIDE = [];
+  /* 🧭 코드 읽기 가이드 (summary/.src/code_guide*.json → 빌드 때 줄 범위로)
+   * 단계마다 그 줄들을 미리 색칠해 두고, 칠해진 곳을 누르면 블록 바로 아래에 작은 설명 팝업 — 코드와 설명을 한 화면에 */
+  let CODEGUIDE = [], GPOP = -1;
   function guideHtml(t) {
     const g = t.guide || []; if (!g.length) return '';
     const multi = new Set(g.map(x => x.b)).size > 1;
-    return `<details class="guide" open><summary>🧭 코드 읽기 가이드 <small>${g.length}단계 · 누르면 코드에서 표시</small></summary><ol>${g.map((x, i) =>
-      `<li><button type="button" class="gstep" data-gi="${i}"><span class="gt">${esc(x.t)}</span><span class="gl">${multi && t.blocks[x.b].file ? esc(t.blocks[x.b].file) + ' ' : ''}${x.from + 1}${x.to > x.from ? '–' + (x.to + 1) : ''}줄</span><span class="gd">${mdInline(x.d)}</span></button></li>`).join('')}</ol></details>`;
+    return `<details class="guide"><summary>🧭 코드 읽기 가이드 <small>${g.length}단계 · 코드에서 색칠된 줄을 누르면 설명</small></summary><ol>${g.map((x, i) =>
+      `<li><button type="button" class="gstep" data-gi="${i}"><span class="gt">${esc(x.t)}</span><span class="gl">${multi && t.blocks[x.b].file ? esc(t.blocks[x.b].file) + ' ' : ''}${x.from + 1}${x.to > x.from ? '–' + (x.to + 1) : ''}줄</span></button></li>`).join('')}</ol></details>`;
   }
-  function guideShow(i) {
-    $$('.gband', sideCode).forEach(x => x.remove());
-    $$('.gstep.on', sideCode).forEach(x => x.classList.remove('on'));
-    const g = CODEGUIDE[i]; if (!g) return;
-    const pre = $(`.cb[data-bi="${g.b}"] pre`, sideCode); if (!pre) return;
-    $(`.gstep[data-gi="${i}"]`, sideCode).classList.add('on');
-    // 실제 그려진 코드 높이 ÷ 줄 수 = 줄 높이 (글꼴 계산과 화면이 어긋나지 않게)
+  const guideLines = (t, x) => `${t.blocks[x.b] && t.blocks[x.b].file && new Set(CODEGUIDE.map(y => y.b)).size > 1 ? esc(t.blocks[x.b].file) + ' ' : ''}${x.from + 1}${x.to > x.from ? '–' + (x.to + 1) : ''}줄`;
+  // 그려진 코드 높이 ÷ 줄 수 = 줄 높이 (글꼴 계산과 화면이 어긋나지 않게)
+  function preMetrics(pre) {
     const code = $('code', pre);
-    const nLines = code.textContent.replace(/\n$/, '').split('\n').length;
+    const n = code.textContent.replace(/\n$/, '').split('\n').length;
     const cr = code.getBoundingClientRect(), pr = pre.getBoundingClientRect();
-    const lh = cr.height / nLines, top0 = cr.top - pr.top + pre.scrollTop;
-    const band = document.createElement('div'); band.className = 'gband';
-    band.style.top = (top0 + g.from * lh - 1) + 'px';
-    band.style.height = ((g.to - g.from + 1) * lh + 2) + 'px';
-    band.style.width = pre.scrollWidth + 'px';
-    band.innerHTML = `<span>${i + 1}. ${esc(g.t)}</span>`;
-    pre.appendChild(band);
-    const box = sideCode.getBoundingClientRect(), r = band.getBoundingClientRect();
-    sideCode.scrollTop += r.top - box.top - box.height * 0.28;
+    return { lh: cr.height / n, top0: cr.top - pr.top + pre.scrollTop, n };
   }
-  document.addEventListener('click', e => { const b = e.target.closest('#sideCode .gstep'); if (b) guideShow(+b.dataset.gi); });
+  function guideDraw() {
+    $$('.gband', sideCode).forEach(x => x.remove());
+    CODEGUIDE.forEach((g, i) => {
+      const pre = $(`.cb[data-bi="${g.b}"] pre`, sideCode); if (!pre) return;
+      pre.classList.add('has-guide');
+      const { lh, top0 } = preMetrics(pre);
+      const band = document.createElement('div');
+      band.className = `gband g${i % 2}${i === GPOP ? ' on' : ''}`; band.dataset.gi = i;
+      band.style.top = (top0 + g.from * lh) + 'px';
+      band.style.height = ((g.to - g.from + 1) * lh) + 'px';
+      band.style.width = pre.scrollWidth + 'px';
+      band.innerHTML = `<span class="gnum">${i + 1}</span>`;
+      pre.appendChild(band);
+    });
+  }
+  function guidePopClose() {
+    GPOP = -1;
+    $$('.gpop', sideCode).forEach(x => x.remove());
+    $$('.gband.on, .gstep.on', sideCode).forEach(x => x.classList.remove('on'));
+    $$('.cb.pop-on', sideCode).forEach(x => x.classList.remove('pop-on'));
+  }
+  function guidePop(i, scroll) {
+    const g = CODEGUIDE[i]; if (!g) return guidePopClose();
+    guidePopClose(); GPOP = i;
+    const cb = $(`.cb[data-bi="${g.b}"]`, sideCode), pre = cb && $('pre', cb), band = pre && $(`.gband[data-gi="${i}"]`, pre);
+    if (!band) return;
+    band.classList.add('on');
+    const st = $(`.gstep[data-gi="${i}"]`, sideCode); if (st) st.classList.add('on');
+    const pop = document.createElement('div'); pop.className = 'gpop'; pop.setAttribute('role', 'dialog');
+    pop.innerHTML = `<div class="gpop-h"><b>${i + 1}. ${esc(g.t)}</b><span class="gl">${guideLines(CODECTX && CODECTX.L.topics[CODE.tid] || { blocks: [] }, g)}</span><span class="sp"></span>
+      <button type="button" class="icon-btn sm" data-gpop="-1" aria-label="이전 단계" ${i ? '' : 'disabled'}>‹</button><span class="gpos">${i + 1}/${CODEGUIDE.length}</span><button type="button" class="icon-btn sm" data-gpop="1" aria-label="다음 단계" ${i < CODEGUIDE.length - 1 ? '' : 'disabled'}>›</button><button type="button" class="icon-btn sm" data-gpop="0" aria-label="닫기">✕</button></div>${g.d ? `<div class="gpop-d">${mdInline(g.d)}</div>` : ''}`;
+    cb.classList.add('pop-on');
+    pop.style.top = (pre.offsetTop + band.offsetTop + band.offsetHeight + 6) + 'px';   // 그 단계 마지막 줄 바로 아래
+    cb.appendChild(pop);
+    if (scroll) {                                                            // 띠와 팝업이 패널 안에 함께 보이게
+      const box = sideCode.getBoundingClientRect(), b = band.getBoundingClientRect(), p = pop.getBoundingClientRect();
+      if (b.top < box.top + 60 || p.bottom > box.bottom) sideCode.scrollTop += Math.min(b.top - box.top - 70, p.bottom - box.bottom + 16 > 0 ? p.bottom - box.bottom + 16 : b.top - box.top - 70);
+    }
+  }
+  document.addEventListener('click', e => {
+    if (!sideCode.contains(e.target)) return;
+    const nav = e.target.closest('[data-gpop]');
+    if (nav) { const v = +nav.dataset.gpop; return v === 0 ? guidePopClose() : guidePop(GPOP + v, true); }
+    const st = e.target.closest('.gstep'); if (st) return guidePop(+st.dataset.gi, true);
+    if (e.target.closest('.gpop')) return;
+    const pre = e.target.closest('.cb[data-bi] pre.has-guide');
+    if (pre && !String(window.getSelection() || '')) {                    // 드래그로 코드를 고를 때는 열지 않음
+      const bi = +pre.parentElement.dataset.bi, { lh, top0 } = preMetrics(pre);
+      const line = Math.floor((e.clientY - pre.getBoundingClientRect().top + pre.scrollTop - top0) / lh);
+      const i = CODEGUIDE.findIndex(g => g.b === bi && line >= g.from && line <= g.to);
+      if (i >= 0) return i === GPOP ? guidePopClose() : guidePop(i, false);
+    }
+    if (GPOP >= 0 && !e.target.closest('[data-hlc], [data-hl-word], [data-hlnav]')) guidePopClose();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && GPOP >= 0) guidePopClose(); });
+  window.addEventListener('resize', () => { if (CODEGUIDE.length && !sideCode.hidden) { const k = GPOP; guideDraw(); if (k >= 0) guidePop(k); } });
 
   let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
   async function codeDetail() {
@@ -391,8 +435,9 @@
       ${figsHtml(t, ctx)}
       ${guideHtml(t)}
       ${exampleBody(t)}`;
-    CODEGUIDE = t.guide || [];
+    CODEGUIDE = t.guide || []; GPOP = -1;
     highlightIn(sideCode);
+    if (CODEGUIDE.length) requestAnimationFrame(guideDraw);              // 글꼴·강조가 그려진 뒤 줄 높이를 잰다
   }
 
   /* ---------- 홈 ---------- */

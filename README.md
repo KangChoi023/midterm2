@@ -56,7 +56,7 @@ C → LINUX → MCU → Embedded IO 시험 대비 정리 위키.
 | 파일 | 형식 | 화면 |
 |---|---|---|
 | `api_detail.json` | `"sched_getaffinity": {role, args: [[인자, 한글 뜻]…], flow, ret, hdr}` — 키는 함수 표 이름 그대로 · 첫 낱말 · 괄호 앞 식별자 | 사전 항목, 교시 함수 표 '인자 · 동작', 큰 개념 카드, 용어 패널 |
-| `code_guide.json` | `"linux/2/04_affinity.c": [{at, to, t, d}…]` — at/to = 블록 첫·끝 줄에 들어 있는 글자 | 💻 코드 패널 '🧭 코드 읽기 가이드', 단계를 누르면 그 줄들에 띠 |
+| `code_guide.json` | `"linux/2/04_affinity.c": [{at, to, t, d}…]` — at/to = 블록 첫·끝 줄에 들어 있는 글자 | 💻 코드 패널: 단계마다 그 줄들을 미리 색칠, 칠해진 곳을 누르면 블록 아래에 설명 팝업 (위 '🧭 코드 읽기 가이드' 는 접힌 단계 목록) |
 
 - 두 파일 모두 `api_detail.mcu3.json` · `code_guide.eio4.json` 처럼 **나눠 써도 된다** (`이름.*.json` 을 전부 합침, 키 `_설명` 만 무시).
 - 같은 Day 에 같은 파일 이름이 두 교시에 있으면 키에 교시를 넣는다: `"c/1/3/main.c"` · `"c/1/8/main.c"` (없으면 `"c/1/main.c"`).
