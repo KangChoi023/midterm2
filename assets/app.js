@@ -1,4 +1,4 @@
-/* 학습 위키 — 해시 라우팅 단일 페이지 앱.
+/* 노트 정리 — 해시 라우팅 단일 페이지 앱.
  * 데이터: data/index.js (목차·검색 색인·사전), data/<과목>.js (교시 본문, 필요할 때 로드)
  * 주소:   #/                 홈
  *         #/c                과목
@@ -443,7 +443,7 @@
   /* ---------- 홈 ---------- */
   function renderHome() {
     const flow = ['C 언어 문법과 메모리', '리눅스 시스템 프로그래밍', 'ESP32 마이크로컨트롤러', '라즈베리파이 I/O 제어'];
-    let h = `<div class="hero"><h1>임베디드 학습 위키</h1><p>C → LINUX → MCU → Embedded IO. 교시마다 <b>핵심 정리 · 강의 개념 · 예제 코드 · 연관 문제</b>를 한 곳에 모으고, 모르는 개념은 검색으로 처음 나온 곳까지 따라간다.</p></div><div class="cards">`;
+    let h = `<div class="hero"><h1>노트 정리</h1><p>C → LINUX → MCU → Embedded IO. 교시마다 <b>핵심 정리 · 강의 개념 · 예제 코드 · 연관 문제</b>를 한 곳에 모으고, 모르는 개념은 검색으로 처음 나온 곳까지 따라간다.</p></div><div class="cards">`;
     SUBJ.forEach((S, i) => {
       const ls = S.days.flatMap(d => d.lessons);
       const done = ls.filter(l => l.status === 'done').length;
@@ -1359,7 +1359,7 @@
     renderSide(cur);
     if (!(cur && cur.n)) window.scrollTo(0, 0);
     const t = cur && cur.n ? lessonMeta(cur.s, cur.d, cur.n) : null;
-    document.title = t ? `${loc(cur.s, cur.d, cur.n)} ${t.title} — 학습 위키` : '임베디드 학습 위키';
+    document.title = t ? `${loc(cur.s, cur.d, cur.n)} ${t.title} — 노트 정리` : '노트 정리';
   }
   window.addEventListener('hashchange', route);
 
