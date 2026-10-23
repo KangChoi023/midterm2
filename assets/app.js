@@ -207,9 +207,16 @@
     return (ctxCache[k] = { s, d, n, L, D, LK: window.WikiLink.build(L, n) });
   }
   function openCode(s, d, n, tid) { CODE = Object.assign(CODE, { view: 'detail', s, d, n, tid: +tid }); rpSet(true, 'code'); sideCode.scrollTop = 0; }
-  function codeItem(r, cur) {
+  // 예제 코드 본문 (검색 색인의 code 행: [과목, day, 교시, 'code', 'X토픽', 제목, 코드]) → [[코드 목록 행, 코드], …]
+  let CODE_TEXT = null;
+  function codeTextRows() {
+    if (CODE_TEXT) return CODE_TEXT;
+    const by = {}; (IDX.search || []).forEach(x => { if (x[3] === 'code') by[x[0] + '|' + x[1] + '|' + x[2] + '|' + x[4].slice(1)] = x[6] || ''; });
+    return (CODE_TEXT = (IDX.code || []).map(r => [r, by[r[0] + '|' + r[1] + '|' + r[2] + '|' + r[3]] || '']).filter(x => x[1]));
+  }
+  function codeItem(r, cur, find) {
     const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '') + (r[9] ? ' <span class="cfig" title="코드 읽기 가이드 있음">🧭</span>' : '');
-    return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
+    return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"${find ? ` data-code-find="${esc(find)}"` : ''}><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
   }
   function codeRender() {
     if (CODE.view === 'detail') return codeDetail();
@@ -218,7 +225,23 @@
     let h = `<div class="dict-top"><input class="dict-q code-q" type="search" placeholder="파일명·하는 일 걸러 보기" autocomplete="off" spellcheck="false" value="${esc(CODE.q)}"></div>`;
     if (words.length) {
       const hits = (IDX.code || []).filter(r => words.every(w => (r[4] + ' ' + r[5] + ' ' + r[7]).toLowerCase().includes(w)));
-      h += `<div class="dict-h">${hits.length}개</div>` + hits.slice(0, 150).map(r => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` + codeItem(r)).join('');
+      if (hits.length || q.length < 2) h += `<div class="dict-h">파일명·설명 ${hits.length}개</div>`;
+      h += hits.slice(0, 80).map(r => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` + codeItem(r)).join('');
+      // 코드 본문에서 찾기: 입력한 문자열(띄어쓰기 포함 그대로)이 들어 있는 예제와 그 줄
+      const needle = q.length >= 2 ? q : '';
+      if (needle) {
+        const found = codeTextRows().map(([r, text]) => {
+          const lines = text.split('\n'), at = [];
+          lines.forEach((l, i) => { if (l.toLowerCase().includes(needle)) at.push(i); });
+          return at.length ? { r, lines, at } : null;
+        }).filter(Boolean);
+        const total = found.reduce((a, f) => a + f.at.length, 0);
+        h += `<div class="dict-h">코드 안에서 · ${found.length}개 예제 · ${total}곳</div>`;
+        const hl = t => esc(t).replace(new RegExp(esc(needle).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`);
+        h += found.slice(0, 60).map(({ r, lines, at }) => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` +
+          codeItem(r, false, CODE.q.trim()).replace('</button>', `<span class="cfind">${at.slice(0, 3).map(i => `<code>${hl(lines[i].trim().slice(0, 90))}</code>`).join('')}${at.length > 3 ? `<small>… ${at.length - 3}곳 더</small>` : ''}</span></button>`)).join('');
+        if (!found.length) h += '<div class="dict-empty">코드 안에 없습니다.</div>';
+      }
     } else {
       if (cur) {
         const here = CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || [];
@@ -438,6 +461,14 @@
     CODEGUIDE = t.guide || []; GPOP = -1;
     highlightIn(sideCode);
     if (CODEGUIDE.length) requestAnimationFrame(guideDraw);              // 글꼴·강조가 그려진 뒤 줄 높이를 잰다
+    if (CODE.find) {                                                     // 코드 검색에서 왔으면 찾은 문자열을 강조하고 첫 위치로
+      const dl = $('.xinfo', sideCode);
+      if (dl) {
+        dl.insertAdjacentHTML('afterbegin', `<div><dt>찾은 코드</dt><dd class="rel"><button type="button" class="callchip find" data-hl-word="${esc(CODE.find)}" title="다시 누르면 다음 위치">🔎 ${esc(CODE.find)}</button></dd></div>`);
+        requestAnimationFrame(() => codeHl($('.callchip.find', sideCode)));
+      }
+      CODE.find = '';
+    }
   }
 
   /* ---------- 홈 ---------- */
@@ -796,7 +827,7 @@
     const cb = e.target.closest('[data-code-open],[data-code-back]');
     if (cb) {
       if (cb.dataset.codeBack !== undefined) { CODE.view = 'list'; rpSet(true, 'code'); return; }
-      const [cs_, cd, cn, ct] = cb.dataset.codeOpen.split('|'); openCode(cs_, +cd, +cn, +ct); return;
+      const [cs_, cd, cn, ct] = cb.dataset.codeOpen.split('|'); CODE.find = cb.dataset.codeFind || ''; openCode(cs_, +cd, +cn, +ct); return;
     }
     const b = e.target.closest('[data-peek-c],[data-peek-x],[data-go],[data-pk-back],[data-pk-close],[data-view]'); if (!b || !CX) return;
     if (b.dataset.peekC) { e.preventDefault(); openPeek('c', b.dataset.peekC); }
