@@ -897,7 +897,7 @@
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
     const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ' }[ty] || '';
-    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 위키에서 푼 정답·해설 (공식 아님)">복습 · 위키 풀이</span>' : '';
+    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
     let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
     if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
     if (ty === 'mc' || ty === 'multi') h += '<div class="opts">' + q.o.map((o, k) => `<button type="button" class="opt" data-k="${k}">${'①②③④⑤⑥⑦⑧'[k]} ${esc(o)}</button>`).join('') + '</div>' + (ty === 'multi' ? '<button class="btn" data-check>채점</button>' : '');
