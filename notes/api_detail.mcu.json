@@ -1,0 +1,1549 @@
+{
+ "Serial.begin(115200) / Serial.println / Serial.printf": {
+  "role": "USB 시리얼로 PC 와 글자 주고받기",
+  "args": [
+   [
+    "115200",
+    "통신 속도(baud) — **시리얼 모니터도 같은 값**이어야 글자가 안 깨진다"
+   ],
+   [
+    "println(x)",
+    "출력 + 줄바꿈"
+   ],
+   [
+    "printf(fmt, …)",
+    "C 의 printf 와 같은 서식"
+   ]
+  ],
+  "flow": "setup 에서 begin 한 번 → 이후 어디서든 출력 (디버깅의 기본)",
+  "ret": "—"
+ },
+ "ESP.getChipModel() getChipCores() getCpuFreqMHz() getFlashChipSize() getFreeHeap()": {
+  "role": "칩 정보 조회",
+  "args": [
+   [
+    "getChipModel",
+    "\"ESP32-D0WD-V3\" 같은 모델명"
+   ],
+   [
+    "getChipCores",
+    "코어 수 (2)"
+   ],
+   [
+    "getCpuFreqMHz",
+    "CPU 클럭 (240)"
+   ],
+   [
+    "getFlashChipSize",
+    "플래시 바이트 (4MB)"
+   ],
+   [
+    "getFreeHeap",
+    "남은 힙 바이트 — 메모리 누수 감시"
+   ]
+  ],
+  "flow": "보드가 제대로 연결·인식됐는지 첫 확인",
+  "ret": "값"
+ },
+ "millis() / delay(ms)": {
+  "role": "시간 재기 / 멈추기",
+  "args": [
+   [
+    "millis()",
+    "부팅 후 ms (uint32_t, 약 49일 후 0 으로 돌아감)"
+   ],
+   [
+    "delay(ms)",
+    "그 시간 동안 **이 태스크를 멈춤** (그동안 버튼 등은 못 봄)"
+   ]
+  ],
+  "flow": "논블로킹: `if (millis() - t0 >= 500)` 처럼 **뺄셈으로** 비교 (돌아감에도 안전)",
+  "ret": "millis: ms"
+ },
+ "pcTaskGetName(NULL) / xPortGetCoreID()": {
+  "role": "지금 실행 중인 태스크·코어",
+  "args": [
+   [
+    "NULL",
+    "자기 자신"
+   ]
+  ],
+  "flow": "setup·loop 는 FreeRTOS 의 `loopTask` 로 **코어 1** 에서 돈다",
+  "ret": "이름 문자열 / 0 또는 1"
+ },
+ "Ctrl+R 컴파일 · Ctrl+U 업로드 · Ctrl+Shift+M 시리얼 모니터": {
+  "role": "Arduino IDE 단축키",
+  "args": [
+   [
+    "Ctrl+R",
+    "확인(컴파일만)"
+   ],
+   [
+    "Ctrl+U",
+    "컴파일 + 보드에 쓰기"
+   ],
+   [
+    "Ctrl+Shift+M",
+    "시리얼 모니터 (속도 맞추기)"
+   ]
+  ],
+  "flow": "업로드가 안 되면 BOOT 버튼을 누른 채 시작",
+  "ret": "—"
+ },
+ "arduino-cli compile --fqbn esp32:esp32:esp32 … / upload -p COM5 / monitor": {
+  "role": "명령줄 빌드·업로드",
+  "args": [
+   [
+    "--fqbn esp32:esp32:esp32",
+    "보드 종류 (패키지:아키텍처:보드)"
+   ],
+   [
+    "-p COM5",
+    "포트 (리눅스면 /dev/ttyUSB0)"
+   ],
+   [
+    "monitor",
+    "시리얼 모니터"
+   ]
+  ],
+  "flow": "IDE 없이 스크립트·Makefile 로 자동화",
+  "ret": "—"
+ },
+ "pinMode": {
+  "role": "핀 방향 정하기",
+  "args": [
+   [
+    "pin",
+    "GPIO 번호 (보드 표기 숫자)"
+   ],
+   [
+    "mode",
+    "`OUTPUT` · `INPUT` · `INPUT_PULLUP` · `INPUT_PULLDOWN`"
+   ]
+  ],
+  "flow": "setup 에서 한 번. 빠뜨리면 출력이 거의 안 나온다(약하게 켜짐)",
+  "ret": "없음"
+ },
+ "digitalWrite": {
+  "role": "핀에 HIGH/LOW 출력",
+  "args": [
+   [
+    "pin",
+    "OUTPUT 으로 설정한 핀"
+   ],
+   [
+    "val",
+    "`HIGH`(1, 3.3V) / `LOW`(0, 0V)"
+   ]
+  ],
+  "flow": "내부에서 핀 검사 등을 해 레지스터 직접 쓰기보다 느리다 (4교시)",
+  "ret": "없음"
+ },
+ "옴의 법칙": {
+  "role": "LED 저항 계산",
+  "args": [
+   [
+    "3.3V",
+    "ESP32 출력 전압"
+   ],
+   [
+    "Vf",
+    "LED 순방향 전압 (빨강 약 2V)"
+   ],
+   [
+    "R",
+    "저항 (220Ω~1kΩ)"
+   ]
+  ],
+  "flow": "I = (3.3 − 2.0) ÷ 220 ≈ 6mA — 핀당 수십 mA 이하로",
+  "ret": "전류"
+ },
+ "#include \"soc/soc.h\", \"soc/gpio_reg.h\"": {
+  "role": "레지스터 주소·매크로 헤더",
+  "args": [
+   [
+    "soc.h",
+    "REG_WRITE · REG_READ 매크로"
+   ],
+   [
+    "gpio_reg.h",
+    "GPIO_OUT_W1TS_REG 같은 주소 이름"
+   ]
+  ],
+  "flow": "데이터시트의 주소를 이름으로 쓰게 해 준다",
+  "ret": "—"
+ },
+ "REG_WRITE(GPIO_OUT_W1TS_REG, mask)": {
+  "role": "핀 여러 개 한 번에 켜기",
+  "args": [
+   [
+    "GPIO_OUT_W1TS_REG",
+    "Write-1-To-Set: 1 인 비트의 핀만 HIGH"
+   ],
+   [
+    "mask",
+    "`(1UL<<25) | (1UL<<26)` 같은 비트 묶음"
+   ]
+  ],
+  "flow": "0 비트는 **영향 없음** → 읽고-고치고-쓰기 없이 원자적으로 켠다",
+  "ret": "없음"
+ },
+ "REG_WRITE(GPIO_OUT_W1TC_REG, mask)": {
+  "role": "핀 여러 개 한 번에 끄기",
+  "args": [
+   [
+    "GPIO_OUT_W1TC_REG",
+    "Write-1-To-Clear: 1 인 비트의 핀만 LOW"
+   ],
+   [
+    "mask",
+    "끌 핀들"
+   ]
+  ],
+  "flow": "끄는데도 1 을 쓴다 (W1TC 라서)",
+  "ret": "없음"
+ },
+ "GPIO_OUT1_W1TS_REG / W1TC": {
+  "role": "32~39번 핀용 레지스터",
+  "args": [
+   [
+    "1UL << (pin - 32)",
+    "두 번째 레지스터에서는 32 를 빼서 비트 번호로"
+   ]
+  ],
+  "flow": "레지스터 하나 = 32비트 = 핀 32개라서 나뉜다",
+  "ret": "—"
+ },
+ "micros()": {
+  "role": "부팅 후 µs",
+  "args": [],
+  "flow": "`t0 = micros(); … ; micros() - t0` 로 실행 시간 측정 (약 71분마다 돌아감)",
+  "ret": "uint32_t µs"
+ },
+ "digitalRead(pin)": {
+  "role": "핀 입력 읽기",
+  "args": [
+   [
+    "pin",
+    "INPUT 계열로 설정한 핀"
+   ]
+  ],
+  "flow": "아무것도 연결 안 하면(플로팅) 0/1 이 제멋대로 → 풀업/풀다운 필요",
+  "ret": "HIGH(1) / LOW(0)"
+ },
+ "pinMode(pin, INPUT_PULLUP)": {
+  "role": "내부 풀업 저항 켜기",
+  "args": [
+   [
+    "INPUT_PULLUP",
+    "핀을 내부 저항으로 3.3V 에 연결"
+   ]
+  ],
+  "flow": "배선 핀 ↔ 버튼 ↔ GND → 평소 HIGH, **누르면 LOW** (거꾸로 주의)",
+  "ret": "없음"
+ },
+ "INPUT_PULLDOWN": {
+  "role": "내부 풀다운",
+  "args": [],
+  "flow": "핀 ↔ 버튼 ↔ 3V3 → 평소 LOW, 누르면 HIGH. 34~39번 입력 전용 핀에는 내부 풀업·풀다운이 없다",
+  "ret": "—"
+ },
+ "attachInterrupt": {
+  "role": "핀 변화에 함수 연결 (인터럽트)",
+  "args": [
+   [
+    "digitalPinToInterrupt(pin)",
+    "핀 번호 → 인터럽트 번호"
+   ],
+   [
+    "isr",
+    "불릴 함수 이름 (**함수 포인터**, 인자·반환 없음, `IRAM_ATTR`)"
+   ],
+   [
+    "mode",
+    "`FALLING` · `RISING` · `CHANGE`"
+   ]
+  ],
+  "flow": "loop 가 delay 중이어도 하드웨어가 즉시 isr 를 부른다. ISR 은 **짧게** — Serial·delay 금지, 플래그·카운터만",
+  "ret": "없음"
+ },
+ "모드": {
+  "role": "인터럽트 시점",
+  "args": [
+   [
+    "FALLING",
+    "HIGH → LOW (풀업 버튼 눌림)"
+   ],
+   [
+    "RISING",
+    "LOW → HIGH (뗌)"
+   ],
+   [
+    "CHANGE",
+    "둘 다"
+   ]
+  ],
+  "flow": "풀업 버튼이면 FALLING",
+  "ret": "—"
+ },
+ "portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED": {
+  "role": "임계 구역용 스핀락",
+  "args": [],
+  "flow": "ISR 과 loop 가 같이 쓰는 변수를 보호할 잠금 하나 (전역)",
+  "ret": "—"
+ },
+ "portENTER_CRITICAL(&mux) / EXIT": {
+  "role": "loop 쪽 임계 구역",
+  "args": [
+   [
+    "&mux",
+    "잠금"
+   ]
+  ],
+  "flow": "그 사이에는 인터럽트가 끼어들지 못한다 → '읽고 0 으로 비우기' 를 한 덩어리로. 짧게",
+  "ret": "—"
+ },
+ "portENTER_CRITICAL_ISR(&mux) / EXIT_ISR": {
+  "role": "ISR 쪽 임계 구역",
+  "args": [
+   [
+    "&mux",
+    "같은 잠금"
+   ]
+  ],
+  "flow": "ISR 안에서는 `_ISR` 버전을 쓴다 (다른 코어의 loop 와 동시 접근 방지)",
+  "ret": "—"
+ },
+ "ledcAttach": {
+  "role": "핀에 PWM 설정 (core 3.x)",
+  "args": [
+   [
+    "pin",
+    "출력 핀"
+   ],
+   [
+    "freq",
+    "주파수 Hz (LED 5000, 서보 50)"
+   ],
+   [
+    "bits",
+    "해상도 — 8 이면 듀티 0~255"
+   ]
+  ],
+  "flow": "아주 빠르게 켜고 끄는 비율로 '중간 밝기' 를 만든다",
+  "ret": "성공 true"
+ },
+ "ledcWrite": {
+  "role": "PWM 듀티 설정",
+  "args": [
+   [
+    "pin",
+    "ledcAttach 한 핀"
+   ],
+   [
+    "duty",
+    "켜져 있는 비율 (8비트면 0~255, 128 ≈ 50%)"
+   ]
+  ],
+  "flow": "공통 애노드 RGB 는 `255 - 값` 으로 뒤집는다",
+  "ret": "—"
+ },
+ "ledcWriteTone": {
+  "role": "부저에 주파수 소리",
+  "args": [
+   [
+    "pin",
+    "ledcAttach 한 핀 (패시브 부저)"
+   ],
+   [
+    "hz",
+    "주파수 — 440 = 라(A4), **0 = 끄기**"
+   ]
+  ],
+  "flow": "듀티 50% 사각파를 그 주파수로",
+  "ret": "실제 주파수"
+ },
+ "(구) ledcSetup / ledcAttachPin": {
+  "role": "core 2.x 의 채널 방식 PWM",
+  "args": [
+   [
+    "ledcSetup(ch, freq, bits)",
+    "채널 설정"
+   ],
+   [
+    "ledcAttachPin(pin, ch)",
+    "핀을 채널에"
+   ]
+  ],
+  "flow": "인터넷 예제가 이걸 쓰면 3.x 에서 `'ledcSetup' was not declared` → ledcAttach 로 바꾼다",
+  "ret": "—"
+ },
+ "random(a, b)": {
+  "role": "범위 난수",
+  "args": [
+   [
+    "a",
+    "최소 (포함)"
+   ],
+   [
+    "b",
+    "최대 (**미포함**)"
+   ]
+  ],
+  "flow": "`random(1000, 4001)` = 1000~4000 ms 대기 — 예측 못 하게",
+  "ret": "long"
+ },
+ "UINT32_MAX": {
+  "role": "uint32_t 최댓값",
+  "args": [],
+  "flow": "최고 기록(최솟값)의 초기값 → 첫 기록이 무조건 더 작아 신기록",
+  "ret": "4294967295"
+ },
+ "analogRead": {
+  "role": "아날로그 전압 → 숫자 (ADC)",
+  "args": [
+   [
+    "pin",
+    "ADC 핀 (32~39 권장 — ADC2 는 Wi-Fi 와 충돌)"
+   ]
+  ],
+  "flow": "0~3.3V 를 12비트로: 0V → 0, 약 3.1V 이상 → 4095. **pinMode 불필요**. 칩마다 비선형·오차",
+  "ret": "raw 0~4095"
+ },
+ "analogReadMilliVolts": {
+  "role": "보정된 전압(mV)",
+  "args": [
+   [
+    "pin",
+    "ADC 핀"
+   ]
+  ],
+  "flow": "칩에 저장된 보정값으로 raw 를 mV 로 — 단순 비례(`raw*3300/4095`)보다 정확",
+  "ret": "mV"
+ },
+ "도구 → 시리얼 플로터": {
+  "role": "시리얼 값을 그래프로",
+  "args": [
+   [
+    "이름:값",
+    "한 줄에 `raw:123,avg:120` — 쉼표로 여러 선"
+   ]
+  ],
+  "flow": "필터 전후를 겹쳐 보기 좋다. 모니터와 동시에 못 연다",
+  "ret": "—"
+ },
+ "ledcAttach(pin, 50, 14)": {
+  "role": "서보용 PWM",
+  "args": [
+   [
+    "50",
+    "50Hz = 20ms 주기"
+   ],
+   [
+    "14",
+    "14비트 → 0~16383 (한 단계 ≈ 1.2µs)"
+   ]
+  ],
+  "flow": "펄스 폭 500µs(0°) ~ 2500µs(180°) → 듀티 = us × 16383 / 20000",
+  "ret": "—"
+ },
+ "my_map(x, in_min, in_max, out_min, out_max)": {
+  "role": "범위 변환 (직접 구현)",
+  "args": [
+   [
+    "x",
+    "입력 값"
+   ],
+   [
+    "in_min, in_max",
+    "입력 범위 (0, 4095)"
+   ],
+   [
+    "out_min, out_max",
+    "출력 범위 (0, 180)"
+   ]
+  ],
+  "flow": "**곱셈 먼저, 나눗셈 나중** (정수 나눗셈이 먼저면 0). long 으로 오버플로 방지",
+  "ret": "변환 값"
+ },
+ "#include <DHT.h> / DHT dht(27, DHT11); / dht.begin()": {
+  "role": "DHT 라이브러리 준비",
+  "args": [
+   [
+    "27",
+    "데이터 핀"
+   ],
+   [
+    "DHT11",
+    "센서 종류 (DHT22 도 가능)"
+   ]
+  ],
+  "flow": "전역 객체 하나 + setup 에서 begin. 라이브러리 관리자에서 DHT sensor library + Adafruit Unified Sensor",
+  "ret": "—"
+ },
+ "dht.readTemperature() / dht.readHumidity()": {
+  "role": "온도·습도 읽기",
+  "args": [],
+  "flow": "센서가 1초에 한 번 이하로만 갱신 → 2초 간격 권장",
+  "ret": "°C / % — **실패하면 NaN**"
+ },
+ "isnan(x)": {
+  "role": "NaN 검사",
+  "args": [
+   [
+    "x",
+    "실수"
+   ]
+  ],
+  "flow": "NaN 은 자기 자신과도 같지 않아 `x == NAN` 으로는 못 잡는다",
+  "ret": "NaN 이면 참"
+ },
+ "delayMicroseconds": {
+  "role": "µs 단위 대기",
+  "args": [
+   [
+    "us",
+    "마이크로초"
+   ]
+  ],
+  "flow": "초음파 Trig 10µs 펄스처럼 짧은 타이밍용 (바쁜 대기)",
+  "ret": "없음"
+ },
+ "pulseIn": {
+  "role": "펄스 길이 재기",
+  "args": [
+   [
+    "pin",
+    "입력 핀 (Echo)"
+   ],
+   [
+    "HIGH",
+    "잴 펄스의 레벨"
+   ],
+   [
+    "timeout_us",
+    "최대 기다릴 시간 (30000 = 약 5m)"
+   ]
+  ],
+  "flow": "HIGH 가 시작될 때부터 끝날 때까지 µs. 거리 = us / 58 (cm, 왕복). **그동안 loop 가 멈춘다**",
+  "ret": "µs / **타임아웃 0**"
+ },
+ "스케치 탭 **⋯ → 새 탭** → sensor.h, sensor.cpp": {
+  "role": "스케치에 파일 추가",
+  "args": [],
+  "flow": ".ino 와 같은 폴더에 생긴다 — 함께 컴파일",
+  "ret": "—"
+ },
+ "#include \"sensor.h\"": {
+  "role": "우리 헤더 포함",
+  "args": [
+   [
+    "\"…\"",
+    "따옴표 = 스케치 폴더부터 찾기 (`<…>` 는 라이브러리)"
+   ]
+  ],
+  "flow": "선언만 가져오고 정의는 sensor.cpp",
+  "ret": "—"
+ },
+ "sensor.h": {
+  "role": "헤더 — 약속",
+  "args": [],
+  "flow": "타입·함수 원형·`extern` 변수. include guard. 따로 컴파일되지 않고 include 한 곳에 복사",
+  "ret": "—"
+ },
+ "sensor.cpp": {
+  "role": "구현 파일",
+  "args": [],
+  "flow": "함수 몸체와 전역 변수 **정의(한 곳)**. `#include <Arduino.h>` 필요 (.ino 만 자동 포함)",
+  "ret": "—"
+ },
+ "water_soil.ino": {
+  "role": "메인 스케치",
+  "args": [],
+  "flow": "setup·loop. 빌드 시 .cpp 로 바뀌어 컴파일",
+  "ret": "—"
+ },
+ "링크": {
+  "role": "오브젝트 합치기",
+  "args": [],
+  "flow": "각 .o 의 이름(함수·전역)을 연결 → .elf → .bin 을 플래시에. 정의가 없으면 undefined reference, 두 곳이면 multiple definition",
+  "ret": "—"
+ },
+ "Serial.available()": {
+  "role": "받은 바이트 수",
+  "args": [],
+  "flow": "0 이 아니면 읽을 게 있다 → 기다리지 않고 확인 (논블로킹)",
+  "ret": "바이트 수"
+ },
+ "Serial.read()": {
+  "role": "한 바이트 읽기",
+  "args": [],
+  "flow": "모니터에서 보낸 글자 하나. 개행도 따로 들어온다",
+  "ret": "글자 / 없으면 -1"
+ },
+ "(p >> i) & 1": {
+  "role": "i 번째 비트 꺼내기",
+  "args": [
+   [
+    "p",
+    "패턴 바이트 (bit0 = a … bit7 = dp)"
+   ],
+   [
+    "i",
+    "비트 번호"
+   ]
+  ],
+  "flow": "오른쪽으로 i 칸 밀고 맨 아래 비트만 남긴다 → 핀 i 에 그대로 digitalWrite",
+  "ret": "0 또는 1"
+ },
+ "p |= 0x80": {
+  "role": "dp(bit7)만 켜기",
+  "args": [
+   [
+    "0x80",
+    "1000 0000"
+   ]
+  ],
+  "flow": "OR 은 1 인 자리만 켜고 나머지는 그대로",
+  "ret": "—"
+ },
+ "p &= ~(1 << i)": {
+  "role": "i 번째 비트만 끄기",
+  "args": [
+   [
+    "~(1 << i)",
+    "i 자리만 0 인 마스크"
+   ]
+  ],
+  "flow": "AND 로 그 자리만 0",
+  "ret": "—"
+ },
+ "~p": {
+  "role": "전체 반전",
+  "args": [],
+  "flow": "공통 양극(CA)은 LOW 가 켜짐 → 패턴을 뒤집어 출력",
+  "ret": "—"
+ },
+ "HEX_FONT[v & 0x0F]": {
+  "role": "안전한 인덱스",
+  "args": [
+   [
+    "v & 0x0F",
+    "아래 4비트만 → 0~15"
+   ]
+  ],
+  "flow": "어떤 값이 와도 배열 범위를 넘지 않는다",
+  "ret": "—"
+ },
+ "shiftOut": {
+  "role": "8비트를 한 비트씩 내보내기",
+  "args": [
+   [
+    "dataPin",
+    "DS (데이터)"
+   ],
+   [
+    "clockPin",
+    "SH_CP (클럭, ↑ 마다 한 칸)"
+   ],
+   [
+    "bitOrder",
+    "`MSBFIRST` / `LSBFIRST`"
+   ],
+   [
+    "value",
+    "보낼 바이트"
+   ]
+  ],
+  "flow": "my_shift_out 반복문과 같다. 래치(ST_CP)는 직접 LOW → shiftOut → HIGH",
+  "ret": "없음"
+ },
+ "MSBFIRST / LSBFIRST": {
+  "role": "비트 순서",
+  "args": [
+   [
+    "MSBFIRST",
+    "bit7 먼저 → 마지막에 넣은 bit0 가 Q0"
+   ],
+   [
+    "LSBFIRST",
+    "bit0 먼저"
+   ]
+  ],
+  "flow": "배선에 따라 뒤집혀 보이면 순서를 바꾼다",
+  "ret": "—"
+ },
+ "timerBegin": {
+  "role": "하드웨어 타이머 시작 (core 3.x)",
+  "args": [
+   [
+    "freq_hz",
+    "타이머 틱 주파수 — 1000000 이면 1틱 = 1µs"
+   ]
+  ],
+  "flow": "타이머 핸들을 돌려준다 → attach · alarm 에 사용",
+  "ret": "`hw_timer_t *` / 실패 NULL"
+ },
+ "timerAttachInterrupt": {
+  "role": "타이머 ISR 등록",
+  "args": [
+   [
+    "t",
+    "timerBegin 의 핸들"
+   ],
+   [
+    "&onTimer",
+    "알람마다 불릴 함수 (`IRAM_ATTR`, 짧게)"
+   ]
+  ],
+  "flow": "loop 가 delay 중이어도 정해진 간격으로 불린다",
+  "ret": "없음"
+ },
+ "timerAlarm": {
+  "role": "알람 주기 설정",
+  "args": [
+   [
+    "t",
+    "타이머"
+   ],
+   [
+    "ticks",
+    "몇 틱마다 (2000 = 2ms)"
+   ],
+   [
+    "autoreload",
+    "true = 반복"
+   ],
+   [
+    "count",
+    "반복 횟수 (0 = 무한)"
+   ]
+  ],
+  "flow": "`timerAlarm(t, 2000, true, 0)` = 2ms 마다 영원히",
+  "ret": "없음"
+ },
+ "(2.x) timerBegin(0, 80, true)": {
+  "role": "core 2.x 방식",
+  "args": [
+   [
+    "0",
+    "타이머 번호"
+   ],
+   [
+    "80",
+    "분주비 (80MHz/80 = 1MHz)"
+   ],
+   [
+    "true",
+    "증가 카운트"
+   ]
+  ],
+  "flow": "3.x 에서는 `too many arguments` → `timerBegin(1000000)` 으로",
+  "ret": "—"
+ },
+ "img[y] |= 0x80 >> x": {
+  "role": "점 (x, y) 켜기",
+  "args": [
+   [
+    "0x80 >> x",
+    "bit7 = 왼쪽 열이므로 x 만큼 오른쪽으로"
+   ]
+  ],
+  "flow": "y 행 바이트에서 그 비트만 OR",
+  "ret": "—"
+ },
+ "img[y] &= ~(0x80 >> x)": {
+  "role": "점 (x, y) 끄기",
+  "args": [],
+  "flow": "그 비트만 AND 로 0",
+  "ret": "—"
+ },
+ "(FONT_H[r] << 8) | FONT_I[r]": {
+  "role": "두 글자를 16비트 띠로",
+  "args": [
+   [
+    "<< 8",
+    "H 를 위 8비트로"
+   ],
+   [
+    "| FONT_I[r]",
+    "I 를 아래 8비트에"
+   ]
+  ],
+  "flow": "한 행이 H|I 로 이어진 16비트",
+  "ret": "uint16_t"
+ },
+ "(line << shift) >> 8": {
+  "role": "띠를 밀며 창 보기",
+  "args": [
+   [
+    "<< shift",
+    "왼쪽으로 shift 칸"
+   ],
+   [
+    ">> 8",
+    "위 8비트만 남김 = 보이는 창"
+   ]
+  ],
+  "flow": "shift 0 → H, 8 → I, 사이는 H 가 나가고 I 가 들어오는 중간 장면",
+  "ret": "8비트"
+ },
+ "LiquidCrystal lcd(13, 14, 23, 32, 33, 4);": {
+  "role": "LCD 객체 (4비트 모드)",
+  "args": [
+   [
+    "13",
+    "RS — 명령/데이터 선택"
+   ],
+   [
+    "14",
+    "E — 이 순간 읽어라"
+   ],
+   [
+    "23, 32, 33, 4",
+    "D4~D7 데이터 4선"
+   ]
+  ],
+  "flow": "8비트를 4비트씩 두 번에 보낸다 → 핀 절약",
+  "ret": "—"
+ },
+ "lcd.begin(16, 2)": {
+  "role": "LCD 초기화",
+  "args": [
+   [
+    "16",
+    "칸 수"
+   ],
+   [
+    "2",
+    "줄 수"
+   ]
+  ],
+  "flow": "빠뜨리면 윗줄에 검은 네모만 (대비 가변저항도 확인)",
+  "ret": "—"
+ },
+ "lcd.setCursor(col, row) / lcd.print / lcd.printf": {
+  "role": "커서 이동 / 출력",
+  "args": [
+   [
+    "col",
+    "열 0~15"
+   ],
+   [
+    "row",
+    "행 0~1 (**열이 먼저**)"
+   ]
+  ],
+  "flow": "LCD 는 덮어쓰기만 한다 → 짧아진 숫자는 이전 글자가 남음 → `%4d` 고정 폭",
+  "ret": "—"
+ },
+ "lcd.createChar(n, bytes) / lcd.write((uint8_t)n)": {
+  "role": "사용자 문자 정의 / 출력",
+  "args": [
+   [
+    "n",
+    "0~7 번"
+   ],
+   [
+    "bytes",
+    "8바이트, 한 줄당 아래 5비트 (5×8 점)"
+   ]
+  ],
+  "flow": "막대 그래프·아이콘. 출력은 print 가 아니라 write(번호)",
+  "ret": "—"
+ },
+ "Wire.begin(21, 22)": {
+  "role": "I2C 시작",
+  "args": [
+   [
+    "21",
+    "SDA (데이터)"
+   ],
+   [
+    "22",
+    "SCL (클럭)"
+   ]
+  ],
+  "flow": "두 선에 여러 장치를 주소로 구분해 연결",
+  "ret": "—"
+ },
+ "Wire.beginTransmission(addr) / Wire.write(b) / Wire.endTransmission()": {
+  "role": "I2C 쓰기",
+  "args": [
+   [
+    "addr",
+    "7비트 장치 주소 (PCF8591 = 0x48)"
+   ],
+   [
+    "b",
+    "보낼 바이트 (버퍼에 쌓임)"
+   ]
+  ],
+  "flow": "begin 은 준비만, **endTransmission 에서 실제 전송**",
+  "ret": "end: **0 = 성공(ACK)**, 2 = 주소 응답 없음"
+ },
+ "Wire.requestFrom(addr, n) / Wire.read()": {
+  "role": "I2C 읽기",
+  "args": [
+   [
+    "addr",
+    "장치 주소"
+   ],
+   [
+    "n",
+    "받을 바이트 수"
+   ]
+  ],
+  "flow": "PCF8591 은 첫 바이트가 이전 변환 값 → 버리고 두 번째 사용",
+  "ret": "requestFrom: 받은 수 / read: 바이트"
+ },
+ "motor_set(int speed)": {
+  "role": "DC 모터 속도·방향 (직접 구현)",
+  "args": [
+   [
+    "speed",
+    "-255 ~ +255 — 부호가 방향, 크기가 속도"
+   ]
+  ],
+  "flow": "IN1 = s > 0, IN2 = s < 0, `ledcWrite(EN, abs(s))`. 0 이면 둘 다 LOW = 정지",
+  "ret": "없음"
+ },
+ "ramp_to(int *cur, int target)": {
+  "role": "부드러운 가속 (직접 구현)",
+  "args": [
+   [
+    "cur",
+    "현재 속도 변수의 **주소** (호출한 쪽 값을 갱신)"
+   ],
+   [
+    "target",
+    "목표 속도"
+   ]
+  ],
+  "flow": "5 씩 20ms 간격으로 접근 — 급가속 시 전류 급증·전압 강하로 리셋 방지",
+  "ret": "없음"
+ },
+ "ledcAttach(EN, 20000, 8)": {
+  "role": "모터용 PWM",
+  "args": [
+   [
+    "20000",
+    "20kHz — 가청 대역 밖이라 '삐' 소리 없음"
+   ],
+   [
+    "8",
+    "0~255"
+   ]
+  ],
+  "flow": "낮은 주파수면 모터가 울린다",
+  "ret": "—"
+ },
+ "relay_set(bool on)": {
+  "role": "릴레이 켜기·끄기 (직접 구현)",
+  "args": [
+   [
+    "on",
+    "켜고 싶으면 true"
+   ]
+  ],
+  "flow": "`ACTIVE_LOW ? !on : on` — LOW 에서 켜지는 모듈을 한 곳에서 처리",
+  "ret": "없음"
+ },
+ "step_once(dir)": {
+  "role": "스테퍼 한 스텝 (직접 구현)",
+  "args": [
+   [
+    "dir",
+    "+1 정방향 / -1 역방향"
+   ]
+  ],
+  "flow": "`phase = (phase + dir + 8) % 8` (음수 방지) → `(SEQ[phase] >> i) & 1` 로 코일 4개",
+  "ret": "없음"
+ },
+ "step_motor(steps, us)": {
+  "role": "여러 스텝 (직접 구현)",
+  "args": [
+   [
+    "steps",
+    "스텝 수 (반스텝 4096 = 한 바퀴, 부호 = 방향)"
+   ],
+   [
+    "us",
+    "스텝 간격 µs (너무 짧으면 떨기만 함)"
+   ]
+  ],
+  "flow": "끝나면 **코일 모두 LOW** (발열 방지)",
+  "ret": "없음"
+ },
+ "snprintf(buf, 17, \"VENT:%-5s FAN:%3d\", …)": {
+  "role": "크기 안에서 서식 출력 → 문자열",
+  "args": [
+   [
+    "d",
+    "결과 배열"
+   ],
+   [
+    "n",
+    "배열 크기 (`sizeof d`)"
+   ],
+   [
+    "fmt",
+    "서식 (`\"%s\"`)"
+   ],
+   [
+    "...",
+    "값"
+   ]
+  ],
+  "flow": "넘치면 자르고 **항상 '\\0'** 을 붙인다 → 안전한 복사·조립",
+  "ret": "만들려던 전체 길이 (n 이상이면 잘린 것)",
+  "hdr": "<stdio.h>"
+ },
+ "xTaskCreatePinnedToCore": {
+  "role": "태스크 만들기 (코어 지정)",
+  "args": [
+   [
+    "fn",
+    "태스크 함수 `void fn(void *)` — **무한 루프, return 금지**"
+   ],
+   [
+    "\"name\"",
+    "디버깅용 이름"
+   ],
+   [
+    "stack",
+    "스택 크기 **바이트** (ESP32 FreeRTOS), 2048~4096"
+   ],
+   [
+    "param",
+    "fn 에 넘길 포인터 (없으면 NULL)"
+   ],
+   [
+    "prio",
+    "우선순위 — 숫자가 클수록 급함 (loop 는 1)"
+   ],
+   [
+    "&handle",
+    "나중에 알림·조회용 (필요 없으면 NULL)"
+   ],
+   [
+    "core",
+    "0 (Wi-Fi 쪽) / 1 (loop 쪽)"
+   ]
+  ],
+  "flow": "만들자마자 스케줄러가 돌리기 시작 → 태스크마다 자기 주기로 동시에",
+  "ret": "pdPASS / 실패 (메모리 부족)"
+ },
+ "vTaskDelay": {
+  "role": "태스크 잠재우기 (양보)",
+  "args": [
+   [
+    "pdMS_TO_TICKS(ms)",
+    "ms 를 틱으로 변환"
+   ]
+  ],
+  "flow": "그동안 CPU 를 다른 태스크에 넘긴다 — delay() 도 내부적으로 이것. 바쁜 대기(while)는 양보하지 않아 워치독",
+  "ret": "없음"
+ },
+ "vTaskDelay(portMAX_DELAY)": {
+  "role": "영원히 잠",
+  "args": [
+   [
+    "portMAX_DELAY",
+    "무한 대기"
+   ]
+  ],
+  "flow": "모든 일을 태스크에 맡겨 loop 에 할 일이 없을 때",
+  "ret": "—"
+ },
+ "uxTaskGetStackHighWaterMark": {
+  "role": "스택 최저 여유",
+  "args": [
+   [
+    "h",
+    "태스크 핸들 (NULL = 자신)"
+   ]
+  ],
+  "flow": "지금까지 **가장 적게 남았던** 양 — 0 에 가까우면 스택 크기를 늘린다 (넘치면 크래시)",
+  "ret": "바이트 (ESP32)"
+ },
+ "vTaskDelete(NULL)": {
+  "role": "태스크 스스로 끝내기",
+  "args": [
+   [
+    "NULL",
+    "자기 자신"
+   ]
+  ],
+  "flow": "태스크 함수가 그냥 return 하면 크래시 → 끝내려면 이걸로",
+  "ret": "—"
+ },
+ "xQueueCreate": {
+  "role": "큐 만들기",
+  "args": [
+   [
+    "len",
+    "칸 수"
+   ],
+   [
+    "item_size",
+    "한 칸 크기 `sizeof(sample_t)`"
+   ]
+  ],
+  "flow": "구조체를 **값으로 복사**해 넣고 꺼내는 태스크 간 통로",
+  "ret": "핸들 / 실패 NULL"
+ },
+ "xQueueSend": {
+  "role": "큐에 넣기",
+  "args": [
+   [
+    "q",
+    "큐"
+   ],
+   [
+    "&item",
+    "넣을 값의 주소 (내용이 복사됨)"
+   ],
+   [
+    "wait_ticks",
+    "가득일 때 기다릴 시간 (0 = 바로 포기)"
+   ]
+  ],
+  "flow": "센서처럼 멈추면 안 되는 쪽은 0 — 가득이면 버리고 계속",
+  "ret": "pdTRUE 성공 / errQUEUE_FULL"
+ },
+ "xQueueReceive": {
+  "role": "큐에서 꺼내기",
+  "args": [
+   [
+    "q",
+    "큐"
+   ],
+   [
+    "&item",
+    "받을 곳"
+   ],
+   [
+    "wait",
+    "`portMAX_DELAY` = 올 때까지"
+   ]
+  ],
+  "flow": "비어 있으면 **잠들어 CPU 를 안 쓴다** → 오면 깨어나 처리",
+  "ret": "pdTRUE / 시간 초과 pdFALSE"
+ },
+ "xSemaphoreCreateMutex": {
+  "role": "뮤텍스 만들기",
+  "args": [],
+  "flow": "공유 자원(Serial, 전역 구조체, 파일)을 한 번에 한 태스크만",
+  "ret": "핸들 / NULL"
+ },
+ "xSemaphoreTake / Give": {
+  "role": "잠금 / 해제",
+  "args": [
+   [
+    "m",
+    "뮤텍스"
+   ],
+   [
+    "wait",
+    "Take 의 대기 시간 (portMAX_DELAY)"
+   ]
+  ],
+  "flow": "Take 와 Give 는 **반드시 짝** — 중간 return 으로 Give 를 빠뜨리면 다른 태스크가 영원히 대기. 잡은 채 오래 일하지 않기",
+  "ret": "Take: pdTRUE 성공"
+ },
+ "vTaskNotifyGiveFromISR": {
+  "role": "ISR 에서 태스크 깨우기",
+  "args": [
+   [
+    "handle",
+    "깨울 태스크"
+   ],
+   [
+    "&woken",
+    "더 급한 태스크를 깨웠는지 받을 변수 (pdFALSE 로 시작)"
+   ]
+  ],
+  "flow": "ISR 은 '일어나' 만 하고 긴 일(Serial, delay)은 태스크가 한다",
+  "ret": "없음"
+ },
+ "portYIELD_FROM_ISR": {
+  "role": "ISR 끝나면 바로 전환",
+  "args": [
+   [
+    "woken",
+    "위에서 받은 값"
+   ]
+  ],
+  "flow": "깨운 태스크가 더 급하면 ISR 이 끝나자마자 그 태스크로 → 지연 최소",
+  "ret": "—"
+ },
+ "ulTaskNotifyTake": {
+  "role": "알림 기다리기",
+  "args": [
+   [
+    "pdTRUE",
+    "받으면 카운트를 0 으로 (pdFALSE 면 1 감소)"
+   ],
+   [
+    "wait",
+    "portMAX_DELAY"
+   ]
+  ],
+  "flow": "알림이 올 때까지 잠",
+  "ret": "쌓였던 알림 개수"
+ },
+ "xTimerCreate": {
+  "role": "소프트웨어 타이머 만들기",
+  "args": [
+   [
+    "\"name\"",
+    "이름"
+   ],
+   [
+    "period",
+    "pdMS_TO_TICKS(500)"
+   ],
+   [
+    "pdTRUE",
+    "반복 (pdFALSE 면 한 번)"
+   ],
+   [
+    "ID",
+    "콜백에서 구분용 (NULL)"
+   ],
+   [
+    "cb",
+    "`void cb(TimerHandle_t)` — 타이머 서비스 태스크에서 불림"
+   ]
+  ],
+  "flow": "태스크를 만들지 않고 주기 작업. 콜백은 짧게, **블로킹 금지**",
+  "ret": "핸들 (만들기만, Start 필요)"
+ },
+ "xTimerStart / xTimerChangePeriod / xTimerStop": {
+  "role": "타이머 시작 / 주기 변경 / 정지",
+  "args": [
+   [
+    "t",
+    "타이머"
+   ],
+   [
+    "(Change) 새 주기",
+    "pdMS_TO_TICKS(100)"
+   ],
+   [
+    "마지막 0",
+    "명령 큐가 가득일 때 기다릴 시간"
+   ]
+  ],
+  "flow": "실행 중에도 주기를 바꿀 수 있다",
+  "ret": "pdPASS"
+ },
+ "LittleFS.begin(true)": {
+  "role": "파일 시스템 마운트",
+  "args": [
+   [
+    "true",
+    "마운트 실패(처음)면 **포맷**하고 다시"
+   ]
+  ],
+  "flow": "Flash 일부를 파일 시스템으로 — 전원을 꺼도 남는다",
+  "ret": "성공 true"
+ },
+ "File f = LittleFS.open(\"/log.csv\", FILE_APPEND)": {
+  "role": "파일 열기",
+  "args": [
+   [
+    "path",
+    "**`/` 로 시작**"
+   ],
+   [
+    "mode",
+    "`FILE_READ` · `FILE_WRITE`(덮어쓰기) · `FILE_APPEND`(이어쓰기)"
+   ]
+  ],
+  "flow": "C 의 fopen 과 같은 역할",
+  "ret": "File — 실패면 `!f` 가 참"
+ },
+ "f.println / f.printf / f.read() / f.available() / f.close()": {
+  "role": "파일 쓰기 · 읽기 · 닫기",
+  "args": [
+   [
+    "println/printf",
+    "Serial 과 같은 방식으로 쓰기"
+   ],
+   [
+    "read()",
+    "한 바이트"
+   ],
+   [
+    "available()",
+    "남은 바이트"
+   ],
+   [
+    "close()",
+    "**닫아야 확실히 기록**"
+   ]
+  ],
+  "flow": "열고 → 쓰고 → 바로 닫기 (전원이 갑자기 꺼져도 앞 줄은 남게)",
+  "ret": "—"
+ },
+ "LittleFS.exists / remove / usedBytes / totalBytes / format": {
+  "role": "파일 관리",
+  "args": [
+   [
+    "exists(path)",
+    "있나"
+   ],
+   [
+    "remove(path)",
+    "삭제"
+   ],
+   [
+    "usedBytes/totalBytes",
+    "용량"
+   ],
+   [
+    "format()",
+    "전부 지우기"
+   ]
+  ],
+  "flow": "exists 로 '새 파일이면 머리줄' 처리",
+  "ret": "—"
+ },
+ "root.openNextFile()": {
+  "role": "디렉터리 순회",
+  "args": [],
+  "flow": "`root = LittleFS.open(\"/\")` 후 반복 호출 — 끝이면 빈 File",
+  "ret": "File"
+ },
+ "WiFi.mode(WIFI_STA) / WiFi.begin(SSID, PASS) / WiFi.status() == WL_CONNECTED": {
+  "role": "공유기에 접속",
+  "args": [
+   [
+    "WIFI_STA",
+    "스테이션(접속하는 쪽)"
+   ],
+   [
+    "SSID, PASS",
+    "망 이름·비밀번호 (**2.4GHz 만**)"
+   ]
+  ],
+  "flow": "begin 은 바로 돌아온다 → status 가 WL_CONNECTED 될 때까지 **타임아웃을 두고** 기다리기",
+  "ret": "status: 상태 코드"
+ },
+ "WiFi.localIP().toString().c_str() / WiFi.RSSI()": {
+  "role": "내 IP / 신호 세기",
+  "args": [],
+  "flow": "IPAddress → String → `const char *` (printf %s 용). RSSI -50 좋음, -80 나쁨",
+  "ret": "문자열 / dBm"
+ },
+ "WiFi.scanNetworks() / WiFi.SSID(i) / WiFi.RSSI(i) / WiFi.channel(i)": {
+  "role": "주변 망 스캔",
+  "args": [
+   [
+    "i",
+    "0 ~ n-1"
+   ]
+  ],
+  "flow": "몇 초 걸린다",
+  "ret": "망 개수 / 각 정보"
+ },
+ "WiFi.setAutoReconnect(true)": {
+  "role": "자동 재연결",
+  "args": [],
+  "flow": "공유기가 재부팅돼도 알아서 다시 붙는다",
+  "ret": "—"
+ },
+ "configTime(9 * 3600, 0, \"pool.ntp.org\", …)": {
+  "role": "NTP 시각 동기화",
+  "args": [
+   [
+    "9 * 3600",
+    "UTC 오프셋 **초** (한국 +9시간)"
+   ],
+   [
+    "0",
+    "서머타임 초"
+   ],
+   [
+    "서버",
+    "NTP 서버 1~3개"
+   ]
+  ],
+  "flow": "백그라운드로 시각을 받아 온다 (인터넷 필요)",
+  "ret": "없음"
+ },
+ "getLocalTime(&tm, timeout_ms) / strftime(buf, n, \"%Y-%m-%d %H:%M:%S\", &tm)": {
+  "role": "현재 시각 / 문자열로",
+  "args": [
+   [
+    "&tm",
+    "struct tm 을 채울 곳"
+   ],
+   [
+    "timeout_ms",
+    "받을 때까지 기다릴 최대 시간"
+   ],
+   [
+    "strftime 서식",
+    "`%Y` 연 `%m` 월 `%d` 일 `%H:%M:%S`"
+   ]
+  ],
+  "flow": "아직 못 받았으면 false",
+  "ret": "성공 true / 글자 수"
+ },
+ "WiFi.softAP(name, pass) / softAPIP() / softAPgetStationNum()": {
+  "role": "AP 모드 — ESP32 가 망을 만든다",
+  "args": [
+   [
+    "name",
+    "망 이름"
+   ],
+   [
+    "pass",
+    "비밀번호 **8자 이상** (짧으면 실패)"
+   ]
+  ],
+  "flow": "공유기 없이 폰이 직접 접속 → 주소는 보통 192.168.4.1",
+  "ret": "성공 true / IP / 접속 수"
+ },
+ "WebServer server(80); / server.begin()": {
+  "role": "웹 서버",
+  "args": [
+   [
+    "80",
+    "HTTP 기본 포트"
+   ]
+  ],
+  "flow": "on 으로 경로를 등록한 뒤 begin",
+  "ret": "—"
+ },
+ "server.on(path, fn) / server.onNotFound(fn)": {
+  "role": "경로 → 처리 함수",
+  "args": [
+   [
+    "path",
+    "\"/\" · \"/api\""
+   ],
+   [
+    "fn",
+    "`void handle()` — **함수 포인터**"
+   ]
+  ],
+  "flow": "등록 안 된 경로는 onNotFound (404)",
+  "ret": "—"
+ },
+ "server.handleClient()": {
+  "role": "요청 처리",
+  "args": [],
+  "flow": "loop 에서 **자주** 불러야 한다 — loop 에 delay 가 길면 페이지가 느려진다",
+  "ret": "없음"
+ },
+ "server.send(code, \"text/html\", body)": {
+  "role": "응답 보내기",
+  "args": [
+   [
+    "code",
+    "200 OK · 400 잘못된 요청 · 403 금지 · 404 없음"
+   ],
+   [
+    "type",
+    "`text/html` · `application/json` · `text/plain`"
+   ],
+   [
+    "body",
+    "내용 (char 배열 / String)"
+   ]
+  ],
+  "flow": "핸들러 하나에서 send 는 한 번",
+  "ret": "—"
+ },
+ "server.hasArg(\"pin\") / server.arg(\"pin\").toInt()": {
+  "role": "URL 인자 읽기",
+  "args": [
+   [
+    "\"pin\"",
+    "`/led?pin=25&on=1` 의 이름"
+   ]
+  ],
+  "flow": "없으면 400, 허용하지 않은 값이면 403 — **입력을 믿지 않는다**",
+  "ret": "bool / String"
+ },
+ "fetch('/api') + setInterval(…, 1000) (JavaScript)": {
+  "role": "페이지 자동 갱신",
+  "args": [
+   [
+    "fetch",
+    "서버에 요청 (JSON 받기)"
+   ],
+   [
+    "setInterval",
+    "1초마다 반복"
+   ]
+  ],
+  "flow": "페이지 전체를 다시 받지 않고 값만 바꾼다",
+  "ret": "—"
+ },
+ "esp_reset_reason()": {
+  "role": "지난 재부팅 원인",
+  "args": [],
+  "flow": "PANIC = 크래시, *_WDT = 워치독(오래 양보 안 함), BROWNOUT = 전압 부족(모터·Wi-Fi 전류)",
+  "ret": "esp_reset_reason_t"
+ },
+ "xtensa-esp32-elf-addr2line -pfiaC -e build/….elf 0x400d1a28 …": {
+  "role": "크래시 주소 → 소스 줄",
+  "args": [
+   [
+    "-e …elf",
+    "빌드된 ELF (디버그 정보 포함)"
+   ],
+   [
+    "0x400d…",
+    "Backtrace 의 PC 주소들"
+   ],
+   [
+    "-pfiaC",
+    "보기 좋게·함수명·인라인·주소·C++ 이름 풀기"
+   ]
+  ],
+  "flow": "IDE 의 Exception Decoder 도 같은 일",
+  "ret": "`loop() at crash_demo.ino:32`"
+ },
+ "ESP.getFreeHeap()": {
+  "role": "남은 힙",
+  "args": [],
+  "flow": "주기적으로 찍어 **계속 줄면 누수** (malloc 후 free 누락, String 남용)",
+  "ret": "바이트"
+ },
+ "server.streamFile(f, \"text/csv\")": {
+  "role": "파일을 조금씩 전송",
+  "args": [
+   [
+    "f",
+    "열린 File"
+   ],
+   [
+    "type",
+    "MIME 타입"
+   ]
+  ],
+  "flow": "RAM 에 다 올리지 않으니 큰 로그도 OK. 끝나면 f.close()",
+  "ret": "보낸 바이트"
+ },
+ "server.sendHeader(\"Location\", \"/\"); server.send(303);": {
+  "role": "처리 후 다른 페이지로",
+  "args": [
+   [
+    "Location",
+    "이동할 주소"
+   ],
+   [
+    "303",
+    "See Other"
+   ]
+  ],
+  "flow": "새로고침해도 /clear 가 반복되지 않는다",
+  "ret": "—"
+ }
+}
