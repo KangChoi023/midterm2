@@ -473,13 +473,12 @@
 
   /* ---------- 홈 ---------- */
   function renderHome() {
-    const flow = ['C 언어 문법과 메모리', '리눅스 시스템 프로그래밍', 'ESP32 마이크로컨트롤러', '라즈베리파이 I/O 제어'];
-    let h = `<div class="hero"><h1>노트 정리</h1><p>C → LINUX → MCU → Embedded IO. 교시마다 <b>핵심 정리 · 강의 개념 · 예제 코드 · 연관 문제</b>를 한 곳에 모으고, 모르는 개념은 검색으로 처음 나온 곳까지 따라간다.</p></div><div class="cards">`;
+    let h = `<div class="hero"><h1>노트 정리</h1><p>${SUBJ.map(S => esc(S.short)).join(' → ')}. 교시마다 <b>핵심 정리 · 강의 개념 · 예제 코드 · 연관 문제</b>를 한 곳에 모으고, 모르는 개념은 검색으로 처음 나온 곳까지 따라간다.</p></div><div class="cards">`;
     SUBJ.forEach((S, i) => {
       const ls = S.days.flatMap(d => d.lessons);
       const done = ls.filter(l => l.status === 'done').length;
       const nq = ls.reduce((a, l) => a + l.nq, 0), nex = ls.reduce((a, l) => a + l.nex, 0);
-      h += `<a class="card sc-${S.id}" href="#/${S.id}"><div class="step">STEP ${i + 1} · ${esc(flow[i] || '')}</div><h3>${esc(S.name)}</h3>
+      h += `<a class="card sc-${S.id}" href="#/${S.id}"><div class="step">STEP ${i + 1} · ${esc(S.flow || '')}</div><h3>${esc(S.name)}</h3>
         <div class="bar"><i style="width:${ls.length ? (done / ls.length * 100).toFixed(0) : 0}%"></i></div>
         <div class="meta">정리 ${done}/${ls.length}교시 · ${S.days.length}일<br>예제 ${nex} · 문항 ${nq}</div></a>`;
     });
@@ -927,7 +926,7 @@
 
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
-    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ' }[ty] || '';
+    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
     const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
     let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
     if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
@@ -935,6 +934,8 @@
     else if (ty === 'ox') h += '<div class="opts" style="grid-template-columns:1fr 1fr"><button class="opt" data-k="1">O (참)</button><button class="opt" data-k="0">X (거짓)</button></div>';
     else if (ty === 'match') h += `<div class="mt">${q.left.map((l, k) => `<div class="mt-row" data-k="${k}"><span class="mt-l">${esc(l)}</span><span class="mt-ar">→</span><select class="mt-s" aria-label="${esc(l)} 의 짝"><option value="">— 고르기 —</option>${q.right.map((r, j) => `<option value="${j}">${esc(r)}</option>`).join('')}</select></div>`).join('')}</div>` +
       '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
+    else if (ty === 'short') h += (q.ro ? '' : '<input class="sh-in" type="text" placeholder="답을 입력" aria-label="답">') +
+      `<div class="q-ctl">${q.ro ? '' : '<button type="button" class="btn" data-check>채점</button>'}<button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>`;
     else if (ty === 'order') h += `<div class="od-tip">순서대로 누르세요 (다시 누르면 취소)</div><div class="od">${q.steps.map((s, k) => `<button type="button" class="od-i" data-k="${k}"><span class="od-n"></span><span>${esc(s)}</span></button>`).join('')}</div>` +
       '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
     return h + '<div class="q-ans" hidden></div></div>';
@@ -945,6 +946,7 @@
     if (ty === 'multi') return q.a.map(i => `${C[i]} ${q.o[i]}`).join(', ');
     if (ty === 'match') return q.a.map((v, k) => `${q.left[k]} → ${q.right[v]}`).join(' / ');
     if (ty === 'order') return q.a.map(i => q.steps[i]).join(' → ');
+    if (ty === 'short') return q.a[0];
     return `${C[q.a]} ${q.o[q.a]}`;
   }
   function bindQuiz(root, qs, onResult) {
@@ -954,7 +956,8 @@
       const show = ok => {
         ans.hidden = false; ans.className = 'q-ans' + (ok === true ? ' ok' : ok === false ? ' no' : '');
         const body = ty === 'match' ? `<ul class="ans-l">${q.a.map((v, k) => `<li>${esc(q.left[k])} → <b>${esc(q.right[v])}</b></li>`).join('')}</ul>`
-          : ty === 'order' ? `<ol class="ans-l">${q.a.map(k => `<li><b>${esc(q.steps[k])}</b></li>`).join('')}</ol>` : ` — <b>${esc(answerText(q))}</b><br>`;
+          : ty === 'order' ? `<ol class="ans-l">${q.a.map(k => `<li><b>${esc(q.steps[k])}</b></li>`).join('')}</ol>`
+          : ty === 'short' && q.c ? `<pre><code>${esc(q.a[0])}</code></pre>` : ` — <b>${esc(answerText(q))}</b><br>`;
         ans.innerHTML = `${ok === true ? '✅ 정답' : ok === false ? '❌ 오답' : '정답'}${body}${mdInline(q.w || '')}`;
         if (ok !== null && onResult) onResult(card.dataset.key, ok);
       };
@@ -983,6 +986,14 @@
             card.dataset.done = 1;
             $$('.od-i', card).forEach(x => { const p = seq.indexOf(+x.dataset.k); x.classList.add(q.a[p] === +x.dataset.k ? 'right' : 'wrong'); });
             return show(seq.every((k, p) => q.a[p] === k));
+          }
+          return;
+        }
+        if (ty === 'short') {
+          if (b.dataset.check !== undefined) {
+            const inp = $('.sh-in', card), v = inp.value.trim().toLowerCase().replace(/\s+/g, '');
+            if (!v) return hint('답을 입력하세요');
+            return show(q.a.some(x => String(x).trim().toLowerCase().replace(/\s+/g, '') === v));
           }
           return;
         }
@@ -1040,7 +1051,7 @@
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
-    else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>summary/.src/${{ c: 'C', linux: 'LINUX', mcu: 'MCU', eio: 'EIO' }[s]}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
+    else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>notes/${s.toUpperCase()}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
 
     h += `<section class="part" id="lecture"><h2>강의 원문 <small>강의 자료를 주제별로. 읽고 정리했으면 체크 · 예제 코드는 오른쪽 💻 코드 패널</small></h2>

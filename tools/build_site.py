@@ -5,6 +5,7 @@
     python3 -I tools/build_site.py c linux    # 일부 과목
 
 경로 기본값은 ~/c_study 기준. 바꾸려면 환경변수 STUDY_ROOT.
+노트 원본은 저장소의 notes/ 가 있으면 그것을, 없으면 ~/c_study/summary/.src 를 쓴다.
 결과:
     data/index.js   과목·Day·교시 목차, 검색 색인, 용어/함수/연결 사전
     data/<id>.js    과목별 교시 본문(노트 섹션, 강의 토픽, 예제 코드, 문항)
@@ -12,23 +13,42 @@
 import os, re, sys, json, datetime, html as htmlmod
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import wsparse, lecture_parse
+import wsparse, lecture_parse, nbparse
 
 REPO = os.path.dirname(HERE)
 ROOT = os.environ.get('STUDY_ROOT', os.path.expanduser('~/c_study'))
 CAMPUS = os.path.join(ROOT, 'AI_CAMPUS')
-NOTES = os.path.join(ROOT, 'summary', '.src')
+NOTES = os.path.join(REPO, 'notes') if os.path.isdir(os.path.join(REPO, 'notes')) else os.path.join(ROOT, 'summary', '.src')
 
+# 배운 순서. 경로는 AI_CAMPUS 기준이고 목록이면 앞에서부터 있는 파일을 쓴다.
+# lecture: .html(lecture_parse) · .ipynb/.pptx(nbparse).  anim_dir=True 면 애니메이션 파일이 든 폴더를 통째로 복사.
 SUBJECTS = [
-    dict(id='c', name='C 언어', short='C', days=4,
+    dict(id='arch', name='컴퓨터 구조', short='구조', days=3, flow='컴퓨터 부품과 숫자 표현',
+         lecture='컴퓨터구조_Day{d}.pptx', ws=['Day{d}/day{d}_worksheet.html'], note='ARCH_day{d}.md',
+         anim=['Day{d}/index.html', 'anim/day{d}/index.html'], anim_dir=True),
+    dict(id='os', name='운영체제 활용', short='OS', days=3, flow='파일 시스템 · 프로세스 · 셸',
+         lecture='os-day{d}/운영체제_Day{d}.pptx', ws=['os-day{d}/worksheet.html', 'os-day{d}/anim/worksheet.html'], note='OS_day{d}.md',
+         anim='os-day{d}/anim/index.html', anim_dir=True),
+    dict(id='py', name='Python', short='PY', days=4, flow='Colab과 파이썬 기초',
+         lecture='python-day{d}/Day{d}_lecture.ipynb', ws='python-day{d}/anim/worksheet.html', note='PY_day{d}.md',
+         anim='python-day{d}/anim/index.html', anim_dir=True),
+    dict(id='c', name='C 언어', short='C', days=4, flow='C 언어 문법과 메모리',
          lecture='C-day{d}/C_Day{d}_lecture.html', ws='C-day{d}/anim/worksheet.html', note='C_day{d}.md', anim='C-day{d}/anim/index.html'),
-    dict(id='linux', name='LINUX', short='LINUX', days=5,
+    dict(id='linux', name='LINUX', short='LINUX', days=5, flow='리눅스 시스템 프로그래밍',
          lecture='Linux-day{d}/lecture.html', ws='Linux-day{d}/worksheet.html', note='LINUX_day{d}.md', anim='Linux-day{d}/animation.html'),
-    dict(id='mcu', name='MCU', short='MCU', days=4,
+    dict(id='mcu', name='MCU', short='MCU', days=4, flow='ESP32 마이크로컨트롤러',
          lecture='MCU-day{d}/MCU_Day{d}_lecture.html', ws='MCU-day{d}/worksheet.html', note='MCU_day{d}.md', anim='MCU-day{d}/index.html'),
-    dict(id='eio', name='Embedded IO', short='EIO', days=5,
+    dict(id='eio', name='Embedded IO', short='EIO', days=5, flow='라즈베리파이 I/O 제어',
          lecture='EmbeddedIO-day{d}/lecture.html', ws='EmbeddedIO-day{d}/worksheet.html', note='EIO_day{d}.md', anim='EmbeddedIO-day{d}/animation.html'),
+    dict(id='nn', name='Neural Network', short='NN', days=5, flow='NumPy로 만드는 신경망',
+         lecture='NN-day{d}/NN_Day{d}_lecture.ipynb', ws='NN-day{d}/worksheet.html', note='NN_day{d}.md', anim='NN-day{d}/animation.html'),
 ]
+
+def campus_path(pat, d):
+    """경로 패턴(또는 후보 목록) → 실제로 있는 첫 파일. 없으면 첫 후보 경로."""
+    pats = pat if isinstance(pat, list) else [pat]
+    paths = [os.path.join(CAMPUS, x.format(d=d)) for x in pats]
+    return next((x for x in paths if os.path.exists(x)), paths[0])
 
 # 노트 소제목 -> 정해진 키 (앞부분 일치)
 SECTION_KEYS = [('키워드', 'kw'), ('개요', 'overview'), ('핵심 용어', 'terms'), ('새로 나온', 'funcs'),
@@ -224,6 +244,7 @@ def load_json(name):
 API = {}      # api_detail.json  (main 에서 읽음)
 REVIEW = {}   # review_quiz.json (복습 퀴즈, main 에서 읽음)
 GUIDE = {}    # code_guide.json
+UNSUPPORTED_WS = []   # 아직 읽는 법이 없는 워크시트 형식
 
 def api_detail(name):
     """함수 표 이름 → 상세. 이름 전체 → 첫 낱말(sudo 건너뜀) → 괄호 앞 식별자 순서로 찾는다."""
@@ -272,17 +293,23 @@ def attach_guides(sid, d, topics, n=0):
 
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
-    meta = {'id': sid, 'name': cfg['name'], 'short': cfg['short'], 'days': []}
+    meta = {'id': sid, 'name': cfg['name'], 'short': cfg['short'], 'flow': cfg.get('flow', ''), 'days': []}
     for d in range(1, cfg['days'] + 1):
-        lp = os.path.join(CAMPUS, cfg['lecture'].format(d=d))
-        wp = os.path.join(CAMPUS, cfg['ws'].format(d=d))
+        lp = campus_path(cfg['lecture'], d)
+        wp = campus_path(cfg['ws'], d)
         np_ = os.path.join(NOTES, cfg['note'].format(d=d))
-        lec = lecture_parse.parse(lp) if os.path.exists(lp) else [None] * 8
-        try: ws = wsparse.load(wp) if os.path.exists(wp) else []
-        except Exception as e: print('  ! worksheet', wp, e); ws = []
+        html_lec = lp.endswith('.html')
+        lp_ok = os.path.exists(lp)
+        lec = (lecture_parse.parse(lp) if html_lec else nbparse.parse(lp)) if lp_ok else [None] * 8
+        ws = []
+        if os.path.exists(wp):
+            if wsparse.supported(wp):
+                try: ws = wsparse.load(wp)
+                except Exception as e: print('  ! worksheet', wp, e)
+            else: UNSUPPORTED_WS.append(os.path.relpath(wp, CAMPUS))
         notes = parse_notes(np_) if os.path.exists(np_) else {'title': '', 'lessons': {}}
-        dtitle = notes['title'] or (lecture_parse.day_title(lp) if os.path.exists(lp) else '')
-        figs = lecture_parse.intro_figs(lp) if os.path.exists(lp) else []
+        dtitle = notes['title'] or ((lecture_parse.day_title(lp) if html_lec else nbparse.day_title(lp, d)) if lp_ok else '')
+        figs = lecture_parse.intro_figs(lp) if lp_ok and html_lec else []
         D = {'n': d, 'title': dtitle, 'lessons': [], 'figs': figs}
         pending_code = []
         anim = copy_anim(cfg, d)
@@ -309,7 +336,7 @@ def build_subject(cfg, index):
                 if s['key'] == 'kw': kws += parse_kw(s['md'])
                 if s['key'] == 'links': links += parse_links(s['md'])
             status = 'done' if N else 'todo'
-            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps', 'src') if q.get(k) is not None} for q in Q]
+            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps', 'src', 'ro') if q.get(k) is not None} for q in Q]
             quiz += review_quiz(sid, d, n)                         # 복습 퀴즈는 worksheet 문항 뒤에 (오답 기록 번호 유지)
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)
@@ -357,10 +384,28 @@ def build_subject(cfg, index):
         S['days'].append(D); meta['days'].append(dm)
     return S, meta
 
+ANIM_EXT = ('.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.json')
+
+def copy_anim_dir(cfg, d, src):
+    """애니메이션 목차(index.html)가 옆 파일들을 상대 경로로 부르는 과목: 그 폴더의 웹 파일을 anim/<과목>/dayN/ 으로 통째로 복사."""
+    import shutil
+    base = os.path.dirname(src)
+    dst_root = os.path.join(REPO, 'anim', cfg['id'], f'day{d}')
+    if os.path.isdir(dst_root): shutil.rmtree(dst_root)
+    for dp, dns, fns in os.walk(base):
+        dns[:] = [x for x in dns if not x.startswith('.') and x != 'src']
+        for fn in fns:
+            if not fn.lower().endswith(ANIM_EXT): continue
+            rel = os.path.relpath(os.path.join(dp, fn), base)
+            os.makedirs(os.path.dirname(os.path.join(dst_root, rel)), exist_ok=True)
+            shutil.copyfile(os.path.join(dp, fn), os.path.join(dst_root, rel))
+    return f'anim/{cfg["id"]}/day{d}/{os.path.basename(src)}'
+
 def copy_anim(cfg, d):
     """강의 애니메이션(교시별 #l1~#l8)을 위키 저장소 anim/<과목>/dayN.html 로 복사. 없으면 None."""
-    src = os.path.join(CAMPUS, cfg['anim'].format(d=d))
+    src = campus_path(cfg['anim'], d)
     if not os.path.exists(src): return None
+    if cfg.get('anim_dir'): return copy_anim_dir(cfg, d, src)
     html = open(src, encoding='utf8').read()
     sid = cfg['id']
     # 애니메이션 안의 강의 자료 · 워크시트 상대 링크는 위키에서 깨지므로 위키 교시 · 퀴즈로 바꾼다
@@ -399,6 +444,7 @@ def main():
     html = open(ip, encoding='utf8').read()
     html = re.sub(r'((?:src|href)="(?:assets|data)/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', r'\1?v=' + ver + '"', html)
     open(ip, 'w', encoding='utf8').write(html)
+    if UNSUPPORTED_WS: print(f'  · 아직 문항을 못 읽는 워크시트 형식 {len(UNSUPPORTED_WS)}개: ' + ', '.join(UNSUPPORTED_WS))
     for k in GUIDE:
         if k not in GUIDE_HIT: print(f'  ! 코드 가이드 파일을 못 찾음: {k}')
     for k, ms in GUIDE_MISS.items():

@@ -4,6 +4,7 @@
   --bad: #c9432e; --bad-soft: #fbe5e0; --warn: #b07a0c; --warn-soft: #fbf0d3; --mark: #ffe58a;
   --code-bg: #f4f6f9; --code-ink: #24292f;
   --c: #2457c5; --linux: #178a67; --mcu: #b4561a; --eio: #7a46c2;
+  --arch: #5a6b7d; --os: #0f7c8c; --py: #a07a00; --nn: #c0396b;
   --hl-kw: #cf222e; --hl-str: #0a3069; --hl-com: #6e7781; --hl-num: #0550ae; --hl-fn: #8250df; --hl-meta: #953800;
   --side-w: 290px; --top-h: 56px;
   --sans: 'IBM Plex Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
@@ -16,6 +17,7 @@
     --bad: #ff7a66; --bad-soft: #3a1f1b; --warn: #e6b450; --warn-soft: #362c14; --mark: #6b5713;
     --code-bg: #151920; --code-ink: #d6dde8;
     --c: #7aa2ff; --linux: #4cc79b; --mcu: #f09a5c; --eio: #b593ef;
+    --arch: #a3b3c4; --os: #4fc6d4; --py: #e3c14f; --nn: #f07ea5;
     --hl-kw: #ff7b72; --hl-str: #a5d6ff; --hl-com: #8b949e; --hl-num: #79c0ff; --hl-fn: #d2a8ff; --hl-meta: #ffa657;
   }
 }
@@ -25,6 +27,7 @@
   --bad: #ff7a66; --bad-soft: #3a1f1b; --warn: #e6b450; --warn-soft: #362c14; --mark: #6b5713;
   --code-bg: #151920; --code-ink: #d6dde8;
   --c: #7aa2ff; --linux: #4cc79b; --mcu: #f09a5c; --eio: #b593ef;
+  --arch: #a3b3c4; --os: #4fc6d4; --py: #e3c14f; --nn: #f07ea5;
   --hl-kw: #ff7b72; --hl-str: #a5d6ff; --hl-com: #8b949e; --hl-num: #79c0ff; --hl-fn: #d2a8ff; --hl-meta: #ffa657;
 }
 
@@ -95,6 +98,7 @@ blockquote { margin: .6em 0; padding: .4em 1em; border-left: 3px solid var(--acc
 .side .tool:hover { background: var(--panel-2); text-decoration: none; }
 
 .sc-c { --sc: var(--c); } .sc-linux { --sc: var(--linux); } .sc-mcu { --sc: var(--mcu); } .sc-eio { --sc: var(--eio); }
+.sc-arch { --sc: var(--arch); } .sc-os { --sc: var(--os); } .sc-py { --sc: var(--py); } .sc-nn { --sc: var(--nn); }
 .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: var(--panel-2); color: var(--ink-2); white-space: nowrap; }
 .tag.s { background: color-mix(in srgb, var(--sc) 14%, transparent); color: var(--sc); }
 .tag.done { background: var(--ok-soft); color: var(--ok); }
@@ -613,3 +617,5 @@ mark.fa { background: color-mix(in srgb, #facc15 45%, transparent); color: inher
 .cfind code { display: block; font-size: 11.5px; white-space: pre; overflow: hidden; text-overflow: ellipsis; background: var(--code-bg); border-radius: 4px; padding: 1px 6px; color: var(--code-ink); }
 .cfind mark { background: color-mix(in srgb, #facc15 55%, transparent); color: inherit; padding: 0; }
 .cfind small { font-size: 11px; color: var(--ink-3); }
+
+.sh-in { width: 100%; max-width: 360px; margin: 8px 0 4px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; }
