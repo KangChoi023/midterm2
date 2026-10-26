@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""강사님 교안 저장소(AI_CAMPUS)를 받아 내 과목 폴더(06_HyundaiAI, 구글 드라이브 동기화)로 정리한다.
+r"""강사님 교안 저장소(AI_CAMPUS)를 받아 내 과목 폴더(06_HyundaiAI, 구글 드라이브 동기화)로 정리한다.
 
-    python3 tools/sync_campus.py                 # 받기 + 정리
-    python3 tools/sync_campus.py --dry-run       # 무엇을 복사할지만 보기
-    python3 tools/sync_campus.py --dest "/mnt/c/…/06_HyundaiAI" --repo ~/c_study/AI_CAMPUS
+    py tools\sync_campus.py                     # Windows: 받기 + 정리
+    py tools\sync_campus.py --dry-run           # 무엇을 복사할지만 보기
+    python3 tools/sync_campus.py                 # WSL · 리눅스
+    … --dest "<06_HyundaiAI 폴더>" --repo "<AI_CAMPUS 를 받아 둘 폴더>"
+
+Windows 와 WSL 모두 동작한다. 강사님 저장소는 기본으로 이 midterm2 폴더 옆의 AI_CAMPUS 에 받는다.
+작업 스케줄러에서 창 없이(pyw) 돌려도 되도록, 매 실행 결과를 00_강의 자료/_동기화기록.txt 에 한 줄 이상 남긴다.
 
 규칙
 - 강사님 폴더 → 과목 폴더/01_강의자료/DayN/…, 그 안의 src/ → 과목 폴더/02_실습자료/DayN/…
@@ -45,11 +49,16 @@ NEW_STUFF = os.path.join('00_강의 자료', '_새로온자료')
 
 
 def find_dest():
-    """06_HyundaiAI 폴더를 Windows 바탕화면 아래에서 찾는다 (WSL 기준)."""
-    for pat in ('/mnt/c/Users/*/Desktop/06_HyundaiAI', '/mnt/c/Users/*/Desktop/*/06_HyundaiAI',
-                '/mnt/c/Users/*/Desktop/*/*/06_HyundaiAI', '/mnt/c/Users/*/Desktop/*/*/*/06_HyundaiAI'):
-        hits = [p for p in glob.glob(pat) if os.path.isdir(p)]
-        if hits: return hits[0]
+    """06_HyundaiAI 폴더를 바탕화면 아래에서 찾는다 — Windows (OneDrive 바탕화면 포함) · WSL(/mnt/c)."""
+    home = os.path.expanduser('~')
+    desktops = [os.path.join(home, 'Desktop'), os.path.join(home, 'OneDrive', 'Desktop'),
+                os.path.join(home, 'OneDrive', '바탕 화면'), os.path.join(home, '바탕 화면'),
+                '/mnt/c/Users/*/Desktop', '/mnt/c/Users/*/OneDrive/Desktop']
+    for depth in range(4):
+        for d in desktops:
+            pat = os.path.join(d, *(['*'] * depth), '06_HyundaiAI')
+            hits = [p for p in glob.glob(pat) if os.path.isdir(p)]
+            if hits: return hits[0]
     return None
 
 
@@ -109,8 +118,13 @@ def copy_one(src, dst, dry, stamp):
 
 
 def main():
+    if sys.stdout is None:                                  # pyw (창 없음) 로 실행 — 출력은 버리고 기록 파일만
+        sys.stdout = sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+    elif hasattr(sys.stdout, 'reconfigure'):                # Windows 명령창(cp949)에서 기호 · 한글 깨짐 방지
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(description='강사님 교안 → 내 과목 폴더 정리')
-    ap.add_argument('--repo', default=os.path.expanduser('~/c_study/AI_CAMPUS'), help='강사님 저장소를 받아 둘 위치')
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))        # midterm2 폴더
+    ap.add_argument('--repo', default=os.path.join(os.path.dirname(here), 'AI_CAMPUS'), help='강사님 저장소를 받아 둘 위치 (기본: midterm2 옆)')
     ap.add_argument('--dest', help='06_HyundaiAI 폴더 (생략하면 바탕화면 아래에서 찾음)')
     ap.add_argument('--dry-run', action='store_true', help='복사하지 않고 무엇을 할지만 출력')
     ap.add_argument('--no-pull', action='store_true', help='저장소를 새로 받지 않음')
@@ -148,9 +162,10 @@ def main():
     if unknown:
         lines.append('⚠ 과목을 모르는 자료 (새 과목?) → ' + NEW_STUFF + ': ' + ', '.join(sorted(unknown)))
     print('\n'.join(lines))
-    if not a.dry_run and (done['new'] or done['changed'] or unknown):
+    if not a.dry_run:                                       # 변화가 없어도 한 줄 — 예약 실행이 돌았는지 확인용
+        os.makedirs(os.path.join(dest, '00_강의 자료'), exist_ok=True)
         with open(os.path.join(dest, '00_강의 자료', '_동기화기록.txt'), 'a', encoding='utf-8') as f:
-            f.write('\n'.join(lines) + '\n\n')
+            f.write('\n'.join(lines if (done['new'] or done['changed'] or unknown) else lines[:2]) + '\n\n')
 
 
 if __name__ == '__main__':
