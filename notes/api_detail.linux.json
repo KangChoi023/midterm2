@@ -1,0 +1,2862 @@
+{
+ "uname": {
+  "role": "커널·시스템 정보 출력",
+  "args": [
+   [
+    "-r",
+    "커널 릴리스 (예: 6.8.0-45-generic)"
+   ],
+   [
+    "-m",
+    "CPU 아키텍처 (x86_64, aarch64)"
+   ],
+   [
+    "-n",
+    "호스트 이름"
+   ],
+   [
+    "-a",
+    "전부"
+   ]
+  ],
+  "flow": "uname() 시스템 콜 결과를 보여 준다. `$(uname -r)` 로 커널 버전에 맞는 패키지 이름을 만든다",
+  "ret": "텍스트 한 줄"
+ },
+ "lsb_release": {
+  "role": "배포판(Ubuntu) 버전 확인",
+  "args": [
+   [
+    "-a",
+    "배포판 이름·버전·코드네임 전부"
+   ]
+  ],
+  "flow": "/etc/os-release 같은 배포판 정보를 읽어 보여 준다",
+  "ret": "텍스트"
+ },
+ "nproc": {
+  "role": "쓸 수 있는 CPU 개수",
+  "args": [],
+  "flow": "이 프로세스가 쓸 수 있는 CPU(vCPU) 수를 숫자 하나로 출력 (affinity 가 걸려 있으면 그만큼만)",
+  "ret": "숫자"
+ },
+ "mkdir": {
+  "role": "디렉터리 만들기",
+  "args": [
+   [
+    "-p",
+    "중간 경로까지 한 번에 만들고, 이미 있어도 오류 없음"
+   ],
+   [
+    "경로",
+    "만들 디렉터리 (`test/a/b`)"
+   ]
+  ],
+  "flow": "경로의 디렉터리를 만든다",
+  "ret": "성공 0"
+ },
+ "apt": {
+  "role": "패키지 관리 (Ubuntu)",
+  "args": [
+   [
+    "update",
+    "설치 가능한 패키지 **목록**을 새로 받기 (설치는 안 함)"
+   ],
+   [
+    "install -y 패키지",
+    "패키지 설치, `-y` = 묻지 않고 예"
+   ],
+   [
+    "sudo",
+    "관리자 권한으로"
+   ]
+  ],
+  "flow": "update 로 목록을 갱신한 뒤 install 로 설치한다",
+  "ret": "성공 0"
+ },
+ "bash": {
+  "role": "셸 스크립트 실행",
+  "args": [
+   [
+    "check_env.sh",
+    "실행할 스크립트 파일 (실행 권한 없어도 됨)"
+   ]
+  ],
+  "flow": "새 bash 가 스크립트를 한 줄씩 실행한다",
+  "ret": "스크립트의 종료 코드"
+ },
+ "pwd / cd": {
+  "role": "현재 위치 출력 / 이동",
+  "args": [
+   [
+    "pwd",
+    "지금 디렉터리 절대 경로 출력"
+   ],
+   [
+    "cd 경로",
+    "그 디렉터리로 이동 (상대·절대 경로)"
+   ],
+   [
+    "cd ..",
+    "한 단계 위로"
+   ],
+   [
+    "cd -",
+    "직전 위치로 되돌아가기"
+   ]
+  ],
+  "flow": "cd 는 셸 **내장 명령** — 셸 자신의 현재 디렉터리를 바꾼다(자식 프로세스로는 불가)",
+  "ret": "성공 0"
+ },
+ "ls -l": {
+  "role": "파일 목록 자세히",
+  "args": [
+   [
+    "-l",
+    "긴 형식: 종류+권한 · 링크 수 · 소유자 · 그룹 · 크기 · 수정 시각 · 이름"
+   ],
+   [
+    "경로",
+    "볼 디렉터리 (생략하면 현재)"
+   ]
+  ],
+  "flow": "맨 앞 `-rwxr-xr-x` = 종류(`-` 파일, `d` 디렉터리) + 소유자/그룹/기타의 rwx",
+  "ret": "목록"
+ },
+ "cat / less": {
+  "role": "파일 내용 보기",
+  "args": [
+   [
+    "cat 파일",
+    "내용을 한 번에 출력 (짧은 파일)"
+   ],
+   [
+    "less 파일",
+    "한 화면씩 넘겨 보기 (`q` 종료, `/` 검색)"
+   ]
+  ],
+  "flow": "파일을 읽어 화면에 보여 준다",
+  "ret": "성공 0"
+ },
+ "mkdir -p": {
+  "role": "중간 디렉터리까지 한 번에 만들기",
+  "args": [
+   [
+    "-p",
+    "부모가 없으면 같이 만들고, 이미 있어도 오류 없음"
+   ],
+   [
+    "test/a/b",
+    "만들 경로"
+   ]
+  ],
+  "flow": "test → test/a → test/a/b 순서로 없는 것만 만든다",
+  "ret": "성공 0"
+ },
+ "touch / cp / mv": {
+  "role": "빈 파일 · 복사 · 이동/이름 변경",
+  "args": [
+   [
+    "touch 파일",
+    "없으면 빈 파일, 있으면 **수정 시각만** 지금으로"
+   ],
+   [
+    "cp 원본 대상",
+    "복사 (`-r` 디렉터리째)"
+   ],
+   [
+    "mv 원본 대상",
+    "이동 또는 이름 변경"
+   ]
+  ],
+  "flow": "touch 는 make 가 '바뀌었다' 고 판단하게 만드는 데도 쓴다",
+  "ret": "성공 0"
+ },
+ "rm -r": {
+  "role": "디렉터리째 삭제",
+  "args": [
+   [
+    "-r",
+    "안의 파일·하위 디렉터리까지 재귀적으로"
+   ],
+   [
+    "디렉터리",
+    "지울 대상"
+   ]
+  ],
+  "flow": "**휴지통 없이 즉시** 지운다 — 되돌릴 수 없음 (`-f` 를 붙이면 묻지도 않음)",
+  "ret": "성공 0"
+ },
+ "chmod": {
+  "role": "권한 바꾸기",
+  "args": [
+   [
+    "+x",
+    "모두에게 실행 권한 추가"
+   ],
+   [
+    "u+x",
+    "소유자(u)에게만 실행 추가 (g 그룹, o 기타)"
+   ],
+   [
+    "600",
+    "8진수: 소유자 rw- (4+2), 그룹·기타 없음"
+   ],
+   [
+    "파일",
+    "대상"
+   ]
+  ],
+  "flow": "rwx 비트를 바꾼다. 스크립트는 `chmod +x` 후 `./run.sh` 로 실행",
+  "ret": "성공 0"
+ },
+ "> >> 2> 2>&1": {
+  "role": "출력 방향 바꾸기 (리다이렉션)",
+  "args": [
+   [
+    "> f",
+    "stdout(fd 1)을 f 에 **덮어쓰기**"
+   ],
+   [
+    ">> f",
+    "stdout 을 f 끝에 **덧붙이기**"
+   ],
+   [
+    "2> f",
+    "stderr(fd 2)만 f 로"
+   ],
+   [
+    "> f 2>&1",
+    "stdout 을 f 로 보낸 뒤 stderr 를 **지금의 stdout(=f)** 으로 → 둘 다 f. 순서를 바꾸면 stderr 는 화면에 남음"
+   ]
+  ],
+  "flow": "셸이 프로그램 실행 전에 fd 를 파일로 바꿔 끼운다 (프로그램은 모름)",
+  "ret": "—"
+ },
+ "grep / wc -l": {
+  "role": "줄 고르기 / 줄 세기",
+  "args": [
+   [
+    "grep 패턴 파일",
+    "패턴이 들어 있는 줄만 출력 (`-i` 대소문자 무시, `-v` 반대)"
+   ],
+   [
+    "wc -l",
+    "입력 줄 수 (`| wc -l` 로 앞 출력의 줄 수)"
+   ]
+  ],
+  "flow": "파이프 `|` 로 이어 '골라서 세기' 를 한 줄로",
+  "ret": "grep: 찾으면 0, 없으면 1"
+ },
+ "nano": {
+  "role": "터미널 텍스트 편집기",
+  "args": [
+   [
+    "파일",
+    "열 파일 (없으면 새로)"
+   ],
+   [
+    "Ctrl+O · Enter",
+    "저장"
+   ],
+   [
+    "Ctrl+X",
+    "종료"
+   ],
+   [
+    "Ctrl+W",
+    "찾기"
+   ]
+  ],
+  "flow": "화면 아래 `^` 표시 = Ctrl",
+  "ret": "—"
+ },
+ "& · jobs · $! · kill": {
+  "role": "백그라운드 실행과 관리",
+  "args": [
+   [
+    "명령 &",
+    "뒤에서 실행하고 프롬프트를 바로 돌려받기"
+   ],
+   [
+    "jobs",
+    "이 셸의 백그라운드 작업 목록 (%1 %2 …)"
+   ],
+   [
+    "$!",
+    "마지막으로 띄운 백그라운드 프로세스의 PID"
+   ],
+   [
+    "kill %1 / kill PID",
+    "작업 번호 또는 PID 에 SIGTERM"
+   ]
+  ],
+  "flow": "측정 중에 부하(stress-ng)를 뒤에 띄워 두는 데 쓴다",
+  "ret": "—"
+ },
+ "변수": {
+  "role": "Makefile 변수",
+  "args": [
+   [
+    "CC = gcc",
+    "정의 (이름 = 값)"
+   ],
+   [
+    "$(CC)",
+    "꺼내 쓰기"
+   ]
+  ],
+  "flow": "컴파일러·옵션을 한 곳에서 바꾸면 모든 규칙에 반영된다",
+  "ret": "—"
+ },
+ "파일 목록": {
+  "role": "Makefile: 현재 폴더 .c 목록",
+  "args": [
+   [
+    "$(wildcard *.c)",
+    "패턴에 맞는 파일 이름들을 공백으로 이어 붙인 값"
+   ]
+  ],
+  "flow": "`SRCS = $(wildcard *.c)` → `a.c b.c 01_x.c …`",
+  "ret": "—"
+ },
+ "확장자 치환": {
+  "role": "Makefile: 목록에서 확장자 바꾸기",
+  "args": [
+   [
+    "$(SRCS:.c=)",
+    "SRCS 의 각 단어 끝 `.c` 를 빈 문자열로 → 실행 파일 이름 목록"
+   ]
+  ],
+  "flow": "`a.c b.c` → `a b` (`:.c=.o` 면 오브젝트 목록)",
+  "ret": "—"
+ },
+ "패턴 규칙": {
+  "role": "Makefile: 같은 방식으로 여러 개 빌드",
+  "args": [
+   [
+    "%: %.c",
+    "'X 를 만들려면 X.c 가 필요' (% = 같은 이름)"
+   ],
+   [
+    "$@",
+    "만들 타깃 이름 (X)"
+   ],
+   [
+    "$<",
+    "첫 번째 재료 (X.c)"
+   ],
+   [
+    "<탭>",
+    "명령 줄은 반드시 탭으로 시작 (공백이면 missing separator)"
+   ]
+  ],
+  "flow": "`make 03_errno` → `gcc … -o 03_errno 03_errno.c`",
+  "ret": "—"
+ },
+ "실행": {
+  "role": "make 실행",
+  "args": [
+   [
+    "make",
+    "첫 타깃(보통 all) — 바뀐 것만 다시 빌드"
+   ],
+   [
+    "make 03_errno",
+    "그 타깃만"
+   ],
+   [
+    "make clean",
+    "산출물 삭제 규칙 실행"
+   ]
+  ],
+  "flow": "타깃이 재료보다 **오래됐을 때만**(수정 시각 비교) 명령을 실행한다 → 아니면 `Nothing to be done`",
+  "ret": "성공 0"
+ },
+ "스크립트 인자": {
+  "role": "셸 스크립트에 넘어온 인자",
+  "args": [
+   [
+    "$1 $2 $3",
+    "첫째·둘째·셋째 인자"
+   ],
+   [
+    "$#",
+    "인자 개수"
+   ],
+   [
+    "$0",
+    "스크립트 이름"
+   ]
+  ],
+  "flow": "`./run.sh ./prog 5 r.csv` → $1=./prog, $2=5, $3=r.csv, $#=3",
+  "ret": "—"
+ },
+ "기본값": {
+  "role": "셸: 값이 없을 때 기본값",
+  "args": [
+   [
+    "${3:-result.csv}",
+    "$3 가 없거나 비었으면 result.csv"
+   ]
+  ],
+  "flow": "인자를 생략해도 동작하게 만든다",
+  "ret": "—"
+ },
+ "반복": {
+  "role": "셸 for 반복",
+  "args": [
+   [
+    "$(seq 1 \"$N\")",
+    "1 2 … N 을 출력하는 명령의 결과를 목록으로"
+   ],
+   [
+    "do … done",
+    "반복 본문"
+   ]
+  ],
+  "flow": "`for i in $(seq 1 5); do ./prog; done` = 5번 실행",
+  "ret": "—"
+ },
+ "시각 측정": {
+  "role": "나노초 단위 현재 시각",
+  "args": [
+   [
+    "+%s%N",
+    "%s 초 + %N 나노초를 이어 붙인 숫자"
+   ]
+  ],
+  "flow": "실행 전·후 값을 빼서 `$(( (t1 - t0) / 1000000 ))` = 걸린 ms",
+  "ret": "숫자"
+ },
+ "조건": {
+  "role": "셸 if 조건",
+  "args": [
+   [
+    "[ $# -lt 2 ]",
+    "인자 개수가 2 미만이면 참 (`-lt` less than, `-eq`, `-gt`)"
+   ],
+   [
+    "then … fi",
+    "참일 때 실행"
+   ]
+  ],
+  "flow": "`[` 뒤·`]` 앞에 **공백 필수**. 사용법을 출력하고 `exit 1` 하는 데 쓴다",
+  "ret": "—"
+ },
+ "write": {
+  "role": "fd 에 바이트를 시스템 콜로 직접 쓰기",
+  "args": [
+   [
+    "fd",
+    "쓸 대상 파일 디스크립터 (1 = stdout, 2 = stderr, open 이 준 번호)"
+   ],
+   [
+    "buf",
+    "쓸 데이터의 시작 주소"
+   ],
+   [
+    "n",
+    "쓸 바이트 수"
+   ]
+  ],
+  "flow": "커널에 'fd 에 buf 부터 n 바이트' 를 요청 → stdio 버퍼 없이 **바로** 나간다 (printf 는 모았다가 write)",
+  "ret": "**실제로 쓴 바이트 수**(n 보다 작을 수 있음) / 실패 -1 + errno (EBADF 등)",
+  "hdr": "<unistd.h>"
+ },
+ "syscall": {
+  "role": "시스템 콜을 번호로 직접 호출",
+  "args": [
+   [
+    "number",
+    "시스템 콜 번호 `SYS_이름` (x86_64: SYS_write 1, SYS_getpid 39)"
+   ],
+   [
+    "...",
+    "그 시스템 콜의 인자들을 순서대로"
+   ]
+  ],
+  "flow": "glibc 래퍼 없이 레지스터에 번호(rax)·인자(rdi, rsi, rdx…)를 넣고 커널로 진입",
+  "ret": "그 시스템 콜의 반환값 / 실패 -1 + errno",
+  "hdr": "`#define _GNU_SOURCE` + <unistd.h> + <sys/syscall.h>"
+ },
+ "getpid": {
+  "role": "내 PID",
+  "args": [],
+  "flow": "호출한 프로세스의 번호를 돌려준다 (실패하지 않음)",
+  "ret": "PID",
+  "hdr": "<unistd.h>"
+ },
+ "strace": {
+  "role": "시스템 콜 추적 (셸 명령)",
+  "args": [
+   [
+    "-e trace=write",
+    "write 시스템 콜만 보기 (콤마로 여러 개)"
+   ],
+   [
+    "-c",
+    "끝난 뒤 시스템 콜별 **호출 횟수·시간 요약**"
+   ],
+   [
+    "-f",
+    "fork 로 생긴 자식까지 추적"
+   ],
+   [
+    "./prog",
+    "추적할 프로그램"
+   ]
+  ],
+  "flow": "프로그램이 커널에 한 요청을 `이름(인자) = 반환` 형식으로 stderr 에 출력",
+  "ret": "프로그램의 종료 코드"
+ },
+ "man": {
+  "role": "설명서 보기",
+  "args": [
+   [
+    "2 write",
+    "섹션 2 = **시스템 콜** 의 write"
+   ],
+   [
+    "3 printf",
+    "섹션 3 = **라이브러리 함수**"
+   ],
+   [
+    "1",
+    "섹션 1 = 명령"
+   ]
+  ],
+  "flow": "같은 이름이 여러 섹션에 있으면 번호로 고른다 (`man 2 open` vs `man 1 open`)",
+  "ret": "—"
+ },
+ "open": {
+  "role": "파일 열기 → fd",
+  "args": [
+   [
+    "path",
+    "열 파일 경로"
+   ],
+   [
+    "flags",
+    "`O_RDONLY` 읽기 · `O_WRONLY` 쓰기 · `O_RDWR` 둘 다, `|` 로 `O_CREAT` · `O_TRUNC` · `O_APPEND` 추가"
+   ],
+   [
+    "mode",
+    "(O_CREAT 일 때 셋째 인자) 새 파일 권한 0644 등"
+   ]
+  ],
+  "flow": "커널이 파일을 열고 **가장 작은 빈 fd 번호**(보통 3부터)를 준다",
+  "ret": "fd (≥ 0) / 실패 -1 + errno (ENOENT 없음, EACCES 권한, EISDIR 디렉터리에 쓰기)",
+  "hdr": "<fcntl.h>"
+ },
+ "close": {
+  "role": "fd 닫기",
+  "args": [
+   [
+    "fd",
+    "닫을 파일 디스크립터"
+   ]
+  ],
+  "flow": "fd 번호를 반납한다 (다음 open 이 다시 쓸 수 있음)",
+  "ret": "성공 0 / 실패 -1 (EBADF 열려 있지 않은 fd)",
+  "hdr": "<unistd.h>"
+ },
+ "strerror": {
+  "role": "errno 번호 → 메시지 문자열",
+  "args": [
+   [
+    "errnum",
+    "에러 번호 (보통 errno)"
+   ]
+  ],
+  "flow": "번호에 해당하는 설명 문자열을 돌려준다 (예: 2 → \"No such file or directory\")",
+  "ret": "메시지 문자열 포인터",
+  "hdr": "<string.h>"
+ },
+ "perror": {
+  "role": "마지막 에러를 stderr 에 출력",
+  "args": [
+   [
+    "prefix",
+    "앞에 붙일 말 (보통 실패한 함수 이름)"
+   ]
+  ],
+  "flow": "`prefix: 지금 errno 의 메시지` 를 stderr 로 출력 → 실패 **직후** 불러야 한다",
+  "ret": "없음",
+  "hdr": "<stdio.h>"
+ },
+ "/proc/self/status": {
+  "role": "내 프로세스의 상태 요약 파일",
+  "args": [
+   [
+    "self",
+    "읽는 프로세스 자신을 가리키는 링크 (`/proc/<PID>/` 와 같음)"
+   ]
+  ],
+  "flow": "읽는 순간 커널이 내용을 만들어 준다. `voluntary_ctxt_switches`(스스로 잠든 횟수) · `nonvoluntary_ctxt_switches`(선점당한 횟수) · VmRSS 등",
+  "ret": "텍스트 줄 `이름:\\t값`"
+ },
+ "/proc/self/fd": {
+  "role": "내가 열어 둔 fd 목록",
+  "args": [],
+  "flow": "`ls -l /proc/self/fd` → 0·1·2(터미널) + 열린 파일들이 링크로 보인다",
+  "ret": "디렉터리"
+ },
+ "/proc/loadavg": {
+  "role": "시스템 부하 평균",
+  "args": [],
+  "flow": "`0.85 0.42 0.20 1/215 2410` = 1·5·15분 평균 실행 대기 수, 지금 실행 중/전체 태스크 수, 마지막 PID",
+  "ret": "한 줄 텍스트"
+ },
+ "fork": {
+  "role": "프로세스 복제",
+  "args": [],
+  "flow": "부모를 거의 그대로 복사한 자식을 만든다 (메모리는 copy-on-write). 둘 다 fork 다음 줄부터 이어서 실행",
+  "ret": "**자식에게 0 / 부모에게 자식 PID(>0)** / 실패 -1 (부모만, EAGAIN 프로세스 수 한도)",
+  "hdr": "<unistd.h>"
+ },
+ "execvp": {
+  "role": "지금 프로세스를 다른 프로그램으로 바꾸기",
+  "args": [
+   [
+    "file",
+    "실행할 프로그램 이름 (`/` 없으면 PATH 에서 찾음)"
+   ],
+   [
+    "argv",
+    "새 프로그램의 인자 배열. argv[0] = 이름, **마지막은 NULL**"
+   ]
+  ],
+  "flow": "PID 는 그대로 두고 코드·데이터를 새 프로그램으로 덮어쓴다",
+  "ret": "**성공하면 돌아오지 않음** / 실패 -1 + errno (ENOENT 없는 명령) → 자식은 `_exit(127)`",
+  "hdr": "<unistd.h>"
+ },
+ "waitpid": {
+  "role": "자식이 끝나길 기다리고 상태 받기",
+  "args": [
+   [
+    "pid",
+    "기다릴 자식 PID. **-1 = 아무 자식**"
+   ],
+   [
+    "status",
+    "종료 정보를 받을 int 주소 (필요 없으면 NULL)"
+   ],
+   [
+    "options",
+    "0 = 끝날 때까지 기다림 · `WNOHANG` = 끝난 자식이 없으면 바로 0 반환"
+   ]
+  ],
+  "flow": "끝난 자식을 **수거**(좀비 해제)하고 status 에 종료 정보를 채운다 → `WIFEXITED`·`WEXITSTATUS` 로 해석",
+  "ret": "수거한 자식 PID / WNOHANG 이고 아직이면 0 / 실패 -1 (ECHILD 자식 없음)",
+  "hdr": "<sys/wait.h>"
+ },
+ "_exit": {
+  "role": "버퍼를 비우지 않고 즉시 종료",
+  "args": [
+   [
+    "code",
+    "종료 코드 (0 정상, exec 실패 관례 127)"
+   ]
+  ],
+  "flow": "stdio 버퍼 flush·atexit 없이 바로 커널에 종료 요청 → fork 한 자식이 부모 버퍼를 **두 번 출력**하지 않게",
+  "ret": "돌아오지 않음",
+  "hdr": "<unistd.h>"
+ },
+ "상태 매크로": {
+  "role": "waitpid 의 status 해석",
+  "args": [
+   [
+    "WIFEXITED(s)",
+    "exit/return 으로 정상 종료했나"
+   ],
+   [
+    "WEXITSTATUS(s)",
+    "그때의 종료 코드 (0~255)"
+   ],
+   [
+    "WIFSIGNALED(s)",
+    "시그널로 죽었나"
+   ],
+   [
+    "WTERMSIG(s)",
+    "그 시그널 번호 (셸은 128 + 번호로 표시)"
+   ]
+  ],
+  "flow": "status 는 여러 정보를 비트로 묶은 값이라 직접 보지 않고 매크로로 꺼낸다",
+  "ret": "참/거짓 또는 숫자",
+  "hdr": "<sys/wait.h>"
+ },
+ "sigaction": {
+  "role": "시그널 핸들러 등록",
+  "args": [
+   [
+    "sig",
+    "어떤 시그널 (SIGINT, SIGCHLD …, SIGKILL·SIGSTOP 은 불가)"
+   ],
+   [
+    "act",
+    "새 설정 `struct sigaction` 주소: `.sa_handler` 함수, `.sa_mask` 실행 중 막을 시그널, `.sa_flags` (SA_RESTART 등)"
+   ],
+   [
+    "old",
+    "이전 설정을 받을 곳 (필요 없으면 NULL)"
+   ]
+  ],
+  "flow": "sig 가 오면 act 의 핸들러가 실행되게 한다",
+  "ret": "성공 0 / 실패 -1 (EINVAL SIGKILL 등)",
+  "hdr": "<signal.h>"
+ },
+ "sigemptyset": {
+  "role": "시그널 집합 비우기",
+  "args": [
+   [
+    "set",
+    "비울 `sigset_t` 주소 (보통 `&sa.sa_mask`)"
+   ]
+  ],
+  "flow": "핸들러 실행 중 추가로 막을 시그널이 없게 초기화 (쓰레기 값 방지)",
+  "ret": "성공 0",
+  "hdr": "<signal.h>"
+ },
+ "pause": {
+  "role": "시그널이 올 때까지 잠들기",
+  "args": [],
+  "flow": "아무 시그널이 와서 핸들러가 끝나면 깨어난다 (CPU 를 쓰지 않고 대기)",
+  "ret": "항상 -1 (errno = EINTR)",
+  "hdr": "<unistd.h>"
+ },
+ "getppid": {
+  "role": "부모 PID",
+  "args": [],
+  "flow": "부모가 먼저 끝나면(고아) init(1) 또는 subreaper 의 PID 로 바뀐다",
+  "ret": "부모 PID",
+  "hdr": "<unistd.h>"
+ },
+ "waitpid(-1, NULL, WNOHANG)": {
+  "role": "끝난 자식 아무나 기다리지 않고 수거",
+  "args": [
+   [
+    "-1",
+    "아무 자식"
+   ],
+   [
+    "NULL",
+    "종료 상태는 버림"
+   ],
+   [
+    "WNOHANG",
+    "끝난 자식이 없으면 기다리지 않고 0"
+   ]
+  ],
+  "flow": "SIGCHLD 핸들러에서 `while (waitpid(-1, NULL, WNOHANG) > 0);` → 겹쳐 온 시그널 몫까지 모두 수거",
+  "ret": "수거한 PID / 남은 게 없으면 0 / 자식 자체가 없으면 -1"
+ },
+ "ps -o pid,ppid,stat,cmd --ppid $!": {
+  "role": "프로세스 상태 보기",
+  "args": [
+   [
+    "-o pid,ppid,stat,cmd",
+    "보여 줄 열 지정 (STAT: R 실행, S 잠, Z **좀비**)"
+   ],
+   [
+    "--ppid $!",
+    "부모가 그 PID 인 프로세스만 (= 방금 띄운 것의 자식)"
+   ],
+   [
+    "-e",
+    "전부"
+   ]
+  ],
+  "flow": "좀비는 STAT 에 Z, cmd 에 `<defunct>`",
+  "ret": "목록"
+ },
+ "chdir": {
+  "role": "현재 디렉터리 바꾸기",
+  "args": [
+   [
+    "path",
+    "이동할 디렉터리"
+   ]
+  ],
+  "flow": "**호출한 프로세스 자신**의 현재 디렉터리만 바뀐다 → 셸의 cd 가 자식이 아니라 셸 안에서 처리되는 이유",
+  "ret": "성공 0 / 실패 -1 (ENOENT, ENOTDIR)",
+  "hdr": "<unistd.h>"
+ },
+ "strtok": {
+  "role": "문자열을 구분자로 자르기",
+  "args": [
+   [
+    "s",
+    "자를 문자열 (**원본이 바뀜**, 리터럴 불가). 이어서 부를 때는 **NULL**"
+   ],
+   [
+    "delim",
+    "구분자 글자들 (`\" \\t\\n\"`)"
+   ]
+  ],
+  "flow": "구분자 자리에 '\\0' 을 써 넣고 토큰 시작 주소를 돌려준다. 내부에 위치를 기억",
+  "ret": "다음 토큰 / 더 없으면 NULL",
+  "hdr": "<string.h>"
+ },
+ "signal": {
+  "role": "시그널 처리 방식 지정 (단순형)",
+  "args": [
+   [
+    "sig",
+    "시그널 번호"
+   ],
+   [
+    "h",
+    "`SIG_IGN` 무시 · `SIG_DFL` 기본 동작 · 함수 주소"
+   ]
+  ],
+  "flow": "셸은 SIGINT 를 무시(`SIG_IGN`)하고, exec 직전 자식은 `SIG_DFL` 로 되돌려 Ctrl+C 에 반응하게 한다",
+  "ret": "이전 처리 방식 / 실패 SIG_ERR",
+  "hdr": "<signal.h>"
+ },
+ "getenv": {
+  "role": "환경 변수 값 읽기",
+  "args": [
+   [
+    "name",
+    "변수 이름 (\"HOME\", \"PATH\")"
+   ]
+  ],
+  "flow": "환경에서 name 을 찾아 값 문자열을 돌려준다 (수정 금지)",
+  "ret": "값 / 없으면 NULL",
+  "hdr": "<stdlib.h>"
+ },
+ "strace -f": {
+  "role": "시스템 콜 추적 (셸 명령)",
+  "args": [
+   [
+    "-e trace=write",
+    "write 시스템 콜만 보기 (콤마로 여러 개)"
+   ],
+   [
+    "-c",
+    "끝난 뒤 시스템 콜별 **호출 횟수·시간 요약**"
+   ],
+   [
+    "-f",
+    "fork 로 생긴 자식까지 추적"
+   ],
+   [
+    "./prog",
+    "추적할 프로그램"
+   ]
+  ],
+  "flow": "프로그램이 커널에 한 요청을 `이름(인자) = 반환` 형식으로 stderr 에 출력",
+  "ret": "프로그램의 종료 코드"
+ },
+ "usleep": {
+  "role": "지정한 마이크로초만큼 잠들기",
+  "args": [
+   [
+    "us",
+    "잠들 시간(마이크로초, 1/1,000,000초). 1000 = 1ms"
+   ]
+  ],
+  "flow": "호출한 스레드를 us 동안 재우고 CPU 를 다른 태스크에 내준다 → 부를 때마다 **자발적 컨텍스트 스위치** 1회",
+  "ret": "성공 0 / 실패 -1 (EINTR 시그널로 깨어남)",
+  "hdr": "<unistd.h> · 구식 함수, 새 코드는 nanosleep"
+ },
+ "clock_gettime": {
+  "role": "지정한 시계의 현재 시각 읽기",
+  "args": [
+   [
+    "id",
+    "어느 시계인지. `CLOCK_MONOTONIC` = 부팅 후 흐른 시간(되돌아가지 않음, 측정용) · `CLOCK_REALTIME` = 달력 시각(바뀔 수 있음)"
+   ],
+   [
+    "t",
+    "결과를 받을 `struct timespec` 의 주소. `tv_sec` 초 + `tv_nsec` 나노초"
+   ]
+  ],
+  "flow": "id 시계의 지금 값을 *t 에 채운다 → 두 번 읽어 빼면 경과 시간",
+  "ret": "성공 0 / 실패 -1 (EINVAL 없는 시계)",
+  "hdr": "<time.h>"
+ },
+ "ps -e --no-headers | wc -l": {
+  "role": "프로세스 상태 보기",
+  "args": [
+   [
+    "-o pid,ppid,stat,cmd",
+    "보여 줄 열 지정 (STAT: R 실행, S 잠, Z **좀비**)"
+   ],
+   [
+    "--ppid $!",
+    "부모가 그 PID 인 프로세스만 (= 방금 띄운 것의 자식)"
+   ],
+   [
+    "-e",
+    "전부"
+   ]
+  ],
+  "flow": "좀비는 STAT 에 Z, cmd 에 `<defunct>`",
+  "ret": "목록"
+ },
+ "stress-ng --cpu N --timeout 20 &": {
+  "role": "부하 생성기 (셸 명령)",
+  "args": [
+   [
+    "--cpu N",
+    "CPU 를 계속 쓰는 작업자 N 개"
+   ],
+   [
+    "--timeout 20",
+    "20초 뒤 종료"
+   ],
+   [
+    "&",
+    "백그라운드로 (다른 측정과 동시에)"
+   ]
+  ],
+  "flow": "일부러 경쟁자를 만들어 스케줄링·지연이 부하에서 어떻게 변하는지 보게 한다",
+  "ret": "성공 0"
+ },
+ "setpriority": {
+  "role": "nice 값(CFS 몫) 바꾸기",
+  "args": [
+   [
+    "which",
+    "대상 종류. `PRIO_PROCESS` = 프로세스 하나 (그 밖에 PRIO_PGRP 그룹, PRIO_USER 사용자)"
+   ],
+   [
+    "who",
+    "대상 번호. which 가 PRIO_PROCESS 면 PID, **0 이면 나 자신**"
+   ],
+   [
+    "prio",
+    "새 nice 값 -20(우대) ~ 19(양보). 일반 사용자는 **올리기만** 가능"
+   ]
+  ],
+  "flow": "who 의 nice 를 prio 로 바꾼다 → CFS weight 가 바뀌어 같은 CPU 를 나눌 때 몫이 달라진다 (nice 1 차이 ≈ 1.25배)",
+  "ret": "성공 0 / 실패 -1 (EACCES·EPERM 일반 사용자가 낮추려 함, ESRCH 없는 대상)",
+  "hdr": "<sys/resource.h>"
+ },
+ "getpriority": {
+  "role": "현재 nice 값 읽기",
+  "args": [
+   [
+    "which",
+    "대상 종류 (`PRIO_PROCESS` 등)"
+   ],
+   [
+    "who",
+    "대상 번호. **0 이면 나 자신**"
+   ]
+  ],
+  "flow": "who 의 nice 값(-20~19)을 돌려준다",
+  "ret": "nice 값. ⚠ -1 도 정상 값이라 실패 확인은 호출 전 `errno = 0` 후 errno 로",
+  "hdr": "<sys/resource.h>"
+ },
+ "nice -n 10 ./prog": {
+  "role": "nice 값을 정해 프로그램 실행 (셸 명령)",
+  "args": [
+   [
+    "-n 10",
+    "nice 를 10 으로 (양보). 음수는 sudo 필요"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램"
+   ]
+  ],
+  "flow": "새 프로세스를 지정한 nice 로 시작 → CFS 몫(weight)이 줄거나 는다",
+  "ret": "실행한 프로그램의 종료 코드"
+ },
+ "renice -n 5 -p PID": {
+  "role": "실행 중인 프로세스의 nice 바꾸기 (셸 명령)",
+  "args": [
+   [
+    "-n 5",
+    "새 nice 값"
+   ],
+   [
+    "-p PID",
+    "대상 프로세스 번호"
+   ]
+  ],
+  "flow": "이미 돌고 있는 PID 의 nice 를 바꾼다 (setpriority 를 셸에서)",
+  "ret": "성공 0"
+ },
+ "/proc/self/sched": {
+  "role": "내 프로세스의 스케줄러 통계 파일",
+  "args": [],
+  "flow": "`se.vruntime`(가상 실행 시간) · `se.sum_exec_runtime`(실제 실행 시간, ms) · nr_switches 등. vruntime 증가 ÷ 실행 시간 ≈ 1024 / weight",
+  "ret": "`이름 : 값` 텍스트 줄"
+ },
+ "sched_setaffinity": {
+  "role": "프로세스를 지정한 CPU 들에서만 돌게 고정",
+  "args": [
+   [
+    "pid",
+    "대상 프로세스 번호. **0 이면 나 자신**"
+   ],
+   [
+    "sz",
+    "set 의 바이트 크기. 보통 `sizeof(cpu_set_t)`"
+   ],
+   [
+    "set",
+    "허용할 CPU 비트 집합. `CPU_ZERO` 로 비우고 `CPU_SET(n, &set)` 으로 추가"
+   ]
+  ],
+  "flow": "pid 가 실행될 수 있는 CPU 목록을 set 으로 바꾼다 → 다른 CPU 가 놀아도 그 CPU 에서만 돈다",
+  "ret": "성공 0 / 실패 -1 (EINVAL 없는 CPU만 들어 있음, EPERM 남의 프로세스, ESRCH 없는 PID)",
+  "hdr": "`#define _GNU_SOURCE` + <sched.h>"
+ },
+ "sched_getaffinity": {
+  "role": "허용 CPU 목록 읽기",
+  "args": [
+   [
+    "pid",
+    "대상 프로세스 번호. **0 이면 나 자신**"
+   ],
+   [
+    "sz",
+    "set 의 바이트 크기. 보통 `sizeof(cpu_set_t)`"
+   ],
+   [
+    "set",
+    "결과를 받을 CPU 비트 집합의 주소 (호출 전 `CPU_ZERO` 권장)"
+   ]
+  ],
+  "flow": "pid 가 돌 수 있는 CPU 목록을 set 에 채운다 → `CPU_ISSET(n, &set)` 으로 n 번 CPU 허용 여부, `CPU_COUNT(&set)` 으로 개수",
+  "ret": "성공 0 / 실패 -1 (EINVAL sz 가 너무 작음, ESRCH 없는 PID)",
+  "hdr": "`#define _GNU_SOURCE` + <sched.h>"
+ },
+ "sched_getcpu": {
+  "role": "지금 실행 중인 CPU 번호",
+  "args": [],
+  "flow": "이 순간 나를 실행하고 있는 CPU 번호를 돌려준다 (다음 순간 바뀔 수 있음, 고정했으면 늘 같음)",
+  "ret": "CPU 번호(0부터) / 실패 -1",
+  "hdr": "`#define _GNU_SOURCE` + <sched.h>"
+ },
+ "sysconf(_SC_NPROCESSORS_ONLN)": {
+  "role": "시스템 설정값 조회",
+  "args": [
+   [
+    "name",
+    "무엇을 물을지. `_SC_NPROCESSORS_ONLN` = 지금 켜진 CPU 수 · `_SC_PAGESIZE` = 페이지 크기 · `_SC_CLK_TCK` = 초당 tick"
+   ]
+  ],
+  "flow": "name 에 해당하는 값을 돌려준다",
+  "ret": "값(long) / 실패 -1",
+  "hdr": "<unistd.h>"
+ },
+ "taskset -c 0 ./prog": {
+  "role": "CPU 고정(affinity) 셸 명령",
+  "args": [
+   [
+    "-c 0",
+    "CPU 번호 목록 (0 · 0,2 · 0-3)"
+   ],
+   [
+    "./prog",
+    "그 CPU 에서만 실행할 프로그램"
+   ],
+   [
+    "-p PID",
+    "실행 중인 프로세스 대상 (`-cp 1 PID` = PID 를 CPU 1 로)"
+   ]
+  ],
+  "flow": "sched_setaffinity 를 셸에서 — 새로 실행하거나 이미 도는 PID 를 지정한 CPU 에 묶는다",
+  "ret": "성공 0"
+ },
+ "taskset -cp 1 PID": {
+  "role": "CPU 고정(affinity) 셸 명령",
+  "args": [
+   [
+    "-c 0",
+    "CPU 번호 목록 (0 · 0,2 · 0-3)"
+   ],
+   [
+    "./prog",
+    "그 CPU 에서만 실행할 프로그램"
+   ],
+   [
+    "-p PID",
+    "실행 중인 프로세스 대상 (`-cp 1 PID` = PID 를 CPU 1 로)"
+   ]
+  ],
+  "flow": "sched_setaffinity 를 셸에서 — 새로 실행하거나 이미 도는 PID 를 지정한 CPU 에 묶는다",
+  "ret": "성공 0"
+ },
+ "sched_setscheduler": {
+  "role": "스케줄링 정책과 실시간 우선순위 바꾸기",
+  "args": [
+   [
+    "pid",
+    "대상 프로세스 번호. **0 이면 나 자신**"
+   ],
+   [
+    "policy",
+    "`SCHED_OTHER`(일반, CFS) · `SCHED_FIFO`(실시간, 양보할 때까지) · `SCHED_RR`(실시간, 같은 우선순위끼리 시간 조각)"
+   ],
+   [
+    "p",
+    "`struct sched_param` 주소. `.sched_priority` = 실시간 우선순위 1~99 (OTHER 는 0)"
+   ]
+  ],
+  "flow": "pid 를 policy 로 바꾼다 → FIFO/RR 은 일반 태스크보다 **항상 먼저** 실행",
+  "ret": "성공 0 / 실패 -1 (**EPERM 일반 사용자** → sudo, EINVAL 우선순위 범위 밖)",
+  "hdr": "<sched.h>"
+ },
+ "sched_getscheduler": {
+  "role": "현재 스케줄링 정책 읽기",
+  "args": [
+   [
+    "pid",
+    "대상 프로세스 번호. **0 이면 나 자신**"
+   ]
+  ],
+  "flow": "pid 의 정책 번호를 돌려준다",
+  "ret": "SCHED_OTHER(0) · SCHED_FIFO(1) · SCHED_RR(2) … / 실패 -1",
+  "hdr": "<sched.h>"
+ },
+ "sched_get_priority_min/max": {
+  "role": "정책별 실시간 우선순위 범위",
+  "args": [
+   [
+    "policy",
+    "정책 (`SCHED_FIFO` 등)"
+   ]
+  ],
+  "flow": "그 정책에서 쓸 수 있는 최소·최대 우선순위를 돌려준다 (Linux FIFO/RR = 1~99, OTHER = 0~0)",
+  "ret": "우선순위 값 / 실패 -1",
+  "hdr": "<sched.h>"
+ },
+ "chrt -p PID": {
+  "role": "스케줄링 정책·실시간 우선순위 셸 명령",
+  "args": [
+   [
+    "-p PID",
+    "실행 중인 PID 의 정책·우선순위 확인 (값을 주면 변경)"
+   ],
+   [
+    "-f 50",
+    "SCHED_FIFO 우선순위 50 으로 (`-r` 이면 RR)"
+   ],
+   [
+    "./prog",
+    "그 정책으로 실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "sched_setscheduler / sched_getscheduler 를 셸에서",
+  "ret": "성공 0"
+ },
+ "sudo chrt -f 50 ./prog": {
+  "role": "스케줄링 정책·실시간 우선순위 셸 명령",
+  "args": [
+   [
+    "-p PID",
+    "실행 중인 PID 의 정책·우선순위 확인 (값을 주면 변경)"
+   ],
+   [
+    "-f 50",
+    "SCHED_FIFO 우선순위 50 으로 (`-r` 이면 RR)"
+   ],
+   [
+    "./prog",
+    "그 정책으로 실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "sched_setscheduler / sched_getscheduler 를 셸에서",
+  "ret": "성공 0"
+ },
+ "nanosleep": {
+  "role": "지금부터 일정 시간 잠들기 (상대 sleep)",
+  "args": [
+   [
+    "req",
+    "잠들 길이 `struct timespec` 주소 ({초, 나노초})"
+   ],
+   [
+    "rem",
+    "시그널로 일찍 깼을 때 남은 시간을 받을 곳 (필요 없으면 NULL)"
+   ]
+  ],
+  "flow": "'지금부터 req 만큼' 잠든다 → 주기 작업에 쓰면 일한 시간 + 깨어나는 지연이 **매번 더해져 오차가 쌓인다**",
+  "ret": "성공 0 / 실패 -1 (EINTR 시그널, 남은 시간은 rem)",
+  "hdr": "<time.h>"
+ },
+ "clock_nanosleep": {
+  "role": "지정한 시계 기준으로 잠들기 (절대 시각 가능)",
+  "args": [
+   [
+    "id",
+    "기준 시계. 보통 `CLOCK_MONOTONIC`"
+   ],
+   [
+    "flags",
+    "`TIMER_ABSTIME` = t 를 **목표 시각**으로 (그 시각까지) · 0 = t 를 길이로 (nanosleep 과 같음)"
+   ],
+   [
+    "t",
+    "목표 시각 또는 길이 `struct timespec` 주소 (tv_nsec 는 0~999,999,999 로 정규화)"
+   ],
+   [
+    "r",
+    "상대 모드에서 남은 시간 (절대 모드면 NULL)"
+   ]
+  ],
+  "flow": "TIMER_ABSTIME 이면 '그 시각까지' 잠든다 → 다음 목표 = 이전 목표 + 주기로 잡으면 **오차가 쌓이지 않는** 주기 실행",
+  "ret": "성공 0 / 실패 시 **에러 번호를 직접 반환** (errno 아님, EINVAL 잘못된 시각)",
+  "hdr": "<time.h>"
+ },
+ "cat /proc/self/cgroup": {
+  "role": "내가 속한 cgroup",
+  "args": [
+   [
+    "self",
+    "이 명령을 실행한 프로세스 자신"
+   ]
+  ],
+  "flow": "cgroup v2 는 한 줄 `0::/경로` — 그 경로가 /sys/fs/cgroup 아래 디렉터리",
+  "ret": "텍스트"
+ },
+ "sudo systemd-run --scope -p CPUQuota=20% ./prog": {
+  "role": "cgroup 제한을 걸어 프로그램 실행 (셸 명령)",
+  "args": [
+   [
+    "--scope",
+    "지금 터미널에서 바로 실행하며 임시 cgroup 에 넣기"
+   ],
+   [
+    "-p CPUQuota=20%",
+    "CPU 사용 한도 (CPU 하나의 20%)"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "임시 cgroup 을 만들어 한도(cpu.max)를 걸고 그 안에서 실행 → 한도를 넘으면 그 주기 동안 멈춘다(throttle)",
+  "ret": "실행한 프로그램의 종료 코드"
+ },
+ "echo \"30000 100000\" | sudo tee …/cpu.max": {
+  "role": "cgroup CPU 한도",
+  "args": [
+   [
+    "30000",
+    "주기마다 쓸 수 있는 시간 µs (quota)"
+   ],
+   [
+    "100000",
+    "주기 µs (period, 0.1초)"
+   ]
+  ],
+  "flow": "30000/100000 = **30%**. 'max 100000' 이면 무제한. `sudo echo … >` 는 권한이 안 넘어가서 `| sudo tee`",
+  "ret": "—"
+ },
+ "echo PID | sudo tee …/cgroup.procs": {
+  "role": "프로세스를 cgroup 에 넣기",
+  "args": [
+   [
+    "PID",
+    "옮길 프로세스 번호"
+   ]
+  ],
+  "flow": "이후 그 프로세스(와 자식)는 그 cgroup 의 한도를 받는다",
+  "ret": "—"
+ },
+ "getopt": {
+  "role": "명령줄 옵션(-p 1000 등) 하나씩 꺼내기",
+  "args": [
+   [
+    "argc",
+    "main 의 인자 개수"
+   ],
+   [
+    "argv",
+    "main 의 인자 배열"
+   ],
+   [
+    "optstring",
+    "받을 옵션 글자들. **글자 뒤 `:` = 값이 따라옴** (`\"p:n:f\"` → -p 값, -n 값, -f 값 없음)"
+   ]
+  ],
+  "flow": "부를 때마다 다음 옵션 글자를 돌려주고, 값이 있으면 전역 `optarg` 에 문자열로 담는다 → `while ((opt = getopt(...)) != -1) switch (opt)` 로 처리",
+  "ret": "옵션 글자 / 모르는 옵션이면 '?' / 더 없으면 -1",
+  "hdr": "<unistd.h>"
+ },
+ "./jitter [-p us] [-n 횟수] [-f prio] [-c cpu] [-o csv]": {
+  "role": "주기 지연 측정 도구",
+  "args": [
+   [
+    "-p us",
+    "주기 µs"
+   ],
+   [
+    "-n",
+    "반복 횟수"
+   ],
+   [
+    "-f prio",
+    "SCHED_FIFO 우선순위 (sudo)"
+   ],
+   [
+    "-c cpu",
+    "CPU 고정"
+   ],
+   [
+    "-o csv",
+    "지연 기록 파일"
+   ]
+  ],
+  "flow": "부하 유무 × 정책 × 고정 조합으로 max 지연을 비교",
+  "ret": "—"
+ },
+ "tail -n +2 a.csv | cut -d, -f2 | sort -n | tail -1": {
+  "role": "CSV 에서 최대값",
+  "args": [
+   [
+    "tail -n +2",
+    "2번째 줄부터 (머리줄 빼기)"
+   ],
+   [
+    "cut -d, -f2",
+    "쉼표 구분 2번째 칸"
+   ],
+   [
+    "sort -n",
+    "숫자 정렬"
+   ],
+   [
+    "tail -1",
+    "마지막 = 최대"
+   ]
+  ],
+  "flow": "파이프로 작은 도구를 이어 붙인다",
+  "ret": "숫자"
+ },
+ "awk -F, '{s+=$2} END {print s/NR}'": {
+  "role": "평균",
+  "args": [
+   [
+    "-F,",
+    "구분자 쉼표"
+   ],
+   [
+    "{s+=$2}",
+    "줄마다 2번째 칸 더하기"
+   ],
+   [
+    "END {print s/NR}",
+    "끝에서 합 ÷ 줄 수"
+   ]
+  ],
+  "flow": "머리줄이 있으면 NR 이 하나 많다 → `NR>1` 조건이나 tail -n +2 로",
+  "ret": "숫자"
+ },
+ "nice / renice": {
+  "role": "nice 값을 정해 프로그램 실행 (셸 명령)",
+  "args": [
+   [
+    "-n 10",
+    "nice 를 10 으로 (양보). 음수는 sudo 필요"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램"
+   ]
+  ],
+  "flow": "새 프로세스를 지정한 nice 로 시작 → CFS 몫(weight)이 줄거나 는다",
+  "ret": "실행한 프로그램의 종료 코드"
+ },
+ "taskset": {
+  "role": "CPU 고정(affinity) 셸 명령",
+  "args": [
+   [
+    "-c 0",
+    "CPU 번호 목록 (0 · 0,2 · 0-3)"
+   ],
+   [
+    "./prog",
+    "그 CPU 에서만 실행할 프로그램"
+   ],
+   [
+    "-p PID",
+    "실행 중인 프로세스 대상 (`-cp 1 PID` = PID 를 CPU 1 로)"
+   ]
+  ],
+  "flow": "sched_setaffinity 를 셸에서 — 새로 실행하거나 이미 도는 PID 를 지정한 CPU 에 묶는다",
+  "ret": "성공 0"
+ },
+ "chrt": {
+  "role": "스케줄링 정책·실시간 우선순위 셸 명령",
+  "args": [
+   [
+    "-p PID",
+    "실행 중인 PID 의 정책·우선순위 확인 (값을 주면 변경)"
+   ],
+   [
+    "-f 50",
+    "SCHED_FIFO 우선순위 50 으로 (`-r` 이면 RR)"
+   ],
+   [
+    "./prog",
+    "그 정책으로 실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "sched_setscheduler / sched_getscheduler 를 셸에서",
+  "ret": "성공 0"
+ },
+ "systemd-run -p CPUQuota=": {
+  "role": "cgroup 제한을 걸어 프로그램 실행 (셸 명령)",
+  "args": [
+   [
+    "--scope",
+    "지금 터미널에서 바로 실행하며 임시 cgroup 에 넣기"
+   ],
+   [
+    "-p CPUQuota=20%",
+    "CPU 사용 한도 (CPU 하나의 20%)"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "임시 cgroup 을 만들어 한도(cpu.max)를 걸고 그 안에서 실행 → 한도를 넘으면 그 주기 동안 멈춘다(throttle)",
+  "ret": "실행한 프로그램의 종료 코드"
+ },
+ "cat /proc/self/maps": {
+  "role": "내 주소 공간의 지도",
+  "args": [],
+  "flow": "한 줄 = 한 영역: `시작-끝 권한(r w x p/s) 오프셋 장치 inode 경로`. [heap], [stack], 실행 파일(text/data), 라이브러리, mmap 영역이 보인다",
+  "ret": "텍스트"
+ },
+ "setarch -R ./prog": {
+  "role": "ASLR 끄고 실행",
+  "args": [
+   [
+    "-R",
+    "주소 무작위화(ASLR) 끄기"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램"
+   ]
+  ],
+  "flow": "실행할 때마다 바뀌던 스택·힙·라이브러리 주소가 고정된다 (비교·디버깅용)",
+  "ret": "프로그램의 종료 코드"
+ },
+ "%p": {
+  "role": "주소 출력 서식",
+  "args": [
+   [
+    "(void *)&x",
+    "출력할 주소 — 규칙상 `void *` 로 캐스팅"
+   ]
+  ],
+  "flow": "16진수 주소(0x7ffd…)로 출력",
+  "ret": "—"
+ },
+ "sbrk": {
+  "role": "heap 끝(program break) 옮기기",
+  "args": [
+   [
+    "inc",
+    "늘릴 바이트 수. **0 이면 지금 끝 주소만 조회**"
+   ]
+  ],
+  "flow": "heap 의 끝을 inc 만큼 옮긴다. malloc 이 작은 할당에 내부적으로 쓰는 방식(brk)",
+  "ret": "옮기기 **전**의 끝 주소 / 실패 `(void *)-1`",
+  "hdr": "<unistd.h>"
+ },
+ "mallopt": {
+  "role": "malloc 동작 설정",
+  "args": [
+   [
+    "param",
+    "무엇을 바꿀지. `M_MMAP_THRESHOLD` = 이 크기 이상은 mmap 으로"
+   ],
+   [
+    "value",
+    "새 값 (바이트, 기본 128KB)"
+   ]
+  ],
+  "flow": "기준을 512KB 로 올리면 256KB 할당도 brk(heap) 로 처리된다",
+  "ret": "성공 1 / 실패 0 (주의: 0 이 실패)",
+  "hdr": "<malloc.h>"
+ },
+ "munmap": {
+  "role": "매핑 해제",
+  "args": [
+   [
+    "addr",
+    "해제할 영역 시작 (mmap 이 돌려준 주소)"
+   ],
+   [
+    "len",
+    "길이 (mmap 때와 같게)"
+   ]
+  ],
+  "flow": "주소 공간에서 그 영역을 없앤다. 큰 malloc 블록의 free 가 내부적으로 호출 → 메모리가 OS 에 **바로** 돌아간다",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<sys/mman.h>"
+ },
+ "strace -e trace=brk,mmap,munmap ./prog": {
+  "role": "시스템 콜 추적 (셸 명령)",
+  "args": [
+   [
+    "-e trace=write",
+    "write 시스템 콜만 보기 (콤마로 여러 개)"
+   ],
+   [
+    "-c",
+    "끝난 뒤 시스템 콜별 **호출 횟수·시간 요약**"
+   ],
+   [
+    "-f",
+    "fork 로 생긴 자식까지 추적"
+   ],
+   [
+    "./prog",
+    "추적할 프로그램"
+   ]
+  ],
+  "flow": "프로그램이 커널에 한 요청을 `이름(인자) = 반환` 형식으로 stderr 에 출력",
+  "ret": "프로그램의 종료 코드"
+ },
+ "getrusage": {
+  "role": "자원 사용량 조회",
+  "args": [
+   [
+    "who",
+    "`RUSAGE_SELF` 나 · `RUSAGE_CHILDREN` 수거한 자식들"
+   ],
+   [
+    "ru",
+    "결과 `struct rusage` 주소: `ru_minflt` minor fault(디스크 없이 처리), `ru_majflt` major fault(디스크 읽음), `ru_maxrss` 최대 RSS(kB)"
+   ]
+  ],
+  "flow": "지금까지 누적된 값을 채운다 → 전후를 빼서 구간의 fault 수",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<sys/resource.h>"
+ },
+ "sysconf(_SC_PAGESIZE)": {
+  "role": "시스템 설정값 조회",
+  "args": [
+   [
+    "name",
+    "무엇을 물을지. `_SC_NPROCESSORS_ONLN` = 지금 켜진 CPU 수 · `_SC_PAGESIZE` = 페이지 크기 · `_SC_CLK_TCK` = 초당 tick"
+   ]
+  ],
+  "flow": "name 에 해당하는 값을 돌려준다",
+  "ret": "값(long) / 실패 -1",
+  "hdr": "<unistd.h>"
+ },
+ "memutil.h": {
+  "role": "Day 3 공용 측정 헤더",
+  "args": [
+   [
+    "status_kb(\"VmRSS\")",
+    "/proc/self/status 의 값(kB)"
+   ],
+   [
+    "minflt() / majflt()",
+    "지금까지 minor / major page fault 수"
+   ],
+   [
+    "now_ms()",
+    "MONOTONIC 시각(ms)"
+   ]
+  ],
+  "flow": "`static inline` 함수만 있어 include 만 하면 된다 (링크할 .c 없음)",
+  "ret": "—"
+ },
+ "mmap": {
+  "role": "파일·익명 메모리를 주소 공간에 매핑",
+  "args": [
+   [
+    "addr",
+    "원하는 시작 주소 (보통 **NULL** = 커널이 고름)"
+   ],
+   [
+    "len",
+    "매핑할 길이(바이트)"
+   ],
+   [
+    "prot",
+    "접근 권한 `PROT_READ | PROT_WRITE` (PROT_EXEC)"
+   ],
+   [
+    "flags",
+    "`MAP_SHARED` 바꾸면 파일·다른 프로세스에 반영 / `MAP_PRIVATE` 내 복사본만(CoW) / `MAP_ANONYMOUS` 파일 없이"
+   ],
+   [
+    "fd",
+    "매핑할 파일 (익명이면 -1)"
+   ],
+   [
+    "off",
+    "파일 안 시작 위치 (페이지 크기 배수, 보통 0)"
+   ]
+  ],
+  "flow": "파일을 read 없이 **배열처럼** 읽고 쓴다. 실제 페이지는 처음 만질 때 page fault 로 채워진다",
+  "ret": "매핑 시작 주소 / 실패 **`MAP_FAILED`** (NULL 아님!)",
+  "hdr": "<sys/mman.h>"
+ },
+ "msync": {
+  "role": "매핑에서 고친 내용을 파일에 반영",
+  "args": [
+   [
+    "addr",
+    "매핑 시작"
+   ],
+   [
+    "len",
+    "길이"
+   ],
+   [
+    "flags",
+    "`MS_SYNC` = 끝날 때까지 기다림 · `MS_ASYNC` = 예약만"
+   ]
+  ],
+  "flow": "MAP_SHARED 로 바꾼 페이지를 디스크에 쓴다 (안 불러도 언젠가는 쓰임)",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<sys/mman.h>"
+ },
+ "fstat": {
+  "role": "열린 파일의 정보",
+  "args": [
+   [
+    "fd",
+    "대상 파일 디스크립터"
+   ],
+   [
+    "st",
+    "결과 `struct stat` 주소: `st_size` 크기, `st_mode` 종류·권한, `st_ino` inode …"
+   ]
+  ],
+  "flow": "mmap 할 길이를 정하려고 크기(st_size)를 얻는 데 쓴다",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<sys/stat.h>"
+ },
+ "mlockall": {
+  "role": "프로세스 메모리 전부 RAM 에 잠그기",
+  "args": [
+   [
+    "flags",
+    "`MCL_CURRENT` 지금 있는 페이지 · `MCL_FUTURE` 앞으로 생길 페이지까지 (할당 즉시 실제 페이지 확보)"
+   ]
+  ],
+  "flow": "스왑으로 쫓겨나거나 처음 만질 때 fault 가 나지 않게 → 실시간 루프의 지연 제거",
+  "ret": "성공 0 / 실패 -1 (ENOMEM·EPERM `ulimit -l` 한도 초과 → sudo)",
+  "hdr": "<sys/mman.h>"
+ },
+ "ulimit -l": {
+  "role": "셸 자원 한도 보기·바꾸기",
+  "args": [
+   [
+    "-l",
+    "잠글 수 있는 메모리 한도(kB)"
+   ],
+   [
+    "-s",
+    "스택 크기"
+   ],
+   [
+    "-n",
+    "열 수 있는 파일 수"
+   ]
+  ],
+  "flow": "이 셸과 자식들에 적용되는 한도를 보여 준다",
+  "ret": "숫자 또는 unlimited"
+ },
+ "/proc/sys/vm/overcommit_memory": {
+  "role": "오버커밋 정책",
+  "args": [
+   [
+    "0",
+    "추정: 터무니없는 요청만 거절 (기본)"
+   ],
+   [
+    "1",
+    "항상 허용"
+   ],
+   [
+    "2",
+    "엄격: 한도 넘으면 malloc 이 NULL"
+   ]
+  ],
+  "flow": "malloc 이 실제 메모리보다 많이 '약속' 할 수 있게 할지. 약속을 다 쓰면 OOM killer 가 누군가를 죽인다",
+  "ret": "숫자 하나"
+ },
+ "sudo systemd-run --scope -p MemoryMax=100M -p MemorySwapMax=0 ./prog": {
+  "role": "cgroup 제한을 걸어 프로그램 실행 (셸 명령)",
+  "args": [
+   [
+    "--scope",
+    "지금 터미널에서 바로 실행하며 임시 cgroup 에 넣기"
+   ],
+   [
+    "-p CPUQuota=20%",
+    "CPU 사용 한도 (CPU 하나의 20%)"
+   ],
+   [
+    "./prog",
+    "실행할 프로그램 (sudo 필요)"
+   ]
+  ],
+  "flow": "임시 cgroup 을 만들어 한도(cpu.max)를 걸고 그 안에서 실행 → 한도를 넘으면 그 주기 동안 멈춘다(throttle)",
+  "ret": "실행한 프로그램의 종료 코드"
+ },
+ "sudo dmesg | tail -5": {
+  "role": "커널 로그 보기",
+  "args": [
+   [
+    "sudo",
+    "일반 사용자는 막혀 있는 경우가 많다"
+   ],
+   [
+    "| tail -5",
+    "마지막 5줄만"
+   ]
+  ],
+  "flow": "OOM killer 가 죽인 기록(`Out of memory: Killed process …`), 드라이버 메시지 확인",
+  "ret": "텍스트"
+ },
+ "valgrind --leak-check=full ./prog": {
+  "role": "메모리 오류 검사기",
+  "args": [
+   [
+    "--leak-check=full",
+    "누수마다 할당 위치를 자세히"
+   ],
+   [
+    "./prog",
+    "검사할 프로그램 (**재빌드 불필요**, `-g` 면 줄 번호)"
+   ]
+  ],
+  "flow": "프로그램을 가상 CPU 위에서 돌리며 모든 메모리 접근을 검사 → **10~50배 느림**",
+  "ret": "프로그램의 종료 코드 (요약은 stderr: definitely lost, Invalid read…)"
+ },
+ "gcc -g -fsanitize=address": {
+  "role": "AddressSanitizer 빌드",
+  "args": [
+   [
+    "-g",
+    "줄 번호 정보"
+   ],
+   [
+    "-fsanitize=address",
+    "메모리 접근마다 검사 코드를 넣어 빌드"
+   ]
+  ],
+  "flow": "오류가 나는 **순간 즉시 중단**하고 줄 번호·스택을 출력. 약 2배 느림 (valgrind 보다 빠름)",
+  "ret": "오류 시 비정상 종료"
+ },
+ "-Wuse-after-free, -Wstringop-overflow": {
+  "role": "gcc 정적 경고",
+  "args": [
+   [
+    "-Wuse-after-free",
+    "free 뒤 사용이 코드에서 보이면 경고"
+   ],
+   [
+    "-Wstringop-overflow",
+    "strcpy 등이 버퍼보다 크게 쓰는 게 보이면 경고"
+   ]
+  ],
+  "flow": "실행 없이 빌드 단계에서 일부를 잡는다 (전부는 아님)",
+  "ret": "경고"
+ },
+ "mkstemp": {
+  "role": "이름이 겹치지 않는 임시 파일 만들기",
+  "args": [
+   [
+    "template",
+    "`\"/tmp/memlab_XXXXXX\"` — 끝 **XXXXXX 6글자**가 무작위로 바뀐다 (배열이어야 함, 리터럴 불가)"
+   ]
+  ],
+  "flow": "파일을 만들고 열어 fd 를 돌려준다. template 에 실제 이름이 써진다 → 끝나면 unlink",
+  "ret": "fd / 실패 -1",
+  "hdr": "<stdlib.h>"
+ },
+ "ftruncate": {
+  "role": "파일 크기 정하기",
+  "args": [
+   [
+    "fd",
+    "대상 파일"
+   ],
+   [
+    "len",
+    "새 크기 (늘리면 0 으로 채움)"
+   ]
+  ],
+  "flow": "빈 임시 파일을 mmap 할 크기로 늘리는 데 쓴다 (크기 0 파일은 매핑 불가)",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<unistd.h>"
+ },
+ "./memlab demand|cow|mmap|lock [MB]": {
+  "role": "Day 3 종합 실험 도구",
+  "args": [
+   [
+    "demand|cow|mmap|lock",
+    "실험 종류"
+   ],
+   [
+    "MB",
+    "크기 (기본 64)"
+   ]
+  ],
+  "flow": "실험 1회 → `exp,size_mb,minflt,majflt,rss_kb,ms` CSV 한 줄",
+  "ret": "성공 0"
+ },
+ "./memlab_run.sh 5": {
+  "role": "memlab 반복 실행 스크립트",
+  "args": [
+   [
+    "5",
+    "실험마다 반복 횟수"
+   ]
+  ],
+  "flow": "결과를 memlab.csv 에 모으고 `column -t` 로 표처럼 출력",
+  "ret": "—"
+ },
+ "read": {
+  "role": "fd 에서 바이트 읽기",
+  "args": [
+   [
+    "fd",
+    "읽을 파일 디스크립터 (0 = stdin)"
+   ],
+   [
+    "buf",
+    "읽은 데이터를 담을 곳"
+   ],
+   [
+    "n",
+    "최대 몇 바이트까지 (buf 크기)"
+   ]
+  ],
+  "flow": "커널이 최대 n 바이트를 buf 에 채운다. 남은 양이 적으면 그만큼만, 파이프·장치·inotify 는 올 때까지 **잠든다**",
+  "ret": "읽은 바이트 수 / **0 = 파일 끝(EOF)** / -1 + errno",
+  "hdr": "<unistd.h>"
+ },
+ "dup / dup2": {
+  "role": "fd 복제 / 다른 번호로 바꿔 끼우기",
+  "args": [
+   [
+    "dup(fd)",
+    "같은 열린 파일을 가리키는 **새 번호**(가장 작은 빈 번호)"
+   ],
+   [
+    "dup2(old, new)",
+    "new 를 닫고 old 와 같은 파일을 가리키게 (new 번호 그대로)"
+   ]
+  ],
+  "flow": "`dup2(fd_file, 1)` → 이후 printf 가 파일로 간다 (셸의 `>` 가 하는 일). 원래 화면은 미리 `dup(1)` 로 보관",
+  "ret": "새 fd / 실패 -1",
+  "hdr": "<unistd.h>"
+ },
+ "readlink": {
+  "role": "심볼릭 링크가 가리키는 경로 읽기",
+  "args": [
+   [
+    "path",
+    "링크 경로 (`/proc/self/fd/3` 등)"
+   ],
+   [
+    "buf",
+    "결과를 담을 곳"
+   ],
+   [
+    "n",
+    "buf 크기 (끝에 '\\0' 넣을 자리 남기려면 `sizeof - 1`)"
+   ]
+  ],
+  "flow": "링크 내용을 buf 에 복사 — **'\\0' 을 붙이지 않으므로** `buf[ret] = '\\0'` 필수",
+  "ret": "복사한 바이트 수 / 실패 -1",
+  "hdr": "<unistd.h>"
+ },
+ "ls -l /proc/self/fd": {
+  "role": "내가 연 fd 목록",
+  "args": [],
+  "flow": "0·1·2 + 열어 둔 파일이 `번호 -> 경로` 링크로 보인다 (여기선 ls 자신의 fd)",
+  "ret": "목록"
+ },
+ "opendir / readdir / closedir": {
+  "role": "디렉터리 항목 하나씩 읽기",
+  "args": [
+   [
+    "opendir(path)",
+    "디렉터리를 열어 `DIR *` 를 받음 (실패 NULL)"
+   ],
+   [
+    "readdir(d)",
+    "다음 항목 `struct dirent *` — `e->d_name` 이름, 더 없으면 NULL"
+   ],
+   [
+    "closedir(d)",
+    "닫기"
+   ]
+  ],
+  "flow": "`.` `..` 과 숨김 파일도 나오므로 이름 첫 글자로 거른다. 순서는 정렬되지 않음",
+  "ret": "DIR* / dirent* / 0",
+  "hdr": "<dirent.h>"
+ },
+ "stat / lstat": {
+  "role": "파일 정보 (inode)",
+  "args": [
+   [
+    "path",
+    "대상 경로"
+   ],
+   [
+    "st",
+    "결과 `struct stat`: `st_ino` inode 번호 · `st_mode` 종류+권한 · `st_nlink` 하드 링크 수 · `st_size` 크기 · `st_mtime` 수정 시각"
+   ]
+  ],
+  "flow": "stat 은 링크를 **따라가서** 대상 정보를, lstat 은 **링크 자체** 정보를 준다",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<sys/stat.h>"
+ },
+ "S_ISDIR(m) / S_ISLNK(m)": {
+  "role": "st_mode 로 종류 판별",
+  "args": [
+   [
+    "m",
+    "stat 의 st_mode"
+   ]
+  ],
+  "flow": "S_ISDIR 디렉터리 · S_ISLNK 심볼릭 링크 · S_ISREG 일반 파일 (lstat 으로 받아야 LNK 가 보임)",
+  "ret": "참(≠0)/거짓(0)",
+  "hdr": "<sys/stat.h>"
+ },
+ "strftime": {
+  "role": "시각을 원하는 형식의 문자열로",
+  "args": [
+   [
+    "s",
+    "결과를 쓸 버퍼"
+   ],
+   [
+    "n",
+    "버퍼 크기"
+   ],
+   [
+    "fmt",
+    "형식 `\"%m-%d %H:%M\"` (%Y 연, %m 월, %d 일, %H 시, %M 분, %S 초)"
+   ],
+   [
+    "t",
+    "`struct tm *` — `localtime(&st.st_mtime)` 결과"
+   ]
+  ],
+  "flow": "숫자 시각(time_t)을 localtime 으로 쪼갠 뒤 형식대로 글자로 만든다",
+  "ret": "쓴 글자 수 / 버퍼가 작으면 0",
+  "hdr": "<time.h>"
+ },
+ "ln a.txt hard.txt / ln -s a.txt soft.txt": {
+  "role": "링크 만들기",
+  "args": [
+   [
+    "ln a.txt hard.txt",
+    "**하드 링크**: 같은 inode 에 이름 하나 더 (nlink +1, 원본을 지워도 내용 유지)"
+   ],
+   [
+    "ln -s a.txt soft.txt",
+    "**심볼릭 링크**: 경로를 담은 별도 파일 (원본을 지우면 끊김)"
+   ]
+  ],
+  "flow": "`ls -li` 로 inode 번호와 링크 수를 비교해 본다",
+  "ret": "성공 0"
+ },
+ "ls -li": {
+  "role": "inode 번호와 함께 목록",
+  "args": [
+   [
+    "-i",
+    "맨 앞에 inode 번호"
+   ],
+   [
+    "-l",
+    "자세히 (셋째 열 = 하드 링크 수)"
+   ]
+  ],
+  "flow": "하드 링크끼리는 inode 가 같고, 심볼릭 링크는 다르다",
+  "ret": "목록"
+ },
+ "fsync": {
+  "role": "파일을 디스크까지 기록",
+  "args": [
+   [
+    "fd",
+    "대상 파일"
+   ]
+  ],
+  "flow": "page cache 에 쌓인 그 파일의 dirty 데이터를 디스크에 쓰고 **끝날 때까지 기다린다** → 매 write 마다 부르면 매우 느림",
+  "ret": "성공 0 / 실패 -1 (EIO)",
+  "hdr": "<unistd.h>"
+ },
+ "open(…, O_SYNC)": {
+  "role": "파일 열기 → fd",
+  "args": [
+   [
+    "path",
+    "열 파일 경로"
+   ],
+   [
+    "flags",
+    "`O_RDONLY` 읽기 · `O_WRONLY` 쓰기 · `O_RDWR` 둘 다, `|` 로 `O_CREAT` · `O_TRUNC` · `O_APPEND` 추가"
+   ],
+   [
+    "mode",
+    "(O_CREAT 일 때 셋째 인자) 새 파일 권한 0644 등"
+   ]
+  ],
+  "flow": "커널이 파일을 열고 **가장 작은 빈 fd 번호**(보통 3부터)를 준다",
+  "ret": "fd (≥ 0) / 실패 -1 + errno (ENOENT 없음, EACCES 권한, EISDIR 디렉터리에 쓰기)",
+  "hdr": "<fcntl.h>"
+ },
+ "dd if=/dev/urandom of=src.bin bs=1M count=8": {
+  "role": "블록 단위 복사·파일 만들기",
+  "args": [
+   [
+    "if=",
+    "입력 (`/dev/urandom` 무작위, `/dev/zero` 0)"
+   ],
+   [
+    "of=",
+    "출력 파일"
+   ],
+   [
+    "bs=1M",
+    "한 번에 읽고 쓸 크기"
+   ],
+   [
+    "count=8",
+    "몇 블록 (→ 8MB)"
+   ],
+   [
+    "oflag=direct",
+    "page cache 를 건너뛰고 바로 디스크에"
+   ]
+  ],
+  "flow": "테스트용 큰 파일을 만들거나 디스크 쓰기 부하를 준다",
+  "ret": "끝나면 전송량·속도 출력"
+ },
+ "strace -c ./prog": {
+  "role": "시스템 콜 추적 (셸 명령)",
+  "args": [
+   [
+    "-e trace=write",
+    "write 시스템 콜만 보기 (콤마로 여러 개)"
+   ],
+   [
+    "-c",
+    "끝난 뒤 시스템 콜별 **호출 횟수·시간 요약**"
+   ],
+   [
+    "-f",
+    "fork 로 생긴 자식까지 추적"
+   ],
+   [
+    "./prog",
+    "추적할 프로그램"
+   ]
+  ],
+  "flow": "프로그램이 커널에 한 요청을 `이름(인자) = 반환` 형식으로 stderr 에 출력",
+  "ret": "프로그램의 종료 코드"
+ },
+ "posix_fadvise": {
+  "role": "파일 접근 방식을 커널에 알려 주기",
+  "args": [
+   [
+    "fd",
+    "대상 파일"
+   ],
+   [
+    "off",
+    "시작 위치"
+   ],
+   [
+    "len",
+    "길이 (**0 = 끝까지**)"
+   ],
+   [
+    "advice",
+    "`POSIX_FADV_DONTNEED` 이 범위 cache 버려도 됨 · `SEQUENTIAL` 순차로 읽을 것 · `WILLNEED` 곧 읽을 것"
+   ]
+  ],
+  "flow": "DONTNEED 면 그 파일의 clean cache 를 버린다 → 다음 읽기가 다시 디스크에서 (dirty 는 안 버려짐, 먼저 sync)",
+  "ret": "성공 0 / 실패 시 **에러 번호 직접 반환**",
+  "hdr": "<fcntl.h>"
+ },
+ "free -h": {
+  "role": "메모리 사용량",
+  "args": [
+   [
+    "-h",
+    "사람이 읽기 쉬운 단위 (Mi, Gi)"
+   ]
+  ],
+  "flow": "`buff/cache` = page cache 등 (필요하면 회수되는 메모리), `available` = 새 프로그램이 실제 쓸 수 있는 양",
+  "ret": "표"
+ },
+ "grep -E \"^(Cached|Dirty)\" /proc/meminfo": {
+  "role": "page cache · dirty 크기 보기",
+  "args": [
+   [
+    "Cached",
+    "page cache 에 있는 파일 데이터"
+   ],
+   [
+    "Dirty",
+    "아직 디스크에 안 쓴 변경분"
+   ]
+  ],
+  "flow": "큰 파일을 읽은 뒤 Cached 가 늘고, 쓰고 나서 sync 전까지 Dirty 가 남는다",
+  "ret": "두 줄"
+ },
+ "echo 3 | sudo tee /proc/sys/vm/drop_caches": {
+  "role": "시스템 전체 cache 비우기",
+  "args": [
+   [
+    "3",
+    "page cache + dentry·inode cache 모두"
+   ],
+   [
+    "sudo tee",
+    "root 권한으로 파일에 쓰기 (sudo echo > 는 안 됨)"
+   ]
+  ],
+  "flow": "모든 사용자에게 영향 → 공용 VM 에선 강사 시연만. 내 파일만이면 posix_fadvise",
+  "ret": "—"
+ },
+ "inotify_init1": {
+  "role": "파일 변화 감시용 fd 만들기",
+  "args": [
+   [
+    "flags",
+    "0 · `IN_NONBLOCK`(read 가 기다리지 않음) · `IN_CLOEXEC`"
+   ]
+  ],
+  "flow": "이 fd 를 read 하면 감시 대상의 변화가 **이벤트로** 온다 (폴링 불필요)",
+  "ret": "inotify fd / 실패 -1",
+  "hdr": "<sys/inotify.h>"
+ },
+ "inotify_add_watch": {
+  "role": "감시 대상·이벤트 등록",
+  "args": [
+   [
+    "fd",
+    "inotify_init1 이 준 fd"
+   ],
+   [
+    "path",
+    "감시할 파일·디렉터리"
+   ],
+   [
+    "mask",
+    "받을 이벤트 OR (`IN_CREATE | IN_MODIFY | IN_CLOSE_WRITE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO`)"
+   ]
+  ],
+  "flow": "path 에 그 일이 생길 때마다 fd 에 이벤트가 쌓인다",
+  "ret": "감시 번호(wd) / 실패 -1",
+  "hdr": "<sys/inotify.h>"
+ },
+ "read(fd, buf, …)": {
+  "role": "inotify 이벤트 꺼내기",
+  "args": [
+   [
+    "fd",
+    "inotify fd"
+   ],
+   [
+    "buf",
+    "이벤트를 받을 버퍼 (struct inotify_event 정렬)"
+   ]
+  ],
+  "flow": "이벤트가 올 때까지 잠든다. 한 번에 **여러 개**가 이어 붙어 오므로 `sizeof(struct inotify_event) + ev->len` 씩 건너뛰며 처리 (`mask` 종류, `name` 파일 이름)",
+  "ret": "읽은 바이트 수"
+ },
+ "IN_CREATE": {
+  "role": "inotify — 생성",
+  "args": [],
+  "flow": "감시 디렉터리 안에 파일·디렉터리가 생김 (event->name 에 이름)",
+  "ret": "—"
+ },
+ "IN_MODIFY": {
+  "role": "inotify — 수정",
+  "args": [],
+  "flow": "write 할 때마다 — 한 번 저장에 여러 번 올 수 있다",
+  "ret": "—"
+ },
+ "IN_CLOSE_WRITE": {
+  "role": "inotify — 쓰기 끝",
+  "args": [],
+  "flow": "쓰기로 연 파일을 닫음 → '완성된 파일' 처리 시점으로 가장 좋다",
+  "ret": "—"
+ },
+ "IN_DELETE": {
+  "role": "inotify — 삭제",
+  "args": [],
+  "flow": "감시 디렉터리 안에서 지워짐",
+  "ret": "—"
+ },
+ "IN_MOVED_FROM / IN_MOVED_TO": {
+  "role": "inotify — 이름 바꾸기·이동",
+  "args": [
+   [
+    "MOVED_FROM",
+    "옛 이름"
+   ],
+   [
+    "MOVED_TO",
+    "새 이름"
+   ]
+  ],
+  "flow": "두 이벤트의 cookie 값이 같으면 한 번의 이동",
+  "ret": "—"
+ },
+ "cat /sys/class/net/enp0s3/address / operstate": {
+  "role": "네트워크 장치 MAC · 연결 상태",
+  "args": [
+   [
+    "enp0s3",
+    "장치 이름 (`ls /sys/class/net`)"
+   ]
+  ],
+  "flow": "sysfs 규칙: **파일 하나 = 값 하나**. address = MAC, operstate = up/down",
+  "ret": "한 줄"
+ },
+ "cat /sys/class/net/enp0s3/statistics/rx_bytes": {
+  "role": "받은 바이트 누적",
+  "args": [],
+  "flow": "직전 값과의 차이 ÷ 시간 = 수신 속도",
+  "ret": "숫자"
+ },
+ "cat /sys/block/sda/stat": {
+  "role": "디스크 I/O 통계",
+  "args": [],
+  "flow": "공백으로 구분된 숫자들: 1 읽기 횟수 … 5 쓰기 횟수, **7 쓴 섹터 수**(×512 바이트)",
+  "ret": "한 줄"
+ },
+ "cat /sys/devices/system/cpu/online": {
+  "role": "온라인 CPU 목록",
+  "args": [],
+  "flow": "`0-1` 처럼 범위로",
+  "ret": "한 줄"
+ },
+ "cat /sys/class/thermal/thermal_zone0/temp": {
+  "role": "온도",
+  "args": [],
+  "flow": "1/1000 ℃ 단위 (45000 = 45℃). VM 에는 없고 실제 보드(Pi)에 있다",
+  "ret": "숫자"
+ },
+ "make (Kbuild: obj-m := mysysfs.o, make -C /lib/modules/$(uname -r)/build M=$(PWD) modules)": {
+  "role": "커널 모듈(.ko) 빌드",
+  "args": [
+   [
+    "obj-m := mysysfs.o",
+    "모듈로 만들 오브젝트"
+   ],
+   [
+    "-C …/build",
+    "**지금 커널 버전**의 헤더 디렉터리로 가서"
+   ],
+   [
+    "M=$(PWD)",
+    "이 폴더의 소스를"
+   ],
+   [
+    "modules",
+    "모듈로 빌드"
+   ]
+  ],
+  "flow": "linux-headers-$(uname -r) 가 있어야 한다. 결과: mysysfs.ko",
+  "ret": "—"
+ },
+ "sudo insmod mysysfs.ko": {
+  "role": "커널 모듈 적재",
+  "args": [
+   [
+    "mysysfs.ko",
+    "적재할 모듈 파일"
+   ]
+  ],
+  "flow": "커널에 올리고 `module_init` 함수를 실행 (sudo 필요). 메시지는 dmesg",
+  "ret": "성공 0"
+ },
+ "sudo rmmod mysysfs": {
+  "role": "커널 모듈 제거",
+  "args": [
+   [
+    "mysysfs",
+    "모듈 이름 (.ko 없이)"
+   ]
+  ],
+  "flow": "`module_exit` 함수를 실행하고 내린다 (sudo)",
+  "ret": "성공 0"
+ },
+ "lsmod | grep mysysfs / modinfo mysysfs.ko": {
+  "role": "적재된 모듈 목록 / 모듈 정보",
+  "args": [
+   [
+    "| grep mysysfs",
+    "목록에서 내 것만"
+   ],
+   [
+    "modinfo mysysfs.ko",
+    "라이선스·설명·버전·vermagic"
+   ]
+  ],
+  "flow": "적재 확인과 메타데이터 확인",
+  "ret": "목록"
+ },
+ "sudo dmesg | tail": {
+  "role": "커널 로그 보기",
+  "args": [
+   [
+    "sudo",
+    "일반 사용자는 막혀 있는 경우가 많다"
+   ],
+   [
+    "| tail -5",
+    "마지막 5줄만"
+   ]
+  ],
+  "flow": "OOM killer 가 죽인 기록(`Out of memory: Killed process …`), 드라이버 메시지 확인",
+  "ret": "텍스트"
+ },
+ "kobject_create_and_add(\"mysysfs\", kernel_kobj)": {
+  "role": "sysfs 디렉터리 만들기 (커널)",
+  "args": [
+   [
+    "\"mysysfs\"",
+    "디렉터리 이름"
+   ],
+   [
+    "kernel_kobj",
+    "부모 = /sys/kernel"
+   ]
+  ],
+  "flow": "/sys/kernel/mysysfs 를 만들고 kobject 를 돌려준다",
+  "ret": "kobject * / 실패 NULL"
+ },
+ "sysfs_create_group(kobj, &group)": {
+  "role": "속성 파일들을 한 번에 만들기 (커널)",
+  "args": [
+   [
+    "kobj",
+    "디렉터리"
+   ],
+   [
+    "group",
+    "`attribute_group` — NULL 로 끝나는 속성 배열"
+   ]
+  ],
+  "flow": "각 속성이 파일 하나가 되고, cat → show, echo → store 콜백이 불린다",
+  "ret": "성공 0 / 실패 음수 에러"
+ },
+ "kobject_put(kobj)": {
+  "role": "kobject 반납 (커널)",
+  "args": [
+   [
+    "kobj",
+    "만든 디렉터리"
+   ]
+  ],
+  "flow": "참조 수가 0 이 되면 디렉터리와 속성이 함께 정리된다 (module_exit 에서)",
+  "ret": "없음"
+ },
+ "./sysmon -i 1 -n 10 -o sys.csv [-d sda] [-N enp0s3]": {
+  "role": "Day 4 종합 시스템 모니터",
+  "args": [
+   [
+    "-i 1",
+    "주기(초)"
+   ],
+   [
+    "-n 10",
+    "횟수"
+   ],
+   [
+    "-o sys.csv",
+    "CSV 출력"
+   ],
+   [
+    "-d sda",
+    "디스크 장치"
+   ],
+   [
+    "-N enp0s3",
+    "네트워크 장치"
+   ]
+  ],
+  "flow": "주기마다 CPU% · 메모리 · 디스크 쓰기 · 수신 속도를 계산해 화면과 CSV 에",
+  "ret": "성공 0"
+ },
+ "dd if=/dev/zero of=z.bin bs=1M count=100 oflag=direct": {
+  "role": "블록 단위 복사·파일 만들기",
+  "args": [
+   [
+    "if=",
+    "입력 (`/dev/urandom` 무작위, `/dev/zero` 0)"
+   ],
+   [
+    "of=",
+    "출력 파일"
+   ],
+   [
+    "bs=1M",
+    "한 번에 읽고 쓸 크기"
+   ],
+   [
+    "count=8",
+    "몇 블록 (→ 8MB)"
+   ],
+   [
+    "oflag=direct",
+    "page cache 를 건너뛰고 바로 디스크에"
+   ]
+  ],
+  "flow": "테스트용 큰 파일을 만들거나 디스크 쓰기 부하를 준다",
+  "ret": "끝나면 전송량·속도 출력"
+ },
+ "pthread_create": {
+  "role": "쓰레드 만들기",
+  "args": [
+   [
+    "th",
+    "새 쓰레드 ID 를 받을 `pthread_t` 주소"
+   ],
+   [
+    "attr",
+    "속성 (기본이면 **NULL**)"
+   ],
+   [
+    "fn",
+    "쓰레드가 실행할 함수 `void *fn(void *)`"
+   ],
+   [
+    "arg",
+    "fn 에 넘길 인자 (여러 개면 구조체 주소)"
+   ]
+  ],
+  "flow": "같은 주소 공간을 공유하는 새 실행 흐름을 만들어 `fn(arg)` 를 실행한다",
+  "ret": "성공 0 / 실패 **에러 번호 직접 반환** (errno 아님, EAGAIN 자원 부족)",
+  "hdr": "<pthread.h> · 빌드 `gcc -pthread`"
+ },
+ "pthread_join": {
+  "role": "쓰레드가 끝나길 기다리고 반환값 받기",
+  "args": [
+   [
+    "th",
+    "기다릴 쓰레드"
+   ],
+   [
+    "ret",
+    "fn 이 return 한 `void *` 를 받을 곳 (필요 없으면 NULL)"
+   ]
+  ],
+  "flow": "그 쓰레드가 끝날 때까지 잠들고 자원을 회수한다 (프로세스의 waitpid 와 비슷)",
+  "ret": "성공 0 / 실패 에러 번호 (EDEADLK 자기 자신 join)",
+  "hdr": "<pthread.h>"
+ },
+ "gettid": {
+  "role": "내 쓰레드 ID(TID)",
+  "args": [],
+  "flow": "커널이 쓰레드마다 붙이는 번호. 메인 쓰레드는 TID = PID, 다른 쓰레드는 PID 는 같고 TID 만 다르다",
+  "ret": "TID",
+  "hdr": "`#define _GNU_SOURCE` + <unistd.h>"
+ },
+ "gcc -pthread": {
+  "role": "pthread 프로그램 빌드 옵션",
+  "args": [
+   [
+    "-pthread",
+    "pthread 라이브러리 링크 + 쓰레드용 매크로 설정"
+   ]
+  ],
+  "flow": "`gcc -pthread -o prog prog.c` (예전엔 `-lpthread`)",
+  "ret": "—"
+ },
+ "ps -L -p PID / ls /proc/PID/task": {
+  "role": "프로세스 상태 보기",
+  "args": [
+   [
+    "-o pid,ppid,stat,cmd",
+    "보여 줄 열 지정 (STAT: R 실행, S 잠, Z **좀비**)"
+   ],
+   [
+    "--ppid $!",
+    "부모가 그 PID 인 프로세스만 (= 방금 띄운 것의 자식)"
+   ],
+   [
+    "-e",
+    "전부"
+   ]
+  ],
+  "flow": "좀비는 STAT 에 Z, cmd 에 `<defunct>`",
+  "ret": "목록"
+ },
+ "objdump -d --no-show-raw-insn ./02_race | grep -A4 \"<add_none>:\"": {
+  "role": "counter++ 의 기계어 보기",
+  "args": [
+   [
+    "-d",
+    "디스어셈블"
+   ],
+   [
+    "--no-show-raw-insn",
+    "바이트 코드는 빼고 명령만"
+   ],
+   [
+    "grep -A4 \"<add_none>:\"",
+    "그 함수 시작부터 4줄 더"
+   ]
+  ],
+  "flow": "`mov`(읽기) → `add`(더하기) → `mov`(쓰기) 세 명령 → 그 사이에 다른 쓰레드가 끼어들면 증가분을 잃는다",
+  "ret": "어셈블리"
+ },
+ "./02_race 쓰레드수 반복수 none|mutex|spin|atomic": {
+  "role": "보호 방식별 race 실험",
+  "args": [
+   [
+    "쓰레드수",
+    "동시에 더할 쓰레드 수"
+   ],
+   [
+    "반복수",
+    "쓰레드마다 더할 횟수"
+   ],
+   [
+    "none|mutex|spin|atomic",
+    "보호 없음 / 뮤텍스 / 스핀락 / 원자적 덧셈"
+   ]
+  ],
+  "flow": "기대값과 실제 결과·잃어버린 수·시간을 비교",
+  "ret": "—"
+ },
+ "pthread_mutex_lock": {
+  "role": "뮤텍스 잠그기",
+  "args": [
+   [
+    "m",
+    "잠글 `pthread_mutex_t` 주소"
+   ]
+  ],
+  "flow": "비어 있으면 잡고 바로 진행, 다른 쓰레드가 가졌으면 **풀릴 때까지 잠든다**",
+  "ret": "성공 0 / 실패 에러 번호",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_mutex_unlock": {
+  "role": "뮤텍스 풀기",
+  "args": [
+   [
+    "m",
+    "풀 뮤텍스 (잡은 쓰레드만)"
+   ]
+  ],
+  "flow": "풀고, 기다리던 쓰레드가 있으면 하나가 잡고 진행",
+  "ret": "성공 0",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_mutex_trylock": {
+  "role": "기다리지 않고 잠금 시도",
+  "args": [
+   [
+    "m",
+    "잠글 뮤텍스"
+   ]
+  ],
+  "flow": "비어 있으면 잡고, 이미 잡혀 있으면 **기다리지 않고** 바로 실패 → 교착 회피·다른 일 하기",
+  "ret": "성공 0 / 잡혀 있으면 **EBUSY**",
+  "hdr": "<pthread.h>"
+ },
+ "PTHREAD_MUTEX_INITIALIZER": {
+  "role": "뮤텍스 정적 초기화",
+  "args": [],
+  "flow": "`static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;` — 전역·static 이면 init 함수 없이 바로 사용",
+  "ret": "—"
+ },
+ "alarm": {
+  "role": "몇 초 뒤 SIGALRM 받기",
+  "args": [
+   [
+    "sec",
+    "초 (0 이면 예약 취소)"
+   ]
+  ],
+  "flow": "sec 초 뒤 커널이 SIGALRM 을 보낸다 → 핸들러로 '시간 안에 안 끝남' 감시자",
+  "ret": "이전 예약의 남은 초",
+  "hdr": "<unistd.h>"
+ },
+ "sudo gdb -p PID -batch -ex \"thread apply all bt\"": {
+  "role": "실행 중 프로세스에 붙어 상태 보기",
+  "args": [
+   [
+    "-p PID",
+    "그 프로세스에 붙기 (sudo)"
+   ],
+   [
+    "-batch",
+    "명령만 실행하고 끝"
+   ],
+   [
+    "-ex \"thread apply all bt\"",
+    "모든 쓰레드의 호출 스택 출력"
+   ]
+  ],
+  "flow": "멈춘 쓰레드들이 **어느 함수(pthread_mutex_lock 등)에서** 기다리는지 보인다 → 교착 진단",
+  "ret": "텍스트"
+ },
+ "pthread_cond_wait": {
+  "role": "조건이 될 때까지 잠들기",
+  "args": [
+   [
+    "c",
+    "기다릴 조건 변수"
+   ],
+   [
+    "m",
+    "**지금 잡고 있는** 뮤텍스"
+   ]
+  ],
+  "flow": "m 을 **풀고 잠든다** → signal 로 깨면 **m 을 다시 잡고** 돌아온다. 가짜로 깰 수도 있으니 항상 `while (조건 아님) cond_wait` 로",
+  "ret": "성공 0",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_cond_signal": {
+  "role": "기다리는 쓰레드 하나 깨우기",
+  "args": [
+   [
+    "c",
+    "조건 변수"
+   ]
+  ],
+  "flow": "그 조건에서 잠든 쓰레드 **하나**를 깨운다 (없으면 아무 일도 없음 — 기억되지 않는다)",
+  "ret": "성공 0",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_cond_broadcast": {
+  "role": "기다리는 쓰레드 모두 깨우기",
+  "args": [
+   [
+    "c",
+    "조건 변수"
+   ]
+  ],
+  "flow": "모두 깨운다 → 종료 알림처럼 전원이 확인해야 할 때",
+  "ret": "성공 0",
+  "hdr": "<pthread.h>"
+ },
+ "PTHREAD_COND_INITIALIZER": {
+  "role": "조건 변수 정적 초기화",
+  "args": [],
+  "flow": "`static pthread_cond_t c = PTHREAD_COND_INITIALIZER;`",
+  "ret": "—"
+ },
+ "sem_init": {
+  "role": "세마포어 초기화",
+  "args": [
+   [
+    "s",
+    "`sem_t` 주소"
+   ],
+   [
+    "pshared",
+    "**0 = 같은 프로세스의 쓰레드끼리**, 1 = 프로세스끼리(공유 메모리)"
+   ],
+   [
+    "value",
+    "처음 남은 자리 수"
+   ]
+  ],
+  "flow": "값 = 동시에 들어갈 수 있는 수. 2 면 2개까지 동시에",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<semaphore.h>"
+ },
+ "sem_wait / sem_post": {
+  "role": "자리 얻기 / 반납",
+  "args": [
+   [
+    "sem_wait(s)",
+    "값이 >0 이면 1 줄이고 진행, **0 이면 잠든다**"
+   ],
+   [
+    "sem_post(s)",
+    "값을 1 늘리고 기다리던 쓰레드 하나 진행"
+   ]
+  ],
+  "flow": "뮤텍스와 달리 **잡은 쓰레드가 아니어도** post 할 수 있다 (신호용으로도 씀)",
+  "ret": "성공 0 / 실패 -1",
+  "hdr": "<semaphore.h>"
+ },
+ "sem_destroy": {
+  "role": "세마포어 정리",
+  "args": [
+   [
+    "s",
+    "다 쓴 세마포어 (기다리는 쓰레드가 없을 때)"
+   ]
+  ],
+  "flow": "sem_init 의 짝",
+  "ret": "성공 0",
+  "hdr": "<semaphore.h>"
+ },
+ "__atomic_fetch_add": {
+  "role": "원자적 덧셈",
+  "args": [
+   [
+    "&x",
+    "더할 변수 주소"
+   ],
+   [
+    "1",
+    "더할 값"
+   ],
+   [
+    "__ATOMIC_RELAXED",
+    "메모리 순서 (단순 카운터면 RELAXED 로 충분)"
+   ]
+  ],
+  "flow": "읽기·더하기·쓰기를 **CPU 명령 하나(lock add)** 로 → 끼어들 틈이 없다. 잠금보다 빠르지만 변수 하나에만",
+  "ret": "더하기 **전** 값",
+  "hdr": "gcc 내장 (C11 `<stdatomic.h>` 의 atomic_fetch_add)"
+ },
+ "pthread_spin_lock / unlock": {
+  "role": "스핀락 잠금 / 해제",
+  "args": [
+   [
+    "s",
+    "`pthread_spinlock_t` 주소 (`pthread_spin_init(&s, PTHREAD_PROCESS_PRIVATE)` 로 초기화)"
+   ]
+  ],
+  "flow": "잡혀 있으면 잠들지 않고 **계속 돌며(바쁜 대기)** 확인 → 아주 짧은 구간·CPU 여럿일 때만 유리, CPU 하나면 낭비",
+  "ret": "성공 0",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_setaffinity_np": {
+  "role": "그 쓰레드의 CPU 고정",
+  "args": [
+   [
+    "th",
+    "대상 쓰레드 (`pthread_self()` = 나)"
+   ],
+   [
+    "sz",
+    "`sizeof(cpu_set_t)`"
+   ],
+   [
+    "set",
+    "허용 CPU 집합"
+   ]
+  ],
+  "flow": "sched_setaffinity 의 쓰레드판. `_np` = non-portable(GNU 확장)",
+  "ret": "성공 0 / 실패 에러 번호",
+  "hdr": "`#define _GNU_SOURCE` + <pthread.h>"
+ },
+ "pthread_setschedparam": {
+  "role": "그 쓰레드의 정책·우선순위",
+  "args": [
+   [
+    "th",
+    "대상 쓰레드"
+   ],
+   [
+    "policy",
+    "SCHED_OTHER / SCHED_FIFO / SCHED_RR"
+   ],
+   [
+    "sp",
+    "`.sched_priority` (FIFO 1~99)"
+   ]
+  ],
+  "flow": "센서 쓰레드 하나만 FIFO 로 올리는 식으로 쓴다 (FIFO 는 sudo)",
+  "ret": "성공 0 / 실패 에러 번호 (EPERM)",
+  "hdr": "<pthread.h>"
+ },
+ "pthread_self": {
+  "role": "지금 쓰레드 자신",
+  "args": [],
+  "flow": "자기 `pthread_t` 를 돌려준다 → 자신에게 설정할 때",
+  "ret": "pthread_t",
+  "hdr": "<pthread.h>"
+ },
+ "ps -L -o tid,cls,rtprio,psr,comm -p PID": {
+  "role": "프로세스 상태 보기",
+  "args": [
+   [
+    "-o pid,ppid,stat,cmd",
+    "보여 줄 열 지정 (STAT: R 실행, S 잠, Z **좀비**)"
+   ],
+   [
+    "--ppid $!",
+    "부모가 그 PID 인 프로세스만 (= 방금 띄운 것의 자식)"
+   ],
+   [
+    "-e",
+    "전부"
+   ]
+  ],
+  "flow": "좀비는 STAT 에 Z, cmd 에 `<defunct>`",
+  "ret": "목록"
+ },
+ "__attribute__((aligned(64)))": {
+  "role": "64바이트 경계에 놓기",
+  "args": [
+   [
+    "64",
+    "캐시 라인 크기"
+   ]
+  ],
+  "flow": "변수·구조체를 캐시 라인 시작에 맞춘다 → false sharing 방지용 배치",
+  "ret": "—"
+ },
+ "./edge_pipeline -d 10 [-o out.csv] [-t 0.8]": {
+  "role": "5일 종합 파이프라인",
+  "args": [
+   [
+    "-d 10",
+    "실행 시간(초)"
+   ],
+   [
+    "-o out.csv",
+    "CSV 출력"
+   ],
+   [
+    "-t 0.8",
+    "알람 임계치"
+   ],
+   [
+    "-r",
+    "센서 FIFO 80 + CPU 1 고정 + mlockall (sudo)"
+   ]
+  ],
+  "flow": "센서 → 링 버퍼 → 처리 → 통계 → 기록 쓰레드. 일반 정책과 -r 의 max_lat_us 를 부하 아래서 비교",
+  "ret": "—"
+ },
+ "sudo ./edge_pipeline -d 10 -r": {
+  "role": "5일 종합 파이프라인",
+  "args": [
+   [
+    "-d 10",
+    "실행 시간(초)"
+   ],
+   [
+    "-o out.csv",
+    "CSV 출력"
+   ],
+   [
+    "-t 0.8",
+    "알람 임계치"
+   ],
+   [
+    "-r",
+    "센서 FIFO 80 + CPU 1 고정 + mlockall (sudo)"
+   ]
+  ],
+  "flow": "센서 → 링 버퍼 → 처리 → 통계 → 기록 쓰레드. 일반 정책과 -r 의 max_lat_us 를 부하 아래서 비교",
+  "ret": "—"
+ }
+}

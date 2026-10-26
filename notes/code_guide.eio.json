@@ -1,0 +1,1570 @@
+{
+ "eio/1/5/config.txt": [
+  {
+   "at": "dtparam=i2c_arm=on",
+   "t": "raspi-config 가 넣은 줄",
+   "d": "I2C · SPI · UART 켜기 (dtparam = 기본 Device Tree 의 스위치).",
+   "to": "enable_uart=1"
+  },
+  {
+   "at": "dtoverlay=pwm-2chan",
+   "t": "하드웨어 PWM",
+   "d": "GPIO18 = PWM0, GPIO19 = PWM1 — /sys/class/pwm 이 생긴다 (Day 3)."
+  },
+  {
+   "at": "dtoverlay=disable-bt",
+   "t": "정확한 UART 를 GPIO14·15 로",
+   "d": "블루투스가 쓰던 PL011 을 돌려받는다 (hciuart 도 disable). 고친 뒤 재부팅."
+  }
+ ],
+ "eio/1/6/Makefile": [
+  {
+   "at": "CC      = gcc",
+   "t": "변수 + libgpiod 링크",
+   "d": "pkg-config 로 `-lgpiod`, 쓰레드용 -lpthread. 2>/dev/null = 없을 때 오류 숨김.",
+   "to": "LDLIBS  = $(shell pkg-config --libs libgpiod 2>/dev/null) -lpthread"
+  },
+  {
+   "at": "SRCS = $(wildcard *.c)",
+   "t": "폴더의 .c 전부",
+   "d": "Day 1~5 같은 파일.",
+   "to": "BINS = $(SRCS:.c=)"
+  },
+  {
+   "at": "%: %.c",
+   "t": "패턴 규칙",
+   "d": "`make 01_board_info` 처럼 이름만. LDLIBS 는 **소스 뒤에** (링크 순서).",
+   "to": "$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)"
+  },
+  {
+   "at": "clean:",
+   "t": "clean · .PHONY",
+   "d": "",
+   "to": ".PHONY: all clean"
+  }
+ ],
+ "eio/1/6/01_board_info.c": [
+  {
+   "at": "static int read_line(const char *path, char *buf, size_t n)",
+   "t": "read_line() — 파일 첫 줄",
+   "d": "fopen → fgets → fclose → 개행 제거. 리눅스에서는 장치 정보도 **파일로 읽는다**.",
+   "to": "return 0;"
+  },
+  {
+   "at": "if (read_line(\"/proc/device-tree/model\", buf, sizeof buf) == 0)",
+   "t": "보드 모델",
+   "d": "Device Tree 가 알려 주는 'Raspberry Pi 4 Model B …'.",
+   "to": "printf(\"모델      : (읽기 실패 — Raspberry Pi 가 아님?)\\n\");"
+  },
+  {
+   "at": "if (uname(&u) == 0)",
+   "t": "커널 · CPU 코어",
+   "d": "uname 시스템 콜, sysconf 로 온라인 코어 수 (4).",
+   "to": "printf(\"CPU 코어  : %ld\\n\", sysconf(_SC_NPROCESSORS_ONLN));"
+  },
+  {
+   "at": "if (read_line(\"/sys/class/thermal/thermal_zone0/temp\", buf, sizeof buf) == 0)",
+   "t": "SoC 온도",
+   "d": "밀리도 정수 `48312` → 48.3°C.",
+   "to": "printf(\"SoC 온도  : %.1f °C\\n\", atoi(buf) / 1000.0);"
+  },
+  {
+   "at": "if (access(\"/dev/gpiochip0\", F_OK) != 0)",
+   "t": "권한 진단",
+   "d": "없음 / 읽기·쓰기 가능 / 권한 없음(gpio 그룹) 을 구분.",
+   "to": "printf(\"GPIO 칩   : /dev/gpiochip0 권한 없음 (gpio 그룹 확인)\\n\");"
+  }
+ ],
+ "eio/2/1/01_blink.c": [
+  {
+   "at": "static volatile sig_atomic_t g_stop = 0;",
+   "t": "Ctrl+C → 플래그",
+   "d": "핸들러는 플래그만. 루프가 끝나야 아래에서 라인을 반납할 수 있다.",
+   "to": "sigaction(SIGINT, &sa, NULL);"
+  },
+  {
+   "at": "struct gpiod_chip *chip = gpiod_chip_open(CHIP_PATH);",
+   "t": "① 칩 열기",
+   "d": "실패하면 perror — 권한(gpio 그룹) 확인."
+  },
+  {
+   "at": "struct gpiod_line_settings *settings = gpiod_line_settings_new();",
+   "t": "② 설정: 출력, 초기값 0",
+   "d": "아직 커널에는 아무 일도 없다.",
+   "to": "gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);"
+  },
+  {
+   "at": "struct gpiod_line_config *line_cfg = gpiod_line_config_new();",
+   "t": "③ 라인 17 에 설정 묶기",
+   "d": "offset 배열 + 개수.",
+   "to": "gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings);"
+  },
+  {
+   "at": "struct gpiod_request_config *req_cfg = gpiod_request_config_new();",
+   "t": "④ consumer 이름",
+   "d": "gpioinfo 에 \"blink\" 로 보인다.",
+   "to": "gpiod_request_config_set_consumer(req_cfg, \"blink\");"
+  },
+  {
+   "at": "struct gpiod_line_request *req = gpiod_chip_request_lines(chip, req_cfg, line_cfg);",
+   "t": "⑤ 커널에 요청",
+   "d": "이 순간 라인 소유. 다른 프로그램이 쥐고 있으면 실패(Device or resource busy) → goto cleanup.",
+   "to": "if (!req) { perror(\"gpiod_chip_request_lines\"); goto cleanup; }"
+  },
+  {
+   "at": "while (!g_stop) {",
+   "t": "0.5초마다 토글",
+   "d": "set_value = ioctl 1번.",
+   "to": "nanosleep(&ts, NULL);"
+  },
+  {
+   "at": "gpiod_line_request_set_value(req, offset, GPIOD_LINE_VALUE_INACTIVE);   /* 끄고 나가기 */",
+   "t": "⑥ 끄고 반납 → 재료 해제",
+   "d": "goto cleanup 으로 실패 경로도 같은 정리 코드를 지난다 (C 의 오류 처리 관용구).",
+   "to": "gpiod_chip_close(chip);"
+  }
+ ],
+ "eio/2/1/gpio_common.h": [
+  {
+   "at": "static volatile sig_atomic_t g_stop = 0;",
+   "t": "SIGINT·SIGTERM → g_stop",
+   "d": "SA_RESTART 를 **주지 않는다** → poll·nanosleep 이 EINTR 로 깨어 루프가 바로 끝난다.",
+   "to": "sigaction(SIGTERM, &sa, NULL);"
+  },
+  {
+   "at": "static inline long long now_ns(void)",
+   "t": "now_ns · sleep_ms",
+   "d": "now_ns 는 CLOCK_MONOTONIC — 엣지 이벤트 타임스탬프와 **같은 시계**라 뺄셈이 된다.",
+   "to": "nanosleep(&ts, NULL);            /* SIGINT 가 오면 남은 시간을 버리고 돌아온다 */"
+  },
+  {
+   "at": "gpio_request(const char *consumer, const unsigned int *offsets, size_t n,",
+   "t": "gpio_request() — 요청 한 줄로",
+   "d": "칩 → line config → request config → 요청 → 재료 해제. 실패 경로는 goto out 하나. 칩을 닫아도 요청은 유지.",
+   "to": "return req;"
+  },
+  {
+   "at": "gpio_request_output(const char *consumer, const unsigned int *offsets, size_t n)",
+   "t": "출력 요청",
+   "d": "OUTPUT + 초기값 0.",
+   "to": "return r;"
+  },
+  {
+   "at": "gpio_request_input(const char *consumer, const unsigned int *offsets, size_t n,",
+   "t": "입력 요청",
+   "d": "INPUT + 풀업 + 엣지(NONE 이면 이벤트 없음) + 디바운스(0 이면 없음).",
+   "to": "#endif"
+  }
+ ],
+ "eio/2/2/02_traffic.c": [
+  {
+   "at": "static const unsigned int LINES[3] = { 17, 27, 22 };      /* R, Y, G */",
+   "t": "라인 3개 + 상태표",
+   "d": "각 행 = R, Y, G, 시간, 이름. 순서를 바꾸고 싶으면 표만 고친다.",
+   "to": "#define NSTEPS (sizeof STEPS / sizeof STEPS[0])"
+  },
+  {
+   "at": "struct gpiod_line_settings *s = gpiod_line_settings_new();",
+   "t": "세 라인을 한 요청으로",
+   "d": "-l 이면 active-low — 논리 1 = 0V 라 LED 가 반대로 켜진다.",
+   "to": "if (!req) return EXIT_FAILURE;"
+  },
+  {
+   "at": "for (size_t i = 0; !g_stop; i = (i + 1) % NSTEPS) {",
+   "t": "set_values 로 동시에",
+   "d": "v[] 순서 = 요청한 offsets 순서(17, 27, 22). 시스템 콜 한 번.",
+   "to": "sleep_ms(STEPS[i].ms);"
+  },
+  {
+   "at": "enum gpiod_line_value off[3] = { 0, 0, 0 };",
+   "t": "모두 끄고 반납",
+   "d": "",
+   "to": "gpiod_line_request_release(req);"
+  }
+ ],
+ "eio/2/3/03_gpiomem.c": [
+  {
+   "at": "#define GPFSEL0   0                  /* 0x00 : GPIO 0~9   기능 선택, 핀당 3비트 */",
+   "t": "레지스터 오프셋",
+   "d": "바이트 오프셋 / 4 = 32비트 워드 인덱스. 기능 선택(핀당 3비트), SET, CLR, LEV, 풀업(핀당 2비트).",
+   "to": "#define PUPPDN0   (0xE4 / 4)         /* 0xE4 : GPIO 0~15 pull 설정, 핀당 2비트 (BCM2711) */"
+  },
+  {
+   "at": "static void set_function(volatile uint32_t *gpio, int pin, int fsel)",
+   "t": "set_function() — 3비트 고치기",
+   "d": "GPIO17 → GPFSEL1 의 21~23비트. 읽고 → 지우고 → 넣고 → 쓰기.",
+   "to": "gpio[reg] = v;"
+  },
+  {
+   "at": "int fd = open(\"/dev/gpiomem\", O_RDWR | O_SYNC);",
+   "t": "레지스터를 내 메모리로",
+   "d": "/dev/gpiomem 4KB 를 mmap — 이후 배열 접근 = 레지스터 접근. fd 는 닫아도 매핑은 남는다.",
+   "to": "if (gpio == MAP_FAILED) { perror(\"mmap\"); return EXIT_FAILURE; }"
+  },
+  {
+   "at": "set_function(gpio, LED, 1);             /* GPIO17 = 출력 */",
+   "t": "출력·입력·풀업 설정",
+   "d": "GPIO5 풀업 = 비트 10~11 에 01.",
+   "to": "gpio[PUPPDN0] = p;"
+  },
+  {
+   "at": "while (!g_stop) {",
+   "t": "레벨 읽기 → SET/CLR",
+   "d": "SET/CLR 은 1 쓴 비트만 바뀌니 읽기-수정-쓰기 불필요. 커널은 이 사실을 모른다 → libgpiod 와 같은 핀 동시 사용 금지.",
+   "to": "nanosleep(&ts, NULL);"
+  },
+  {
+   "at": "gpio[GPCLR0] = 1u << LED;",
+   "t": "원래대로 + 해제",
+   "d": "LED 끄고 입력으로 돌려 둔다.",
+   "to": "munmap((void *)gpio, 4096);"
+  }
+ ],
+ "eio/2/3/04_speed.c": [
+  {
+   "at": "struct gpiod_line_request *req = gpio_request_output(\"speed\", &off, 1);",
+   "t": "① libgpiod n 번",
+   "d": "토글마다 ioctl 시스템 콜 — 사용자↔커널 전환 비용.",
+   "to": "gpiod_line_request_release(req);        /* mmap 실험 전에 반납 */"
+  },
+  {
+   "at": "int fd = open(\"/dev/gpiomem\", O_RDWR | O_SYNC);",
+   "t": "② mmap n 번",
+   "d": "토글 = 메모리 쓰기 1번. 측정 전후로 출력 설정·복구.",
+   "to": "g[1] &= ~(7u << 21);                                /* 다시 입력으로 */"
+  },
+  {
+   "at": "double a = (t1 - t0) / (double)n, b = (t3 - t2) / (double)n;",
+   "t": "ns/회와 배수",
+   "d": "mmap 이 수십 배 빠르지만 커널의 보호(소유권·충돌 방지)를 잃는다.",
+   "to": "printf(\"  mmap 이 약 %.0f 배 빠름\\n\", a / b);"
+  }
+ ],
+ "eio/2/4/05_button_poll.c": [
+  {
+   "at": "#define POLL_MS     1      /* 1 ms 마다 읽기 */",
+   "t": "1ms 폴링, 20번 연속",
+   "d": "20ms 동안 같은 값이어야 인정.",
+   "to": "#define STABLE_CNT  20     /* 20번(=20 ms) 연속 같은 값이어야 인정 */"
+  },
+  {
+   "at": "struct gpiod_line_request *req = gpio_request_input(\"button_poll\", &line, 1,",
+   "t": "입력 요청 (엣지 없음)",
+   "d": "풀업, 이벤트 없이 값만 읽는다."
+  },
+  {
+   "at": "if (!debounce) {",
+   "t": "디바운스 없음",
+   "d": "바뀌는 즉시 인정 → 한 번 눌러도 여러 번 찍힌다(바운싱).",
+   "to": "stable = v;"
+  },
+  {
+   "at": "same = (v == last) ? same + 1 : 0;               /* 같은 값이 몇 번 이어졌나 */",
+   "t": "연속 횟수로 확정",
+   "d": "같은 값이 20번 이어지고 확정값과 다를 때만 바꾼다. 1ms 마다 깨어나므로 CPU 를 조금씩 쓴다(→ 06 이벤트).",
+   "to": "if (v == 0) printf(\"  눌림 #%d\\n\", ++presses);"
+  }
+ ],
+ "eio/2/5/06_edge_poll.c": [
+  {
+   "at": "struct gpiod_line_request *in  = gpio_request_input(\"edge_poll\", &btn, 1,",
+   "t": "BOTH 엣지 + 디바운스",
+   "d": "누름·뗌 둘 다 이벤트로. 인자 0 이면 디바운스 끄고 바운싱 관찰.",
+   "to": "if (!in || !out) return EXIT_FAILURE;"
+  },
+  {
+   "at": "struct gpiod_edge_event_buffer *buf = gpiod_edge_event_buffer_new(16);",
+   "t": "이벤트 버퍼 + poll fd",
+   "d": "",
+   "to": "struct pollfd pfd = { .fd = gpiod_line_request_get_fd(in), .events = POLLIN };"
+  },
+  {
+   "at": "int r = poll(&pfd, 1, -1);                  /* 이벤트가 올 때까지 잠든다 */",
+   "t": "이벤트까지 잠",
+   "d": "CPU 0% (top 으로 05 와 비교). Ctrl+C 면 EINTR → 루프 조건에서 끝.",
+   "to": "if (r < 0) { if (errno == EINTR) continue; perror(\"poll\"); break; }"
+  },
+  {
+   "at": "int n = gpiod_line_request_read_edge_events(in, buf, 16);",
+   "t": "쌓인 이벤트 처리",
+   "d": "종류와 커널 타임스탬프.",
+   "to": "falling ? \"falling (누름)\" : \"rising  (뗌)\");"
+  },
+  {
+   "at": "if (falling) {",
+   "t": "누름~뗌 시간으로 구분",
+   "d": "500ms 이상 = 길게, 아니면 짧게 → LED 토글.",
+   "to": "t_down = 0;"
+  }
+ ],
+ "eio/2/6/07_evloop.c": [
+  {
+   "at": "enum { TAG_BTN = 1, TAG_PIR, TAG_TIMER, TAG_STDIN };",
+   "t": "태그로 fd 구분",
+   "d": "data.u32 에 태그를 넣어 등록 — 돌아올 때 무엇이 준비됐는지 안다.",
+   "to": "return epoll_ctl(ep, EPOLL_CTL_ADD, fd, &e);"
+  },
+  {
+   "at": "struct gpiod_line_request *rb = gpio_request_input(\"evloop\", &btn, 1,",
+   "t": "버튼 · PIR · LED",
+   "d": "PIR 은 스스로 0/1 을 내므로 bias DISABLED, BOTH 엣지.",
+   "to": "if (!rb || !rp || !rl) return EXIT_FAILURE;"
+  },
+  {
+   "at": "int tfd = timerfd_create(CLOCK_MONOTONIC, 0);",
+   "t": "0.5초 타이머 fd",
+   "d": "타이머도 fd 라서 같은 루프에서 기다린다.",
+   "to": "timerfd_settime(tfd, 0, &its, NULL);"
+  },
+  {
+   "at": "int ep = epoll_create1(0);",
+   "t": "fd 4개 등록 (한 번만)",
+   "d": "버튼, PIR, 타이머, 키보드.",
+   "to": "add_fd(ep, STDIN_FILENO, TAG_STDIN);"
+  },
+  {
+   "at": "int n = epoll_wait(ep, evs, 4, -1);            /* 준비된 fd 목록만 돌려준다 */",
+   "t": "준비된 것만 받기",
+   "d": "select/poll 과 달리 전체를 다시 검사하지 않는다.",
+   "to": "for (int i = 0; i < n; i++) {"
+  },
+  {
+   "at": "case TAG_BTN: {",
+   "t": "버튼 · PIR 처리",
+   "d": "이벤트를 읽어야 fd 가 다시 잠든다. PIR rising = 움직임.",
+   "to": "case TAG_TIMER: {"
+  },
+  {
+   "at": "uint64_t exp;",
+   "t": "타이머: 만료 횟수 읽기 + LED 토글",
+   "d": "read 하지 않으면 계속 준비 상태라 루프가 폭주한다.",
+   "to": "gpiod_line_request_set_value(rl, led, led_on ? GPIOD_LINE_VALUE_ACTIVE"
+  },
+  {
+   "at": "case TAG_STDIN: {",
+   "t": "키보드: q 종료, s 통계",
+   "d": "stdin 도 fd 하나.",
+   "to": "printf(\"[통계] 버튼 %ld · 움직임 %ld · 타이머 %ld\\n\", presses, motions, ticks);"
+  }
+ ],
+ "eio/2/8/react.c": [
+  {
+   "at": "static struct gpiod_line_request *g_out, *g_in;",
+   "t": "출력·입력 요청과 도우미",
+   "d": "set_line, beep.",
+   "to": "static void beep(int ms) { set_line(BUZ, 1); sleep_ms(ms); set_line(BUZ, 0); }"
+  },
+  {
+   "at": "static void drain(void)",
+   "t": "drain() — 쌓인 이벤트 버리기",
+   "d": "poll 타임아웃 0 으로 '있으면 읽기' 반복.",
+   "to": "gpiod_line_request_read_edge_events(g_in, g_buf, 16);"
+  },
+  {
+   "at": "static int wait_press(int timeout_ms, long long *ts, unsigned int *who)",
+   "t": "wait_press() — 마감 시각 기준 대기",
+   "d": "남은 시간을 매번 다시 계산해 poll. falling 만 인정하고 시각·버튼을 포인터로 돌려준다.",
+   "to": "return 1;"
+  },
+  {
+   "at": "g_out = gpio_request_output(\"react\", outs, 2);",
+   "t": "LED+부저 / 버튼 1~2개",
+   "d": "2인이면 버튼 두 개를 한 요청으로, 5ms 디바운스.",
+   "to": "if (!g_out || !g_in || !g_buf) return EXIT_FAILURE;"
+  },
+  {
+   "at": "drain();",
+   "t": "무작위 대기 중 누르면 부정 출발",
+   "d": "2~5초 동안 wait_press — 1 이 돌아오면 반칙(2인이면 상대 승).",
+   "to": "continue;"
+  },
+  {
+   "at": "set_line(LED, 1);",
+   "t": "LED 켠 시각 → 누른 커널 시각",
+   "d": "둘 다 CLOCK_MONOTONIC 이라 차이 = 반응 시간. 프로그램이 늦게 깨어나도 타임스탬프는 정확.",
+   "to": "beep(100);"
+  },
+  {
+   "at": "FILE *fp = fopen(\"react_log.csv\", \"a\");",
+   "t": "결과 CSV 추가",
+   "d": "시각·모드·성공·평균·최고·반칙.",
+   "to": "if (fp) fclose(fp);"
+  }
+ ],
+ "eio/3/1/01_swpwm.c": [
+  {
+   "at": "static const long EDGE_US[] = { 10, 50, 100, 500, 1000 };",
+   "t": "지연 히스토그램",
+   "d": "목표 시각보다 늦게 깬 정도를 10µs·50µs·…·1ms 구간으로 센다. 쓰레드와 main 이 공유 → 뮤텍스.",
+   "to": "static pthread_mutex_t g_mx = PTHREAD_MUTEX_INITIALIZER;"
+  },
+  {
+   "at": "static void record(long late_ns)",
+   "t": "record() — 구간 찾아 +1",
+   "d": "",
+   "to": "pthread_mutex_unlock(&g_mx);"
+  },
+  {
+   "at": "static void sleep_until(const struct timespec *t)",
+   "t": "절대 시각까지 자고 늦은 만큼 기록",
+   "d": "clock_nanosleep(TIMER_ABSTIME) → 깨어난 시각 − 목표 = jitter.",
+   "to": "record((long)(now_ns() - target));"
+  },
+  {
+   "at": "static void *pwm_thread(void *arg)",
+   "t": "PWM 쓰레드 — 켜고, 끌 시각까지, 다음 주기까지",
+   "d": "다음 주기 = 이전 시작 + 주기 (상대 sleep 이 아니라 **절대 시각**이라 오차가 누적되지 않는다). 듀티 0/100 은 한쪽만.",
+   "to": "return NULL;"
+  },
+  {
+   "at": "pthread_attr_t at;",
+   "t": "-f 면 SCHED_FIFO 50 + mlockall",
+   "d": "EXPLICIT_SCHED 를 꼭 같이. mlockall 로 페이지 폴트 지연 제거.",
+   "to": "pthread_attr_setschedparam(&at, &sp);"
+  },
+  {
+   "at": "int e = pthread_create(&th, &at, pwm_thread, NULL);",
+   "t": "권한 없으면 EPERM",
+   "d": "setcap 안내를 출력.",
+   "to": "return EXIT_FAILURE;"
+  },
+  {
+   "at": "for (int t = 0; !g_stop; t++) {",
+   "t": "main: 숨쉬기 + 2초마다 히스토그램",
+   "d": "부하(yes ×4)를 걸면 OTHER 는 ≥1ms 가 생기고 FIFO 는 거의 없다.",
+   "to": "pthread_mutex_unlock(&g_mx);"
+  }
+ ],
+ "eio/3/2/02_rgb.c": [
+  {
+   "at": "static void *rgb_thread(void *arg)",
+   "t": "주기 시작: 세 채널 한꺼번에 켜기",
+   "d": "켤 시간이 짧은 순서로 인덱스를 정렬(원소 3개라 단순 교환).",
+   "to": "gpiod_line_request_set_values(g_req, v);           /* 주기 시작: 한꺼번에 켜기 */"
+  },
+  {
+   "at": "for (int k = 0; k < 3; k++) {",
+   "t": "빨리 꺼질 채널부터 그 시각까지 자고 끄기",
+   "d": "주기당 깨어남 최대 4번 — 쓰레드 하나로 3채널.",
+   "to": "gpiod_line_request_set_value(g_req, LINES[c], GPIOD_LINE_VALUE_INACTIVE);"
+  },
+  {
+   "at": "ts_add(&start, PERIOD_NS);",
+   "t": "다음 주기 (절대 시각)",
+   "d": "",
+   "to": "clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &start, NULL);"
+  },
+  {
+   "at": "static void hue_to_rgb(int h, int rgb[3])",
+   "t": "색상환 → RGB",
+   "d": "0~359° 를 6구간으로 나눠 보간 → 무지개.",
+   "to": "rgb[0] = (int)(r * 255); rgb[1] = (int)(g * 255); rgb[2] = (int)(b * 255);"
+  },
+  {
+   "at": "if (fixed) {",
+   "t": "고정 색 또는 무지개",
+   "d": "main 은 g_rgb 만 바꾸고 파형은 쓰레드가.",
+   "to": "sleep_ms(15);"
+  }
+ ],
+ "eio/3/3/pwm_sysfs.h": [
+  {
+   "at": "typedef struct {",
+   "t": "pwm_t — 경로와 마지막 값",
+   "d": "마지막 period 를 기억해야 쓰는 순서를 정할 수 있다.",
+   "to": "} pwm_t;"
+  },
+  {
+   "at": "static inline int pwm_write(const char *dir, const char *name, long v)",
+   "t": "pwm_write() — 숫자를 파일에",
+   "d": "sysfs 값은 나노초 정수 **문자열**. close 가 errno 를 덮지 않게 저장했다 복원.",
+   "to": "return w < 0 ? -1 : 0;"
+  },
+  {
+   "at": "static inline int pwm_open(pwm_t *p, int chip, int ch)",
+   "t": "pwm_open() — 없으면 export",
+   "d": "이미 export 돼 있으면(EBUSY) 그대로 사용. 실패면 dtoverlay 안내.",
+   "to": "return -1;"
+  },
+  {
+   "at": "for (int i = 0; i < 100 && access(per, W_OK) != 0; i++) {",
+   "t": "udev 가 권한을 고칠 때까지",
+   "d": "export 직후엔 root 소유 → 최대 1초 기다린다.",
+   "to": "return 0;"
+  },
+  {
+   "at": "static inline int pwm_set(pwm_t *p, long period_ns, long duty_ns)",
+   "t": "pwm_set() — duty ≤ period 순서",
+   "d": "주기를 늘릴 땐 period 먼저, 줄일 땐 duty 먼저 — 순간이라도 duty > period 면 EINVAL.",
+   "to": "return 0;"
+  },
+  {
+   "at": "static inline int pwm_set_duty(pwm_t *p, long duty_ns) { return pwm_set(p, p->period, duty_ns); }",
+   "t": "set_duty · enable · close",
+   "d": "close = 끄고 unexport.",
+   "to": "pwm_write(p->chip, \"unexport\", p->ch);"
+  }
+ ],
+ "eio/3/3/03_hwpwm.c": [
+  {
+   "at": "if (pwm_open(&p, 0, 0) < 0) return EXIT_FAILURE;    /* pwmchip0 / pwm0 = GPIO18 */",
+   "t": "pwm0 = GPIO18, 1kHz",
+   "d": "듀티 0 으로 시작해 켠다.",
+   "to": "pwm_enable(&p, 1);"
+  },
+  {
+   "at": "while (!g_stop) {",
+   "t": "숨쉬기 — 값만 바꾼다",
+   "d": "파형은 하드웨어가 만든다 → 부하가 걸려도 깜빡임이 없다(01 과 비교). 밝기 변화가 15ms 늦어질 뿐.",
+   "to": "sleep_ms(15);"
+  },
+  {
+   "at": "pwm_close(&p);",
+   "t": "끄고 unexport",
+   "d": ""
+  }
+ ],
+ "eio/3/4/04_servo.c": [
+  {
+   "at": "#define PERIOD 20000000L                   /* 20 ms = 50 Hz */",
+   "t": "20ms = 50Hz",
+   "d": "서보 표준 주기."
+  },
+  {
+   "at": "static long angle_to_ns(int deg)",
+   "t": "angle_to_ns() — 직선 보간",
+   "d": "0~180 으로 자르고 500~2500µs 사이를 비례 → ns.",
+   "to": "return us * 1000;"
+  },
+  {
+   "at": "if (argc > 3) { g_min_us = atol(argv[2]); g_max_us = atol(argv[3]); }",
+   "t": "끝점 보정 인자",
+   "d": "서보마다 0°·180° 펄스가 달라 바꿀 수 있게."
+  },
+  {
+   "at": "deg += dir * 2;",
+   "t": "20ms 마다 2°",
+   "d": "너무 빨리 바꾸면 서보가 따라오지 못한다.",
+   "to": "sleep_ms(20);                  /* 한 주기마다 2° — 너무 빠르면 서보가 따라오지 못한다 */"
+  }
+ ],
+ "eio/3/4/05_melody.c": [
+  {
+   "at": "static void tone(int hz, int ms)",
+   "t": "tone() — 주파수 = 1 / 주기",
+   "d": "듀티 50% 가 가장 크게 들린다. 끝나고 30ms 쉬어야 같은 음이 이어질 때 구분된다.",
+   "to": "sleep_ms(30);                          /* 같은 음이 이어질 때 끊어 들리게 */"
+  },
+  {
+   "at": "enum { C4 = 262, D4 = 294, E4 = 330, F4 = 349, G4 = 392, A4 = 440, B4 = 494, C5 = 523 };",
+   "t": "음 이름 = 주파수",
+   "d": "enum 으로 상수 이름 붙이기."
+  },
+  {
+   "at": "const int song[][2] = {",
+   "t": "{음, 길이} 표 재생",
+   "d": "Ctrl+C 면 중간에 멈춘다.",
+   "to": "tone(song[i][0], song[i][1]);"
+  }
+ ],
+ "eio/3/5/06_dcmotor.c": [
+  {
+   "at": "#define PERIOD 50000L                      /* 50 µs = 20 kHz — 귀에 거슬리는 소리 줄이기 */",
+   "t": "20kHz, 방향 핀, 버튼, 속도 단계",
+   "d": "0 → 40 → 70 → 100%.",
+   "to": "static const int STEPS[] = { 0, 40, 70, 100 };"
+  },
+  {
+   "at": "static void set_dir(int in1, int in2)",
+   "t": "set_dir() — 진리표",
+   "d": "10 정 · 01 역 · 00 자유 정지 · 11 브레이크. 두 핀을 동시에.",
+   "to": "gpiod_line_request_set_values(g_dir, v);"
+  },
+  {
+   "at": "g_dir = gpio_request_output(\"dcmotor\", DIRS, 2);",
+   "t": "방향 2 · 버튼 2 · PWM 1",
+   "d": "버튼은 falling + 10ms 디바운스.",
+   "to": "set_dir(1, 0);"
+  },
+  {
+   "at": "if (poll(&pfd, 1, -1) <= 0) continue;",
+   "t": "어느 버튼인지",
+   "d": "이벤트의 line_offset 으로 구분.",
+   "to": "unsigned int who = gpiod_edge_event_get_line_offset(gpiod_edge_event_buffer_get_event(buf, i));"
+  },
+  {
+   "at": "if (who == 5) {",
+   "t": "A: 속도 단계",
+   "d": "",
+   "to": "pwm_set_duty(&en, PERIOD / 100 * STEPS[step]);"
+  },
+  {
+   "at": "} else {",
+   "t": "B: 속도 0 → 브레이크 → 방향 → 원래 속도",
+   "d": "돌던 방향을 바로 뒤집으면 큰 역전류 — 멈춘 뒤 바꾼다.",
+   "to": "pwm_set_duty(&en, PERIOD / 100 * STEPS[step]);"
+  }
+ ],
+ "eio/3/5/07_relay.c": [
+  {
+   "at": "struct gpiod_line_request *out = gpio_request_output(\"relay\", &rel, 1);",
+   "t": "릴레이 출력 + 버튼 입력",
+   "d": "버튼 20ms 디바운스.",
+   "to": "if (!out || !in) return EXIT_FAILURE;"
+  },
+  {
+   "at": "while (!g_stop) {",
+   "t": "누를 때마다 토글",
+   "d": "ON = COM–NO 연결 → 다른 회로의 LED 가 켜진다. Pi 와 그 회로는 전기적으로 분리.",
+   "to": "printf(\"  릴레이 %s\\n\", on ? \"ON  (COM-NO 연결)\" : \"OFF (COM-NC 연결)\");"
+  }
+ ],
+ "eio/3/6/08_stepper.c": [
+  {
+   "at": "#define STEPS_PER_REV 4096                 /* 하프 스텝 기준 (실측 약 4076) */",
+   "t": "하프 스텝 4096 = 한 바퀴",
+   "d": "최고 1.2ms, 출발·정지 4ms 간격, 200스텝 동안 가감속.",
+   "to": "#define RAMP    200                        /* 가속 · 감속에 쓰는 스텝 수 */"
+  },
+  {
+   "at": "static const int HALF[8][4] = {",
+   "t": "하프 스텝 표",
+   "d": "A, AB, B, BC … — 코일 하나 → 둘 → 하나."
+  },
+  {
+   "at": "long steps = labs((long)deg) * STEPS_PER_REV / 360;",
+   "t": "각도 → 스텝 수, 방향",
+   "d": "",
+   "to": "int dir = deg >= 0 ? 1 : -1;"
+  },
+  {
+   "at": "phase = (phase + dir + 8) % 8;",
+   "t": "다음 위상을 4코일에 한 번에",
+   "d": "+8 로 음수 방지.",
+   "to": "gpiod_line_request_set_values(req, v);"
+  },
+  {
+   "at": "long us = FAST_US;",
+   "t": "사다리꼴 가감속",
+   "d": "처음·끝에서 가까운 쪽 거리(edge)가 RAMP 안이면 느리게 → 탈조 방지.",
+   "to": "if (edge < RAMP) us = SLOW_US - (SLOW_US - FAST_US) * edge / RAMP;"
+  },
+  {
+   "at": "ts_add(&next, us * 1000);          /* 절대 시각 → 간격이 일정하게 유지된다 */",
+   "t": "절대 시각으로 간격 유지",
+   "d": "",
+   "to": "clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);"
+  },
+  {
+   "at": "enum gpiod_line_value off[4] = { 0, 0, 0, 0 };   /* 코일 전류 끄기 — 열 · 전력 절약 */",
+   "t": "끝나면 코일 전류 끄기",
+   "d": "열·전력 절약 (대신 유지 토크 없음).",
+   "to": "gpiod_line_request_set_values(req, off);"
+  }
+ ],
+ "eio/3/7/09_sonar.c": [
+  {
+   "at": "static double measure_cm(void)",
+   "t": "지난 측정 찌꺼기 버리기",
+   "d": "poll 타임아웃 0.",
+   "to": "gpiod_line_request_read_edge_events(g_echo, g_buf, 8);"
+  },
+  {
+   "at": "unsigned int t = TRIG;",
+   "t": "Trig 10µs 펄스",
+   "d": "nanosleep 이 더 길어져도 괜찮다 (시작 신호일 뿐).",
+   "to": "gpiod_line_request_set_value(g_trig, t, GPIOD_LINE_VALUE_INACTIVE);"
+  },
+  {
+   "at": "long long rise = 0, fall = 0;",
+   "t": "60ms 마감 안에서 rising → falling",
+   "d": "**커널 타임스탬프**로 폭을 재므로 프로그램이 늦게 깨어나도 정확. 남은 시간을 다시 계산해 poll.",
+   "to": "else if (rise) { fall = tsn; break; }"
+  },
+  {
+   "at": "double us = (fall - rise) / 1000.0;            /* Echo High 폭 = 왕복 시간 */",
+   "t": "폭 → cm",
+   "d": "343m/s = 0.0343cm/µs, 왕복이라 ÷2. 30ms 넘으면 실패.",
+   "to": "return us * 0.0343 / 2;                        /* 소리 343 m/s → 0.0343 cm/µs, 왕복이라 ÷2 */"
+  },
+  {
+   "at": "static double median_cm(void)",
+   "t": "median_cm() — 5번 중앙값",
+   "d": "사이 60ms 는 메아리가 사라질 시간. qsort + cmp(`(x > y) - (x < y)`).",
+   "to": "return v[n / 2];"
+  },
+  {
+   "at": "struct gpiod_line_settings *s = gpiod_line_settings_new();",
+   "t": "Echo: BOTH 엣지, bias 끔",
+   "d": "센서가 직접 0/1 을 낸다. 5V Echo 는 **분압**해서 연결.",
+   "to": "g_echo = gpio_request(\"sonar\", &echo, 1, s);"
+  },
+  {
+   "at": "double d = median_cm();",
+   "t": "거리 + 막대",
+   "d": "5cm 마다 '=' 하나.",
+   "to": "putchar('\\n');"
+  }
+ ],
+ "eio/3/8/alarm.c": [
+  {
+   "at": "static double g_cm = -1;                                /* 공유: 측정 쓰레드가 쓰고 메인이 읽는다 */",
+   "t": "공유 변수 + 뮤텍스",
+   "d": "측정 쓰레드가 쓰고 메인이 읽는다.",
+   "to": "static pthread_mutex_t g_mx = PTHREAD_MUTEX_INITIALIZER;"
+  },
+  {
+   "at": "static double measure_cm(void)                          /* 09_sonar.c 와 같은 함수 */",
+   "t": "09_sonar 와 같은 측정",
+   "d": "",
+   "to": "return us > 30000 ? -1 : us * 0.0343 / 2;"
+  },
+  {
+   "at": "static void *sensor_thread(void *arg)",
+   "t": "측정 쓰레드 — 3개 중앙값",
+   "d": "측정은 느리니(약 200ms) 쓰레드로 분리 → 메인 루프는 20ms 마다 반응. 잠금은 대입 한 줄만.",
+   "to": "pthread_mutex_unlock(&g_mx);"
+  },
+  {
+   "at": "static long servo_ns(int deg) { return (500 + 2000L * deg / 180) * 1000; }",
+   "t": "각도 → ns",
+   "d": "500~2500µs."
+  },
+  {
+   "at": "pwm_set(&servo, 20000000L, servo_ns(90)); pwm_enable(&servo, 1);",
+   "t": "서보 90°(올림), 부저 2kHz 50%",
+   "d": "부저는 enable 로만 켜고 끈다.",
+   "to": "pwm_set(&buz, 1000000000L / 2000, 1000000000L / 4000);   /* 2 kHz, 듀티 50% */"
+  },
+  {
+   "at": "pthread_mutex_lock(&g_mx);",
+   "t": "공유 값 복사",
+   "d": "잠금 안에서는 읽기만, 나머지는 지역 변수로.",
+   "to": "long long now = now_ns();"
+  },
+  {
+   "at": "int zone = (d < 0 || d >= 50) ? 2 : (d >= 20 ? 1 : 0);    /* 2 초록 · 1 노랑 · 0 빨강 */",
+   "t": "LED 세 단계",
+   "d": "50 이상 초록, 20~50 노랑, 20 미만 빨강.",
+   "to": "gpiod_line_request_set_values(g_led, v);"
+  },
+  {
+   "at": "int want;",
+   "t": "부저: 가까울수록 빠르게",
+   "d": "간격 = 거리 × 10ms, 삑 50ms. 10cm 미만은 연속음. 바뀔 때만 enable 호출.",
+   "to": "if (want != buz_on) { pwm_enable(&buz, want); buz_on = want; }"
+  },
+  {
+   "at": "int down = d > 0 && d < 10;",
+   "t": "서보 차단기",
+   "d": "10cm 미만이면 0°(내림). 상태가 바뀔 때만 쓴다.",
+   "to": "if (down != gate_down) { pwm_set_duty(&servo, servo_ns(down ? 0 : 90)); gate_down = down; }"
+  },
+  {
+   "at": "if (now - last_print > 500000000LL) {",
+   "t": "0.5초마다 출력, 20ms 루프",
+   "d": "",
+   "to": "sleep_ms(20);"
+  }
+ ],
+ "eio/4/1/pcf8591.h": [
+  {
+   "at": "#define PCF_ADDR     0x48",
+   "t": "주소와 제어 비트",
+   "d": "0x40 = DAC 켜기, 0x04 = 자동 증가.",
+   "to": "#define PCF_VREF_MV  3300            /* 모듈 Vcc = 3V3 → 기준 전압 */"
+  },
+  {
+   "at": "static inline int pcf_open(const char *bus, int addr)",
+   "t": "pcf_open() — open + I2C_SLAVE",
+   "d": "이후 read/write 가 0x48 로 간다.",
+   "to": "return fd;"
+  },
+  {
+   "at": "static inline int pcf_read(int fd, int ch)",
+   "t": "pcf_read() — 쓰고 2바이트 읽기",
+   "d": "첫 바이트 = 이전 변환 값 → 두 번째 반환.",
+   "to": "return buf[1];"
+  },
+  {
+   "at": "static inline int pcf_read_all(int fd, uint16_t addr, int out[4])",
+   "t": "pcf_read_all() — I2C_RDWR 묶음",
+   "d": "쓰기 1바이트 + 읽기 5바이트를 STOP 없이 한 덩어리로. 자동 증가로 AIN0~3, buf[0] 버림.",
+   "to": "return 0;"
+  },
+  {
+   "at": "static inline int pcf_write_dac(int fd, uint8_t value)",
+   "t": "DAC · mV 변환",
+   "d": "[제어, 값] 2바이트 write.",
+   "to": "static inline int pcf_mv(int raw) { return raw * PCF_VREF_MV / 255; }"
+  }
+ ],
+ "eio/4/1/01_pcf_read.c": [
+  {
+   "at": "int fd = pcf_open(\"/dev/i2c-1\", PCF_ADDR);",
+   "t": "버스 1, 주소 0x48",
+   "d": "실패하면 i2cdetect 로 배선 확인."
+  },
+  {
+   "at": "if (no_discard) {                               /* ⚠ 비교용: 1바이트만 읽기 */",
+   "t": "-n: 1바이트만 읽기 (비교용)",
+   "d": "손잡이를 돌리면 한 박자 늦은 값이 나온다 — 첫 바이트를 버리는 이유.",
+   "to": "v = pcf_read(fd, ch);"
+  },
+  {
+   "at": "int mv = pcf_mv(v);",
+   "t": "raw · mV · 막대",
+   "d": "`%-40.*s` = 앞에서 bar 글자만큼만 출력.",
+   "to": "printf(\"raw %3d  %4d mV  |%-40.*s|\\n\", v, mv, bar, \"########################################\");"
+  }
+ ],
+ "eio/4/2/02_pcf_dac.c": [
+  {
+   "at": "if (fixed >= 0) {",
+   "t": "값 하나로 고정",
+   "d": "AOUT ≈ 값/255 × 3.3V.",
+   "to": "while (!g_stop) sleep_ms(200);"
+  },
+  {
+   "at": "} else if (knob) {",
+   "t": "-k: 가변저항 → DAC",
+   "d": "같은 0x48 장치에서 읽고 쓰기. `\\r` 로 한 줄 덮어쓰기.",
+   "to": "sleep_ms(30);"
+  },
+  {
+   "at": "for (int v = 0, d = 4; !g_stop; v += d) {",
+   "t": "숨쉬기",
+   "d": "PWM 이 아닌 진짜 전압이 변한다.",
+   "to": "sleep_ms(15);"
+  }
+ ],
+ "eio/4/2/03_joy_servo.c": [
+  {
+   "at": "#define DEAD 8                       /* 가운데 ±8 은 움직이지 않음 (데드존) */",
+   "t": "데드존",
+   "d": "가운데 ±8 은 무시 — 손을 떼도 서보가 떨지 않게."
+  },
+  {
+   "at": "static long angle_ns(int deg)",
+   "t": "각도 → 0.5~2.5ms",
+   "d": ""
+  },
+  {
+   "at": "int fd = pcf_open(\"/dev/i2c-1\", PCF_ADDR);",
+   "t": "I2C · 버튼 · PWM 열기",
+   "d": "버튼은 이벤트 없이 값만.",
+   "to": "pwm_enable(&servo, 1);"
+  },
+  {
+   "at": "if (calib && pcf_read_all(fd, PCF_ADDR, v) == 0) { cx = v[1]; printf(\"가운데 X = %d\\n\", cx); }",
+   "t": "-c: 가운데 보정",
+   "d": "시작할 때 X 값을 가운데로."
+  },
+  {
+   "at": "if (pcf_read_all(fd, PCF_ADDR, v) < 0) { printf(\"I2C 오류\\n\"); sleep_ms(500); continue; }",
+   "t": "네 채널 → 각도 누적",
+   "d": "많이 밀수록 빠르게(dx/32), 0~180 자르기, 버튼(LOW)이면 90°.",
+   "to": "pwm_set_duty(&servo, angle_ns(angle));"
+  }
+ ],
+ "eio/4/3/04_sensors.c": [
+  {
+   "at": "typedef struct { int buf[N], head, count, sum; } avg_t;",
+   "t": "avg_push() — 이동 평균 8개",
+   "d": "MCU Day2 링 버퍼와 같다.",
+   "to": "return a->sum / a->count;"
+  },
+  {
+   "at": "gpiod_line_request_set_value(wp, pwr, GPIOD_LINE_VALUE_ACTIVE);    /* 수위 센서 전원 ON */",
+   "t": "수위 센서는 잴 때만 전원",
+   "d": "켜고 10ms → 네 채널 읽기 → 바로 끄기 (부식 방지).",
+   "to": "gpiod_line_request_set_value(wp, pwr, GPIOD_LINE_VALUE_INACTIVE);  /* 바로 OFF */"
+  },
+  {
+   "at": "int light = avg_push(&al, v[0]) * 100 / 255;            /* 0 ~ 100 % */",
+   "t": "물리량 변환 + 히스테리시스",
+   "d": "조도 %, LM35 10mV = 1°C, 불꽃 120/90 문턱, 수위 %.",
+   "to": "int water = v[3] * 100 / 255;"
+  }
+ ],
+ "eio/4/4/spi595.h": [
+  {
+   "at": "static inline int spi_open(const char *dev, uint32_t hz)",
+   "t": "spi_open() — 모드 0 · 8비트 · 속도",
+   "d": "ioctl 세 번으로 설정.",
+   "to": "return fd;"
+  },
+  {
+   "at": "static inline int spi_send_buf(int fd, const uint8_t *tx, size_t n)",
+   "t": "spi_send_buf() — 한 번의 전송",
+   "d": "spi_ioc_transfer 를 채워 ioctl. CE0 상승 에지 = 595 래치.",
+   "to": "return ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < 0 ? -1 : 0;"
+  },
+  {
+   "at": "static inline uint8_t rev8(uint8_t x)",
+   "t": "rev8() — 비트 뒤집기",
+   "d": "4비트 → 2비트 → 1비트씩 자리 바꾸기.",
+   "to": "return x;"
+  },
+  {
+   "at": "static const uint8_t SEG_HEX[16] = {",
+   "t": "0~F 글꼴",
+   "d": "bit0 = a … bit7 = dp.",
+   "to": "#define SEG_BLANK  0x00"
+  },
+  {
+   "at": "static inline uint8_t seg_char(char c)",
+   "t": "seg_char() — 글자 → 패턴",
+   "d": "숫자·16진·H·L·- 등.",
+   "to": "default:            return SEG_BLANK;"
+  }
+ ],
+ "eio/4/4/05_spi595.c": [
+  {
+   "at": "int fd = spi_open(SPI_DEV, 1000000);           /* 1 MHz — 1바이트 전송 8 µs */",
+   "t": "1MHz",
+   "d": "1바이트 = 8µs."
+  },
+  {
+   "at": "if (argc > 1 && strcmp(argv[1], \"-s\")) {",
+   "t": "바이트 하나 그대로",
+   "d": "strtol(…, 0) 이라 0x3F 같은 16진도 받는다.",
+   "to": "while (!g_stop) sleep_ms(200);"
+  },
+  {
+   "at": "} else if (argc > 1) {",
+   "t": "-s: 세그먼트 하나씩",
+   "d": "배선 확인용.",
+   "to": "sleep_ms(500);"
+  },
+  {
+   "at": "for (int n = 0; !g_stop; n = (n + 1) % 16) {",
+   "t": "0~F 카운터",
+   "d": "홀수면 dp 도.",
+   "to": "sleep_ms(500);"
+  }
+ ],
+ "eio/4/5/seg4.h": [
+  {
+   "at": "typedef struct {",
+   "t": "표시 상태",
+   "d": "SPI fd, 자리 라인, 화면 버퍼(뮤텍스), 쓰레드, 최대 지연.",
+   "to": "} seg4_t;"
+  },
+  {
+   "at": "static void *seg4_thread(void *arg)",
+   "t": "끄고 → 모양 → 이 자리만 켜기",
+   "d": "MCU Day3 멀티플렉싱과 같은 순서 (고스트 방지).",
+   "to": "gpiod_line_request_set_values(d->dig, v);          /* ③ 이 자리만 켜기 */"
+  },
+  {
+   "at": "next.tv_nsec += SEG4_DWELL_NS;",
+   "t": "2ms 절대 주기 + 지연 기록",
+   "d": "부하에서 늦게 깨면 그 자리가 오래 켜져 깜빡임.",
+   "to": "if (late > d->max_late_us) d->max_late_us = late;"
+  },
+  {
+   "at": "static inline int seg4_start(seg4_t *d, int spi_fd, int fifo)",
+   "t": "자리 라인 active-low 요청",
+   "d": "코드의 1 = 핀 LOW = 자리 켜짐.",
+   "to": "if (!d->dig) return -1;"
+  },
+  {
+   "at": "pthread_attr_t at;",
+   "t": "FIFO 시도 → 실패하면 일반 쓰레드",
+   "d": "setcap 이 없어도 동작은 하게.",
+   "to": "return 0;"
+  },
+  {
+   "at": "static inline void seg4_text(seg4_t *d, const char *s)",
+   "t": "오른쪽 정렬 + dp 합치기",
+   "d": "뒤에서부터 채우고 '.' 은 앞 글자에 OR.",
+   "to": "seg4_raw(d, p);"
+  },
+  {
+   "at": "static inline void seg4_stop(seg4_t *d)",
+   "t": "정리 순서",
+   "d": "쓰레드 멈추고 join → 끄기 → 반납.",
+   "to": "pthread_mutex_destroy(&d->mx);"
+  }
+ ],
+ "eio/4/5/06_seg4.c": [
+  {
+   "at": "int spi = spi_open(SPI_DEV, 1000000);",
+   "t": "SPI · (조도) I2C · 표시 시작",
+   "d": "",
+   "to": "if (seg4_start(&d, spi, fifo) < 0) return EXIT_FAILURE;"
+  },
+  {
+   "at": "for (int n = 0; !g_stop; n = (n + 1) % 10000) {",
+   "t": "고정 · 조도 · 카운터",
+   "d": "main 은 글자만 바꾸고 그리기는 쓰레드가.",
+   "to": "seg4_text(&d, buf);"
+  },
+  {
+   "at": "if (n % 10 == 9) { printf(\"\\r최대 지연 %ld µs   \", d.max_late_us); fflush(stdout); d.max_late_us = 0; }",
+   "t": "1초마다 최대 지연",
+   "d": "부하(yes ×4)에서 OTHER 와 -f 비교."
+  }
+ ],
+ "eio/4/6/07_matrix.c": [
+  {
+   "at": "static uint8_t fb[2][8];                    /* 화면 버퍼 두 장: bit7 = 왼쪽 열, 1 = 켜짐 */",
+   "t": "이중 버퍼 + atomic",
+   "d": "보이는 쪽(front)과 교체 요청.",
+   "to": "static atomic_int g_swap = 0;               /* 1 = 다음 프레임 시작에 바꿔 달라 */"
+  },
+  {
+   "at": "static void *scan_thread(void *arg)",
+   "t": "프레임 경계에서만 교체",
+   "d": "r == 0 일 때만 front 를 바꿔 한 화면이 섞이지 않는다.",
+   "to": "uint8_t col = g_row_high ? (uint8_t)~row : row; /* 행이 HIGH 면 열은 LOW 일 때 켜짐 */"
+  },
+  {
+   "at": "for (int i = 0; i < 8; i++) v[i] = GPIOD_LINE_VALUE_INACTIVE;",
+   "t": "행 끄기 → 열(SPI) → 행 켜기",
+   "d": "rev8 로 bit7 이 Q0(C1).",
+   "to": "gpiod_line_request_set_values(g_rows, v);       /* ③ 이 행만 켜기 */"
+  },
+  {
+   "at": "static void show(const uint8_t img[8])",
+   "t": "show() — 뒤에 그리고 교체 요청",
+   "d": "-1 이면 보이는 버퍼에 바로 → 스크롤 중 찢어짐 관찰.",
+   "to": "while (atomic_load(&g_swap) && !g_stop) sleep_ms(1);"
+  },
+  {
+   "at": "static const uint8_t *glyph(char c)",
+   "t": "5×8 글꼴",
+   "d": "필요한 글자만.",
+   "to": "case 'P': return P; case 'I': return I; default: return SP; }"
+  },
+  {
+   "at": "static void scroll(const char *s)",
+   "t": "글자 띠를 한 열씩",
+   "d": "글자 5열 + 간격 1열, 오른쪽 밖에서 들어온다.",
+   "to": "sleep_ms(90);"
+  },
+  {
+   "at": "gpiod_line_settings_set_active_low(s, !g_row_high);         /* -r: 행 LOW = 켜짐 */",
+   "t": "-r: 행 극성 반대",
+   "d": "그림이 반전돼 보이면."
+  }
+ ],
+ "eio/4/7/uart.h": [
+  {
+   "at": "static inline speed_t uart_speed(int baud)",
+   "t": "숫자 → B 상수",
+   "d": "termios 는 B115200 같은 상수를 쓴다."
+  },
+  {
+   "at": "static inline int uart_open(const char *dev, int baud)",
+   "t": "open — O_NOCTTY",
+   "d": "이 장치를 제어 터미널로 삼지 않는다.",
+   "to": "if (tcgetattr(fd, &t) < 0) { perror(\"tcgetattr\"); close(fd); return -1; }"
+  },
+  {
+   "at": "cfmakeraw(&t);                          /* 줄 편집 · 에코 · 특수 문자 처리 모두 끔 */",
+   "t": "raw 8N1, VMIN 0 · VTIME 1",
+   "d": "줄 편집·에코 끔, 0.1초 기다리면 받은 만큼(0 바이트도) 돌려준다.",
+   "to": "t.c_cc[VTIME] = 1;                      /* 0.1 초 기다리면 read() 가 돌아온다 */"
+  },
+  {
+   "at": "cfsetispeed(&t, sp);",
+   "t": "속도 · 버퍼 비우기 · 적용",
+   "d": "",
+   "to": "if (tcsetattr(fd, TCSANOW, &t) < 0) { perror(\"tcsetattr\"); close(fd); return -1; }"
+  },
+  {
+   "at": "static inline int lb_feed(linebuf_t *lb, char c)",
+   "t": "lb_feed() — 줄 모으기",
+   "d": "'\\r' 무시, '\\n' 이면 줄 완성(1). 너무 긴 줄은 통째로 버린다.",
+   "to": "else lb->overflow = 1;"
+  },
+  {
+   "at": "static inline uint8_t cs_xor(const char *s)",
+   "t": "cs_xor() — '*' 앞 XOR",
+   "d": "C Day3 checksum 과 같은 방식.",
+   "to": "return x;"
+  },
+  {
+   "at": "static inline int cs_check(const char *line)",
+   "t": "cs_check() — 1 맞음 · 0 틀림 · -1 없음",
+   "d": "'*' 뒤 두 자리 16진을 sscanf(%2X).",
+   "to": "return cs_xor(line) == got;"
+  },
+  {
+   "at": "static inline int uart_send_line(int fd, const char *body)",
+   "t": "본문*HH\\n 보내기",
+   "d": "",
+   "to": "return write(fd, buf, n) == n ? 0 : -1;"
+  }
+ ],
+ "eio/4/7/08_uart_term.c": [
+  {
+   "at": "int ep = epoll_create1(EPOLL_CLOEXEC);",
+   "t": "UART · 키보드 · (타이머) 를 epoll 하나로",
+   "d": "data.fd 로 구분.",
+   "to": "e.data.fd = tfd; epoll_ctl(ep, EPOLL_CTL_ADD, tfd, &e);"
+  },
+  {
+   "at": "if (f == fd) {                              /* UART 에서 받은 바이트 */",
+   "t": "UART 수신 → 줄 단위",
+   "d": "-t 면 ping 왕복 시간.",
+   "to": "} else printf(\"← %s\\n\", lb.line);"
+  },
+  {
+   "at": "} else if (f == STDIN_FILENO) {             /* 키보드 한 줄 → UART */",
+   "t": "키보드 한 줄 → UART",
+   "d": "",
+   "to": "if (write(fd, line, strlen(line)) < 0) perror(\"write\");"
+  },
+  {
+   "at": "} else if (f == tfd) {                      /* 1초 타이머 → ping */",
+   "t": "1초마다 ping",
+   "d": "답이 오기 전에 다음 ping 이면 '응답 없음' — TX·RX 선 확인.",
+   "to": "if (write(fd, msg, m) != m) perror(\"write\");"
+  }
+ ],
+ "eio/4/8/esp32_node.ino": [
+  {
+   "at": "uint8_t cs_xor(const char *s) {",
+   "t": "체크섬 붙여 보내기",
+   "d": "Pi 의 uart.h 와 같은 규칙.",
+   "to": "Serial.print(\"→ \"); Serial.print(buf);        // USB 시리얼 모니터에도"
+  },
+  {
+   "at": "void handle(const char *s) {",
+   "t": "받은 줄 검사 → LED",
+   "d": "체크섬이 틀리면 무시, LED=1 이면 켜기.",
+   "to": "Serial.printf(\"← %s\\n\", s);"
+  },
+  {
+   "at": "Serial2.begin(115200, SERIAL_8N1, 16, 17);    // RX, TX",
+   "t": "Serial2 = Pi 쪽",
+   "d": "Serial(USB) 은 디버그용으로 그대로."
+  },
+  {
+   "at": "if (millis() - last >= 1000) {",
+   "t": "1초마다 T·H 프레임",
+   "d": "DHT 실패면 ERR=DHT.",
+   "to": "send_line(body);"
+  },
+  {
+   "at": "while (Serial2.available()) {",
+   "t": "줄 모으기 (논블로킹)",
+   "d": "'\\n' 이면 handle.",
+   "to": "else if (n < (int)sizeof(line) - 1) line[n++] = c;"
+  }
+ ],
+ "eio/4/8/gateway.c": [
+  {
+   "at": "typedef struct {",
+   "t": "최근 값 + 통계",
+   "d": "마지막 정상 프레임 시각으로 3초 타임아웃.",
+   "to": "} reading_t;"
+  },
+  {
+   "at": "static int handle_line(const char *line, int need_cs, reading_t *r)",
+   "t": "handle_line() — 검사 → 파싱 → 범위",
+   "d": "체크섬(키보드 모드는 없어도 됨) → sscanf → 범위 밖이면 형식 오류. 실패 종류를 센다.",
+   "to": "return 0;"
+  },
+  {
+   "at": "int uart = kbd ? -1 : uart_open(UART_DEV, 115200);",
+   "t": "UART · I2C · SPI · 표시 열기",
+   "d": "Day4 모듈 전부.",
+   "to": "seg4_text(&seg, \"----\");"
+  },
+  {
+   "at": "int src = kbd ? STDIN_FILENO : uart;",
+   "t": "epoll: 입력 + 1초 타이머",
+   "d": "",
+   "to": "e.data.fd = tfd; epoll_ctl(ep, EPOLL_CTL_ADD, tfd, &e);"
+  },
+  {
+   "at": "if (ev[i].data.fd == src) {",
+   "t": "줄 단위 수신 처리",
+   "d": "루프백으로 돌아온 LED= 는 무시, ERR= 는 출력.",
+   "to": "} else printf(\"버림(%s): %s\\n\", rc == -1 ? \"체크섬\" : \"형식\", lb.line);"
+  },
+  {
+   "at": "uint64_t exp; if (read(tfd, &exp, sizeof exp) < 0) continue;",
+   "t": "-s: 가짜 ESP32 프레임",
+   "d": "",
+   "to": "uart_send_line(uart, body);"
+  },
+  {
+   "at": "int v = pcf_read(pcf, 0), light = v < 0 ? -1 : v * 100 / 255;",
+   "t": "조도 → LED 명령 (히스테리시스)",
+   "d": "30% 아래 켜고 40% 위 끄기. 바뀔 때 + 10초마다 재전송.",
+   "to": "printf(\"조도 %d%% → LED=%d\\n\", light, dark);"
+  },
+  {
+   "at": "if (!r.at || now_ns() - r.at > TIMEOUT_NS) {",
+   "t": "표시 · 타임아웃",
+   "d": "3초 없으면 ----, 아니면 온도/습도를 2초씩.",
+   "to": "char s[8]; snprintf(s, sizeof s, \"H%3d\", r.h); seg4_text(&seg, s);"
+  }
+ ],
+ "eio/5/1/01_dht_poll.c": [
+  {
+   "at": "static int decode(const long *hw, int n, int *t, int *h)",
+   "t": "decode() — 펄스 폭 → 40비트",
+   "d": "50µs 보다 길면 1. 5바이트 중 앞 4개 합 = 마지막(체크섬). 습도 b[0], 온도 b[2].",
+   "to": "return 0;"
+  },
+  {
+   "at": "static struct gpiod_line_config *cfg(int out, int edge)",
+   "t": "cfg() — 출력/입력 설정 만들기",
+   "d": "입력은 풀업 + (선택) BOTH 엣지.",
+   "to": "return c;"
+  },
+  {
+   "at": "struct gpiod_line_config *out = cfg(1, 0), *in = cfg(0, use_edge);",
+   "t": "시작 신호: Low 20ms → 놓기",
+   "d": "reconfigure_lines 로 반납 없이 방향 전환.",
+   "to": "long hw[MAXE]; int n = 0;"
+  },
+  {
+   "at": "if (!use_edge) {                                        /* ① 폴링 */",
+   "t": "① 폴링 — 바뀐 걸 본 '지금' 시각",
+   "d": "get_value 한 번에 수 µs + 스케줄링 지연 → 26µs 와 70µs 구분이 자주 틀린다.",
+   "to": "} else {                                                /* ② 엣지 이벤트 */"
+  },
+  {
+   "at": "struct pollfd p = { .fd = gpiod_line_request_get_fd(req), .events = POLLIN };",
+   "t": "② 엣지 — 커널 타임스탬프",
+   "d": "늦게 읽어도 시각은 정확. 그래도 버퍼가 넘치면 잃는다.",
+   "to": "else if (rise) hw[n++] = (long)((ts - rise) / 1000);"
+  },
+  {
+   "at": "struct gpiod_chip *chip = gpiod_chip_open(GPIO_CHIP);",
+   "t": "이벤트 버퍼 256 으로 직접 요청",
+   "d": "엣지 80개가 4ms 안에. overlay 가 켜져 있으면 busy.",
+   "to": "if (chip) gpiod_chip_close(chip);"
+  },
+  {
+   "at": "for (; done < tries && !g_stop; done++) {",
+   "t": "N 번 시도 → 성공률",
+   "d": "사용자 공간 µs 타이밍의 한계를 숫자로 → 커널 드라이버가 필요한 이유.",
+   "to": "sleep_ms(2000);                                     /* DHT11 은 1초에 한 번 이하 */"
+  }
+ ],
+ "eio/5/1/02_dht_iio.c": [
+  {
+   "at": "if (dht_open(&d) < 0) {",
+   "t": "overlay 확인 안내",
+   "d": ""
+  },
+  {
+   "at": "long long t0 = now_ns();",
+   "t": "읽기 시간과 성공률",
+   "d": "커널 드라이버는 거의 매번 성공 — 01 과 비교.",
+   "to": "else printf(\"  읽기 실패 (재시도 3번)          성공 %d / %d\\n\", ok, n);"
+  }
+ ],
+ "eio/5/2/eio-overlay.dts": [
+  {
+   "at": "/dts-v1/;",
+   "t": "overlay 머리",
+   "d": "/plugin/ = 기존 트리에 덧붙이는 조각.",
+   "to": "compatible = \"brcm,bcm2711\";"
+  },
+  {
+   "at": "fragment@0 {",
+   "t": "fragment 0 — 핀 설정",
+   "d": "&gpio 노드에 GPIO5 = 입력 + 풀업 설정을 추가.",
+   "to": "brcm,pull = <2>;            /* 2 = pull-up */"
+  },
+  {
+   "at": "eio-leds {",
+   "t": "gpio-leds — GPIO17 을 LED 장치로",
+   "d": "compatible 로 드라이버가 정해진다 → /sys/class/leds/eio:green.",
+   "to": "linux,default-trigger = \"heartbeat\";"
+  },
+  {
+   "at": "eio-keys {",
+   "t": "gpio-keys — GPIO5 를 Enter 키로",
+   "d": "ACTIVE_LOW, KEY_ENTER(28), 20ms 디바운스 → /dev/input/eventN.",
+   "to": "debounce-interval = <20>;           /* ms */"
+  }
+ ],
+ "eio/5/2/03_led_key.c": [
+  {
+   "at": "static int write_str(const char *file, const char *s)",
+   "t": "write_str() — sysfs 파일에 문자열",
+   "d": "LED 클래스는 파일 쓰기로 제어.",
+   "to": "return r;"
+  },
+  {
+   "at": "static int open_keys(void)",
+   "t": "open_keys() — 이름으로 event 장치 찾기",
+   "d": "/dev/input/event* 를 열어 EVIOCGNAME 으로 \"eio-keys\" 인지.",
+   "to": "return -1;"
+  },
+  {
+   "at": "if (poll(&p, 1, -1) <= 0) continue;",
+   "t": "struct input_event 읽기",
+   "d": "EV_SYN 같은 구분 이벤트는 건너뛴다.",
+   "to": "if (ev.type != EV_KEY) continue;                  /* EV_SYN 등은 건너뜀 */"
+  },
+  {
+   "at": "if (ev.code == KEY_ENTER && ev.value == 1) {",
+   "t": "누를 때마다 트리거 순환",
+   "d": "value 1 누름 · 0 뗌 · 2 반복. GPIO 를 직접 요청하지 않는다 — 커널 드라이버의 것.",
+   "to": "printf(\"  → trigger = %s\\n\", TRIG[k]);"
+  }
+ ],
+ "eio/5/3/lcd.c": [
+  {
+   "at": "enum { RS, E, D4, D5, D6, D7, NPIN };",
+   "t": "핀 6개 = 요청 하나",
+   "d": "값 배열 v[] 를 고쳐서 set_values 로 한 번에."
+  },
+  {
+   "at": "static void us_sleep(long us)",
+   "t": "Ctrl+C 에도 짧아지지 않는 대기",
+   "d": "남은 시간으로 다시 잔다.",
+   "to": "while (nanosleep(&ts, &ts) < 0 && errno == EINTR) ;      /* Ctrl+C 로 짧아지지 않게 */"
+  },
+  {
+   "at": "static void nibble(lcd_t *l, uint8_t n)",
+   "t": "nibble() — 4비트 + E 펄스",
+   "d": "E 가 떨어지는 순간 LCD 가 읽는다.",
+   "to": "l->v[E] = GPIOD_LINE_VALUE_INACTIVE; apply(l);   us_sleep(1);"
+  },
+  {
+   "at": "static void send(lcd_t *l, uint8_t b, int rs)",
+   "t": "send() — RS + 위 4비트 + 아래 4비트",
+   "d": "명령 실행 ≥ 37µs. 늦는 건 괜찮다 (최소 시간만 있음 — DHT11 과 다른 점).",
+   "to": "us_sleep(50);                       /* 명령 실행 ≥ 37 µs */"
+  },
+  {
+   "at": "void lcd_cmd(lcd_t *l, uint8_t c) { send(l, c, 0); }",
+   "t": "명령 · 글자 · clear · goto · puts",
+   "d": "goto = 0x80 | (행 ? 0x40 : 0) + 열.",
+   "to": "void lcd_puts(lcd_t *l, const char *s) { while (*s) lcd_putc(l, *s++); }"
+  },
+  {
+   "at": "void lcd_printf(lcd_t *l, int row, const char *fmt, ...)",
+   "t": "lcd_printf() — 16칸 덮어쓰기",
+   "d": "vsnprintf 로 만들고 남은 칸을 공백으로.",
+   "to": "lcd_puts(l, buf);"
+  },
+  {
+   "at": "void lcd_custom(lcd_t *l, int slot, const uint8_t bitmap[8])",
+   "t": "사용자 문자 → CGRAM",
+   "d": "",
+   "to": "lcd_goto(l, 0, 0);                                       /* 다시 DDRAM 으로 */"
+  },
+  {
+   "at": "lcd_t *lcd_open(void)",
+   "t": "lcd_open() — 초기화 순서",
+   "d": "40ms 대기 → 0x3 세 번(상태 맞추기) → 0x2(4비트) → 0x28 · 0x08 · clear · 0x06 · 0x0C.",
+   "to": "return l;"
+  },
+  {
+   "at": "void lcd_close(lcd_t *l)",
+   "t": "close vs release",
+   "d": "close 는 지우고 반납, release 는 마지막 글자를 남긴다.",
+   "to": "void lcd_release(lcd_t *l)"
+  }
+ ],
+ "eio/5/3/04_lcd_demo.c": [
+  {
+   "at": "static const uint8_t DEG[8]   = { 0x06, 0x09, 0x09, 0x06, 0x00, 0x00, 0x00, 0x00 };   /* ° */",
+   "t": "° · 하트 비트맵",
+   "d": "줄당 아래 5비트.",
+   "to": "static const uint8_t HEART[8] = { 0x00, 0x0A, 0x1F, 0x1F, 0x0E, 0x04, 0x00, 0x00 };"
+  },
+  {
+   "at": "lcd_custom(l, 1, DEG);                              /* 0 번은 쓰지 않는다: 문자 0 = 문자열의 끝 */",
+   "t": "슬롯 1·2 등록 → 출력",
+   "d": "0번은 문자열 끝과 같아서 안 쓴다.",
+   "to": "lcd_goto(l, 15, 0); lcd_putc(l, 2);                 /* 하트 = 사용자 문자 2 */"
+  },
+  {
+   "at": "for (int n = 1200; !g_stop; n = n > 0 ? n - 7 : 1200) {",
+   "t": "고정 폭 + \\x01",
+   "d": "`\"\\x01\" \"C\"` 로 나눠 써야 \\x01C 가 한 16진수로 붙지 않는다.",
+   "to": "sleep_ms(200);"
+  }
+ ],
+ "eio/5/4/sonar.h": [
+  {
+   "at": "typedef struct sonar sonar_t;",
+   "t": "불투명 타입 + API",
+   "d": "measure 한 번, median n 번(≤ 7).",
+   "to": "void sonar_close(sonar_t *s);"
+  }
+ ],
+ "eio/5/5/sonar.c": [
+  {
+   "at": "struct sonar {",
+   "t": "모듈 내부 상태",
+   "d": "핀 번호, 요청 두 개, 이벤트 버퍼.",
+   "to": "};"
+  },
+  {
+   "at": "sonar_t *sonar_open(unsigned int trig, unsigned int echo)",
+   "t": "sonar_open() — 실패하면 정리하고 NULL",
+   "d": "Echo 는 BOTH 엣지 · bias 끔.",
+   "to": "return s;"
+  },
+  {
+   "at": "double sonar_measure(sonar_t *s)",
+   "t": "Day3 measure_cm 그대로",
+   "d": "찌꺼기 버리기 → Trig → 60ms 안에 rising·falling → cm.",
+   "to": "return us > 30000 ? -1 : us * 0.0343 / 2;"
+  },
+  {
+   "at": "double sonar_median(sonar_t *s, int n)",
+   "t": "중앙값 (최대 7)",
+   "d": "배열 크기를 넘지 않게 n 을 자른다.",
+   "to": "return v[k / 2];"
+  },
+  {
+   "at": "void sonar_close(sonar_t *s)",
+   "t": "있는 것만 정리",
+   "d": "open 중간 실패에서도 쓸 수 있게 NULL 검사.",
+   "to": "free(s);"
+  }
+ ],
+ "eio/5/5/envmon.c": [
+  {
+   "at": "#define PIN_LED_OK 17",
+   "t": "핀과 문턱",
+   "d": "팬 28/27°C 히스테리시스, 접근 30cm, 화면 4개.",
+   "to": "#define NSCREEN   4"
+  },
+  {
+   "at": "typedef struct {",
+   "t": "공유 상태 하나 + 뮤텍스 + 조건 변수",
+   "d": "모든 쓰레드는 S.d 만 주고받는다. cv = '화면을 바로 다시 그려라'.",
+   "to": "static long long g_start;"
+  },
+  {
+   "at": "static void log_msg(const char *fmt, const char *a)",
+   "t": "시각 붙은 로그",
+   "d": "systemd 아래에서는 journalctl 로 간다.",
+   "to": "printf(\"[%s] \", ts); printf(fmt, a); printf(\"\\n\");          /* journalctl 에 그대로 남는다 */"
+  },
+  {
+   "at": "static void *sensor_thread(void *arg)",
+   "t": "sensor — 2초마다 온습도 + 조도",
+   "d": "장치가 없으면 다시 열기 시도(복구). 실패·복구가 바뀔 때만 로그. 100ms 씩 나눠 자서 Ctrl+C 에 빨리 반응.",
+   "to": "return NULL;"
+  },
+  {
+   "at": "static void *proximity_thread(void *arg)",
+   "t": "proximity — 거리 · 접근",
+   "d": "접근 상태가 바뀌면 cond_signal 로 화면을 즉시.",
+   "to": "return NULL;"
+  },
+  {
+   "at": "static void *control_thread(void *arg)",
+   "t": "control — 50ms 마다",
+   "d": "버튼 이벤트를 기다리되 50ms 타임아웃으로 출력도 갱신.",
+   "to": "if (poll(&p, 1, 50) > 0) {                               /* 50 ms 마다 출력 갱신 */"
+  },
+  {
+   "at": "int n = gpiod_line_request_read_edge_events(btn, buf, 8);",
+   "t": "짧게 = 화면 · 길게(1초) = 음소거",
+   "d": "누름~뗌 커널 타임스탬프 차이.",
+   "to": "log_msg(ms >= 1000 ? \"버튼 길게 — 음소거 전환%s\" : \"버튼 — 화면 전환%s\", \"\");"
+  },
+  {
+   "at": "if (S.d.th_ok && S.d.t >= FAN_ON)  S.d.fan = 1;                  /* 히스테리시스 */",
+   "t": "판단 → 출력 4개 한 번에",
+   "d": "팬 히스테리시스, 상태 LED(정상 느리게·오류 빠르게), 경보 LED, 부저 삑.",
+   "to": "gpiod_line_request_set_values(g_out, v);"
+  },
+  {
+   "at": "static void *display_thread(void *arg)",
+   "t": "display — 잠근 채 복사 → 풀고 그리기",
+   "d": "",
+   "to": "pthread_mutex_unlock(&S.mx);"
+  },
+  {
+   "at": "char a[32], b[32];                                       /* lcd_printf 가 16칸으로 자른다 */",
+   "t": "화면 4개 (접근이면 경고 우선)",
+   "d": "온습도·팬 / 조도 막대 / 거리 / 가동 시간·오류 수.",
+   "to": "lcd_printf(l, 1, \"%s\", b);"
+  },
+  {
+   "at": "if (now - last_csv >= 60000000000LL) {                   /* 1분마다 */",
+   "t": "1분마다 CSV 한 줄",
+   "d": "열고 쓰고 바로 닫기.",
+   "to": "fclose(f);"
+  },
+  {
+   "at": "struct timespec dl; clock_gettime(CLOCK_REALTIME, &dl);",
+   "t": "0.5초 또는 신호까지",
+   "d": "timedwait 의 마감은 CLOCK_REALTIME 절대 시각.",
+   "to": "pthread_cond_timedwait(&S.cv, &S.mx, &dl);"
+  },
+  {
+   "at": "setvbuf(stdout, NULL, _IOLBF, 0);          /* systemd 아래에서는 stdout 이 파이프 → 줄 단위로 내보내기 */",
+   "t": "줄 단위 출력",
+   "d": "systemd 에서는 stdout 이 파이프 → 블록 버퍼라 로그가 늦게 보인다."
+  },
+  {
+   "at": "lcd_t *lcd = lcd_open();",
+   "t": "필수 장치 없으면 시작하지 않음",
+   "d": "실패로 끝나면 systemd 가 재시작 (eio overlay 와 핀 충돌 주의).",
+   "to": "return EXIT_FAILURE;"
+  },
+  {
+   "at": "sonar_t *so = sonar_open(23, 24);           /* 센서는 없어도 계속 — 화면에 -- */",
+   "t": "센서는 없어도 계속",
+   "d": "화면에 -- 로."
+  },
+  {
+   "at": "pthread_t th[4];",
+   "t": "쓰레드 4개",
+   "d": "",
+   "to": "pthread_create(&th[3], NULL, display_thread, lcd);"
+  },
+  {
+   "at": "while (!g_stop) sleep_ms(200);              /* 메인은 신호만 기다린다 */",
+   "t": "종료: broadcast 로 깨우고 join",
+   "d": "SIGTERM(systemctl stop)도 g_stop.",
+   "to": "for (int i = 0; i < 4; i++) pthread_join(th[i], NULL);"
+  },
+  {
+   "at": "enum gpiod_line_value off[4] = { 0, 0, 0, 0 };            /* 릴레이 · 부저 반드시 끄기 */",
+   "t": "릴레이·부저 반드시 끄고 반납",
+   "d": "LCD 는 'stopped' 를 남기고 release.",
+   "to": "lcd_release(lcd);                           /* 화면은 남기고 라인만 반납 */"
+  }
+ ],
+ "eio/5/5/Makefile": [
+  {
+   "at": "CC      = gcc",
+   "t": "변수",
+   "d": "pkg-config 로 libgpiod 옵션, 쓰레드·수학 라이브러리.",
+   "to": "LDLIBS  = $(shell pkg-config --libs libgpiod 2>/dev/null) -lpthread -lm"
+  },
+  {
+   "at": "01_dht_poll: 01_dht_poll.c gpio_common.h",
+   "t": "예제마다 규칙",
+   "d": "`$<` 첫 재료, `$^` 전체 — 모듈 .o 와 함께 링크하는 것은 $^.",
+   "to": "$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)"
+  },
+  {
+   "at": "envmon: envmon.o lcd.o dht.o sonar.o",
+   "t": "모듈 .o 를 한 번에 링크",
+   "d": "바뀐 .c 만 다시 컴파일."
+  },
+  {
+   "at": "%.o: %.c *.h",
+   "t": "패턴 규칙",
+   "d": "헤더가 바뀌면 다시 컴파일되게 *.h 를 의존에."
+  },
+  {
+   "at": "eio.dtbo: eio-overlay.dts",
+   "t": "overlay 도 make 로",
+   "d": ""
+  }
+ ]
+}

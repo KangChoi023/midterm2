@@ -1,9 +1,14 @@
 import re,sys,json
 
+Q_RE=re.compile(r'const Q\s*=\s*\[')
+
+def supported(path):
+    """이 파서가 읽는 형식(const Q=[…]) 인가"""
+    return bool(Q_RE.search(open(path,encoding='utf8').read()))
+
 def extract(path):
     s=open(path,encoding='utf8').read()
-    i=s.index('const Q=')
-    i=s.index('[',i)
+    i=Q_RE.search(s).end()-1
     return s,i
 
 class P:
@@ -56,9 +61,43 @@ def _unesc(x):
     if isinstance(x,dict): return {k:_unesc(v) for k,v in x.items()}
     return x
 
+def _plain(x):
+    """보기·짝·순서 칸은 화면에서 글자로 찍히므로 html 태그를 벗긴다 (<code>Ctrl</code> → Ctrl)"""
+    import html as _h
+    return _h.unescape(re.sub(r'<[^>]+>','',str(x)))
+
+def _norm(q, seed):
+    """NN 형 워크시트 문항({type: single|multi|ox|short|drop|match|order|code|hot}) → 위키 형식({ty: mc|multi|ox|match|order|short}).
+    hot(그림 클릭)은 옮길 수 없어 None. drop·code 는 정답 보기만 되는 short(ro=1)."""
+    t=q.get('type')
+    if not t: return q
+    base={k:q[k] for k in ('p','w','an') if k in q}
+    if t=='single': return dict(base,o=[_plain(x) for x in q['o']],a=q['a'])
+    if t=='multi': return dict(base,ty='multi',o=[_plain(x) for x in q['o']],a=list(q['a']))
+    if t=='ox': return dict(base,ty='ox',a=1 if q['a'] else 0)
+    if t=='match': return dict(base,ty='match',left=[_plain(x) for x in q['left']],right=[_plain(x) for x in q['right']],a=list(q['a']))
+    if t=='order':                                           # items 는 정답 순서 → 고정된 섞기로 보여 준다
+        n=len(q['items']); perm=sorted(range(n),key=lambda k:((k*7+seed*3)%n, k))
+        if perm==list(range(n)): perm=perm[::-1]
+        return dict(base,ty='order',steps=[_plain(q['items'][k]) for k in perm],a=[perm.index(k) for k in range(n)])
+    if t=='short': return dict(base,ty='short',a=[str(x) for x in q['a']])
+    if t=='drop':
+        it=iter(q['opts'])
+        p=re.sub(r'\{\}',lambda m:'[ '+' / '.join(next(it))+' ]',q['p2'])
+        return dict(base,ty='short',p=p,a=[' · '.join(o[k] for o,k in zip(q['opts'],q['a']))],ro=1)
+    if t=='code':
+        parts=q['code'].split('{{}}')
+        code=''.join(x+('____' if k<len(parts)-1 else '') for k,x in enumerate(parts))
+        full=''.join(x+(q['a'][k][0] if k<len(parts)-1 else '') for k,x in enumerate(parts))
+        return dict(base,ty='short',c=code,a=[full],ro=1)
+    return None
+
 def load(path):
     s,i=extract(path)
-    return _unesc(P(s,i).val())
+    out=_unesc(P(s,i).val())
+    for les in out:
+        les['qs']=[x for x in (_norm(q,k) for k,q in enumerate(les.get('qs',[]))) if x]
+    return out
 
 CIRC='①②③④⑤⑥⑦⑧'
 

@@ -1,0 +1,381 @@
+{
+ "c/1/3/main.c": [
+  {
+   "at": "#include \"sensor.h\"",
+   "t": "선언만 가져와 사용",
+   "d": "main.c 는 sensor.c 의 내용을 모른다 — 헤더의 선언만 보고 컴파일, 연결은 링커가."
+  },
+  {
+   "at": "Reading r1 = {25.3, 60, 120};",
+   "t": "구조체 초기화 + 호출",
+   "d": "순서대로 초기화한 두 값을 출력 → OK / ALERT. 빌드: `gcc main.c sensor.c -o app` 또는 make.",
+   "to": "print_reading(r2);     // → T=36.9 H=70 D=150 ALERT"
+  }
+ ],
+ "c/1/5/promo.c": [
+  {
+   "at": "printf(\"%d\\n\", -1 < 1u);             // → 0  (거짓!)",
+   "t": "signed 가 unsigned 로 바뀐다",
+   "d": "한쪽이 unsigned 면 -1 이 unsigned 로 변환돼 4294967295 → `< 1u` 가 거짓. sizeof 는 size_t(unsigned) 라 같은 함정.",
+   "to": "printf(\"%d\\n\", -1 < sizeof(int));    // → 0  (거짓!)"
+  },
+  {
+   "at": "printf(\"%u\\n\", (unsigned)-1);        // → 4294967295",
+   "t": "-1 의 정체",
+   "d": "모든 비트가 1 = unsigned 최댓값. 루프 `i < sizeof …` 에서 int i 와 섞지 말 것."
+  }
+ ],
+ "c/1/5/fp.c": [
+  {
+   "at": "double a = 0.1 + 0.2;",
+   "t": "실수는 정확하지 않다",
+   "d": "0.1·0.2 는 2진수로 딱 떨어지지 않아 합이 0.3000…0444 → `== 0.3` 은 거짓.",
+   "to": "printf(\"%.20f\\n\", a);                      // → 0.30000000000000004441"
+  },
+  {
+   "at": "printf(\"%d\\n\", fabs(a - 0.3) < 1e-9);      // → 1  (오차 범위 비교)",
+   "t": "오차 범위로 비교",
+   "d": "차이가 아주 작으면 같다고 본다. fabs 는 `-lm` 필요."
+  },
+  {
+   "at": "printf(\"%d\\n\", (int)3.99);                 // → 3  (캐스팅은 버림, 반올림 아님)",
+   "t": "캐스팅은 버림",
+   "d": "반올림이 아니라 소수점 아래를 버린다 → 3."
+  }
+ ],
+ "c/1/8/game.c": [
+  {
+   "at": "void gen_answer(int ans[3]) {",
+   "t": "중복 없는 0~9 세 개",
+   "d": "뽑고 → 이미 있는지 확인 → 없을 때만 넣는다. 세 개가 찰 때까지 반복.",
+   "to": "if (!dup) ans[n++] = r;"
+  },
+  {
+   "at": "int read_guess(int g[3]) {",
+   "t": "입력 + 실패하면 버퍼 비우기",
+   "d": "scanf 가 3 이 아니면 남은 글자를 getchar 로 버린다 — 안 버리면 같은 글자를 계속 읽어 **무한 루프**.",
+   "to": "return 1;"
+  },
+  {
+   "at": "int is_valid(const int g[3]) {",
+   "t": "검증 (직접 채울 곳)",
+   "d": "세 값이 0~9 이고 서로 다른지 — 이중 for 로 i < j 쌍만 비교."
+  },
+  {
+   "at": "void judge(const int ans[3], const int g[3], int *strike, int *ball) {",
+   "t": "판정 (직접 채울 곳)",
+   "d": "숫자가 같고 자리도 같으면 strike, 숫자만 같으면 ball. 포인터라 `(*strike)++` — 괄호 없으면 포인터가 움직인다.",
+   "to": "else        ____;      // 숫자만 같음"
+  },
+  {
+   "at": "void print_result(int strike, int ball, int tries) {",
+   "t": "출력 (직접 채울 곳)",
+   "d": "`1S 2B` 형식, 3S 면 시도 횟수와 함께 정답 메시지."
+  }
+ ],
+ "c/2/1/addr.c": [
+  {
+   "at": "int *p = &x;            // p 는 \"x 의 주소\"를 담는다",
+   "t": "포인터 = 주소를 담는 변수",
+   "d": "`&x` 는 x 의 주소, p 에 저장. `int *` 는 'int 를 가리킨다'."
+  },
+  {
+   "at": "printf(\"x   = %d\\n\", x);            // → 5",
+   "t": "주소와 값",
+   "d": "&x 와 p 는 같은 주소(`%p`, void * 캐스팅), `*p` 는 그 주소의 값 = 5.",
+   "to": "printf(\"*p  = %d\\n\", *p);           // → 5   (p 가 가리키는 곳의 값)"
+  },
+  {
+   "at": "*p = 42;                            // p 를 통해 x 를 바꾼다",
+   "t": "포인터로 원본 바꾸기",
+   "d": "`*p = 42` 는 x 를 바꾼다 — 함수에 주소를 넘기면 원본을 바꿀 수 있는 원리.",
+   "to": "printf(\"x   = %d\\n\", x);            // → 42"
+  }
+ ],
+ "c/2/1/wild.c": [
+  {
+   "at": "int *p;                 // 초기화 안 됨: 쓰레기 주소",
+   "t": "초기화 안 한 포인터",
+   "d": "쓰레기 주소를 담고 있다 (wild pointer). 처음엔 `int *p = NULL;`."
+  },
+  {
+   "at": "*p = 10;                // → Segmentation fault (대부분)",
+   "t": "아무 데나 쓰기 → 세그폴트",
+   "d": "운이 나쁘면 죽지 않고 다른 데이터를 망가뜨린다 — 더 무서운 경우. `-Wall` 이 '초기화 안 됨' 경고."
+  }
+ ],
+ "c/2/5/ovf.c": [
+  {
+   "at": "char buf[8];",
+   "t": "8칸에 14바이트",
+   "d": "strcpy 는 크기를 모른다 → 뒤 메모리를 덮는다(버퍼 오버플로). `-fsanitize=address` 로 그 줄에서 잡힌다. 대신 `snprintf(buf, sizeof buf, \"%s\", …)`.",
+   "to": "strcpy(buf, \"ESP32-SENSOR\");     // 13 + '\\0' = 14바이트를 8칸에"
+  }
+ ],
+ "c/2/6/test_frame.c": [
+  {
+   "at": "const char *tests[] = {",
+   "t": "정상 2 + 비정상 4",
+   "d": "'$' 없음 · D 없음 · 숫자 아님 · '*' 없음 — 경계를 일부러 만든 입력.",
+   "to": "};"
+  },
+  {
+   "at": "for (int i = 0; i < 6; i++) {",
+   "t": "결과 확인",
+   "d": "성공하면 값, 실패하면 BAD. main 없이 모듈만 시험하는 단위 테스트의 원형.",
+   "to": "else                            printf(\"BAD %s\\n\", tests[i]);"
+  }
+ ],
+ "c/2/7/leak.c": [
+  {
+   "at": "int *p = malloc(10 * sizeof(int));",
+   "t": "할당 · 사용",
+   "d": "NULL 검사가 빠졌다 (실패하면 p[0] 에서 죽음).",
+   "to": "printf(\"%d\\n\", p[0]);"
+  },
+  {
+   "at": "return 0;                       // free 없음",
+   "t": "free 없음 → 누수",
+   "d": "`valgrind --leak-check=full ./leak` → `definitely lost: 40 bytes` 와 malloc 한 줄 번호."
+  }
+ ],
+ "c/2/8/main.c": [
+  {
+   "at": "static void sort_by_temp(Reading *a, int n) {",
+   "t": "구조체 배열 정렬",
+   "d": "버블 정렬. 구조체는 `=` 로 통째 복사되니 swap 이 세 줄.",
+   "to": "if (a[j].t > a[j + 1].t) { Reading t = a[j]; a[j] = a[j + 1]; a[j + 1] = t; }"
+  },
+  {
+   "at": "int cap = 4, n = 0, lineno = 0, bad = 0;",
+   "t": "동적 배열 준비",
+   "d": "처음 4칸. `sizeof *log` 라 타입이 바뀌어도 크기가 따라온다.",
+   "to": "if (!log) return 1;"
+  },
+  {
+   "at": "while (fgets(line, sizeof line, stdin)) {",
+   "t": "읽기 → 파싱 → 쌓기",
+   "d": "개행 제거, 빈 줄 무시, 실패하면 줄 번호와 BAD 후 continue. 가득 차면 realloc 으로 두 배(직접 채울 곳, tmp 관용구).",
+   "to": "log[n++] = r;"
+  },
+  {
+   "at": "if (n == 0) { printf(\"데이터 없음\\n\"); free(log); return 0; }",
+   "t": "통계 → 해제",
+   "d": "데이터가 없으면 바로 해제하고 끝(0 나누기·log[-1] 방지). 모든 return 경로에서 free."
+  }
+ ],
+ "c/3/4/gpio_demo.c": [
+  {
+   "at": "uint32_t GPIO_OUT = 0, GPIO_IN = 0;",
+   "t": "정의는 한 곳",
+   "d": "헤더의 extern 선언에 대한 실제 변수. 없으면 undefined reference."
+  },
+  {
+   "at": "GPIO_SET(PIN_LED_R);       print_bin32(\"LED_R on\",  GPIO_OUT);   // → 0x00000004",
+   "t": "켜고 끄기",
+   "d": "비트 2 → 0x04, 비트 4 추가 → 0x14, 비트 2 끔 → 0x10.",
+   "to": "GPIO_CLR(PIN_LED_R);       print_bin32(\"LED_R off\", GPIO_OUT);   // → 0x00000010"
+  },
+  {
+   "at": "GPIO_IN = 1u << PIN_BUTTON;",
+   "t": "버튼 눌림 흉내 → 토글",
+   "d": "입력 레지스터의 0번 비트를 켜고, 읽혔으면 LED_G 를 뒤집는다 → 0x00.",
+   "to": "print_bin32(\"after btn\", GPIO_OUT);                              // → 0x00000000"
+  }
+ ],
+ "c/3/5/macro.c": [
+  {
+   "at": "#define SQ_BAD(x)   x * x",
+   "t": "매크로 정의 — 괄호 차이",
+   "d": "SQ_BAD 는 괄호 없음, SQ 는 인자마다·전체에 괄호.",
+   "to": "#define MAX(a, b)   ((a) > (b) ? (a) : (b))"
+  },
+  {
+   "at": "printf(\"%d %d\\n\", SQ_BAD(1 + 2), SQ(1 + 2));    // → 5 9    (1 + 2 * 1 + 2 = 5)",
+   "t": "텍스트 치환 함정",
+   "d": "SQ_BAD(1+2) → `1 + 2 * 1 + 2` = 5. 전체 괄호가 없으면 `100 / 5 * 5` = 100. `gcc -E` 로 펼친 결과 확인.",
+   "to": "printf(\"%d\\n\", 100 / SQ(5));                     // → 4      괄호 없으면 100 / 5 * 5 = 100"
+  },
+  {
+   "at": "int i = 3;",
+   "t": "부수효과 인자 금지",
+   "d": "`MAX(i++, 2)` 는 i++ 가 비교와 결과에 두 번 들어가 **두 번 증가**. 함수였다면 한 번.",
+   "to": "printf(\"%d %d\\n\", MAX(i++, 2), i);               // → 4 5 !! i++ 가 두 번 평가됨"
+  }
+ ],
+ "c/3/5/dbg.c": [
+  {
+   "at": "#ifdef DEBUG",
+   "t": "조건부 컴파일",
+   "d": "DEBUG 가 정의되면 파일·줄이 붙은 fprintf, 아니면 `((void)0)` — 코드가 **아예 없어진다**.",
+   "to": "#endif"
+  },
+  {
+   "at": "LOG(\"temp=%d\", t);",
+   "t": "사용",
+   "d": "`gcc -DDEBUG` 로 빌드하면 로그가 stderr 에, 그냥 빌드하면 done 만.",
+   "to": "printf(\"done\\n\");"
+  }
+ ],
+ "c/3/5/vol.c": [
+  {
+   "at": "uint32_t          plain_flag = 0;",
+   "t": "일반 vs volatile",
+   "d": "하드웨어·ISR 이 바꾸는 변수는 volatile — 매번 메모리에서 다시 읽게 한다.",
+   "to": "volatile uint32_t hw_flag    = 0;"
+  },
+  {
+   "at": "// while (plain_flag == 0) {}     // -O2: \"아무도 안 바꾸니 무한 루프\" 로 최적화될 수 있음",
+   "t": "최적화가 바꾸는 것",
+   "d": "-O2 에서 일반 변수 대기 루프는 '아무도 안 바꾸니' 한 번만 읽고 무한 루프로 바뀔 수 있다. 크기·속도는 같고 **의미만** 다르다.",
+   "to": "// while (hw_flag == 0) {}        // volatile: 매번 메모리에서 다시 읽음"
+  }
+ ],
+ "c/3/7/fsm.c": [
+  {
+   "at": "typedef enum { ST_IDLE, ST_HEAT, ST_COOL, ST_ALERT, ST_COUNT } State;",
+   "t": "상태 enum + 이름표",
+   "d": "ST_COUNT 로 개수, NAME[] 은 출력용.",
+   "to": "static const char *NAME[ST_COUNT] = {\"IDLE\", \"HEAT\", \"COOL\", \"ALERT\"};"
+  },
+  {
+   "at": "volatile uint32_t GPIO = 0;                       // 5교시: 실제로는 레지스터 주소",
+   "t": "출력 레지스터 흉내",
+   "d": "히터·팬·알람 = 비트 0·1·2.",
+   "to": "#define BIT_ALARM  (1u << 2)"
+  },
+  {
+   "at": "static State on_idle(double t)  { GPIO &= ~(BIT_HEATER | BIT_FAN | BIT_ALARM);",
+   "t": "상태마다 핸들러",
+   "d": "먼저 자기 상태의 출력을 하고, 조건을 보고 **다음 상태를 돌려준다**.",
+   "to": "static State on_alert(double t) { GPIO |= BIT_ALARM | BIT_FAN; if (t <= 30) return ST_COOL; return ST_ALERT; }"
+  },
+  {
+   "at": "typedef State (*Handler)(double);",
+   "t": "함수 포인터 테이블",
+   "d": "TABLE[상태] = 그 상태의 핸들러. 순서가 enum 과 어긋나면 엉뚱한 핸들러가 불린다(→ 지정 초기화로 방지).",
+   "to": "static const Handler TABLE[ST_COUNT] = { on_idle, on_heat, on_cool, on_alert };   // enum 순서와 일치!"
+  },
+  {
+   "at": "State st = ST_IDLE;",
+   "t": "switch 없는 상태 머신",
+   "d": "`next = TABLE[st](t)` 한 줄 — 상태가 곧 인덱스. 출력 후 st 를 갱신.",
+   "to": "st = next;"
+  }
+ ],
+ "c/3/8/main.c": [
+  {
+   "at": "uint32_t GPIO_OUT = 0, GPIO_IN = 0;",
+   "t": "레지스터 변수 정의",
+   "d": "gpio.h 의 extern 에 대한 정의는 main.c 한 곳."
+  },
+  {
+   "at": "#ifdef DEBUG",
+   "t": "디버그 로그 스위치",
+   "d": "`make CFLAGS=\"… -DDEBUG\"` 일 때만 전이 로그.",
+   "to": "#endif"
+  },
+  {
+   "at": "static int cmp_temp_desc(const void *a, const void *b) {",
+   "t": "qsort 비교 (직접 채울 곳)",
+   "d": "const void * 를 Reading * 로 바꾸고 내림차순 `(y > x) - (y < x)`."
+  },
+  {
+   "at": "int visits[ST_COUNT] = {0};                         // enum 인덱스 통계",
+   "t": "읽기 → 파싱 → 상태 전이 → 횟수",
+   "d": "enum 을 배열 인덱스로 써서 상태별 체류 횟수를 센다. 전이는 fsm_step 한 줄.",
+   "to": "visits[st]++;"
+  },
+  {
+   "at": "for (int i = 0; i < ST_COUNT; i++) printf(\"%-5s %d\\n\", STATE_NAME[i], visits[i]);",
+   "t": "결과 출력",
+   "d": "상태별 횟수, (직접 채울 곳) qsort 후 상위 3개, 마지막 GPIO 값.",
+   "to": "free(log);"
+  }
+ ],
+ "c/4/4/ring_test.c": [
+  {
+   "at": "for (int i = 0; i < 8; i++) {",
+   "t": "8개를 4칸에 넣으며 상태 보기",
+   "d": "5번째부터 가장 오래된 값이 밀려나고, 37 이 들어오면 평균이 튄 뒤 4개가 지나면 사라진다 (이동 평균).",
+   "to": "printf(\"push %2.0f  head=%d tail=%d count=%d avg=%.2f\\n\", in[i], r.head, r.tail, r.count, ring_avg(&r));"
+  },
+  {
+   "at": "while (ring_pop(&r, &v)) printf(\"pop %.0f \", v);",
+   "t": "남은 값 꺼내기",
+   "d": "오래된 것부터 4개."
+  }
+ ],
+ "c/4/5/avg.c": [
+  {
+   "at": "double average(const int *a, int n) {",
+   "t": "버그가 숨은 함수",
+   "d": "평균이 25.50 이어야 하는데 다르게 나온다 — `break average` → `next` · `print i, sum` 으로 따라가면 **i 가 1 부터** 시작해 첫 값을 빠뜨린 것이 보인다.",
+   "to": "return (double)sum / n;"
+  },
+  {
+   "at": "int t[] = {24, 26, 25, 27};",
+   "t": "호출 쪽",
+   "d": "`finish` 로 average 의 반환값을 바로 확인할 수 있다.",
+   "to": "printf(\"avg = %.2f\\n\", avg);     /* 기대: 25.50 */"
+  }
+ ],
+ "c/4/5/gdb_lab.c": [
+  {
+   "at": "typedef struct {",
+   "t": "Node — name[8] 에 주의",
+   "d": "8칸 이름 뒤에 level 이 붙어 있다 → 넘치면 level 이 깨진다 (`x/16xb &node`).",
+   "to": "} Node;"
+  },
+  {
+   "at": "static const double GAIN[N]   = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 10.0, 1.0, 1.0, 1.0};",
+   "t": "보정 표 — 7번째 값이 수상함",
+   "d": "GAIN[6] 이 10.0 — calibrate 에서 `break calibrate if i == 6` 으로 확인.",
+   "to": "static const double OFFSET[N] = {0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2};"
+  },
+  {
+   "at": "static void set_name(Node *n, const char *s) {",
+   "t": "set_name — 길이 검사 없음",
+   "d": "\"ESP32-SENSOR\" 는 13글자 → name[8] 을 넘쳐 level 을 덮는다. `watch node.level` 로 바뀌는 순간 멈춤.",
+   "to": "n->name[i] = '\\0';"
+  },
+  {
+   "at": "static double sum_rec(const double *a, int n) {",
+   "t": "재귀 합 — frame/up/down 연습",
+   "d": "bt 로 재귀 깊이, up/down 으로 각 층의 n.",
+   "to": "return a[n - 1] + sum_rec(a, n - 1);"
+  },
+  {
+   "at": "node.level = 1;",
+   "t": "main — 세 군데가 틀리는 이유",
+   "d": "기대 `ESP32-S level=1 t=25.24 flags=0x40`. 원인 두 개: 이름 넘침(level·이름), GAIN[6](t·알람 플래그).",
+   "to": "printf(\"%s level=%d t=%.2f flags=0x%02X\\n\", node.name, node.level, node.t, node.flags);"
+  }
+ ],
+ "c/4/6/logger.h": [
+  {
+   "at": "typedef struct { FILE *fp; int rows; } Logger;",
+   "t": "상태를 구조체 하나에",
+   "d": "열린 파일과 기록한 줄 수 — 전역 변수 대신 인자로 넘긴다(모듈화)."
+  },
+  {
+   "at": "int  log_open(Logger *lg, const char *path);          // \"a\" 로 열고 헤더가 없으면 씀. 성공 1",
+   "t": "에러 규약: 성공 1",
+   "d": "프로젝트 안에서 성공/실패 표시를 하나로 통일 (여기선 1 = 성공). \"a\" 로 열어 기록이 누적되고, 줄마다 fflush.",
+   "to": "void log_close(Logger *lg);"
+  }
+ ],
+ "c/4/6/test_ring.c": [
+  {
+   "at": "assert(ring_pop(&r, &v) == false);              // 빈 버퍼 pop → false",
+   "t": "빈 버퍼 경계",
+   "d": "비었을 때 pop 은 false."
+  },
+  {
+   "at": "for (int i = 0; i < RING_CAP + 2; i++) ring_push(&r, i);",
+   "t": "가득 + 덮어쓰기 경계",
+   "d": "CAP+2 개를 넣으면 count 는 CAP 유지, 가장 오래된 0·1 은 버려져 첫 pop 이 2. 실패하면 assert 가 줄 번호와 함께 중단.",
+   "to": "assert(ring_pop(&r, &v) && v == 2);             // 가장 오래된 0,1 은 버려짐"
+  }
+ ]
+}

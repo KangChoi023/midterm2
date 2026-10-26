@@ -1,0 +1,1391 @@
+{
+ "mcu/1/2/hello_esp32.ino": [
+  {
+   "at": "Serial.begin(115200);               // PC 쪽 시리얼 모니터도 115200 으로",
+   "t": "setup — 한 번 실행",
+   "d": "시리얼 시작(모니터도 115200) → 잠깐 기다렸다가 인사. 아두이노는 main 대신 **setup 한 번 + loop 반복**.",
+   "to": "Serial.println(\"Hello ESP32\");"
+  },
+  {
+   "at": "Serial.printf(\"Chip  : %s rev %d\\n\", ESP.getChipModel(), ESP.getChipRevision());",
+   "t": "칩 정보",
+   "d": "모델·코어 2·240MHz·Flash 4MB·남은 힙 — 보드 인식 확인.",
+   "to": "Serial.printf(\"Heap  : %lu bytes free\\n\", ESP.getFreeHeap());"
+  },
+  {
+   "at": "void loop() {",
+   "t": "loop — 계속 반복",
+   "d": "1초마다 부팅 후 시간(ms).",
+   "to": "delay(1000);"
+  }
+ ],
+ "mcu/1/3/leds.ino": [
+  {
+   "at": "const int LED_PINS[] = {25, 26, 27};           // 빨강, 노랑, 초록",
+   "t": "핀 배열 + 개수",
+   "d": "`sizeof 전체 / sizeof 하나` = 3 — 핀을 추가해도 루프는 그대로 (C Day 1).",
+   "to": "const int N_LED = sizeof(LED_PINS) / sizeof(LED_PINS[0]);"
+  },
+  {
+   "at": "for (int i = 0; i < N_LED; i++) {",
+   "t": "모두 출력으로",
+   "d": "pinMode 를 빠뜨리면 LED 가 거의 안 켜진다.",
+   "to": "pinMode(LED_PINS[i], OUTPUT);"
+  },
+  {
+   "at": "void loop() {",
+   "t": "차례로 켜고 끄기",
+   "d": "HIGH(3.3V) → 0.3초 → LOW. 세 개를 돌아가며.",
+   "to": "digitalWrite(LED_PINS[i], LOW);        // 0V 출력"
+  }
+ ],
+ "mcu/1/3/traffic.ino": [
+  {
+   "at": "typedef enum { ST_RED, ST_GREEN, ST_YELLOW } light_t;",
+   "t": "상태 = enum",
+   "d": "숫자 대신 이름으로 상태를 표현."
+  },
+  {
+   "at": "void setLights(int r, int y, int g) {",
+   "t": "setLights() — 세 핀 한 번에",
+   "d": "1/0 을 그대로 HIGH/LOW 로."
+  },
+  {
+   "at": "static light_t state = ST_RED;            // static: loop 가 끝나도 값 유지",
+   "t": "static 으로 상태 유지",
+   "d": "loop 는 계속 다시 불린다 — static 이 없으면 매번 RED 로 초기화."
+  },
+  {
+   "at": "switch (state) {",
+   "t": "상태별 동작 + 다음 상태",
+   "d": "빨강 3초 → 초록 3초 → 노랑 1초 → 빨강. 단, delay 동안은 아무것도 못 한다(→ 5교시 논블로킹).",
+   "to": "delay(1000); state = ST_RED;    break;"
+  }
+ ],
+ "mcu/1/4/bits.ino": [
+  {
+   "at": "void print_bits(uint32_t v) {",
+   "t": "32비트를 0/1 로",
+   "d": "31번부터 `(v >> i) & 1`, 8비트마다 `_`.",
+   "to": "Serial.println();"
+  },
+  {
+   "at": "reg |= (1UL << 25);              // 25번 비트 켜기",
+   "t": "켜기 · 끄기 · 검사",
+   "d": "`|=` 켜기, `&= ~` 끄기, `>> & 1` 검사 — 레지스터 조작의 세 관용구. `1UL` = 32비트 이상에서도 안전.",
+   "to": "Serial.println((reg >> 27) & 1); // → 1  (27번 비트 검사)"
+  }
+ ],
+ "mcu/1/4/reg_leds.ino": [
+  {
+   "at": "#define LED_MASK ((1UL << 25) | (1UL << 26) | (1UL << 27))",
+   "t": "세 핀을 마스크 하나로",
+   "d": "25·26·27 번 비트를 OR."
+  },
+  {
+   "at": "pinMode(25, OUTPUT);             // 방향 설정은 그대로 필요",
+   "t": "방향은 pinMode 로",
+   "d": "출력 값만 레지스터로 쓰고 방향 설정은 그대로.",
+   "to": "pinMode(27, OUTPUT);"
+  },
+  {
+   "at": "REG_WRITE(GPIO_OUT_W1TS_REG, LED_MASK);   // 3개 동시에 ON",
+   "t": "W1TS 켜기 / W1TC 끄기",
+   "d": "한 번의 쓰기로 3개 **동시에**. 1 인 비트만 바뀌고 나머지 핀은 그대로.",
+   "to": "REG_WRITE(GPIO_OUT_W1TC_REG, LED_MASK);   // 3개 동시에 OFF"
+  }
+ ],
+ "mcu/1/4/reg_speed.ino": [
+  {
+   "at": "uint32_t t0 = micros();",
+   "t": "digitalWrite 10만 번",
+   "d": "함수 안에서 핀 번호 확인 등을 하느라 느리다.",
+   "to": "uint32_t t_api = micros() - t0;"
+  },
+  {
+   "at": "t0 = micros();",
+   "t": "레지스터 직접 10만 번",
+   "d": "쓰기 한 번 = 명령 몇 개.",
+   "to": "uint32_t t_reg = micros() - t0;"
+  },
+  {
+   "at": "Serial.printf(\"digitalWrite : %lu us\\n\", t_api);",
+   "t": "결과 비교",
+   "d": "레지스터가 몇 배 빠른지 — 대신 이식성·가독성을 잃는다.",
+   "to": "Serial.printf(\"ratio        : %.1f x\\n\", (float)t_api / t_reg);"
+  }
+ ],
+ "mcu/1/5/floating.ino": [
+  {
+   "at": "pinMode(PIN_BTN, INPUT);          // 풀업 없음",
+   "t": "풀업 없는 입력",
+   "d": "버튼이 안 눌리면 핀이 어디에도 연결되지 않은 상태(플로팅)."
+  },
+  {
+   "at": "Serial.println(digitalRead(PIN_BTN));",
+   "t": "제멋대로 바뀌는 값",
+   "d": "잡음·손의 정전기로 0/1 이 요동 → INPUT_PULLUP 으로 해결."
+  }
+ ],
+ "mcu/1/5/chatter.ino": [
+  {
+   "at": "int last = HIGH;",
+   "t": "직전 값 기억",
+   "d": "엣지(바뀌는 순간)를 찾으려면 이전 값이 필요."
+  },
+  {
+   "at": "int now = digitalRead(PIN_BTN);",
+   "t": "하강 엣지 세기",
+   "d": "HIGH → LOW 순간마다 +1. 기계식 버튼은 접점이 수 ms 튀어서(채터링) 한 번에 여러 번 찍힌다.",
+   "to": "last = now;"
+  }
+ ],
+ "mcu/1/5/debounce.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "버튼 하나 = 구조체 하나",
+   "d": "확정 상태, 직전 원시 값, 바뀐 시각 — 버튼이 여러 개여도 함수는 하나.",
+   "to": "} button_t;"
+  },
+  {
+   "at": "int button_pressed(button_t *b) {",
+   "t": "흔들리면 타이머 재시작",
+   "d": "원시 값이 바뀔 때마다 시각을 새로. `b->` = 포인터로 받은 구조체의 필드.",
+   "to": "b->changed_at = millis();"
+  },
+  {
+   "at": "if (millis() - b->changed_at > 30 && raw != b->stable) {",
+   "t": "30ms 그대로면 확정",
+   "d": "안정 상태가 바뀌었고 그게 LOW(눌림)일 때만 1. **delay 없음** → loop 가 다른 일도 할 수 있다.",
+   "to": "return 0;"
+  },
+  {
+   "at": "if (button_pressed(&btn)) {",
+   "t": "누를 때마다 LED 토글",
+   "d": "`&btn` 으로 주소를 넘겨 함수가 상태를 갱신.",
+   "to": "Serial.printf(\"LED %s\\n\", led ? \"ON\" : \"OFF\");"
+  }
+ ],
+ "mcu/1/6/polling_miss.ino": [
+  {
+   "at": "if (digitalRead(PIN_BTN) == LOW) count++;",
+   "t": "2초에 한 번만 본다",
+   "d": "확인하는 순간에 눌려 있어야만 셀 수 있다 → 그사이 누른 건 놓친다 (폴링의 한계).",
+   "to": "delay(2000);                    // 다른 일을 하느라 바쁜 상황"
+  }
+ ],
+ "mcu/1/6/isr_counter.ino": [
+  {
+   "at": "volatile uint32_t press_count = 0;",
+   "t": "ISR 과 공유하는 변수",
+   "d": "volatile = 매번 메모리에서 읽기(밖에서 바뀜), mux = 임계 구역 잠금.",
+   "to": "portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;"
+  },
+  {
+   "at": "void IRAM_ATTR onButton() {",
+   "t": "ISR — 짧게, 세기만",
+   "d": "IRAM_ATTR = 빠른 RAM 에 둔다. 50ms 안의 재진입은 무시(디바운스). 카운터 증가만 임계 구역으로.",
+   "to": "last_isr_ms = now;"
+  },
+  {
+   "at": "attachInterrupt(digitalPinToInterrupt(PIN_BTN), onButton, FALLING);",
+   "t": "FALLING 에 연결",
+   "d": "풀업 버튼이 눌리는 순간 하드웨어가 onButton 을 부른다."
+  },
+  {
+   "at": "portENTER_CRITICAL(&mux);",
+   "t": "읽고 비우기를 한 덩어리로",
+   "d": "그 사이에 ISR 이 끼면 1 회가 사라진다. delay(2000) 중에도 눌림은 다 세어진다.",
+   "to": "portEXIT_CRITICAL(&mux);"
+  }
+ ],
+ "mcu/1/7/fade.ino": [
+  {
+   "at": "ledcAttach(PIN_LED, 5000, 8);        // 핀, 주파수 5kHz, 8비트(0~255)",
+   "t": "PWM 설정",
+   "d": "5kHz, 8비트(0~255)."
+  },
+  {
+   "at": "for (int d = 0; d <= 255; d++) { ledcWrite(PIN_LED, d); delay(5); }",
+   "t": "듀티를 올렸다 내리기",
+   "d": "켜진 비율이 늘면 더 밝게 보인다 — 약 2.5초씩.",
+   "to": "for (int d = 255; d >= 0; d--) { ledcWrite(PIN_LED, d); delay(5); }"
+  }
+ ],
+ "mcu/1/7/rgb.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "색 표 = 구조체 배열",
+   "d": "r·g·b·이름. 색을 추가해도 코드는 그대로.",
+   "to": "const int N_COLOR = sizeof(COLORS) / sizeof(COLORS[0]);"
+  },
+  {
+   "at": "#define COMMON_ANODE 0                 // 공통 애노드면 1 로",
+   "t": "공통 애노드면 뒤집기",
+   "d": "`#if` 로 컴파일 시 선택 — 애노드형은 LOW 가 켜져서 `255 - 값`.",
+   "to": "#endif"
+  },
+  {
+   "at": "ledcWrite(PIN_R, r);",
+   "t": "세 채널 듀티",
+   "d": "세 색의 밝기 비율로 혼합.",
+   "to": "ledcWrite(PIN_B, b);"
+  },
+  {
+   "at": "set_rgb(&COLORS[i]);",
+   "t": "구조체 주소 넘기기",
+   "d": "복사 없이 const 포인터로."
+  }
+ ],
+ "mcu/1/7/buzzers.ino": [
+  {
+   "at": "digitalWrite(19, HIGH); delay(200); digitalWrite(19, LOW);   // 삐",
+   "t": "액티브 부저",
+   "d": "전원만 주면 내장 발진으로 '삐'. 높낮이 조절 불가."
+  },
+  {
+   "at": "ledcWriteTone(23, 440); delay(200); ledcWriteTone(23, 0);    // 라(A4)",
+   "t": "패시브 부저",
+   "d": "주파수를 줘야 소리 — 440Hz = 라. 0 이면 끔."
+  }
+ ],
+ "mcu/1/7/melody.ino": [
+  {
+   "at": "typedef struct { uint16_t freq; uint16_t ms; } note_t;",
+   "t": "악보 = {주파수, 길이} 배열",
+   "d": "도레미파솔라시도.",
+   "to": "const int N = sizeof(melody) / sizeof(melody[0]);"
+  },
+  {
+   "at": "for (int i = 0; i < N; i++) {",
+   "t": "차례로 재생 후 끄기",
+   "d": "마지막에 0Hz 로 끄지 않으면 계속 울린다.",
+   "to": "ledcWriteTone(PIN_BUZ, 0);            // 0 Hz = 소리 끄기"
+  }
+ ],
+ "mcu/1/8/reaction_game.ino": [
+  {
+   "at": "#define LEN(a) (sizeof(a) / sizeof((a)[0]))",
+   "t": "배열 길이 매크로",
+   "d": "`sizeof(a) / sizeof((a)[0])` — 포인터에 쓰면 틀린다."
+  },
+  {
+   "at": "typedef struct {",
+   "t": "5교시 디바운스 재사용",
+   "d": "button_pressed 는 눌림이 확정되는 순간 한 번만 1.",
+   "to": "return 0;"
+  },
+  {
+   "at": "typedef struct { uint16_t freq; uint16_t ms; } note_t;",
+   "t": "7교시 멜로디 — GOOD/BAD",
+   "d": "play(배열, 개수).",
+   "to": "ledcWriteTone(PIN_BUZ, 0);"
+  },
+  {
+   "at": "typedef enum { ST_IDLE, ST_WAIT, ST_GO, ST_RESULT, ST_FOUL, ST_COUNT } state_t;",
+   "t": "상태 enum + 함수 포인터 타입 + 시각들",
+   "d": "state_fn = '인자 없이 다음 상태를 돌려주는 함수'. best_ms 초기값 최대 → 첫 기록이 신기록.",
+   "to": "uint32_t best_ms = UINT32_MAX;    // 최고 기록"
+  },
+  {
+   "at": "state_t on_idle(void) {",
+   "t": "IDLE: 누르면 대기 시작",
+   "d": "1~4초 무작위 대기 시간과 시작 시각을 정하고 WAIT.",
+   "to": "return ST_IDLE;"
+  },
+  {
+   "at": "state_t on_wait(void) {",
+   "t": "WAIT · GO (직접 채울 곳)",
+   "d": "WAIT: 누르면 FOUL, `millis() - t_mark >= wait_ms` 면 LED 켜고 GO. GO: 누르면 반응 시간 계산, 3초 지나면 시간 초과. **delay 없이** 시각 비교로.",
+   "to": "return ST_GO;"
+  },
+  {
+   "at": "state_t on_result(void) {",
+   "t": "RESULT · FOUL",
+   "d": "결과 출력, (직접) 신기록 갱신 + 300ms 기준 멜로디. 반칙은 BAD + LED 3번 깜빡.",
+   "to": "return ST_IDLE;"
+  },
+  {
+   "at": "const state_fn table[ST_COUNT] = { on_idle, on_wait, on_go, on_result, on_foul };",
+   "t": "함수 포인터 테이블로 상태 머신",
+   "d": "loop 는 한 줄 — 지금 상태의 함수를 부르고 돌려준 상태로 바꾼다 (C Day 3 fsm 과 같은 구조).",
+   "to": "current = table[current]();"
+  }
+ ],
+ "mcu/2/1/adc_raw.ino": [
+  {
+   "at": "int raw = analogRead(PIN_POT);          // 0 ~ 4095 (12비트)",
+   "t": "전압 → 0~4095",
+   "d": "가변저항을 돌리면 0V~3.3V → 12비트 숫자. pinMode 필요 없음.",
+   "to": "Serial.printf(\"raw = %4d\\n\", raw);"
+  }
+ ],
+ "mcu/2/1/adc_mv.ino": [
+  {
+   "at": "int mv  = analogReadMilliVolts(PIN_POT);          // 칩마다 보정된 mV",
+   "t": "보정 mV vs 단순 비례",
+   "d": "ESP32 ADC 는 비선형 — 칩 보정값을 쓰는 mV 가 더 정확. `3300.0f` 로 실수 계산.",
+   "to": "float naive = raw * 3300.0f / 4095;               // 단순 비례 계산"
+  }
+ ],
+ "mcu/2/1/adc_avg.ino": [
+  {
+   "at": "int read_avg(int pin, int n, int *min_out, int *max_out) {",
+   "t": "read_avg() — 평균 + 최소·최대",
+   "d": "반환값은 하나뿐이라 최소·최대는 **포인터 인자**로 돌려준다 (C Day 2). 합은 long.",
+   "to": "return sum / n;"
+  },
+  {
+   "at": "int avg = read_avg(PIN_POT, 32, &mn, &mx);",
+   "t": "noise = 최대 − 최소",
+   "d": "가만히 둬도 수십씩 흔들린다 → 평균이 필요한 이유.",
+   "to": "Serial.printf(\"avg=%4d  min=%4d  max=%4d  noise=%d\\n\", avg, mn, mx, mx - mn);"
+  }
+ ],
+ "mcu/2/2/light.ino": [
+  {
+   "at": "Serial.printf(\"light:%d\\n\", raw);         // 시리얼 플로터용 \"이름:값\"",
+   "t": "플로터 형식",
+   "d": "조도 센서(CdS)+저항의 전압 분배 → 밝을수록 값이 크다. `이름:값` 이면 시리얼 플로터에 그래프."
+  }
+ ],
+ "mcu/2/2/ring_filter.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "링 버퍼 + 합계",
+   "d": "최근 8개와 합을 들고 있어 평균을 매번 다시 더하지 않는다.",
+   "to": "} ring_t;"
+  },
+  {
+   "at": "int ring_push(ring_t *r, int v) {",
+   "t": "ring_push() — 이동 평균",
+   "d": "가득이면 덮어쓸 가장 오래된 값을 합에서 빼고, 새 값을 넣고 더한다. head 는 `% RN` 으로 감는다. 처음엔 count 로 나눠 초기 왜곡 방지.",
+   "to": "return r->sum / r->count;"
+  },
+  {
+   "at": "int avg = ring_push(&light, raw);",
+   "t": "raw 와 avg 를 같이 그리기",
+   "d": "평균이 부드럽지만 조금 늦게 따라간다 (반응 지연).",
+   "to": "Serial.printf(\"raw:%d,avg:%d\\n\", raw, avg);      // 두 줄이 함께 그려진다"
+  }
+ ],
+ "mcu/2/2/auto_light.ino": [
+  {
+   "at": "int ring_push(ring_t *r, int v) {",
+   "t": "앞 예제의 이동 평균",
+   "d": "그대로 재사용.",
+   "to": "return r->sum / r->count;"
+  },
+  {
+   "at": "int avg = ring_push(&light, analogRead(PIN_LIGHT));",
+   "t": "어두울수록 밝게",
+   "d": "`255 - avg*255/4095` 로 뒤집고, 충분히 밝으면(20 미만) 끈다. 곱셈 먼저 해야 0 이 안 된다.",
+   "to": "ledcWrite(PIN_LED, duty);"
+  }
+ ],
+ "mcu/2/3/joystick.ino": [
+  {
+   "at": "int x = analogRead(PIN_X);",
+   "t": "두 축 + 버튼",
+   "d": "가운데 약 1900, 끝 0/4095. 버튼은 풀업이라 `== LOW` 가 눌림, 플로터에서 보이게 4095 를 곱한다.",
+   "to": "Serial.printf(\"x:%d,y:%d,sw:%d\\n\", x, y, sw * 4095);"
+  }
+ ],
+ "mcu/2/3/servo.ino": [
+  {
+   "at": "const int BITS = 14;                         // 14비트 → 0 ~ 16383",
+   "t": "14비트 해상도",
+   "d": "0~16383 — 20ms 를 이만큼 나눠 µs 단위로 조절.",
+   "to": "const int MAX_DUTY = (1 << BITS) - 1;"
+  },
+  {
+   "at": "void servo_write_us(int us) {                // 펄스 폭(µs) → 듀티",
+   "t": "펄스 폭 → 듀티",
+   "d": "듀티 = us × MAX / 20000. long 으로 곱해 오버플로 방지."
+  },
+  {
+   "at": "void servo_write_deg(int deg) {",
+   "t": "각도 → 펄스 폭",
+   "d": "0~180 으로 자르고(클램프) 0°=500µs, 180°=2500µs 에 대응.",
+   "to": "servo_write_us(500 + deg * 2000 / 180);  // 0° → 500µs, 180° → 2500µs"
+  },
+  {
+   "at": "ledcAttach(PIN_SERVO, 50, BITS);          // 50Hz = 20ms 주기",
+   "t": "50Hz",
+   "d": "서보는 20ms 마다 펄스 하나를 기대한다."
+  }
+ ],
+ "mcu/2/3/joy_servo.ino": [
+  {
+   "at": "long my_map(long x, long in_min, long in_max, long out_min, long out_max) {",
+   "t": "my_map() — 범위 변환",
+   "d": "0~4095 → 0~180. 곱셈 먼저."
+  },
+  {
+   "at": "int x = analogRead(PIN_X);",
+   "t": "조이스틱 → 각도 → 서보",
+   "d": "20ms 마다 갱신. 가운데에서 떨리면 데드존이나 이동 평균을 더한다.",
+   "to": "servo_write_deg(deg);"
+  }
+ ],
+ "mcu/2/4/lm35.ino": [
+  {
+   "at": "for (int i = 0; i < 16; i++) sum += analogReadMilliVolts(PIN_LM35);",
+   "t": "16번 평균 → 10mV = 1°C",
+   "d": "LM35 는 온도에 비례한 전압을 낸다 (245mV = 24.5°C).",
+   "to": "float temp_c = mv / 10.0f;               // 10mV = 1°C"
+  }
+ ],
+ "mcu/2/4/dht11.ino": [
+  {
+   "at": "DHT dht(PIN_DHT, DHT11);",
+   "t": "라이브러리 객체",
+   "d": "디지털 1선 통신 프로토콜은 라이브러리가 처리.",
+   "to": "dht.begin();"
+  },
+  {
+   "at": "float h = dht.readHumidity();",
+   "t": "NaN 이면 실패",
+   "d": "배선·타이밍 문제면 NaN — 출력 전에 isnan 검사.",
+   "to": "Serial.printf(\"temp:%.1f,humi:%.1f\\n\", t, h);"
+  },
+  {
+   "at": "delay(2000);                             // DHT11 은 1초에 한 번 이하",
+   "t": "느린 센서",
+   "d": "DHT11 은 1초에 한 번 이하."
+  }
+ ],
+ "mcu/2/4/temp_compare.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "측정값 구조체",
+   "d": "온도·습도(없으면 NAN)·시각·성공 여부를 한 묶음으로 — 센서가 달라도 같은 모양.",
+   "to": "} reading_t;"
+  },
+  {
+   "at": "reading_t read_lm35(void) {",
+   "t": "read_lm35 / read_dht",
+   "d": "둘 다 reading_t 를 **값으로** 돌려준다(구조체 복사). ok 로 실패 표시.",
+   "to": "return r;"
+  },
+  {
+   "at": "reading_t a = read_lm35();",
+   "t": "두 센서 차이",
+   "d": "dht 가 성공했을 때만 비교 출력.",
+   "to": "if (b.ok) Serial.printf(\"lm35:%.1f,dht:%.1f,diff:%.1f\\n\", a.temp_c, b.temp_c, a.temp_c - b.temp_c);"
+  }
+ ],
+ "mcu/2/5/mq2.ino": [
+  {
+   "at": "int ao_mv = mv * 2;                        // 분압 전 실제 AO 전압",
+   "t": "분압 되돌리기",
+   "d": "MQ-2 는 5V 전원이라 AO 가 3.3V 를 넘을 수 있다 → 저항 두 개로 반으로 나눠 읽고 ×2. 그냥 연결하면 핀이 망가진다."
+  }
+ ],
+ "mcu/2/5/flame_sound.ino": [
+  {
+   "at": "int flame = analogRead(PIN_FLAME);",
+   "t": "불꽃 — 그냥 읽기",
+   "d": "적외선 세기."
+  },
+  {
+   "at": "for (int i = 0; i < 200; i++) {            // 소리는 빠르게 흔들리므로 최대값을 본다",
+   "t": "소리 — 최대값 보기",
+   "d": "소리는 빠르게 진동하는 파형이라 한 번 읽으면 우연한 값 → 200번 중 최대(포락선).",
+   "to": "if (v > sound_max) sound_max = v;"
+  }
+ ],
+ "mcu/2/5/gas_alarm.ino": [
+  {
+   "at": "const int ON_MV  = 1500;      // 이 위로 올라가면 경보 ON",
+   "t": "문턱 두 개",
+   "d": "켜는 기준과 끄는 기준을 다르게 = 히스테리시스.",
+   "to": "const int OFF_MV = 1200;      // 이 아래로 내려가야 경보 OFF"
+  },
+  {
+   "at": "if (!alarm && ao > ON_MV)       alarm = true;",
+   "t": "상태에 따라 다른 문턱",
+   "d": "꺼져 있으면 1500 위에서 켜고, 켜져 있으면 1200 아래에서만 끈다 → 경계에서 떨리지 않는다.",
+   "to": "else if (alarm && ao < OFF_MV)  alarm = false;"
+  }
+ ],
+ "mcu/2/6/ultrasonic.ino": [
+  {
+   "at": "float read_cm(void) {",
+   "t": "Trig 10µs 펄스",
+   "d": "LOW 로 정리 → 10µs HIGH = '측정 시작' 신호.",
+   "to": "digitalWrite(PIN_TRIG, LOW);  delayMicroseconds(2);"
+  },
+  {
+   "at": "unsigned long us = pulseIn(PIN_ECHO, HIGH, 30000);     // 최대 30ms 기다림",
+   "t": "Echo 길이 → cm",
+   "d": "소리 왕복 시간. 0 이면 타임아웃(범위 밖)이라 -1. 58µs ≈ 1cm (왕복).",
+   "to": "return us / 58.0f;                                     // 왕복 58µs ≈ 1cm"
+  }
+ ],
+ "mcu/2/6/pir.ino": [
+  {
+   "at": "delay(30000);",
+   "t": "예열 30초",
+   "d": "PIR 은 켜진 직후 불안정 — 그동안 움직이지 않는다."
+  },
+  {
+   "at": "int m = digitalRead(PIN_PIR);",
+   "t": "움직임 = HIGH",
+   "d": "모듈이 판단해 디지털로 준다. 한 번 감지하면 몇 초간 HIGH 유지(모듈 가변저항).",
+   "to": "digitalWrite(PIN_LED, m);"
+  }
+ ],
+ "mcu/2/6/intruder.ino": [
+  {
+   "at": "bool moving = digitalRead(PIN_PIR);",
+   "t": "두 조건 AND",
+   "d": "움직임 + 30cm 이내일 때만 경보. cm < 0(실패)은 near 가 아니게.",
+   "to": "digitalWrite(PIN_LED, moving && near);             // 움직임 + 30cm 이내"
+  }
+ ],
+ "mcu/2/7/soil.ino": [
+  {
+   "at": "int read_soil(void) {",
+   "t": "잴 때만 전원",
+   "d": "전원 GPIO 를 켜고 10ms 안정 → 읽고 바로 끈다. 계속 켜 두면 전극이 부식된다(1% 만 켜짐).",
+   "to": "return v;"
+  }
+ ],
+ "mcu/2/7/water.ino": [
+  {
+   "at": "int read_water(void) {",
+   "t": "같은 모양의 함수",
+   "d": "핀만 다르다 → 7-3 에서 구조체 + 함수 하나로 합친다.",
+   "to": "return v;"
+  }
+ ],
+ "mcu/2/7/water_soil.ino": [
+  {
+   "at": "const powered_sensor_t soil  = {34, 14, \"soil\"};",
+   "t": "센서 = 데이터",
+   "d": "함수는 하나, 센서마다 구조체 하나.",
+   "to": "const powered_sensor_t water = {35, 23, \"water\"};"
+  },
+  {
+   "at": "Serial.printf(\"soil:%d,water:%d\\n\", sensor_read(&soil), sensor_read(&water));",
+   "t": "사용 + extern 변수",
+   "d": "sensor.cpp 의 카운터를 그대로 읽는다 (링커가 연결).",
+   "to": "if (sensor_read_count % 20 == 0) Serial.printf(\"# reads=%d\\n\", sensor_read_count);"
+  }
+ ],
+ "mcu/2/8/multi_monitor.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "센서 표의 한 줄",
+   "d": "이름, **읽기 함수 포인터**, 마지막 값, 주기, 마지막 읽은 시각.",
+   "to": "} sensor_t;"
+  },
+  {
+   "at": "float read_pot(void)   { return analogRead(34); }",
+   "t": "읽기 함수들 (같은 모양)",
+   "d": "모두 `float f(void)` 라 표에 넣을 수 있다. (직접) DHT 는 NaN 이면 -99.",
+   "to": "// TODO 1: dht.readTemperature() 를 읽어 NaN 이면 -99 를 돌려준다"
+  },
+  {
+   "at": "sensor_t sensors[] = {",
+   "t": "센서 표",
+   "d": "(직접) DHT 온도를 2000ms 주기로 한 줄 추가 — 다른 코드는 안 바뀐다.",
+   "to": "const int NS = sizeof(sensors) / sizeof(sensors[0]);"
+  },
+  {
+   "at": "uint32_t now = millis();",
+   "t": "센서마다 다른 주기 (직접 채울 곳)",
+   "d": "`now - s->last_ms >= s->period_ms` 이면 `s->value = s->read()` 하고 last_ms = now. delay 없이 여러 주기를 동시에.",
+   "to": "// TODO 3: 각 센서의 주기가 지났으면 read() 로 값을 갱신하고 last_ms 를 now 로"
+  },
+  {
+   "at": "if (Serial.available() && Serial.read() == 'm') {",
+   "t": "모드 전환 + 출력 (직접 채울 곳)",
+   "d": "m 을 받으면 CSV/플로터 모드 토글. CSV 면 머리줄 한 번, 이후 `ms,값,…`.",
+   "to": "// TODO 5: csv_mode 이면 \"ms,값,값,…\", 아니면 \"이름:값,이름:값,…\" 한 줄 출력"
+  }
+ ],
+ "mcu/3/1/seg_test.ino": [
+  {
+   "at": "const int SEG_PINS[8] = {13, 14, 27, 26, 25, 33, 32, 23};   // a b c d e f g dp",
+   "t": "핀 표",
+   "d": "a~g·dp 순서대로 핀 번호와 이름.",
+   "to": "const char *NAMES[8] = {\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\", \"dp\"};"
+  },
+  {
+   "at": "for (int j = 0; j < 8; j++) digitalWrite(SEG_PINS[j], LOW);",
+   "t": "하나만 HIGH",
+   "d": "하나씩 켜지면 공통 음극(CC), 하나만 꺼지면 공통 양극(CA) — 배선 확인용.",
+   "to": "digitalWrite(SEG_PINS[i], HIGH);            // 하나만 HIGH"
+  }
+ ],
+ "mcu/3/1/seg_digits.ino": [
+  {
+   "at": "const uint8_t DIGITS[10] = {",
+   "t": "숫자 = 비트맵 1바이트",
+   "d": "bit0 = a … bit7 = dp. 0 = 0x3F (a~f 켜기).",
+   "to": "};"
+  },
+  {
+   "at": "void seg_show(uint8_t pattern) {",
+   "t": "seg_show() — 비트를 핀으로",
+   "d": "CA 면 `~` 로 뒤집고, i 번째 비트를 i 번째 핀에.",
+   "to": "digitalWrite(SEG_PINS[i], (pattern >> i) & 1);   // i 번째 비트"
+  },
+  {
+   "at": "seg_show(DIGITS[d]);",
+   "t": "0~9 → 점",
+   "d": "0x80 = dp 만.",
+   "to": "seg_show(0x80);                                  // 점만"
+  }
+ ],
+ "mcu/3/2/shift595.ino": [
+  {
+   "at": "void my_shift_out(uint8_t data) {          // MSB(bit7) 먼저",
+   "t": "한 비트씩 밀어 넣기",
+   "d": "① 비트를 DS 에 ② SH 클럭 ↑ 로 한 칸 이동 — 8번 반복. MSB 먼저.",
+   "to": "digitalWrite(PIN_SH, LOW);"
+  },
+  {
+   "at": "void write595(uint8_t data) {",
+   "t": "래치로 한 번에 출력",
+   "d": "밀어 넣는 동안은 출력이 안 바뀌고, ST ↑ 순간 8개가 동시에 바뀐다 → 깜빡임 없음.",
+   "to": "digitalWrite(PIN_ST, HIGH);                  // 3) 래치 ↑ → 8개 출력이 동시에 바뀜"
+  },
+  {
+   "at": "write595(1 << i);                        // Q0 → Q7 하나씩",
+   "t": "Q0 → Q7 하나씩",
+   "d": "핀 3개로 출력 8개."
+  }
+ ],
+ "mcu/3/2/seg595.ino": [
+  {
+   "at": "shiftOut(PIN_DS, PIN_SH, MSBFIRST, data);    // Arduino 내장 함수 — my_shift_out 과 같다",
+   "t": "내장 shiftOut",
+   "d": "my_shift_out 과 같은 일. 래치는 직접."
+  }
+ ],
+ "mcu/3/3/mux_loop.ino": [
+  {
+   "at": "const int DIG[4] = {25, 26, 27, 14};                 // D1 ~ D4",
+   "t": "자리 선택 핀 + 화면 버퍼",
+   "d": "4자리의 모양은 595 하나로 공유, 어느 자리를 켤지는 DIG 핀으로.",
+   "to": "uint8_t disp[4] = {DIGITS[1], DIGITS[2], DIGITS[3], DIGITS[4]};   // \"1234\""
+  },
+  {
+   "at": "void show_digit(int k) {",
+   "t": "끄고 → 모양 → 그 자리 켜기",
+   "d": "순서가 중요 — 먼저 끄지 않으면 이전 모양이 다음 자리에 잠깐 비친다(고스트). CC 라 LOW 가 켜짐.",
+   "to": "digitalWrite(DIG[k], LOW);                                // 그 자리만 켠다"
+  },
+  {
+   "at": "for (int k = 0; k < 4; k++) {",
+   "t": "빠르게 돌아가며 = 멀티플렉싱",
+   "d": "3ms × 4 = 12ms ≈ 83Hz → 눈에는 동시에 켜진 것처럼. loop 에 다른 일(delay 100)이 끼면 깜빡인다 → 타이머로.",
+   "to": "// delay(100);                    // ← 이 줄을 켜면? 한 자리만 오래 켜져 깜빡인다"
+  }
+ ],
+ "mcu/3/3/mux_timer.ino": [
+  {
+   "at": "volatile uint8_t disp[4];               // ISR 과 loop 가 함께 쓰는 화면 버퍼",
+   "t": "ISR 과 공유하는 버퍼",
+   "d": "volatile — ISR 이 읽고 loop 가 쓴다.",
+   "to": "hw_timer_t *timer = NULL;"
+  },
+  {
+   "at": "void IRAM_ATTR write595(uint8_t d) {",
+   "t": "ISR 에서 부를 함수도 IRAM",
+   "d": "shiftOut 대신 직접 구현해 IRAM 에 둔다."
+  },
+  {
+   "at": "void IRAM_ATTR onTimer() {              // 2ms 마다 한 자리씩",
+   "t": "onTimer — 2ms 마다 한 자리",
+   "d": "지금 자리 끄고 → 다음 자리 모양 → 켜기. 화면 갱신을 하드웨어 타이머가 맡는다.",
+   "to": "digitalWrite(DIG[cur], LOW);        // 다음 자리 켜기"
+  },
+  {
+   "at": "void show_number(int n) {",
+   "t": "숫자 → 자리별 패턴",
+   "d": "`% 10` 으로 오른쪽 자리부터."
+  },
+  {
+   "at": "timer = timerBegin(1000000);                   // 1MHz → 1틱 = 1µs",
+   "t": "1µs 틱, 2000틱마다 반복",
+   "d": "core 3.x API. 2.x 의 timerBegin(0, 80, true) 는 에러.",
+   "to": "timerAlarm(timer, 2000, true, 0);              // 2000µs 마다 반복"
+  },
+  {
+   "at": "show_number(count++ % 10000);",
+   "t": "loop 는 숫자만 바꾼다",
+   "d": "delay 가 있어도 깜빡이지 않는다.",
+   "to": "delay(100);                          // loop 가 쉬어도 화면은 깜빡이지 않는다"
+  }
+ ],
+ "mcu/3/4/matrix_heart.ino": [
+  {
+   "at": "volatile uint8_t img[8] = {              // 1 = 켜짐, bit7 = 왼쪽 열",
+   "t": "8×8 = 8바이트",
+   "d": "행마다 1바이트, bit7 = 왼쪽 열. 0b 리터럴로 모양이 보인다.",
+   "to": "};"
+  },
+  {
+   "at": "void IRAM_ATTR write595(uint8_t d) {",
+   "t": "열 데이터 (LSB 먼저)",
+   "d": "배선상 bit7 이 Q0(왼쪽)로 가도록 i = 0 부터.",
+   "to": "digitalWrite(PIN_ST, HIGH);"
+  },
+  {
+   "at": "void IRAM_ATTR onTimer() {",
+   "t": "한 행씩 켜기",
+   "d": "이전 행 끄기 → 다음 행 열 패턴(행과 반대 극성이라 `~`) → 행 켜기. 1.5ms × 8 ≈ 83Hz.",
+   "to": "digitalWrite(ROWS[row], ROW_ON);              // 다음 행 켜기"
+  }
+ ],
+ "mcu/3/4/matrix_scroll.ino": [
+  {
+   "at": "void IRAM_ATTR onTimer() {",
+   "t": "표시는 4-1 그대로",
+   "d": "타이머가 img 를 계속 그린다 — loop 는 img 만 바꾸면 된다.",
+   "to": "digitalWrite(ROWS[row], ROW_ON);              // 다음 행 켜기"
+  },
+  {
+   "at": "const uint8_t FONT_H[8] = {0x00,0x66,0x66,0x7E,0x66,0x66,0x66,0x00};   // H",
+   "t": "글꼴 = 8바이트",
+   "d": "H 와 I.",
+   "to": "const uint8_t FONT_I[8] = {0x00,0x3C,0x18,0x18,0x18,0x18,0x3C,0x00};   // I"
+  },
+  {
+   "at": "for (int shift = 0; shift <= 8; shift++) {",
+   "t": "16비트 띠를 밀며 창으로 보기",
+   "d": "H|I 를 이어 붙이고 왼쪽으로 shift 칸 → 위 8비트만 화면에. 0 이면 H, 8 이면 I.",
+   "to": "img[r] = (line << shift) >> 8;                  // 위 8비트만 보이는 창"
+  }
+ ],
+ "mcu/3/5/lcd_hello.ino": [
+  {
+   "at": "LiquidCrystal lcd(13, 14, 23, 32, 33, 4);",
+   "t": "RS, E, D4~D7",
+   "d": "4비트 모드 — 데이터선 4개."
+  },
+  {
+   "at": "lcd.begin(16, 2);                  // 16칸 · 2줄",
+   "t": "초기화 → 출력",
+   "d": "setCursor(열, 행) — 열이 먼저, 0부터.",
+   "to": "lcd.print(\"Day 3 LCD 1602A\");"
+  }
+ ],
+ "mcu/3/5/lcd_counter.ino": [
+  {
+   "at": "n = (n > 0) ? n - 7 : 1200;            // 1200 → 0 으로 줄어드는 값",
+   "t": "자릿수가 줄어드는 값",
+   "d": "1200 → 0. 그냥 print 하면 '100' 뒤에 이전의 '0' 이 남는다."
+  },
+  {
+   "at": "char buf[17];                          // 16글자 + '\\0'",
+   "t": "snprintf 로 고정 폭",
+   "d": "`%4d` 로 항상 4칸 — 남는 글자를 공백이 덮는다. buf 는 16 + '\\0'.",
+   "to": "lcd.print(buf);"
+  },
+  {
+   "at": "lcd.printf(\"%3lus\", (millis() / 1000) % 1000);",
+   "t": "lcd.printf",
+   "d": "ESP32 코어는 printf 도 지원."
+  }
+ ],
+ "mcu/3/5/lcd_sensor.ino": [
+  {
+   "at": "byte BAR[8] = {0b11111, 0b11111, 0b11111, 0b11111,",
+   "t": "사용자 문자 0번",
+   "d": "5×8 점을 모두 켠 칸 — 8바이트, 한 줄 5비트.",
+   "to": "lcd.createChar(0, BAR);                // 사용자 문자 0번"
+  },
+  {
+   "at": "snprintf(line, sizeof(line), \"light:%4d %3d%%\", raw, pct);",
+   "t": "윗줄: 값과 %",
+   "d": "`%%` = % 문자."
+  },
+  {
+   "at": "int bars = pct * 16 / 100;             // 0 ~ 16 칸 막대 그래프",
+   "t": "아랫줄: 막대 그래프",
+   "d": "켜진 칸은 write(0), 나머지는 공백으로 덮어 이전 막대를 지운다.",
+   "to": "else lcd.print(' ');"
+  }
+ ],
+ "mcu/3/6/i2c_scan.ino": [
+  {
+   "at": "Wire.begin(21, 22);                     // SDA, SCL",
+   "t": "SDA 21, SCL 22",
+   "d": "ESP32 기본 I2C 핀."
+  },
+  {
+   "at": "for (uint8_t addr = 1; addr < 127; addr++) {",
+   "t": "주소마다 '거기 있니?'",
+   "d": "빈 전송을 보내 endTransmission 이 0(ACK)이면 장치가 있다. PCF8591 → 0x48.",
+   "to": "found++;"
+  }
+ ],
+ "mcu/3/6/pcf_adc.ino": [
+  {
+   "at": "int pcf_read(uint8_t ch) {",
+   "t": "제어 바이트 쓰기",
+   "d": "`0x40 | ch` = DAC 켜기 + 채널 선택. 응답 없으면 -1.",
+   "to": "if (Wire.endTransmission() != 0) return -1;"
+  },
+  {
+   "at": "Wire.requestFrom(PCF, (uint8_t)2);        // 2바이트 요청",
+   "t": "2바이트 읽고 첫 바이트 버리기",
+   "d": "PCF8591 은 읽을 때 변환하므로 첫 바이트 = 이전 값. 8비트라 0~255.",
+   "to": "return Wire.read();                       // 0 ~ 255"
+  }
+ ],
+ "mcu/3/6/pcf_dac.ino": [
+  {
+   "at": "bool pcf_write_dac(uint8_t value) {",
+   "t": "DAC 값 쓰기",
+   "d": "제어 0x40 다음에 값 — 0~255 가 0~VCC 의 **진짜 전압**(PWM 아님).",
+   "to": "return Wire.endTransmission() == 0;"
+  },
+  {
+   "at": "for (int v = 0; v < 256; v += 4)   { pcf_write_dac(v); delay(15); }",
+   "t": "올렸다 내리기",
+   "d": "Aout LED 가 부드럽게 밝아졌다 어두워진다.",
+   "to": "for (int v = 255; v >= 0; v -= 4) { pcf_write_dac(v); delay(15); }"
+  }
+ ],
+ "mcu/3/6/pcf_lcd.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "장치 = 구조체",
+   "d": "주소, 채널별 마지막 값, 실패 횟수 — 드라이버의 상태.",
+   "to": "} pcf8591_t;"
+  },
+  {
+   "at": "int pcf_read(pcf8591_t *p, uint8_t ch) {",
+   "t": "실패를 세는 읽기",
+   "d": "전송 실패와 '2바이트를 못 받음' 둘 다 errors++ 후 -1.",
+   "to": "return p->last[ch & 0x03];"
+  },
+  {
+   "at": "int v = pcf_read(&pcf, 0);",
+   "t": "LCD 에 값과 오류 수",
+   "d": "고정 폭 snprintf — 실패면 0 으로 표시.",
+   "to": "lcd.print(buf);"
+  }
+ ],
+ "mcu/3/7/motor_dir.ino": [
+  {
+   "at": "void motor_dir(int in1, int in2, const char *msg) {",
+   "t": "IN1 · IN2 = 방향",
+   "d": "H-브리지: 10 정방향, 01 역방향, 00 정지(관성), 11 브레이크."
+  },
+  {
+   "at": "motor_dir(HIGH, LOW,  \"정방향\");  delay(2000);",
+   "t": "반대로 돌기 전에 정지",
+   "d": "바로 뒤집으면 큰 역전류 — 잠깐 멈추고 바꾼다.",
+   "to": "motor_dir(HIGH, HIGH, \"브레이크\"); delay(1000);"
+  }
+ ],
+ "mcu/3/7/motor_speed.ino": [
+  {
+   "at": "void motor_set(int speed) {                  // -255 ~ +255, 부호 = 방향",
+   "t": "motor_set() — 부호 = 방향",
+   "d": "±255 로 자르고, 부호로 IN1/IN2, 크기로 EN 듀티.",
+   "to": "ledcWrite(PIN_EN, abs(speed));"
+  },
+  {
+   "at": "void ramp_to(int *cur, int target) {         // 한 번에 조금씩",
+   "t": "ramp_to() — 5 씩 가속",
+   "d": "현재 속도를 **포인터로** 받아 갱신. 목표 근처면 딱 맞춘다.",
+   "to": "delay(20);"
+  },
+  {
+   "at": "ledcAttach(PIN_EN, 20000, 8);            // 20kHz — 귀에 거슬리는 소리가 안 들린다",
+   "t": "20kHz PWM",
+   "d": "들리는 주파수면 모터가 '삐' 운다."
+  }
+ ],
+ "mcu/3/7/relay_estop.ino": [
+  {
+   "at": "typedef enum { ST_STOP, ST_RUN } run_t;",
+   "t": "STOP / RUN 상태",
+   "d": "버튼 하나가 상태에 따라 시작 또는 비상 정지."
+  },
+  {
+   "at": "relay_set(false);                        // 시작은 항상 주전원 차단",
+   "t": "시작은 항상 차단",
+   "d": "리셋 직후 모터가 갑자기 돌지 않게."
+  },
+  {
+   "at": "if (state == ST_RUN) {               // 비상 정지: 주전원부터 끊는다",
+   "t": "비상 정지: 주전원부터",
+   "d": "릴레이로 전원을 먼저 끊고 PWM 0 — 소프트웨어가 꼬여도 전원은 끊긴다.",
+   "to": "Serial.println(\"비상 정지 — 주전원 차단\");"
+  },
+  {
+   "at": "} else {                             // 시작: 속도 0 에서 전원 → 천천히 가속",
+   "t": "시작: 속도 0 에서 전원",
+   "d": "PWM 0 → 릴레이 ON → 접점 안정 100ms → RUN.",
+   "to": "Serial.println(\"주전원 ON — 가속\");"
+  },
+  {
+   "at": "static uint32_t t_ramp = 0;",
+   "t": "논블로킹 가속",
+   "d": "20ms 마다 +5 — delay 가 없어 가속 중에도 비상 정지 버튼이 바로 먹는다.",
+   "to": "motor_set(speed);"
+  }
+ ],
+ "mcu/3/8/stepper.ino": [
+  {
+   "at": "const uint8_t SEQ[8] = {                     // bit0 = IN1 … bit3 = IN4",
+   "t": "반스텝 순서표",
+   "d": "코일 1개 → 2개 → 1개 … 8단계. bit0 = IN1.",
+   "to": "};"
+  },
+  {
+   "at": "void step_once(int dir) {                    // dir = +1 또는 -1",
+   "t": "step_once() — 표의 다음 칸",
+   "d": "`(phase + dir + 8) % 8` 로 음수 방지, 비트를 코일 4개에.",
+   "to": "digitalWrite(COIL[i], (SEQ[phase] >> i) & 1);"
+  },
+  {
+   "at": "void step_motor(int steps, int us_per_step) {",
+   "t": "step_motor() — 반복 후 코일 끄기",
+   "d": "간격이 너무 짧으면 못 따라와 떨기만. 끝나면 꺼서 발열 방지.",
+   "to": "for (int i = 0; i < 4; i++) digitalWrite(COIL[i], LOW);   // 멈추면 코일 끄기 (발열 방지)"
+  },
+  {
+   "at": "step_motor(4096, 1000);      // 한 바퀴 정방향",
+   "t": "4096 = 한 바퀴",
+   "d": "28BYJ-48 반스텝 기준. -1024 = 90° 역방향.",
+   "to": "step_motor(-1024, 1000);     // 90° 역방향"
+  }
+ ],
+ "mcu/3/8/smart_vent.ino": [
+  {
+   "at": "typedef enum { ST_CLOSED, ST_OPEN } vent_state_t;",
+   "t": "창문 상태",
+   "d": "닫힘/열림."
+  },
+  {
+   "at": "void motor_set(int speed) {",
+   "t": "부품 함수 (직접 채울 곳)",
+   "d": "7교시 motor_set, 8-1 step_motor(+1000µs, 끝나면 코일 끔), 27°C → 120 ~ 32°C → 255 비례.",
+   "to": "int fan_speed(float t) {"
+  },
+  {
+   "at": "float t = dht.readTemperature();",
+   "t": "실패면 건너뛰기",
+   "d": "NaN 이면 2초 후 다시 (return 으로 loop 재시작).",
+   "to": "if (isnan(t)) { delay(2000); return; }"
+  },
+  {
+   "at": "// TODO 4: 상태 전이 — CLOSED 에서 27 이상이면 OPEN(스테퍼 +90°),",
+   "t": "히스테리시스 전이 + 팬",
+   "d": "27 이상이면 열고(+90°), 26 미만이면 닫는다(-90°) — 문턱 두 개로 떨림 방지. 열렸을 때만 팬.",
+   "to": "motor_set(fan);"
+  },
+  {
+   "at": "// TODO 5: LCD 1행 \"T:24.0C\" · 2행 \"VENT:OPEN FAN:180\" 고정 폭 출력",
+   "t": "LCD 고정 폭 (직접 채울 곳)",
+   "d": "1행 `T:24.0C`, 2행 `VENT:OPEN FAN:180` — snprintf 로 16칸."
+  }
+ ],
+ "mcu/4/1/two_tasks.ino": [
+  {
+   "at": "void taskRed(void *param) {",
+   "t": "태스크 = 끝나지 않는 함수",
+   "d": "`for (;;)` 안에서 일하고 vTaskDelay 로 양보. 쉬는 동안 다른 태스크가 돈다.",
+   "to": "vTaskDelay(pdMS_TO_TICKS(300));           // 300ms 쉬는 동안 다른 태스크가 돈다"
+  },
+  {
+   "at": "void taskGreen(void *param) {",
+   "t": "다른 주기의 태스크",
+   "d": "1초. 서로의 delay 에 방해받지 않는다."
+  },
+  {
+   "at": "xTaskCreatePinnedToCore(taskRed,   \"red\",   2048, NULL,   1,      NULL, 1);",
+   "t": "생성 — 함수·이름·스택·인자·우선순위·핸들·코어",
+   "d": "같은 우선순위 1, 코어 1.",
+   "to": "xTaskCreatePinnedToCore(taskGreen, \"green\", 2048, NULL,   1,      NULL, 1);"
+  },
+  {
+   "at": "void loop() {",
+   "t": "loop 도 태스크",
+   "d": "loopTask 로 같이 돈다.",
+   "to": "vTaskDelay(pdMS_TO_TICKS(2000));"
+  }
+ ],
+ "mcu/4/1/task_info.ino": [
+  {
+   "at": "char buf[64];                                 // 지역 배열은 스택을 쓴다",
+   "t": "지역 배열 = 스택",
+   "d": "태스크 스택은 생성 때 정한 크기(3072) 안에서."
+  },
+  {
+   "at": "xTaskCreatePinnedToCore(taskWork, \"work\", 3072, NULL, 2, &hWork, 1);",
+   "t": "핸들 받기",
+   "d": "&hWork 로 나중에 스택 여유를 조회. 우선순위 2 > loop(1)."
+  },
+  {
+   "at": "UBaseType_t freeStack = uxTaskGetStackHighWaterMark(hWork);   // 가장 적게 남았던 양",
+   "t": "최저 여유 · 코어 · 힙",
+   "d": "가장 적게 남았던 스택 — 작으면 늘린다.",
+   "to": "freeStack, xPortGetCoreID(), ESP.getFreeHeap());"
+  }
+ ],
+ "mcu/4/2/queue_demo.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "큐에 넣을 데이터",
+   "d": "값 + 잰 시각 — 받는 쪽에서 지연(age) 계산.",
+   "to": "} sample_t;"
+  },
+  {
+   "at": "void taskSensor(void *p) {                      // 생산자",
+   "t": "생산자 — 기다리지 않고 보내기",
+   "d": "대기 0: 가득이면 버리고 계속 (센서 주기를 지킨다).",
+   "to": "vTaskDelay(pdMS_TO_TICKS(100));"
+  },
+  {
+   "at": "void taskShow(void *p) {                        // 소비자",
+   "t": "소비자 — 올 때까지 잠",
+   "d": "portMAX_DELAY 로 기다리는 동안 CPU 0%. 꺼내서 LED 밝기와 출력.",
+   "to": "Serial.printf(\"raw:%d,age:%lu\\n\", s.raw, millis() - s.t_ms);"
+  },
+  {
+   "at": "q = xQueueCreate(8, sizeof(sample_t));      // sample_t 8개 칸",
+   "t": "큐 먼저, 태스크 나중",
+   "d": "큐가 없을 때 태스크가 쓰면 크래시. 생산자 우선순위 2.",
+   "to": "xTaskCreatePinnedToCore(taskShow,   \"show\",   3072, NULL, 1, NULL, 1);"
+  }
+ ],
+ "mcu/4/2/mutex_demo.ino": [
+  {
+   "at": "void safe_print(const char *tag, const char *msg) {",
+   "t": "safe_print() — 잠그고 출력",
+   "d": "네 번의 print 를 한 덩어리로. Take/Give 짝.",
+   "to": "xSemaphoreGive(serialLock);                  // 해제 — 반드시 짝으로"
+  },
+  {
+   "at": "void taskPot(void *p) {",
+   "t": "두 태스크가 Serial 공유",
+   "d": "pot 200ms, DHT 2초.",
+   "to": "void taskDht(void *p) {"
+  },
+  {
+   "at": "serialLock = xSemaphoreCreateMutex();",
+   "t": "다른 코어에서 동시에",
+   "d": "DHT 는 코어 0 — 진짜 동시 실행이라 뮤텍스 없으면 글자가 섞인다.",
+   "to": "xTaskCreatePinnedToCore(taskDht, \"dht\", 4096, NULL, 1, NULL, 0);   // 다른 코어"
+  }
+ ],
+ "mcu/4/3/isr_notify.ino": [
+  {
+   "at": "void IRAM_ATTR onButton() {",
+   "t": "ISR — 깨우기만",
+   "d": "디바운스 후 알림 보내고, 깨운 태스크가 급하면 바로 전환.",
+   "to": "portYIELD_FROM_ISR(woken);                 // 깨운 태스크가 더 급하면 바로 전환"
+  },
+  {
+   "at": "void taskWorker(void *p) {",
+   "t": "태스크 — 긴 일",
+   "d": "알림까지 잠 → Serial·깜빡임처럼 ISR 에서 못 하는 일.",
+   "to": "digitalWrite(LED, LOW);  vTaskDelay(pdMS_TO_TICKS(80));"
+  },
+  {
+   "at": "xTaskCreatePinnedToCore(taskWorker, \"worker\", 3072, NULL, 3, &hWorker, 1);",
+   "t": "태스크 먼저, ISR 나중",
+   "d": "핸들이 NULL 일 때 ISR 이 불리면 크래시. 우선순위 3.",
+   "to": "attachInterrupt(digitalPinToInterrupt(BTN), onButton, FALLING);   // 태스크 먼저, ISR 나중"
+  }
+ ],
+ "mcu/4/3/soft_timer.ino": [
+  {
+   "at": "void onBlink(TimerHandle_t t) {                 // 타이머 서비스 태스크에서 불린다",
+   "t": "타이머 콜백",
+   "d": "타이머 서비스 태스크에서 불린다 — 짧게, 블로킹 금지."
+  },
+  {
+   "at": "tBlink = xTimerCreate(\"blink\", pdMS_TO_TICKS(500), pdTRUE, NULL, onBlink);",
+   "t": "500ms 반복 타이머",
+   "d": "만들고 Start 해야 돈다.",
+   "to": "xTimerStart(tBlink, 0);"
+  },
+  {
+   "at": "if (c == 'f') xTimerChangePeriod(tBlink, pdMS_TO_TICKS(100), 0);   // 빠르게",
+   "t": "실행 중 주기 변경·정지",
+   "d": "f 빠르게, s 느리게, x 정지.",
+   "to": "if (c == 'x') xTimerStop(tBlink, 0);"
+  }
+ ],
+ "mcu/4/4/fs_basic.ino": [
+  {
+   "at": "void list_files() {",
+   "t": "파일 목록",
+   "d": "루트를 열고 openNextFile 반복, 용량 출력.",
+   "to": "Serial.printf(\"사용 %u / 전체 %u B\\n\", LittleFS.usedBytes(), LittleFS.totalBytes());"
+  },
+  {
+   "at": "if (!LittleFS.begin(true)) {               // true = 처음이면 포맷",
+   "t": "마운트 (처음이면 포맷)",
+   "d": "실패하면 더 진행하지 않는다."
+  },
+  {
+   "at": "File f = LittleFS.open(\"/hello.txt\", FILE_WRITE);   // \"w\" — 새로 쓰기(덮어쓰기)",
+   "t": "쓰기 → 닫기",
+   "d": "FILE_WRITE 는 덮어쓰기. close 해야 Flash 에 확실히.",
+   "to": "f.close();                                  // 닫아야 Flash 에 확실히 기록"
+  },
+  {
+   "at": "f = LittleFS.open(\"/hello.txt\", FILE_READ);",
+   "t": "읽기",
+   "d": "available 동안 read → Serial.write.",
+   "to": "f.close();"
+  }
+ ],
+ "mcu/4/4/csv_logger.ino": [
+  {
+   "at": "bool log_append(float t, int pot) {",
+   "t": "log_append() — 이어 쓰기",
+   "d": "새 파일이면 머리줄 한 번, 한 줄 쓰고 바로 close (전원이 꺼져도 앞 줄은 안전).",
+   "to": "return true;"
+  },
+  {
+   "at": "void dump_log() {",
+   "t": "dump_log() — 출력",
+   "d": "없으면 '(로그 없음)'."
+  },
+  {
+   "at": "if (millis() - last >= 5000) {                     // 5초마다 한 줄",
+   "t": "5초마다 (논블로킹)",
+   "d": "NaN 은 기록하지 않는다.",
+   "to": "if (!isnan(t)) log_append(t, analogRead(34));"
+  },
+  {
+   "at": "if (Serial.available()) {",
+   "t": "d 보기 / x 지우기",
+   "d": "재부팅 후 d 로 로그가 남아 있는지 확인.",
+   "to": "if (c == 'x') { LittleFS.remove(LOG); Serial.println(\"지움\"); }"
+  }
+ ],
+ "mcu/4/5/wifi_connect.ino": [
+  {
+   "at": "void scan() {",
+   "t": "주변 망 스캔",
+   "d": "이름·세기·채널 — 내 망이 보이는지(2.4GHz)."
+  },
+  {
+   "at": "bool wifi_connect(uint32_t timeout_ms) {",
+   "t": "타임아웃 있는 접속",
+   "d": "begin 후 status 를 확인하며 기다리다 시간이 지나면 false — 무한 대기 방지.",
+   "to": "return true;"
+  },
+  {
+   "at": "if (wifi_connect(15000)) {",
+   "t": "성공 → IP·RSSI + 자동 재연결",
+   "d": "실패하면 원인 체크리스트.",
+   "to": "Serial.println(\"연결 실패 — SSID · 비밀번호 · 2.4GHz · 안테나 확인\");"
+  },
+  {
+   "at": "static wl_status_t last = WL_IDLE_STATUS;",
+   "t": "상태가 바뀔 때만 출력",
+   "d": "끊김·재연결을 관찰.",
+   "to": "last = s;"
+  }
+ ],
+ "mcu/4/5/ntp_time.ino": [
+  {
+   "at": "configTime(9 * 3600, 0, \"pool.ntp.org\", \"time.google.com\");   // 한국 UTC+9, 서머타임 0",
+   "t": "UTC+9 NTP 설정",
+   "d": "오프셋은 **초**."
+  },
+  {
+   "at": "struct tm t;",
+   "t": "시각 받기 → 문자열",
+   "d": "최대 10초 기다려 struct tm 을 채우고 strftime 으로 서식.",
+   "to": "Serial.println(\"시간 받기 실패 (인터넷 연결 확인)\");"
+  },
+  {
+   "at": "void loop() {",
+   "t": "1초마다 시:분:초",
+   "d": "로그에 millis 대신 실제 시각을 찍을 수 있다.",
+   "to": "delay(1000);"
+  }
+ ],
+ "mcu/4/5/wifi_ap.ino": [
+  {
+   "at": "snprintf(name, sizeof(name), \"ESP32-%04X\", (uint16_t)(ESP.getEfuseMac() >> 32));   // 보드마다 다른 이름",
+   "t": "보드마다 다른 이름",
+   "d": "MAC 의 일부 — 교실에서 이름 충돌 방지."
+  },
+  {
+   "at": "WiFi.mode(WIFI_AP);",
+   "t": "AP 모드",
+   "d": "비밀번호 8자 이상. 주소 192.168.4.1.",
+   "to": "WiFi.softAP(name, \"12345678\");                 // 비밀번호는 8자 이상"
+  },
+  {
+   "at": "Serial.printf(\"접속한 기기 %d대\\n\", WiFi.softAPgetStationNum());",
+   "t": "접속 기기 수",
+   "d": "폰을 붙이면 1."
+  }
+ ],
+ "mcu/4/6/web_sensor.ino": [
+  {
+   "at": "void handleRoot() {",
+   "t": "/ — HTML 페이지",
+   "d": "snprintf 로 값을 넣은 HTML. 문자열 리터럴은 이어 붙여진다. 배열 크기 주의(512).",
+   "to": "server.send(200, \"text/html\", html);"
+  },
+  {
+   "at": "void handleApi() {                               // 기계가 읽기 좋은 JSON",
+   "t": "/api — JSON",
+   "d": "사람이 아닌 프로그램이 읽기 좋은 형식.",
+   "to": "server.send(200, \"application/json\", json);"
+  },
+  {
+   "at": "server.on(\"/\", handleRoot);                  // 경로 → 함수",
+   "t": "경로 등록 → 시작",
+   "d": "함수 이름 = 함수 포인터.",
+   "to": "server.begin();"
+  },
+  {
+   "at": "server.handleClient();                       // 요청이 왔는지 확인하고 처리",
+   "t": "loop 는 요청 처리만",
+   "d": "자주 불러야 응답이 빠르다."
+  }
+ ],
+ "mcu/4/6/web_control.ino": [
+  {
+   "at": "const char PAGE[] PROGMEM = R\"HTML(",
+   "t": "페이지 = raw 문자열",
+   "d": "`R\"HTML( … )HTML\"` 은 따옴표·줄바꿈을 그대로. 버튼은 fetch 로 /led, setInterval 로 1초마다 /api.",
+   "to": ")HTML\";"
+  },
+  {
+   "at": "void handleLed() {",
+   "t": "/led — 입력 검증",
+   "d": "인자 없으면 400, 25·26 이 아니면 403 — 웹에서 아무 핀이나 못 건드리게.",
+   "to": "server.send(200, \"text/plain\", \"OK\");"
+  },
+  {
+   "at": "void handleApi() {",
+   "t": "/api — 가변저항 값",
+   "d": "페이지가 1초마다 가져가 숫자만 바꾼다."
+  }
+ ],
+ "mcu/4/7/debug_log.ino": [
+  {
+   "at": "#define LOG_LEVEL 3                     // 0 끔 · 1 오류 · 2 경고 · 3 정보 · 4 상세",
+   "t": "레벨 하나로 조절",
+   "d": "0 끔 ~ 4 상세."
+  },
+  {
+   "at": "#define LOG(lv, tag, fmt, ...) \\",
+   "t": "LOG 매크로",
+   "d": "시각·태그·파일·줄을 자동으로. `do { } while (0)` 은 if 안에서도 한 문장처럼 쓰려고, `##__VA_ARGS__` 는 인자가 없을 때 쉼표 제거.",
+   "to": "} while (0)"
+  },
+  {
+   "at": "#define LOGE(fmt, ...) LOG(1, \"E\", fmt, ##__VA_ARGS__)",
+   "t": "레벨별 짧은 이름",
+   "d": "LOGD 는 레벨 3 에서 출력되지 않는다.",
+   "to": "#define LOGD(fmt, ...) LOG(4, \"D\", fmt, ##__VA_ARGS__)"
+  }
+ ],
+ "mcu/4/7/crash_demo.ino": [
+  {
+   "at": "const char *reason_str(esp_reset_reason_t r) {",
+   "t": "재부팅 원인 → 글자",
+   "d": "PANIC(크래시), WDT(워치독), BROWNOUT(전압 강하).",
+   "to": "default:               return \"기타\";"
+  },
+  {
+   "at": "box_t *find_box(int id) { return NULL; }      // 못 찾으면 NULL 을 돌려주는 함수",
+   "t": "못 찾으면 NULL",
+   "d": "흔한 API 형태."
+  },
+  {
+   "at": "box_t *b = find_box(7);",
+   "t": "NULL 검사 없이 사용 → 패닉",
+   "d": "`Guru Meditation Error: LoadStoreError` + Backtrace → 재부팅 후 원인 PANIC. addr2line 으로 이 줄을 찾는다.",
+   "to": "b->value = 42;                           // ← NULL 검사 없이 사용"
+  }
+ ],
+ "mcu/4/7/health.ino": [
+  {
+   "at": "char big[1500];                          // 스택을 많이 쓰는 태스크",
+   "t": "스택을 많이 쓰는 태스크",
+   "d": "2048 스택에 1500 바이트 — 빠듯하다."
+  },
+  {
+   "at": "void taskHealth(void *p) {",
+   "t": "감시 태스크",
+   "d": "5초마다 힙(최저 포함)과 taskA 스택 여유. 계속 줄면 누수, 0 근처면 스택 늘리기.",
+   "to": "vTaskDelay(pdMS_TO_TICKS(5000));"
+  }
+ ],
+ "mcu/4/8/iot_monitor.ino": [
+  {
+   "at": "typedef struct {",
+   "t": "공유 상태",
+   "d": "reading_t, 큐(센서→로거), 뮤텍스(latest·파일), 버튼 태스크 핸들.",
+   "to": "TaskHandle_t hButton = NULL;"
+  },
+  {
+   "at": "void taskSensor(void *p) {",
+   "t": "센서 태스크 (직접 채울 곳)",
+   "d": "r 을 채워 xQueueSend(q, &r, 0).",
+   "to": "vTaskDelay(pdMS_TO_TICKS(2000));"
+  },
+  {
+   "at": "void taskLogger(void *p) {",
+   "t": "로거 태스크 (직접 채울 곳)",
+   "d": "받기 → NaN 건너뛰기 → 뮤텍스 안에서 latest 갱신 + CSV 이어쓰기 → 해제. 30/29 히스테리시스로 LED_R.",
+   "to": "// TODO 3: 히스테리시스 경보 — 30 이상 ON, 29 미만 OFF → LED_R"
+  },
+  {
+   "at": "void IRAM_ATTR onButton() {",
+   "t": "버튼: ISR → 태스크",
+   "d": "ISR 은 알림만, 태스크가 50ms 후 다시 읽어 디바운스하고 LED_G 토글. (직접) 로그에 BUTTON 한 줄.",
+   "to": "// TODO 4: 뮤텍스를 잡고 로그에 \"ms,BUTTON,\" 한 줄"
+  },
+  {
+   "at": "const char PAGE[] PROGMEM = R\"HTML(",
+   "t": "웹 페이지",
+   "d": "2초마다 /api 로 값 갱신, 로그 다운로드·지우기 링크.",
+   "to": ")HTML\";"
+  },
+  {
+   "at": "void handleApi() {",
+   "t": "/api · /log.csv",
+   "d": "(직접) latest 를 잠금 안에서 **지역 변수로 복사**한 뒤 해제하고 전송. 로그는 streamFile.",
+   "to": "else { server.streamFile(f, \"text/csv\"); f.close(); }"
+  },
+  {
+   "at": "void handleClear() {",
+   "t": "/clear → 303 으로 /",
+   "d": "새로고침해도 다시 지워지지 않는다.",
+   "to": "server.send(303);"
+  },
+  {
+   "at": "q = xQueueCreate(8, sizeof(reading_t));       // 큐 · 뮤텍스 먼저",
+   "t": "큐·뮤텍스 → 태스크 → ISR 순서",
+   "d": "쓰는 쪽보다 먼저 만들어 둔다.",
+   "to": "attachInterrupt(digitalPinToInterrupt(BTN), onButton, FALLING);"
+  },
+  {
+   "at": "WiFi.mode(WIFI_STA);",
+   "t": "접속 실패면 AP 로",
+   "d": "15초 안에 못 붙으면 ESP32-MONITOR 망을 만든다.",
+   "to": "Serial.println(\"AP 모드: ESP32-MONITOR 에 접속 → http://192.168.4.1/\");"
+  },
+  {
+   "at": "server.on(\"/\", handleRoot);",
+   "t": "경로 등록 + loop",
+   "d": "loop 는 handleClient 만, 2ms 양보.",
+   "to": "vTaskDelay(pdMS_TO_TICKS(2));"
+  }
+ ]
+}

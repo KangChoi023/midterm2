@@ -1,0 +1,3312 @@
+{
+ "linux": {
+  "2": [
+   {
+    "n": 1,
+    "p": "01_ctxsw 를 sleep 모드로 실행했습니다. 자발적 전환 수로 출력되는 값에 가장 가까운 것은 무엇입니까?",
+    "c": "$ ./01_ctxsw sleep\n모드=sleep\n  자발적   전환 (스스로 잠듦)   : ?",
+    "o": [
+     "0",
+     "1000",
+     "2000",
+     "500"
+    ],
+    "a": 1,
+    "w": "정답입니다. usleep(1000) 을 1000번 부를 때마다 스스로 잠들어 CPU 를 내려놓으므로 자발적 전환이 1번씩 늘어 1000 이 됩니다.  [복습: D2-1 · A 를 sleep 형으로]"
+   },
+   {
+    "n": 1,
+    "p": "다른 부하가 전혀 없는 VM 에서 01_ctxsw 를 busy 모드로 실행했습니다. 비자발적 전환 수로 가장 알맞은 것은 무엇입니까?",
+    "c": "$ ./01_ctxsw busy\n  자발적   전환 (스스로 잠듦)   : 0\n  비자발적 전환 (선점당함)      : ?",
+    "o": [
+     "거의 0 에 가깝다",
+     "정확히 2000",
+     "1000 이상",
+     "자발적 전환과 같은 0 이 아닌 값"
+    ],
+    "a": 0,
+    "w": "정답입니다. 빼앗아 갈 경쟁자가 없으면 스케줄러는 계속 같은 태스크를 실행합니다. stress-ng 를 켜야 비자발적 전환이 크게 늘어납니다.  [복습: D2-1 · B 없음]"
+   },
+   {
+    "n": 2,
+    "p": "nice 값을 5 로 바꿔 02_nice_race 를 실행했습니다. A (nice 0) 의 몫으로 가장 가까운 것은 무엇입니까?",
+    "c": "$ ./02_nice_race 5\nA (nice 0 ) :   …   ? %\nB (nice 5 ) :   …   ? %\nweight      : 1024 vs 335",
+    "o": [
+     "약 50 %",
+     "약 90 %",
+     "약 75 %",
+     "약 67 %"
+    ],
+    "a": 2,
+    "w": "정답입니다. 1024 / (1024 + 335) = 75.3 % 입니다. 실측도 75.4 % : 24.6 % 로 weight 비율과 같았습니다.  [복습: D2-2 · nice 슬라이더]"
+   },
+   {
+    "n": 2,
+    "p": "nice 5 로 03_vruntime 을 실행했습니다. 비율 열에 나오는 값에 가장 가까운 것은 무엇입니까?",
+    "c": "$ nice -n 5 ./03_vruntime\n  구간 실행시간(ms)   vruntime(ms)   비율\n       1          499.8         1527.7     ?",
+    "o": [
+     "1.00",
+     "5.00",
+     "9.31",
+     "3.06"
+    ],
+    "a": 3,
+    "w": "정답입니다. vruntime 은 실제 실행 시간 × 1024 / weight 로 늘어납니다. nice 5 의 weight 는 335 이므로 1024 / 335 = 3.06 입니다.  [복습: 2교시 예제 03]"
+   },
+   {
+    "n": 2,
+    "p": "일반 사용자가 자기 셸의 nice 를 -5 로 낮추려 합니다. 출력은 무엇입니까?",
+    "c": "$ renice -n -5 -p $$",
+    "o": [
+     "renice: … Permission denied",
+     "nice 가 -5 로 바뀌었다는 메시지",
+     "renice: invalid priority",
+     "아무 출력 없이 성공"
+    ],
+    "a": 0,
+    "w": "정답입니다. nice 를 낮추는 것(CPU 를 더 가져가기)은 root 권한이 필요합니다. 높이는 것(양보)은 누구나 할 수 있습니다.  [복습: 2교시 확인 4]"
+   },
+   {
+    "n": 3,
+    "p": "04_affinity 로 CPU 1 에 고정했습니다. 마지막 줄의 출력은 무엇입니까?",
+    "c": "$ ./04_affinity 1 | tail -1",
+    "o": [
+     "0.2초마다 실행 중인 CPU: 0 1 0 1 0 1 …",
+     "0.2초마다 실행 중인 CPU: 0 0 0 0 0 0 …",
+     "0.2초마다 실행 중인 CPU: 1 1 1 1 1 1 …",
+     "0.2초마다 실행 중인 CPU: (없음)"
+    ],
+    "a": 2,
+    "w": "정답입니다. sched_setaffinity 로 CPU 1 만 허용했으므로 sched_getcpu() 는 계속 1 을 돌려줍니다.  [복습: D2-3 · CPU 1 고정]"
+   },
+   {
+    "n": 3,
+    "p": "CPU 0 에만 stress-ng 를 돌리고 07_busy 를 CPU 0 에 고정해 실행했습니다. 계산량은 혼자 실행할 때의 약 몇 % 입니까?",
+    "c": "$ stress-ng --cpu 1 --taskset 0 --timeout 15 &\n$ taskset -c 0 ./07_busy",
+    "o": [
+     "약 100 %",
+     "약 50 %",
+     "약 25 %",
+     "약 0 %"
+    ],
+    "a": 1,
+    "w": "정답입니다. CPU 0 을 stress-ng 와 나눠 쓰므로 절반 정도입니다. CPU 1 이 놀고 있어도 고정 때문에 옮겨 가지 못합니다.  [복습: D2-3 · P 를 CPU 0 고정]"
+   },
+   {
+    "n": 3,
+    "p": "vCPU 2개 VM 에서 없는 CPU 번호를 주었습니다. 에러 메시지는 무엇입니까?",
+    "c": "$ ./04_affinity 5",
+    "o": [
+     "sched_setaffinity: Operation not permitted",
+     "sched_setaffinity: No such device",
+     "sched_setaffinity: Invalid argument",
+     "Segmentation fault"
+    ],
+    "a": 2,
+    "w": "정답: ③ sched_setaffinity: Invalid argument — 온라인 CPU 가 하나도 없는 집합은 커널이 EINVAL 로 거부합니다. 권한 문제(EPERM)가 아닙니다.  [복습: 3교시 3-1]"
+   },
+   {
+    "n": 4,
+    "p": "sudo 없이 05_rt_policy 를 실행했습니다. 에러 메시지는 무엇입니까?",
+    "c": "$ ./05_rt_policy 50",
+    "o": [
+     "sched_setscheduler: Invalid argument",
+     "변경 후 정책=SCHED_FIFO, 우선순위=50",
+     "sched_setscheduler: Device or resource busy",
+     "sched_setscheduler: Operation not permitted"
+    ],
+    "a": 3,
+    "w": "정답입니다. RT 정책은 모든 일반 태스크보다 먼저 실행되므로 root(CAP_SYS_NICE) 권한이 필요합니다. 없으면 EPERM 입니다.  [복습: 4교시 4-2]"
+   },
+   {
+    "n": 4,
+    "p": "아래 두 값을 보고 알 수 있는 것은 무엇입니까?",
+    "c": "$ cat /proc/sys/kernel/sched_rt_period_us\n1000000\n$ cat /proc/sys/kernel/sched_rt_runtime_us\n950000",
+    "o": [
+     "1초 중 0.95초까지만 RT 태스크가 실행된다",
+     "RT 태스크는 실행된 지 0.95초가 지나면 커널이 종료한다",
+     "RT 우선순위는 95 까지만 쓸 수 있다",
+     "RT 태스크는 최대 95개다"
+    ],
+    "a": 0,
+    "w": "정답입니다. RT throttling 입니다. 무한 루프 RT 가 있어도 1초 중 50ms 는 일반 태스크(셸, sshd)에 남겨 시스템이 완전히 멈추지 않습니다.  [복습: D2-4 · throttling]"
+   },
+   {
+    "n": 4,
+    "p": "sudo ./05_rt_policy 50 이 대기하는 동안 두 번째 PuTTY 창에서 정책을 확인했습니다. 출력의 둘째 줄은 무엇입니까?",
+    "c": "$ chrt -p 2410\npid 2410's current scheduling policy: SCHED_FIFO\npid 2410's current scheduling priority: ?",
+    "o": [
+     "0",
+     "99",
+     "50",
+     "-20"
+    ],
+    "a": 2,
+    "w": "정답입니다. 05_rt_policy 50 은 SCHED_FIFO 우선순위 50 으로 바꿉니다. SCHED_OTHER 라면 우선순위는 항상 0 으로 표시됩니다.  [복습: 4교시 4-2]"
+   },
+   {
+    "n": 5,
+    "p": "06_sleep_drift 를 정상 VM(거북이 없음)에서 실행했습니다. 절대 clock_nanosleep 줄의 오차에 가장 가까운 것은 무엇입니까?",
+    "c": "$ ./06_sleep_drift\n상대 nanosleep        :   1303.0 ms (목표 1000 ms, 오차 +303.0 ms)\n절대 clock_nanosleep  :   ? ms",
+    "o": [
+     "+303 ms",
+     "-303 ms",
+     "+1000 ms",
+     "+0.1 ms"
+    ],
+    "a": 3,
+    "w": "정답: ④ +0.1 ms — 절대 시각으로 자면 이번 주기의 지연이 다음 주기로 넘어가지 않아 마지막 한 번의 지연만 남습니다.  [복습: D2-5]"
+   },
+   {
+    "n": 5,
+    "p": "다음 깨어날 시각에 1ms 를 더하는 코드입니다. 출력은 무엇입니까?",
+    "c": "struct timespec next = { .tv_sec = 5, .tv_nsec = 999500000 };\nnext.tv_nsec += 1000000;\nif (next.tv_nsec >= 1000000000L) {\n    next.tv_nsec -= 1000000000L;\n    next.tv_sec++;\n}\nprintf(\"%ld %ld\\n\", (long)next.tv_sec, next.tv_nsec);",
+    "o": [
+     "6 500000",
+     "5 1000500000",
+     "6 0",
+     "5 500000"
+    ],
+    "a": 0,
+    "w": "정답입니다. 999,500,000 + 1,000,000 = 1,000,500,000 ns 는 1초를 넘으므로 10억을 빼고(500,000) 초를 1 늘립니다(6).  [복습: 빈칸 5-1]"
+   },
+   {
+    "n": 5,
+    "p": "두 시각의 차이를 마이크로초로 계산합니다. 출력은 무엇입니까?",
+    "c": "struct timespec a = { 10, 900000000 }, b = { 12, 100000000 };\nlong long us = (b.tv_sec - a.tv_sec) * 1000000LL\n             + (b.tv_nsec - a.tv_nsec) / 1000;\nprintf(\"%lld\\n\", us);",
+    "o": [
+     "2200000",
+     "1200000",
+     "2800000",
+     "800000"
+    ],
+    "a": 1,
+    "w": "정답입니다. 초 차이 2 → 2,000,000 us, 나노초 차이 −800,000,000 → −800,000 us. 합은 1,200,000 us(1.2초)입니다. 나노초 차이가 음수여도 이렇게 더하면 맞습니다.  [복습: 5교시 5-1]"
+   },
+   {
+    "n": 6,
+    "p": "cgroup 의 cpu.max 를 아래처럼 설정했습니다. 허용되는 CPU 사용률은 얼마입니까?",
+    "c": "$ cat /sys/fs/cgroup/lab/cpu.max\n25000 100000",
+    "o": [
+     "25 %",
+     "2.5 %",
+     "75 %",
+     "250 %"
+    ],
+    "a": 0,
+    "w": "정답입니다. 100,000 us(100ms) 주기마다 25,000 us(25ms)를 쓸 수 있으므로 25 % 입니다.  [복습: D2-6]"
+   },
+   {
+    "n": 6,
+    "p": "quota 20ms / period 100ms 인 cgroup 에 busy 프로세스 2개를 넣었고, 둘은 서로 다른 CPU 에서 돕니다. 각 프로세스의 사용률은 얼마입니까?",
+    "c": "cpu.max = 20000 100000\n07_busy (CPU 0) + 07_busy (CPU 1)",
+    "o": [
+     "각 20 %",
+     "각 40 %",
+     "각 100 %",
+     "각 10 %"
+    ],
+    "a": 3,
+    "w": "정답: ④ 각 10 % — quota 는 cgroup 전체의 합입니다. 20ms 를 둘이 나눠 쓰므로 각각 10 % 입니다.  [복습: D2-6 · busy 2개]"
+   },
+   {
+    "n": 7,
+    "p": "jitter 를 -n 2000 으로 실행했습니다. 정렬된 배열에서 99 % 값을 꺼내는 인덱스는 무엇입니까?",
+    "c": "qsort(lat, loops, sizeof(long long), cmp_ll);   /* loops = 2000 */\nprintf(\"99%% %.1f\\n\", lat[loops * 99 / 100] / 1000.0);",
+    "o": [
+     "1999",
+     "1980",
+     "99",
+     "1990"
+    ],
+    "a": 1,
+    "w": "정답입니다. 2000 × 99 / 100 = 1980 입니다. 최대값은 마지막 인덱스 1999 입니다.  [복습: 빈칸 7-1]"
+   },
+   {
+    "n": 7,
+    "p": "sudo 없이 jitter 를 FIFO 로 실행하려 했습니다. 출력은 무엇입니까?",
+    "c": "$ ./jitter -f 80",
+    "o": [
+     "정책=SCHED_FIFO(80) CPU=자유 …",
+     "sched_setscheduler (sudo 필요): Invalid argument (EINVAL)",
+     "정책=SCHED_OTHER 로 대신 측정한 결과",
+     "sched_setscheduler (sudo 필요): Operation not permitted"
+    ],
+    "a": 3,
+    "w": "정답: ④ sched_setscheduler (sudo 필요): Operation not permitted — -f 는 sched_setscheduler 로 FIFO 를 설정하므로 root 가 필요합니다. jitter.c 는 perror 로 이유를 알리고 끝납니다.  [복습: 7교시 7-2]"
+   },
+   {
+    "n": 1,
+    "p": "VirtualBox VM 에서 아래 결과가 나왔습니다. 가장 유력한 원인은 무엇입니까?",
+    "c": "$ ./stallwatch 30\n멈춤 0회 …\n$ ./jitter -n 2000\n지연(us)  최소 25.0  평균 172727.6  99% 1812886.6  최대 1829993.0",
+    "o": [
+     "clock_gettime 이 고장 나 시간을 틀리게 잰다",
+     "Hyper-V 위에서 쉬던 vCPU 가 늦게 깨어난다",
+     "jitter.c 의 정렬 코드가 틀렸다",
+     "stress-ng 가 백그라운드에서 돌고 있다"
+    ],
+    "a": 1,
+    "w": "정답입니다. 쉬지 않는 stallwatch 는 정상인데 잠드는 jitter 만 수 초씩 늦습니다. Hyper-V(NEM, 초록 거북이) 위에서 idle 상태의 vCPU 가 제때 깨어나지 못하는 것이 원인입니다.  [복습: Day 2 1-0 실습 전 점검]"
+   },
+   {
+    "n": 8,
+    "p": "센서 샘플링(10ms 주기)과 AI 추론(계속 계산)을 vCPU 2개에서 함께 돌립니다. 가장 알맞은 설정은 무엇입니까?",
+    "c": null,
+    "o": [
+     "둘 다 SCHED_FIFO 99 로 같은 CPU 에",
+     "둘 다 SCHED_OTHER 로 같은 CPU 에 고정",
+     "센서는 FIFO + CPU 1, AI 는 OTHER + CPU 0",
+     "AI 는 FIFO 99, 센서는 nice 19 로 양보하게 둔다"
+    ],
+    "a": 2,
+    "w": "정답입니다. 짧고 마감이 있는 일만 RT 로, 무거운 계산은 OTHER 로 다른 CPU 에 둡니다. 99 는 커널 스레드 몫으로 남깁니다.  [복습: D2-8 · 예시 2] 이 설문지는 imguru.co.kr 내부에서 생성되었습니다.  - 양식 소유자에게 문의 양식이 의심스러운가요? 보고서 설문지 고객센터 양식 소유자에게 문의 Forms 개선 돕기 보고서"
+   }
+  ],
+  "3": [
+   {
+    "n": 1,
+    "p": "ASLR 을 끄고 01_layout 을 두 번 실행했습니다. 두 줄의 주소 관계로 알맞은 것은 무엇입니까?",
+    "c": "$ setarch -R ./01_layout | head -1\ntext   main()              0x55555555536a\n$ setarch -R ./01_layout | head -1\ntext   main()              ?",
+    "o": [
+     "0x55555555536a 로 같다",
+     "매번 다른 0x55… 주소 (ASLR 이 계속 동작)",
+     "0x7fff… 로 바뀐다",
+     "0 이 출력된다"
+    ],
+    "a": 0,
+    "w": "정답입니다. setarch -R 은 주소 무작위화(ASLR)를 끕니다. 그래서 실행할 때마다 같은 주소가 나옵니다.  [복습: D3-1 · ASLR]"
+   },
+   {
+    "n": 1,
+    "p": "/proc/self/maps 의 아래 줄은 어느 영역입니까?",
+    "c": "558e243e6000-558e243e7000 r-xp 00001000 fe:00 589833   …/01_layout",
+    "o": [
+     "data",
+     "heap (malloc 이 늘리는 영역)",
+     "text (기계어 코드)",
+     "stack"
+    ],
+    "a": 2,
+    "w": "정답입니다. 실행 파일에서 매핑된 r-xp(읽기 · 실행) 영역은 기계어 코드인 text 입니다.  [복습: 1교시 1-2 표]"
+   },
+   {
+    "n": 2,
+    "p": "기본 설정에서 256KB 를 malloc 했습니다. 판정 줄의 출력은 무엇입니까?",
+    "c": "$ ./02_malloc_path 256\nmalloc(256 KB) = 0x7f44c545f010\n판정: ?",
+    "o": [
+     "heap (brk 영역 — free 해도 glibc 가 보관해 다시 쓰는 영역)",
+     "stack",
+     "mmap (독립된 영역 — free 하면 munmap 으로 바로 반환)",
+     "rodata"
+    ],
+    "a": 2,
+    "w": "정답입니다. 128KB 이상은 mmap 으로 받습니다. 주소도 heap(0x55…)이 아닌 0x7f… 입니다.  [복습: D3-2]"
+   },
+   {
+    "n": 2,
+    "p": "mallopt 로 기준을 512KB 로 올리고 256KB 를 malloc 했습니다. heap 끝의 변화는 무엇입니까?",
+    "c": "$ ./02_malloc_path 256 512\nheap 끝(brk): 0x55fda4451000 → 0x55fda4491000  (?)",
+    "o": [
+     "+0 KB",
+     "+128 KB",
+     "+256 KB",
+     "+512 KB"
+    ],
+    "a": 2,
+    "w": "정답입니다. 기준 미만이 되었으므로 brk 로 heap 을 256KB 늘려서 줍니다. 0x40000 = 256KB 입니다.  [복습: 빈칸 2-1]"
+   },
+   {
+    "n": 2,
+    "p": "256KB 를 요청했는데 strace 에 266240 바이트가 매핑됐습니다. 그 이유는 무엇입니까?",
+    "c": "mmap(NULL, 266240, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fcd6e6e7000",
+    "o": [
+     "커널이 mmap 할 때마다 항상 10KB 를 덧붙여 주어서",
+     "256KB 가 아니라 260KB 를 요청해서",
+     "strace 가 크기를 잘못 보여 줘서",
+     "관리용 머리를 더하고 4KB 단위로 올림해서"
+    ],
+    "a": 3,
+    "w": "정답입니다. glibc 가 블록 앞에 크기 정보를 두고, mmap 은 페이지(4KB) 단위로만 매핑하기 때문입니다.  [복습: 2교시 2-2]"
+   },
+   {
+    "n": 3,
+    "p": "03_demand 에서 malloc(100MB) 직후의 VmRSS 에 가장 가까운 값은 무엇입니까? (시작 1412 kB)",
+    "c": "시작                             VmSize    2692 kB  VmRSS    1412 kB\nmalloc(100MB) 직후               VmSize  105096 kB  VmRSS       ?",
+    "o": [
+     "약 1,736 kB",
+     "약 103,000 kB",
+     "약 52,000 kB",
+     "약 0 kB"
+    ],
+    "a": 0,
+    "w": "정답: ① 약 1,736 kB — malloc 은 주소만 예약하므로 VmSize 만 100MB 늘고 VmRSS 는 거의 그대로입니다.  [복습: D3-3 · ① malloc]"
+   },
+   {
+    "n": 3,
+    "p": "아래 루프를 실행하면 minor page fault 는 약 몇 번 늘어납니까? (페이지 4KB)",
+    "c": "char *p = malloc(100 * MB);\nfor (long i = 0; i < 50 * MB; i += 4096)\n    p[i] = 1;",
+    "o": [
+     "약 12,800",
+     "약 50",
+     "약 51,200",
+     "약 25,600"
+    ],
+    "a": 0,
+    "w": "정답입니다. 50MB / 4KB = 12800 페이지를 처음 만지므로 fault 도 약 12800번입니다. 실측 +12811.  [복습: 3교시 예제 03]"
+   },
+   {
+    "n": 3,
+    "p": "03_demand 에서 memset 100MB 까지 끝낸 뒤의 VmRSS 에 가장 가까운 값은 무엇입니까?",
+    "c": "memset 100MB                     VmSize  105096 kB  VmRSS       ?",
+    "o": [
+     "약 1,736 kB",
+     "약 52,932 kB",
+     "약 104,136 kB",
+     "약 205,000 kB"
+    ],
+    "a": 2,
+    "w": "정답입니다. 100MB 전체를 만졌으므로 기본 사용량에 100MB 가 더해집니다.  [복습: D3-3 · ③ memset]"
+   },
+   {
+    "n": 4,
+    "p": "04_mmap_upper 를 private 모드로 실행한 뒤 cat 했습니다. 출력은 무엇입니까?",
+    "c": "$ echo \"hello mmap world\" > test.txt\n$ ./04_mmap_upper test.txt private\n$ cat test.txt",
+    "o": [
+     "HELLO MMAP WORLD",
+     "hello mmap world",
+     "빈 줄",
+     "Hello Mmap World"
+    ],
+    "a": 1,
+    "w": "정답입니다. MAP_PRIVATE 는 쓰는 순간 내 복사본이 생겨 파일은 그대로입니다.  [복습: D3-4 · MAP_PRIVATE]"
+   },
+   {
+    "n": 4,
+    "p": "mmap 실패를 올바르게 검사하는 코드는 무엇입니까?",
+    "c": "char *p = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);\nif ( ? ) { perror(\"mmap\"); return 1; }",
+    "o": [
+     "p == NULL || errno != 0",
+     "p == MAP_FAILED",
+     "p == 0",
+     "p < 0"
+    ],
+    "a": 1,
+    "w": "정답입니다. mmap 은 실패하면 NULL 이 아니라 MAP_FAILED((void *)-1)를 돌려줍니다.  [복습: 빈칸 4-1]"
+   },
+   {
+    "n": 5,
+    "p": "50MB 버퍼를 가진 부모가 fork 한 뒤, 자식이 10 % 를 페이지마다 썼습니다. 출력의 minflt 는 무엇입니까?",
+    "c": "$ ./05_cow 10\n자식이  10 % ( 1280 페이지) 씀 → minflt ?",
+    "o": [
+     "+1280",
+     "+0",
+     "+12800",
+     "+128"
+    ],
+    "a": 0,
+    "w": "정답입니다. 쓴 페이지만 복사되므로 fault 수가 쓴 페이지 수와 정확히 같습니다.  [복습: D3-5]"
+   },
+   {
+    "n": 5,
+    "p": "부모가 buf 를 1 로 채우고 fork 했고, 자식이 buf[0] = 2 를 쓴 뒤 끝났습니다. 부모가 wait 후 출력하는 값은 무엇입니까?",
+    "c": "memset(buf, 1, SIZE);\nif (fork() == 0) { buf[0] = 2; exit(0); }\nwait(NULL);\nprintf(\"%d\\n\", buf[0]);",
+    "o": [
+     "2",
+     "0",
+     "1",
+     "정의되지 않음"
+    ],
+    "a": 2,
+    "w": "정답입니다. 자식이 쓰는 순간 그 페이지가 자식용으로 복사되므로 부모의 값은 1 그대로입니다.  [복습: 5교시 5-2]"
+   },
+   {
+    "n": 6,
+    "p": "sudo 로 06_mlock lock 을 실행했습니다. 루프 중 minflt 에 가장 가까운 값은 무엇입니까?",
+    "c": "$ sudo ./06_mlock lock\nmlockall     malloc 중 minflt  +8226 | 루프 중 minflt     ? | 루프 시간   0.12 ms",
+    "o": [
+     "+8194",
+     "+1",
+     "+16384",
+     "+4097"
+    ],
+    "a": 1,
+    "w": "정답입니다. MCL_FUTURE 로 malloc 시점에 페이지를 모두 확보했으므로 루프 안에서는 fault 가 거의 없습니다.  [복습: D3-6 · mlockall]"
+   },
+   {
+    "n": 6,
+    "p": "ulimit -l 이 8192 인 일반 사용자가 sudo 없이 06_mlock lock 을 실행했습니다. 출력은 무엇입니까?",
+    "c": "$ ulimit -l\n8192\n$ ./06_mlock lock",
+    "o": [
+     "mlockall (sudo 필요): Operation not permitted",
+     "malloc (MCL_FUTURE 잠금 한도 초과 — sudo 로 실행): Cannot allocate memory",
+     "mlockall malloc 중 minflt +8226 | 루프 중 minflt +1 | 루프 시간 0.12 ms | VmLck 35432 kB",
+     "Segmentation fault"
+    ],
+    "a": 1,
+    "w": "정답: ② malloc (MCL_FUTURE 잠금 한도 초과 — sudo 로 실행): Cannot allocate memory — mlockall 자체는 성공하지만 MCL_FUTURE 때문에 32MB malloc 이 8MB 한도를 넘어 NULL 이 됩니다.  [복습: 6교시 6-1]"
+   },
+   {
+    "n": 6,
+    "p": "MemoryMax=100M cgroup 에서 07_oom 을 실행했습니다. 마지막에 셸에 나오는 메시지는 무엇입니까?",
+    "c": "$ sudo systemd-run --scope -p MemoryMax=100M -p MemorySwapMax=0 ./07_oom\n  …\n  90 MB 사용, VmRSS  93800 kB\n?",
+    "o": [
+     "malloc 실패 (100 MB 째)",
+     "Segmentation fault",
+     "Aborted",
+     "Killed"
+    ],
+    "a": 3,
+    "w": "정답: ④ Killed — 기본 overcommit 에서는 malloc 이 성공하고, 실제로 쓰다가 한도에 닿아 OOM killer 의 SIGKILL 로 끝납니다.  [복습: D3-6 · OOM]"
+   },
+   {
+    "n": 6,
+    "p": "overcommit_memory 가 기본값(0)일 때 메모리 부족이 주로 드러나는 시점은 언제입니까?",
+    "c": null,
+    "o": [
+     "malloc 이 NULL 을 돌려줄 때 (항상 미리 알려 준다)",
+     "프로그램을 컴파일할 때",
+     "fork 할 때 항상",
+     "할당한 메모리를 실제로 쓸 때"
+    ],
+    "a": 3,
+    "w": "정답입니다. 리눅스는 기본적으로 RAM 보다 많은 할당을 허락하고, 실제 사용 순간 부족하면 OOM killer 가 동작합니다.  [복습: 6교시 6-2]"
+   },
+   {
+    "n": 7,
+    "p": "도구 없이 08_bugs 를 double 모드로 실행했습니다. 종료 코드는 무엇입니까?",
+    "c": "$ ./08_bugs double\nfree(): double free detected in tcache 2\nAborted\n$ echo $?",
+    "o": [
+     "0",
+     "134",
+     "139",
+     "1"
+    ],
+    "a": 1,
+    "w": "정답입니다. glibc 가 double free 를 감지해 abort 합니다. SIGABRT(6) 로 죽었으므로 128 + 6 = 134 입니다.  [복습: D3-7 · double]"
+   },
+   {
+    "n": 7,
+    "p": "도구 없이 08_bugs 를 uaf 모드로 실행했습니다. 종료 코드는 무엇입니까?",
+    "c": "$ ./08_bugs uaf\n해제 후 읽기: 1691581237\n$ echo $?",
+    "o": [
+     "0",
+     "134",
+     "139",
+     "1"
+    ],
+    "a": 0,
+    "w": "정답: ① 0 — 해제된 메모리의 쓰레기 값을 출력하고 정상 종료합니다. 이렇게 조용히 지나가서 도구가 필요합니다.  [복습: D3-7 · uaf]"
+   },
+   {
+    "n": 7,
+    "p": "valgrind 로 08_bugs leak 을 검사했습니다. 누수를 알리는 줄은 무엇입니까?",
+    "c": "$ valgrind --leak-check=full ./08_bugs leak",
+    "o": [
+     "Invalid read of size 4 at 0x109280: leak (08_bugs.c:13)",
+     "attempting double-free",
+     "heap-buffer-overflow",
+     "100 bytes in 1 blocks are definitely lost"
+    ],
+    "a": 3,
+    "w": "정답: ④ 100 bytes in 1 blocks are definitely lost — free 하지 않은 100 바이트가 definitely lost 로 보고되고, 할당한 줄(08_bugs.c:13)까지 나옵니다.  [복습: D3-7 · valgrind]"
+   },
+   {
+    "n": 8,
+    "p": "memlab demand 를 64MB 로 실행했습니다. minflt 열에 가장 가까운 값은 무엇입니까?",
+    "c": "$ ./memlab demand\nexp,size_mb,minflt,majflt,rss_kb,ms\ndemand,64,?,0,67012,25.03",
+    "o": [
+     "약 64",
+     "약 4,096",
+     "약 65,536",
+     "약 16,384"
+    ],
+    "a": 3,
+    "w": "정답입니다. 64MB / 4KB = 16384 페이지를 처음 만지므로 fault 도 약 16384번입니다. 실측 16393.  [복습: D3-8] 이 설문지는 imguru.co.kr 내부에서 생성되었습니다. 양식이 의심스러운가요? 보고서 설문지 고객센터 양식 소유자에게 문의 Forms 개선 돕기 보고서"
+   }
+  ],
+  "4": [
+   {
+    "n": 1,
+    "p": "0 · 1 · 2 가 열려 있는 프로세스에서 아래 코드를 실행했습니다. 출력은 무엇입니까?",
+    "c": "int a = open(\"/etc/hostname\", O_RDONLY);\nint b = open(\"out.txt\", O_WRONLY | O_CREAT, 0644);\nclose(a);\nint c = open(\"/etc/os-release\", O_RDONLY);\nprintf(\"%d %d %d\\n\", a, b, c);",
+    "o": [
+     "3 4 3",
+     "3 4 5",
+     "0 1 2",
+     "3 4 4"
+    ],
+    "a": 0,
+    "w": "정답입니다. open 은 비어 있는 가장 작은 번호를 줍니다. a 를 닫아 3 이 비었으므로 c 는 다시 3 입니다.  [복습: D4-1 · close(3) 후 open]"
+   },
+   {
+    "n": 1,
+    "p": "mycp 의 루프가 끝나는 조건으로 알맞은 것은 무엇입니까?",
+    "c": "while ((n = read(in, buf, sizeof(buf))) > 0) {\n    write(out, buf, n);\n}",
+    "o": [
+     "read 가 -1 을 돌려줄 때만 (0 은 계속 읽는다)",
+     "read 가 0(EOF) 또는 -1(오류)을 돌려줄 때",
+     "buf 가 가득 찼을 때",
+     "write 가 0 을 돌려줄 때"
+    ],
+    "a": 1,
+    "w": "정답입니다. read 는 파일 끝에서 0, 오류면 -1 입니다. 둘 다 0 보다 크지 않으므로 루프가 끝납니다.  [복습: 1교시 1-3]"
+   },
+   {
+    "n": 1,
+    "p": "셸이 ./prog > out.txt 를 실행할 때 자식 프로세스 안에서 하는 일은 무엇입니까?",
+    "c": null,
+    "o": [
+     "prog 가 실행된 뒤 스스로 out.txt 를 연다",
+     "커널이 prog 의 출력을 복사해 둔다",
+     "out.txt 를 열어 dup2(fd, 1) 한 뒤 exec",
+     "printf 를 fprintf 로 바꿔 컴파일한다"
+    ],
+    "a": 2,
+    "w": "정답입니다. 셸은 fork 한 자식에서 파일을 열고 dup2 로 fd 1 에 붙인 뒤 exec 합니다. prog 는 바뀐 줄 모르고 fd 1 에 씁니다.  [복습: D4-1 · dup2]"
+   },
+   {
+    "n": 2,
+    "p": "a.txt 의 하드 링크와 심볼릭 링크를 만든 뒤 a.txt 를 지웠습니다. 두 cat 의 결과로 알맞은 것은 무엇입니까?",
+    "c": "$ echo hi > a.txt ; ln a.txt hard.txt ; ln -s a.txt soft.txt\n$ rm a.txt\n$ cat hard.txt ; cat soft.txt",
+    "o": [
+     "둘 다 hi",
+     "둘 다 No such file or directory (데이터가 지워져서)",
+     "hard.txt 는 오류, soft.txt 는 hi",
+     "hard.txt 는 hi, soft.txt 는 No such file or directory"
+    ],
+    "a": 3,
+    "w": "정답입니다. hard.txt 는 같은 inode 를 가리켜 그대로 읽히고, soft.txt 는 \"a.txt\" 라는 이름을 찾지 못해 깨집니다.  [복습: D4-2 · rm 후 cat]"
+   },
+   {
+    "n": 2,
+    "p": "아래 ls -li 결과에서 링크 수(세 번째 열)가 2 인 이유는 무엇입니까?",
+    "c": "2801873 -rw-r--r-- 2 ubuntu ubuntu 3 … a.txt\n2801873 -rw-r--r-- 2 ubuntu ubuntu 3 … hard.txt",
+    "o": [
+     "같은 inode 를 가리키는 이름이 둘이라서",
+     "파일이 2 바이트라서",
+     "두 번 수정되어서",
+     "a.txt 를 가리키는 심볼릭 링크가 두 개 있어서"
+    ],
+    "a": 0,
+    "w": "정답: ① 같은 inode 를 가리키는 이름이 둘이라서 — 하드 링크는 inode 에 이름을 하나 더 붙입니다. 링크 수가 0 이 되어야 데이터가 해제됩니다.  [복습: 2교시 2-2]"
+   },
+   {
+    "n": 3,
+    "p": "8MB 파일을 1 바이트 버퍼로 복사했습니다. 시스템 콜 수에 가장 가까운 값은 무엇입니까?",
+    "c": "$ ./03_copybench src.bin 1\n버퍼       1 B        :   3898.5 ms  시스템 콜  ?",
+    "o": [
+     "8,192 번",
+     "16,777,216 번",
+     "4,096 번",
+     "256 번"
+    ],
+    "a": 1,
+    "w": "정답입니다. 8,388,608 바이트를 한 바이트씩 read 하고 write 하므로 약 1,677만 번입니다.  [복습: D4-3 · 1 B]"
+   },
+   {
+    "n": 3,
+    "p": "4096 B 버퍼로 8MB 를 복사하며 strace -c 로 셌습니다. read 호출 수에 가장 가까운 것은 무엇입니까?",
+    "c": "$ strace -c ./03_copybench src.bin 4096",
+    "o": [
+     "약 4",
+     "약 4,096",
+     "약 2,050",
+     "약 16,777,216"
+    ],
+    "a": 2,
+    "w": "정답: ③ 약 2,050 — 8MB / 4KB = 2048 번에 EOF 확인 1번과 시작 과정의 read 가 더해져 2050 입니다(실측).  [복습: 3교시 3-1]"
+   },
+   {
+    "n": 3,
+    "p": "03_copybench 에서 4096 B 에 fsync 를 켜자 50배 느려졌습니다. 이유는 무엇입니까?",
+    "c": "버퍼    4096 B        :      4.4 ms\n버퍼    4096 B +fsync :    233.4 ms",
+    "o": [
+     "fsync 가 시스템 콜을 1000배 늘려서",
+     "fsync 가 page cache 를 지워서",
+     "fsync 가 데이터를 page cache 와 디스크에 두 번 복사해서",
+     "write 마다 디스크 기록이 끝날 때까지 기다려서"
+    ],
+    "a": 3,
+    "w": "정답입니다. write 는 page cache 에 넣고 바로 돌아오지만 fsync 는 디스크까지 기다립니다. 시스템 콜은 1.5배뿐입니다.  [복습: 3교시 3-2]"
+   },
+   {
+    "n": 4,
+    "p": "dd 로 big.bin 을 쓴 직후 drop 했는데 Cached 가 줄지 않았습니다. 이유는 무엇입니까?",
+    "c": "$ dd if=/dev/urandom of=big.bin bs=1M count=500\n$ ./04_pagecache big.bin drop",
+    "o": [
+     "막 쓴 페이지가 dirty 라 버릴 수 없어서",
+     "posix_fadvise 는 root 로 실행해야만 동작해서",
+     "big.bin 이 너무 커서",
+     "drop 은 재부팅 후 적용돼서"
+    ],
+    "a": 0,
+    "w": "정답입니다. 디스크에 기록되지 않은 dirty 페이지를 버리면 데이터가 사라지므로 커널이 버리지 않습니다. sync 후 drop 하면 줄어듭니다.  [복습: D4-4 · dirty]"
+   },
+   {
+    "n": 4,
+    "p": "sync · drop 뒤 big.bin 을 두 번 읽었습니다. 두 번째 읽기에 대해 옳은 것은 무엇입니까?",
+    "c": "200 MB 읽기:     55.2 ms   Cached +204800 kB\n200 MB 읽기:     ? ms   Cached ?",
+    "o": [
+     "첫 번째보다 느리고 Cached 가 200MB 더 늘어난다",
+     "RAM 에서 읽어 더 빠르고 Cached 는 늘지 않는다",
+     "디스크에서 다시 읽어 시간이 같다",
+     "Cached 가 0 이 된다"
+    ],
+    "a": 1,
+    "w": "정답입니다. 첫 읽기로 page cache 에 올라와 두 번째는 RAM 에서 나옵니다. 실측 27.0 ms, Cached +0.  [복습: 4교시 4-2]"
+   },
+   {
+    "n": 5,
+    "p": "05_inotify 가 감시하는 watch 에서 아래 명령을 실행했습니다. 나오는 이벤트 순서는 무엇입니까?",
+    "c": "$ echo hi > watch/a.txt",
+    "o": [
+     "MODIFY → CREATE → CLOSE_WRITE",
+     "CLOSE_WRITE 하나만",
+     "CREATE → MODIFY → CLOSE_WRITE",
+     "CREATE 하나만"
+    ],
+    "a": 2,
+    "w": "정답입니다. 파일이 생기고(CREATE), 써지고(MODIFY), 쓰기로 연 파일이 닫힙니다(CLOSE_WRITE).  [복습: 5교시 5-1]"
+   },
+   {
+    "n": 5,
+    "p": "FileZilla 로 큰 파일을 올릴 때 \"업로드 완료\" 를 판단하기에 알맞은 이벤트는 무엇입니까?",
+    "c": null,
+    "o": [
+     "IN_CREATE",
+     "IN_MODIFY",
+     "IN_ACCESS",
+     "IN_CLOSE_WRITE"
+    ],
+    "a": 3,
+    "w": "정답입니다. 큰 파일은 MODIFY 가 여러 번 옵니다. 쓰기를 마치고 닫을 때 오는 CLOSE_WRITE 에서 처리합니다.  [복습: D4-5 · 업로드]"
+   },
+   {
+    "n": 6,
+    "p": "네트워크 장치 enp0s3 가 받은 바이트 수를 읽는 경로는 무엇입니까?",
+    "c": null,
+    "o": [
+     "/sys/class/net/enp0s3/statistics/rx_bytes",
+     "/proc/net/dev/enp0s3/statistics/rx_bytes_total",
+     "/dev/enp0s3/rx_bytes",
+     "/sys/block/enp0s3/stat"
+    ],
+    "a": 0,
+    "w": "정답: ① /sys/class/net/enp0s3/statistics/rx_bytes — /sys/class/net 아래 장치마다 디렉터리가 있고 statistics 안에 rx_bytes 가 있습니다.  [복습: D4-6 · rx_bytes]"
+   },
+   {
+    "n": 6,
+    "p": "VirtualBox VM 에서 06_sysread 의 온도 줄이 아래처럼 나온 이유는 무엇입니까?",
+    "c": "온도                  : thermal_zone 없음 (VirtualBox VM 에는 온도 센서가 없다)",
+    "o": [
+     "sudo 로 실행하지 않아서",
+     "VM 에는 온도 센서 장치가 없어서",
+     "thermal 모듈을 insmod 해야 해서",
+     "온도는 /proc 에만 있어서"
+    ],
+    "a": 1,
+    "w": "정답입니다. 가상 하드웨어에는 센서가 없습니다. 실제 보드에서는 같은 코드로 thermal_zone0/temp 를 읽습니다.  [복습: 6교시 6-2]"
+   },
+   {
+    "n": 7,
+    "p": "모듈을 적재한 뒤 숫자가 아닌 값을 썼습니다. 출력은 무엇입니까?",
+    "c": "$ sudo insmod module/mysysfs.ko\n$ echo abc | sudo tee /sys/kernel/mysysfs/value",
+    "o": [
+     "tee: /sys/kernel/mysysfs/value: Permission denied",
+     "abc 가 그대로 저장된다",
+     "tee: /sys/kernel/mysysfs/value: Invalid argument",
+     "커널 패닉으로 VM 이 멈춘다"
+    ],
+    "a": 2,
+    "w": "정답입니다. store 콜백의 kstrtoint 가 실패해 -EINVAL 을 돌려주고, 그것이 사용자 쪽 write 오류가 됩니다.  [복습: D4-7 · echo abc]"
+   },
+   {
+    "n": 7,
+    "p": "insmod 직후 아래 명령을 차례로 실행했습니다. 마지막 출력은 무엇입니까?",
+    "c": "$ echo 42 | sudo tee /sys/kernel/mysysfs/value\n$ echo abc | sudo tee /sys/kernel/mysysfs/value   # 실패\n$ cat /sys/kernel/mysysfs/writes",
+    "o": [
+     "0",
+     "2",
+     "42",
+     "1"
+    ],
+    "a": 3,
+    "w": "정답: ④ 1 — writes 는 store 가 성공할 때만 늘어납니다. abc 는 실패했으므로 1 입니다.  [복습: D4-7 · writes]"
+   },
+   {
+    "n": 7,
+    "p": "mysysfs 모듈 코드에서 printf 대신 pr_info 를 쓰는 이유는 무엇입니까?",
+    "c": null,
+    "o": [
+     "모듈은 커널 안에서 실행되어 C 라이브러리를 쓸 수 없어서",
+     "pr_info 가 printf 보다 빠르고 화면에도 바로 출력돼서",
+     "printf 는 root 만 쓸 수 있어서",
+     "pr_info 가 파일에 자동 저장해서"
+    ],
+    "a": 0,
+    "w": "정답입니다. 커널 코드에는 glibc 가 없습니다. pr_info 출력은 커널 로그에 쌓여 dmesg 로 봅니다.  [복습: 7교시 7-1]"
+   },
+   {
+    "n": 8,
+    "p": "/sys/block/sda/stat 의 쓴 섹터 수가 1초에 204800 늘었습니다. 디스크 쓰기 속도는 얼마입니까?",
+    "c": null,
+    "o": [
+     "204,800 KB/s",
+     "102,400 KB/s",
+     "400 KB/s",
+     "51,200 KB/s"
+    ],
+    "a": 1,
+    "w": "정답: ② 102,400 KB/s — 섹터는 512 바이트입니다. 204800 × 512 / 1024 = 102,400 KB/s (100 MB/s).  [복습: 8교시 8-1]"
+   },
+   {
+    "n": 8,
+    "p": "sysmon 이 CPU 사용률을 /proc/stat 을 두 번 읽은 차이로 계산하는 이유는 무엇입니까?",
+    "c": null,
+    "o": [
+     "한 번 읽으면 값이 틀려서",
+     "권한 때문에 두 번 읽어야 해서",
+     "/proc/stat 이 1초마다 0 으로 초기화돼서",
+     "/proc/stat 의 값이 부팅 후 누적값이라서"
+    ],
+    "a": 3,
+    "w": "정답입니다. 누적값이므로 두 시점의 차이로 구간 사용률을 구합니다: (Δ전체 − Δidle) / Δ전체.  [복습: 8교시 8-1 표]"
+   },
+   {
+    "n": 8,
+    "p": "sysmon 이 메모리 사용량을 MemTotal − MemAvailable 로 계산하는 이유는 무엇입니까?",
+    "c": null,
+    "o": [
+     "MemFree 는 root 만 읽을 수 있어서",
+     "MemAvailable 이 항상 MemTotal 보다 커서 음수를 막으려고",
+     "page cache 같은 회수 가능한 메모리를 빼려고",
+     "MemFree 에 스왑이 포함돼서"
+    ],
+    "a": 2,
+    "w": "정답: ③ page cache 같은 회수 가능한 메모리를 빼려고 — MemFree 는 page cache 가 크면 작게 보입니다. MemAvailable 은 실제로 더 쓸 수 있는 양을 추정합니다.  [복습: 8교시 확인 2] 이 설문지는 imguru.co.kr 내부에서 생성되었습니다.  - 양식 소유자에게 문의 양식이 의심스러운가요? 보고서 설문지 고객센터 양식 소유자에게 문의 Forms 개선 돕기 보고서"
+   }
+  ],
+  "5": [
+   {
+    "n": 1,
+    "p": "01_threads 는 main 에서 쓰레드 3개를 만들고 각자 PID 와 TID 를 출력합니다. 출력에 대해 옳은 것은 무엇입니까?",
+    "c": null,
+    "o": [
+     "PID 는 쓰레드마다 다르고 TID 는 모두 같다",
+     "PID 와 TID 가 모두 쓰레드마다 다르다",
+     "PID 는 모두 같고 TID 는 쓰레드마다 다르다",
+     "PID 와 TID 가 모두 main 과 똑같다"
+    ],
+    "a": 2,
+    "w": "정답입니다. 쓰레드는 같은 프로세스 안의 실행 흐름이라 PID(=TGID)는 같고, 커널이 쓰레드마다 다른 TID 를 줍니다. 실측: PID=382, TID=383·384·385.  [복습: D5-1 · 프로세스 안의 쓰레드]"
+   },
+   {
+    "n": 1,
+    "p": "전역 변수 g_value 가 있는 프로그램에서 아래 코드를 실행했습니다. 출력은 무엇입니까?",
+    "c": "g_value = 30;\npid_t pid = fork();\nif (pid == 0) {\n    g_value += 1000;\n    printf(\"자식: %d\\n\", g_value);\n    exit(0);\n}\nwait(NULL);\nprintf(\"부모: %d\\n\", g_value);",
+    "o": [
+     "자식: 1030, 부모: 30",
+     "자식: 1030, 부모: 1030",
+     "자식: 1000, 부모: 30",
+     "자식: 30, 부모: 1030"
+    ],
+    "a": 0,
+    "w": "정답입니다. fork 는 주소 공간을 복사(COW)하므로 자식이 바꾼 값은 부모에게 보이지 않습니다. 쓰레드였다면 같은 변수를 공유합니다.  [복습: D5-1 · fork 는 복사]"
+   },
+   {
+    "n": 1,
+    "p": "아래 코드의 출력은 무엇입니까?",
+    "c": "static void *worker(void *arg) {\n    long id = (long)arg;\n    return (void *)(id * 100);\n}\n/* main */\npthread_t t;\npthread_create(&t, NULL, worker, (void *)2L);\nvoid *ret;\npthread_join(t, &ret);\nprintf(\"%ld\\n\", (long)ret);",
+    "o": [
+     "2",
+     "100",
+     "0",
+     "200"
+    ],
+    "a": 3,
+    "w": "정답: ④ 200 — 쓰레드 함수의 반환값은 pthread_join 의 두 번째 인자로 받습니다. 인자 2 × 100 = 200 (01_threads 의 join 반환값 100/200/300 과 같은 원리).  [복습: 1교시 1-2 · pthread_join]"
+   },
+   {
+    "n": 2,
+    "p": "보호 없이 쓰레드 2개가 counter++ 를 100만 번씩 합니다. 결과로 알맞은 것은 무엇입니까?",
+    "c": "$ ./02_race 2 1000000 none",
+    "o": [
+     "항상 정확히 2,000,000 이 나온다",
+     "실행마다 다르고 2,000,000 이하가 나온다",
+     "항상 정확히 1,000,000 이 나온다",
+     "2,000,000 보다 큰 값이 나올 때가 많다"
+    ],
+    "a": 1,
+    "w": "정답입니다. 증가가 겹치면 하나가 사라지므로 기대값보다 작고, 끼어드는 시점이 매번 달라 결과도 달라집니다. 실측: 실제 1,799,407 (잃어버림 200,593).  [복습: D5-2 · counter++ 사이에 끼어들기]"
+   },
+   {
+    "n": 2,
+    "p": "objdump 로 보면 counter++ 는 아래 세 명령입니다. 증가가 사라지는 이유는 무엇입니까?",
+    "c": "mov  0x2ee5(%rip),%rax   # 읽기\nadd  $0x1,%rax           # 더하기\nmov  %rax,0x2ee5(%rip)   # 쓰기",
+    "o": [
+     "CPU 캐시가 가끔 counter 값을 지워 0 으로 만들어서",
+     "volatile 이라 컴파일러가 증가 일부를 몰래 생략해서",
+     "쓰레드가 끝날 때마다 counter 가 0 으로 돌아가서",
+     "세 명령 사이에 다른 쓰레드가 끼어들어 같은 값을 덮어써서"
+    ],
+    "a": 3,
+    "w": "정답입니다. 두 쓰레드가 같은 값(예: 5)을 읽고 각각 6 을 쓰면 증가 한 번이 사라집니다. 세 명령이 한 덩어리로 실행되지 않기 때문입니다.  [복습: D5-2 · mov / add / mov]"
+   },
+   {
+    "n": 2,
+    "p": "네 방식으로 2 × 1,000,000 번 증가시켰습니다. 결과가 정확하면서 가장 빠른 방식은 무엇입니까?",
+    "c": "$ for m in none mutex atomic spin; do ./02_race 2 1000000 $m; done",
+    "o": [
+     "none",
+     "atomic",
+     "mutex",
+     "spinlock"
+    ],
+    "a": 1,
+    "w": "정답입니다. none 은 가장 빠르지만 결과가 틀립니다. 정확한 셋 중 atomic 은 잠금 없이 한 명령(lock add)으로 끝나 가장 빠릅니다. 실측: none 3.2 · atomic 34.2 · mutex 60.7 · spin 82.9 ms.  [복습: 2교시 측정 표]"
+   },
+   {
+    "n": 3,
+    "p": "아래 쓰레드 함수에서 unlock 을 빠뜨렸습니다. 실행하면 어떻게 됩니까?",
+    "c": "static void *w(void *a) {\n    for (int i = 0; i < 3; i++) {\n        pthread_mutex_lock(&mtx);\n        counter++;\n        printf(\"i=%d\\n\", i);\n        /* pthread_mutex_unlock(&mtx); 빠뜨림 */\n    }\n    return NULL;\n}",
+    "o": [
+     "i=0 만 출력하고 두 번째 lock 에서 영원히 멈춘다",
+     "i=0, 1, 2 를 출력하고 정상 종료한다",
+     "두 번째 lock 이 실패(-1)를 돌려주고 계속 진행한다",
+     "커널이 3초 뒤 mutex 를 자동으로 풀어 준다"
+    ],
+    "a": 0,
+    "w": "정답입니다. 기본 mutex 는 이미 잠긴 것을 같은 쓰레드가 다시 잡으면 풀릴 때까지 기다리고, 풀 쓰레드가 없으니 영원히 멈춥니다. 실측: i=0 출력 후 정지(timeout).  [복습: 3교시 3-1]"
+   },
+   {
+    "n": 3,
+    "p": "03_deadlock 은 t1 이 A→B, t2 가 B→A 순서로 mutex 를 잡습니다(사이에 usleep 0.1초). 실행 결과는 무엇입니까?",
+    "c": "$ ./03_deadlock\n$ echo $?",
+    "o": [
+     "\"정상 종료 (잠금 순서를 A→B 로 통일)\" 후 0",
+     "커널이 한 쓰레드의 잠금을 풀어 정상 종료한다",
+     "3초 뒤 감시자가 \"교착(deadlock)\" 을 알리고 1 로 끝난다",
+     "Segmentation fault (core dumped) 후 139"
+    ],
+    "a": 2,
+    "w": "정답입니다. t1 은 A 를 쥐고 B 를, t2 는 B 를 쥐고 A 를 기다려 둘 다 영원히 멈춥니다. alarm(3) 감시자가 메시지를 찍고 종료 코드 1 로 끝냅니다.  [복습: D5-3 · 잠금은 순서가 중요하다]"
+   },
+   {
+    "n": 3,
+    "p": "03_deadlock 의 교착을 없애는 가장 확실한 방법은 무엇입니까?",
+    "c": null,
+    "o": [
+     "mutex 변수를 volatile 로 선언한다",
+     "모든 쓰레드가 A→B 처럼 같은 순서로 잠근다",
+     "t2 를 SCHED_FIFO 로 바꿔 먼저 실행되게 한다",
+     "두 lock 사이의 usleep 을 더 길게 넣는다"
+    ],
+    "a": 1,
+    "w": "정답입니다. 잠금 순서를 하나로 정하면 순환 대기가 생길 수 없습니다(./03_deadlock fixed). 우선순위나 sleep 은 타이밍만 바꿀 뿐입니다.  [복습: D5-3 · fixed]"
+   },
+   {
+    "n": 4,
+    "p": "소비자 코드에서 pthread_cond_wait 를 if 가 아니라 while 로 감싸는 이유는 무엇입니까?",
+    "c": "pthread_mutex_lock(&m);\nwhile (count == 0)\n    pthread_cond_wait(&not_empty, &m);\nint v = buf[head];",
+    "o": [
+     "while 이 if 보다 빠르게 컴파일되어서",
+     "cond_wait 가 mutex 를 풀지 않아 반복이 필요해서",
+     "while 이 없으면 컴파일 오류가 나서",
+     "깨어났을 때 조건이 여전히 참인지 다시 확인해야 해서"
+    ],
+    "a": 3,
+    "w": "정답입니다. 가짜 깨어남(spurious wakeup)이 있고, 다른 소비자가 먼저 값을 가져갈 수도 있습니다. 깨어나면 조건을 다시 검사해야 합니다.  [복습: 4교시 4-1]"
+   },
+   {
+    "n": 4,
+    "p": "pthread_cond_wait(&cond, &m) 가 하는 일로 옳은 것은 무엇입니까?",
+    "c": null,
+    "o": [
+     "m 을 풀고 잠들었다가 깨어나면 다시 잡고 돌아온다",
+     "m 을 쥔 채로 잠들어 다른 쓰레드가 못 들어오게 막는다",
+     "m 을 풀고 잠들며, 깨어난 뒤에도 m 을 푼 채로 돌아온다",
+     "잠들지 않고 조건이 참이 될 때까지 CPU 를 쓰며 돈다"
+    ],
+    "a": 0,
+    "w": "정답입니다. 잠들면서 mutex 를 풀어야 생산자가 들어와 값을 넣을 수 있고, 돌아올 때는 다시 잡은 상태라 공유 데이터를 안전하게 읽습니다.  [복습: D5-4 · 소비자가 잠든다]"
+   },
+   {
+    "n": 4,
+    "p": "04_prodcons 는 버퍼 8칸에 값 40개를 넣고, 기본 실행에서는 소비자가 느립니다(3ms). 마지막 줄은 무엇입니까?",
+    "c": "$ ./04_prodcons | tail -1",
+    "o": [
+     "생산자 '가득 참' 대기 0, 소비자 '비어 있음' 대기 40",
+     "생산자 '가득 참' 대기 40, 소비자 '비어 있음' 대기 40",
+     "생산자 '가득 참' 대기 32, 소비자 '비어 있음' 대기 0",
+     "생산자 '가득 참' 대기 8, 소비자 '비어 있음' 대기 32"
+    ],
+    "a": 2,
+    "w": "정답입니다. 처음 8개는 바로 들어가고 나머지 40 − 8 = 32 번은 버퍼가 가득 차 생산자가 기다립니다. fastcons 로 바꾸면 반대로 0, 40 이 됩니다. 합계는 어느 쪽이든 820.  [복습: D5-4 · 가득 차면 생산자가 잠든다]"
+   },
+   {
+    "n": 5,
+    "p": "05_sem 은 sem_init(&slots, 0, 2) 로 만든 세마포어로 작업 5개를 실행합니다. 마지막 줄의 값은 무엇입니까?",
+    "c": "$ ./05_sem | tail -1\n최대 동시 실행 = ? (세마포어 초기값 2)",
+    "o": [
+     "2",
+     "1",
+     "5",
+     "0"
+    ],
+    "a": 0,
+    "w": "정답입니다. 세마포어 값은 남은 자리 수입니다. sem_wait 가 자리를 하나 쓰고 0 이면 기다리므로 동시에 2개까지만 실행됩니다.  [복습: D5-5 · 남은 자리 세기]"
+   },
+   {
+    "n": 5,
+    "p": "02_race 의 atomic 모드는 아래처럼 증가합니다. mutex 없이도 결과가 정확한 이유는 무엇입니까?",
+    "c": "__atomic_fetch_add((long *)&counter, 1, __ATOMIC_RELAXED);",
+    "o": [
+     "컴파일러가 두 쓰레드를 하나로 합쳐 차례대로 실행해서",
+     "커널이 시스템 콜로 counter 를 대신 하나씩 더해 줘서",
+     "counter 를 쓰레드마다 따로 복사해 두었다가 마지막에 합쳐서",
+     "CPU 가 한 명령으로 읽고-더하고-써서 끼어들 틈이 없어서"
+    ],
+    "a": 3,
+    "w": "정답입니다. x86 에서는 lock add 한 명령이 되어 다른 코어가 그 사이에 끼어들 수 없습니다. 잠금·잠들기가 없어 mutex 보다 빠릅니다.  [복습: 5교시 5-2]"
+   },
+   {
+    "n": 6,
+    "p": "06_false_sharing 에서 쓰레드 두 개가 각각 T.a 와 T.b 만 증가시키는데도 느립니다. 이유는 무엇입니까?",
+    "c": "struct together { volatile long a; volatile long b; };   /* 거리 8 B */\nstruct apart { volatile long a; char pad[64 - sizeof(long)]; volatile long b; };  /* 거리 64 B */",
+    "o": [
+     "a 와 b 를 같은 mutex 하나가 몰래 보호하고 있어서",
+     "volatile 변수는 쓸 때마다 디스크까지 기록되어서",
+     "a 와 b 가 같은 64 B 캐시 라인을 함께 써서",
+     "together 구조체가 스택이 아닌 힙에 잡혀 있어서"
+    ],
+    "a": 2,
+    "w": "정답입니다. 캐시는 64 B 줄 단위로 움직입니다. 한 코어가 a 를 쓰면 다른 코어의 같은 줄(b 포함)이 무효화됩니다. pad 로 떼면 빨라집니다(실측 2 CPU 1.7배).  [복습: D5-6 · 다른 변수, 같은 캐시 줄]"
+   },
+   {
+    "n": 6,
+    "p": "센서 쓰레드 안에서 아래 코드를 실행했습니다. SCHED_FIFO 80 이 적용되는 대상은 무엇입니까?",
+    "c": "struct sched_param sp = { .sched_priority = 80 };\npthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);",
+    "o": [
+     "같은 프로세스 안의 모든 쓰레드 (main 포함)",
+     "이 코드를 실행한 센서 쓰레드 하나",
+     "이후 pthread_create 로 만드는 쓰레드만",
+     "프로세스의 main 쓰레드 하나"
+    ],
+    "a": 1,
+    "w": "정답입니다. 리눅스에서 스케줄링 정책은 쓰레드(태스크) 단위입니다. 그래서 edge_pipeline 은 센서만 FIFO 로, 처리·기록은 일반 정책으로 둡니다.  [복습: 6교시 6-1]"
+   },
+   {
+    "n": 7,
+    "p": "edge_pipeline 의 센서 쓰레드는 링 버퍼(64칸)가 가득 찼을 때 어떻게 합니까?",
+    "c": "if (count == CAP) {\n    head = (head + 1) % CAP;\n    count--;\n    st.dropped++;\n}\nring[tail] = v;",
+    "o": [
+     "처리 쓰레드가 한 칸 비울 때까지 cond_wait 로 기다린다",
+     "가장 오래된 값을 버리고(dropped++) 새 값을 넣는다",
+     "새 값을 버리고 dropped 를 1 늘린 뒤 다음 주기를 기다린다",
+     "realloc 으로 링 버퍼를 두 배(128칸)로 늘려 모두 저장한다"
+    ],
+    "a": 1,
+    "w": "정답입니다. 센서는 10ms 주기를 지켜야 하므로 기다리지 않습니다. head 를 한 칸 밀어 가장 오래된 값을 버리고 dropped 로 기록합니다.  [복습: D5-7 · 링 버퍼]"
+   },
+   {
+    "n": 7,
+    "p": "sudo 없이 일반 사용자로 -r 옵션을 주고 실행했습니다. 결과로 알맞은 것은 무엇입니까?",
+    "c": "$ ./edge_pipeline -d 5 -r",
+    "o": [
+     "Operation not permitted 를 출력하고 바로 종료한다",
+     "경고 없이 FIFO 80 · CPU 고정 · mlockall 이 모두 적용된다",
+     "mlockall 실패로 Segmentation fault 가 나며 종료한다",
+     "실패 경고만 찍고 일반 정책으로 계속 실행한다"
+    ],
+    "a": 3,
+    "w": "정답: ④ 실패 경고만 찍고 일반 정책으로 계속 실행한다 — pthread_setschedparam 과 mlockall 의 실패를 검사해 \"센서: SCHED_FIFO 실패 (sudo 필요) — 일반 정책으로 계속\" 등을 출력하고 그대로 진행합니다.  [복습: 7교시 7-2]"
+   },
+   {
+    "n": 8,
+    "p": "edge_pipeline 에서 각 날의 기술이 쓰인 곳을 연결했습니다. 옳지 않은 것은 무엇입니까?",
+    "c": null,
+    "o": [
+     "Day 5 조건 변수 — CSV 를 1초마다 디스크에 확실히 기록",
+     "Day 2 clock_nanosleep(TIMER_ABSTIME) — 센서의 10ms 주기",
+     "Day 3 mlockall — 실행 중 페이지 폴트 지연 방지",
+     "Day 1 SIGINT 처리 — Ctrl+C 에도 CSV 를 남기고 정상 종료"
+    ],
+    "a": 0,
+    "w": "정답입니다. CSV 를 디스크에 확실히 남기는 것은 Day 4 의 fsync 입니다. 조건 변수는 처리 쓰레드가 값이 올 때까지 잠드는 데 쓰입니다.  [복습: D5-8 · 5일 동안 만든 것]"
+   },
+   {
+    "n": 8,
+    "p": "stress-ng --cpu 2 를 켜고 두 실행의 max_lat_us 를 비교했습니다. sudo ... -r 쪽이 작게 나오는 이유는 무엇입니까?",
+    "c": "$ ./edge_pipeline -d 10\n$ sudo ./edge_pipeline -d 10 -r",
+    "o": [
+     "sudo 로 실행하면 CPU 클럭 주파수가 자동으로 올라가서",
+     "-r 이면 센서 주기가 10ms 에서 1ms 로 짧게 바뀌어서",
+     "센서가 FIFO 80 이라 CFS 부하보다 먼저 실행돼서",
+     "root 프로세스는 stress-ng 와 다른 CPU 만 쓰게 되어서"
+    ],
+    "a": 2,
+    "w": "정답: ③ 센서가 FIFO 80 이라 CFS 부하보다 먼저 실행돼서 — 실시간 정책(FIFO) 쓰레드는 일반(CFS) 쓰레드보다 항상 먼저 선택됩니다. CPU 고정 · mlockall 이 지연의 흔들림을 더 줄입니다.  [복습: 8교시 8-1 · 조별 발표] 이 설문지는 imguru.co.kr 내부에서 생성되었습니다.  - 양식 소유자에게 문의 양식이 의심스러운가요? 보고서 설문지 고객센터 양식 소유자에게 문의 Forms 개선 돕기 보고서"
+   }
+  ],
+  "1": [
+   {
+    "n": 1,
+    "p": "check_env.sh 의 커널 검사 부분입니다. apt upgrade 로 HWE 커널이 설치된 VM 에서 실행했을 때 출력되는 것은 무엇입니까?",
+    "c": "KREL=$(uname -r)            # 6.8.0-48-generic\nif [[ \"$KREL\" == 5.15.* ]]; then echo \"OK  CFS\"\nelse echo \"WARN  EEVDF\"; fi",
+    "o": [
+     "OK CFS",
+     "WARN EEVDF",
+     "둘 다 출력된다",
+     "아무것도 출력되지 않는다"
+    ],
+    "a": 1,
+    "w": "6.8.0 은 `5.15.*` 패턴에 맞지 않아 else 쪽 → WARN EEVDF. 커널 6.x(HWE)면 스케줄러가 EEVDF 라 Day 2 해석이 달라진다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "a.out 은 표준 출력으로 A · B · C 세 줄, 표준 에러로 E 한 줄을 씁니다. 아래처럼 실행했을 때 화면(터미널)에 보이는 것은 무엇입니까?",
+    "c": "$ ./a.out 2>&1 > log",
+    "o": [
+     "아무것도 보이지 않는다",
+     "A · B · C · E 네 줄",
+     "E 한 줄",
+     "A · B · C 세 줄"
+    ],
+    "a": 2,
+    "w": "셸은 왼쪽부터 적용: `2>&1` 은 그때의 fd 1(화면)을 복사하고, 그 뒤 `> log` 로 stdout 만 파일로 → 화면에는 stderr 의 E 한 줄.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "존재하지 않는 경로를 ls 로 보고 바로 종료 코드를 확인합니다. 마지막 줄에 출력되는 값은 무엇입니까?",
+    "c": "$ ls /nope 2>/dev/null\n$ echo $?",
+    "o": [
+     "0",
+     "1",
+     "2",
+     "127"
+    ],
+    "a": 2,
+    "w": "`ls` 는 접근 실패 시 종료 코드 2 를 돌려준다 (`2>/dev/null` 은 메시지만 버림). 127 은 명령을 찾지 못했을 때.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "스크립트 파일의 권한을 8진수로 바꾸었습니다. 아래 명령의 출력은 무엇입니까?",
+    "c": "$ chmod 750 run.sh\n$ ls -l run.sh | cut -c1-10",
+    "o": [
+     "-rwxr-x---",
+     "-rwxrwx---",
+     "-rw-r-x---",
+     "-rwxr-xr-x"
+    ],
+    "a": 0,
+    "w": "7 = rwx(소유자), 5 = r-x(그룹), 0 = ---(기타) → -rwxr-x---.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "a.c 와 b.c 가 있는 폴더에서 Day 1 Makefile 로 빌드했습니다. 아래처럼 실행했을 때 두 번째 make 가 출력하는 것은 무엇입니까?",
+    "c": "$ make\ngcc -Wall -Wextra -g -o a a.c\ngcc -Wall -Wextra -g -o b b.c\n$ touch b.c\n$ make",
+    "o": [
+     "make: Nothing to be done for 'all'.",
+     "gcc -Wall -Wextra -g -o b b.c",
+     "gcc … -o a a.c 와 -o b b.c 두 줄",
+     "gcc -Wall -Wextra -g -o a a.c"
+    ],
+    "a": 1,
+    "w": "make 는 수정 시각을 비교한다. b.c 만 새로워졌으므로 b 하나만 다시 빌드.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "run.sh 의 일부입니다. ./run.sh ./prog 5 처럼 인자를 두 개만 주고 실행했을 때 출력은 무엇입니까?",
+    "c": "#!/bin/bash\nOUT=${3:-result.csv}\necho \"$# $OUT\"",
+    "o": [
+     "3 result.csv",
+     "2",
+     "2 result.csv",
+     "3"
+    ],
+    "a": 2,
+    "w": "인자가 2개라 `$#` = 2, 세 번째 인자가 없으니 `${3:-result.csv}` 는 기본값 result.csv.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "printf 와 write 를 섞어 썼습니다. ./a.out | cat 처럼 파이프로 실행하면 화면에 나오는 순서는 무엇입니까?",
+    "c": "printf(\"A\\n\");\nwrite(1, \"B\\n\", 2);\nprintf(\"C\\n\");\nreturn 0;",
+    "o": [
+     "A · B · C",
+     "B · A · C",
+     "A · C · B",
+     "C · B · A"
+    ],
+    "a": 1,
+    "w": "파이프로 보내면 stdout 은 전체 버퍼링 → A·C 는 버퍼에 모였다가 종료 때 나가고, write 의 B 는 즉시 → B · A · C.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "7번과 같은 프로그램을 파일로 출력하며 write 시스템 콜을 추적했습니다. write 는 모두 몇 번 호출됩니까?",
+    "c": "$ strace -e trace=write ./a.out > out.txt",
+    "o": [
+     "1번",
+     "2번",
+     "3번",
+     "4번"
+    ],
+    "a": 1,
+    "w": "파일 출력도 전체 버퍼링: 직접 호출한 write(B) 1번 + 종료 때 A·C 를 한 번에 내보내는 write 1번 = 2번.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "write 의 반환값을 출력합니다. 터미널에서 실행했을 때 화면에 나오는 두 줄은 무엇입니까?",
+    "c": "int n = write(1, \"hello\\n\", 6);\nprintf(\"%d\\n\", n);",
+    "o": [
+     "hello 와 0",
+     "hello 와 1",
+     "hello 와 6",
+     "hello 와 -1"
+    ],
+    "a": 2,
+    "w": "write 는 실제로 쓴 바이트 수를 돌려준다 → hello 다음 줄에 6.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "없는 파일을 열어 실패한 뒤, 있는 파일을 열어 성공했습니다. 출력되는 값은 무엇입니까?",
+    "c": "int fd = open(\"/no/such/file\", O_RDONLY);   /* 실패 */\nfd = open(\"/etc/hostname\", O_RDONLY);       /* 성공 */\nprintf(\"fd=%d errno=%d\\n\", fd, errno);",
+    "o": [
+     "fd=3 errno=0",
+     "fd=-1 errno=2",
+     "fd=0 errno=2",
+     "fd=3 errno=2"
+    ],
+    "a": 3,
+    "w": "두 번째 open 은 가장 작은 빈 번호 3. 성공한 호출은 errno 를 지우지 않아 이전 실패의 2(ENOENT)가 남아 있다 → errno 는 실패를 반환했을 때만 읽는다.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "디렉터리를 쓰기 모드로 열려고 합니다. 출력되는 메시지는 무엇입니까?",
+    "c": "if (open(\"/etc\", O_WRONLY) == -1)\n    perror(\"open\");",
+    "o": [
+     "open: Is a directory",
+     "open: Permission denied",
+     "open: No such file or directory",
+     "open: Bad file descriptor"
+    ],
+    "a": 0,
+    "w": "디렉터리를 쓰기 모드로 열면 EISDIR → open: Is a directory.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "/proc/self 는 \"그 파일을 읽는 프로세스 자신\" 을 가리킵니다. 아래 명령의 출력은 무엇입니까?",
+    "c": "$ cat /proc/self/status | grep ^Name",
+    "o": [
+     "Name: bash",
+     "Name: grep",
+     "Name: self",
+     "Name: cat"
+    ],
+    "a": 3,
+    "w": "/proc/self 는 그 파일을 읽는 프로세스 자신 = cat → Name: cat.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "fork 후 자식만 x 를 바꿉니다. 출력되는 두 줄은 무엇입니까?",
+    "c": "int x = 5;\nif (fork() == 0) {\n    x *= 2;\n    printf(\"child %d\\n\", x);\n    exit(0);\n}\nwait(NULL);\nprintf(\"parent %d\\n\", x);",
+    "o": [
+     "child 10 · parent 5",
+     "child 10 · parent 10",
+     "child 5 · parent 10",
+     "child 5 · parent 5"
+    ],
+    "a": 0,
+    "w": "fork 후 메모리는 분리(복사본)된다 → 자식만 10, 부모는 5 그대로.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "줄바꿈 없는 printf 뒤에 fork 했습니다. 터미널에서 실행했을 때 출력은 무엇입니까?",
+    "c": "printf(\"start \");\nif (fork() == 0) {\n    printf(\"end\\n\");\n    exit(0);\n}\nwait(NULL);\nprintf(\"end\\n\");",
+    "o": [
+     "start end · end",
+     "start · end · start · end",
+     "start end · start end",
+     "end · start end"
+    ],
+    "a": 2,
+    "w": "줄바꿈이 없어 \"start \" 가 버퍼에 남은 채 fork → 자식도 같은 버퍼를 물려받아 둘 다 \"start end\" 를 출력. fork 전에 fflush(stdout) 가 필요한 이유.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "자식에서 두 명령을 차례로 exec 하고 부모가 종료 코드를 출력합니다(에러 메시지는 /dev/null 로 버림). 출력은 무엇입니까?",
+    "c": "char *c1[] = { \"ls\", \"/nope\", NULL };\nchar *c2[] = { \"nosuchcmd\", NULL };\n/* 각각 fork → execvp → 실패 시 _exit(127) → 부모 waitpid */\nprintf(\"%d %d\\n\", WEXITSTATUS(s1), WEXITSTATUS(s2));",
+    "o": [
+     "2 127",
+     "2 2",
+     "127 127",
+     "0 127"
+    ],
+    "a": 0,
+    "w": "ls /nope 는 접근 실패 시 2, nosuchcmd 는 execvp 실패 후 _exit(127) → 2 127.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "exec 앞뒤에 출력이 있습니다. 출력되는 줄은 무엇입니까?",
+    "c": "printf(\"before\\n\");\nfflush(stdout);\nexeclp(\"echo\", \"echo\", \"new\", (char *)NULL);\nprintf(\"after\\n\");",
+    "o": [
+     "before · new · after",
+     "new · after",
+     "before · after",
+     "before · new"
+    ],
+    "a": 3,
+    "w": "fflush 로 before 가 먼저 나가고, exec 성공 후에는 돌아오지 않아 after 는 실행되지 않는다 → before · new.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "자식이 exit(300) 으로 끝났습니다. 부모가 출력하는 값은 무엇입니까?",
+    "c": "pid_t p = fork();\nif (p == 0)\n    exit(300);\nint st;\nwaitpid(p, &st, 0);\nprintf(\"%d\\n\", WEXITSTATUS(st));",
+    "o": [
+     "300",
+     "255",
+     "0",
+     "44"
+    ],
+    "a": 3,
+    "w": "종료 코드는 하위 8비트만 남는다: 300 & 0xFF = 44.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "SIGKILL 에도 핸들러를 등록하려고 합니다. 출력은 무엇입니까?",
+    "c": "struct sigaction sa;\nmemset(&sa, 0, sizeof(sa));\nsa.sa_handler = on_signal;\nint r = sigaction(SIGKILL, &sa, NULL);\nprintf(\"%d %s\\n\", r, strerror(errno));",
+    "o": [
+     "0 Success",
+     "-1 Operation not permitted",
+     "컴파일 에러",
+     "-1 Invalid argument"
+    ],
+    "a": 3,
+    "w": "SIGKILL · SIGSTOP 은 잡거나 무시할 수 없다 → sigaction 이 -1, errno = EINVAL(Invalid argument).",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "myshell 의 parse 처럼 공백 · 탭 · 줄바꿈으로 자릅니다. 출력은 무엇입니까?",
+    "c": "char line[] = \"  ls   -l\\t/tmp\\n\";\nchar *argv[8];\nint n = 0;\nfor (char *t = strtok(line, \" \\t\\n\"); t; t = strtok(NULL, \" \\t\\n\"))\n    argv[n++] = t;\nprintf(\"%d %s\\n\", n, argv[n - 1]);",
+    "o": [
+     "3 /tmp",
+     "5 /tmp",
+     "3 /tmp\\n",
+     "4 -l"
+    ],
+    "a": 0,
+    "w": "연속된 구분자는 하나로 취급되어 토큰은 ls, -l, /tmp 3개. 끝의 \\n 도 구분자라 제거된다 → 3 /tmp.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "myshell 에 아래 세 명령을 차례로 입력했습니다. 각 명령을 입력할 때 보인 프롬프트와 마지막 프롬프트의 숫자를 순서대로 고르면 무엇입니까?",
+    "c": "myshell[?]$ ls /nope\nmyshell[?]$ cd /tmp\nmyshell[?]$ nosuchcmd\nmyshell[?]$",
+    "o": [
+     "0 → 2 → 2 → 127",
+     "0 → 2 → 0 → 127",
+     "0 → 0 → 0 → 1",
+     "0 → 2 → 0 → 1"
+    ],
+    "a": 1,
+    "w": "프롬프트 숫자 = 직전 종료 코드: 처음 0 → ls /nope 후 2 → cd /tmp 성공 후 0 → nosuchcmd 후 127.",
+    "by": "wiki"
+   }
+  ]
+ },
+ "eio": {
+  "1": [
+   {
+    "n": 5,
+    "p": "config.txt 에 아래 줄을 추가해 저장만 하고, 재부팅하지 않은 채 다음 명령을 실행했다. 출력은?",
+    "c": "dtoverlay=pwm-2chan\n\n$ ls /sys/class/pwm/",
+    "o": [
+     "아무것도 출력되지 않음 (비어 있음)",
+     "pwmchip0",
+     "pwmchip0 pwmchip1",
+     "ls: Permission denied"
+    ],
+    "a": 0,
+    "w": "config.txt 는 부팅 때 읽힌다 → 저장만 하고 재부팅하지 않으면 /sys/class/pwm 은 아직 비어 있다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "Raspberry Pi 4 가 부팅할 때 Linux 커널보다 먼저 실행되는 것은?",
+    "c": null,
+    "o": [
+     "systemd",
+     "sshd",
+     "start4.elf (GPU 펌웨어)",
+     "/dev/gpiochip0 을 만드는 드라이버"
+    ],
+    "a": 2,
+    "w": "EEPROM 부트로더 → start4.elf(GPU 펌웨어) 가 config.txt · Device Tree 를 처리한 뒤 커널을 띄운다. systemd · sshd · 드라이버는 커널 이후.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "LED 를 물리 11번 핀에 연결했다. 켜는 명령으로 맞는 것은?",
+    "c": "$ gpioset -c gpiochip0 ____=1",
+    "o": [
+     "11",
+     "17",
+     "0",
+     "27"
+    ],
+    "a": 1,
+    "w": "명령은 물리 번호가 아니라 BCM GPIO 번호를 쓴다 → 물리 11번 = GPIO17.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "아래 조건에서 LED 에 흐르는 전류는 약 얼마인가?",
+    "c": "GPIO 출력 3.3 V · LED 순방향 전압 2.0 V · 저항 220 Ω",
+    "o": [
+     "약 15 mA",
+     "약 0.59 mA",
+     "약 59 mA",
+     "약 5.9 mA"
+    ],
+    "a": 3,
+    "w": "(3.3 − 2.0) / 220 ≈ 5.9mA.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "다음 중 GPIO 입력 핀에 그대로 연결하면 안 되는 것은?",
+    "c": null,
+    "o": [
+     "버튼 (반대쪽은 GND 에)",
+     "3V3 로 동작하는 PIR 출력",
+     "HC-SR04 Echo (5 V)",
+     "220 Ω 저항을 거친 LED"
+    ],
+    "a": 2,
+    "w": "Pi GPIO 는 3.3V 전용 — 5V 를 내보내는 Echo 는 분압 회로를 거쳐야 한다.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "bootfs/user-data 끝에 아래 내용을 넣었는데 둘째 줄 앞을 탭으로 들여썼다. 첫 부팅 결과는?",
+    "c": "rpi:\n→   enable_usb_gadget: true",
+    "o": [
+     "YAML 오류로 user-data 전체가 무시된다",
+     "탭도 스페이스처럼 처리되어 정상 동작한다",
+     "gadget 설정 한 줄만 무시되고 나머지는 적용",
+     "부팅이 멈추고 무지개 화면에서 대기한다"
+    ],
+    "a": 0,
+    "w": "YAML 은 들여쓰기에 탭을 허용하지 않는다 → 파일 전체가 해석 실패해 user-data 가 적용되지 않는다 (스페이스로 들여쓰기).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "Pi 의 불은 정상인데 Windows 에 USB 랜카드가 전혀 생기지 않는다. 가장 먼저 의심할 것은?",
+    "c": null,
+    "o": [
+     "Windows RNDIS 드라이버 누락",
+     "Imager 에서 SSH 를 끔",
+     "호스트 이름이 좌석 번호가 아님",
+     "충전 전용 USB-C 케이블"
+    ],
+    "a": 3,
+    "w": "충전 전용 케이블은 전원선만 있어 불은 켜져도 데이터 선이 없어 USB 장치(랜카드)가 아예 안 생긴다. 드라이버 문제라면 장치 관리자에 느낌표로라도 보인다.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "USB 로 연결한 뒤 PowerShell 에서 아래 결과가 나왔다. 원인은?",
+    "c": "PS> ssh pi@10.12.194.1\nssh: connect to host 10.12.194.1 port 22: Connection refused",
+    "o": [
+     "Windows 드라이버가 설치되지 않았다",
+     "Imager 에서 SSH 를 켜지 않았다",
+     "사용자 이름의 대소문자가 틀렸다",
+     "Pi 의 전원이 꺼져 있다"
+    ],
+    "a": 1,
+    "w": "연결(포트)까지는 되는데 22번 포트에서 거절 → SSH 서버가 꺼진 채 구웠다.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "USB 첫 접속에서 rpi-07.local 이 풀리지 않을 때 PuTTY Host Name 에 넣을 주소는?",
+    "c": null,
+    "o": [
+     "192.168.0.1",
+     "10.12.194.1",
+     "127.0.0.1:2222",
+     "169.254.0.1"
+    ],
+    "a": 1,
+    "w": "USB gadget 연결에서 Pi 쪽 IP 는 10.12.194.1 (포트 22).",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "Wi-Fi 로 전환한 뒤 내 Pi 에서 아래 로그가 보였다. 맞는 설명은?",
+    "c": "$ journalctl -u avahi-daemon | grep -i conflict\nHost name conflict, retrying with rpi-07-2",
+    "o": [
+     "Wi-Fi 비밀번호가 틀려 두 번째로 다시 접속을 시도했다",
+     "USB 와 Wi-Fi 가 동시에 켜져 이름이 두 개가 되었다",
+     "hostname 명령의 결과가 rpi-07-2 로 바뀌어 버렸다",
+     "이름이 겹쳐 mDNS 이름이 rpi-07-2.local 로 밀렸다"
+    ],
+    "a": 3,
+    "w": "같은 이름이 망에 이미 있으면 avahi(mDNS) 가 rpi-07-2.local 로 바꿔 알린다 → 이름 충돌, 좌석 번호로 고치고 재부팅. hostname 자체는 그대로.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "nmcli dev wifi list 가 비어 있다. 먼저 실행할 명령은?",
+    "c": null,
+    "o": [
+     "sudo raspi-config nonint do_wifi_country KR",
+     "sudo nmcli dev wifi connect \"SSID\" password \"PW\"",
+     "sudo rpi-usb-gadget off",
+     "sudo apt update && sudo apt full-upgrade"
+    ],
+    "a": 0,
+    "w": "무선 국가 코드가 없으면 rfkill 로 Wi-Fi 가 막혀 목록이 비어 있다 → 가장 먼저 do_wifi_country KR.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "아래 명령이 하는 일은?",
+    "c": "$ sudo raspi-config nonint do_i2c 0",
+    "o": [
+     "I2C 를 끈다",
+     "I2C 상태만 출력한다",
+     "I2C 를 켠다",
+     "I2C 버스 0번을 고른다"
+    ],
+    "a": 2,
+    "w": "raspi-config nonint 는 0 = 켬, 1 = 끔 → I2C 를 켠다.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "config.txt 에 아래 줄을 넣고 재부팅했다. 결과는?",
+    "c": "dtoverlay=pwm-2chan  # GPIO18,19",
+    "o": [
+     "PWM 이 적용되고 뒤의 주석은 무시됨",
+     "GPIO18 한 채널만 PWM 으로 바뀜",
+     "부팅이 멈추고 무지개 화면에서 대기",
+     "주석까지 이름으로 읽혀 적용 안 됨"
+    ],
+    "a": 3,
+    "w": "config.txt 는 줄 끝 주석을 지원하지 않아 `pwm-2chan  # GPIO18,19` 전체를 이름으로 읽어 적용되지 않는다 → 주석은 별도 줄.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "재부팅 후 아래 결과가 나왔다. 의미는?",
+    "c": "$ ls -l /dev/serial0\n/dev/serial0 -> ttyS0",
+    "o": [
+     "수업 기준대로 PL011 이 GPIO 에 잘 붙었다",
+     "disable-bt 누락으로 mini UART 가 붙었다",
+     "I2C 가 꺼져 있다는 사실을 보여 주고 있다",
+     "시리얼 로그인 콘솔이 꺼졌다는 의미이다"
+    ],
+    "a": 1,
+    "w": "serial0 이 ttyS0(mini UART) → disable-bt 가 반영되지 않았다. 수업 기준은 ttyAMA0(PL011).",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "아래 장치 파일을 sudo 없이 열 수 있는 사용자는?",
+    "c": "crw-rw---- 1 root gpio 254, 0 Oct 13 14:41 /dev/gpiochip0",
+    "o": [
+     "홈 디렉터리가 있는 모든 사용자",
+     "pi 라는 이름의 사용자만",
+     "gpio 그룹에 속한 사용자",
+     "누구나 읽기만 가능하다"
+    ],
+    "a": 2,
+    "w": "crw-rw---- root gpio → 소유자 root 와 gpio 그룹만 읽기·쓰기 → gpio 그룹 사용자는 sudo 없이.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "/sys/class/thermal/thermal_zone0/temp 의 내용이 46712 일 때 아래 코드의 출력은?",
+    "c": "int t = atoi(buf) / 1000;\nprintf(\"%d\\n\", t);",
+    "o": [
+     "46",
+     "46.712",
+     "46712",
+     "47"
+    ],
+    "a": 0,
+    "w": "밀리도 정수 46712 / 1000 = 46 (정수 나눗셈, 반올림 아님). 소수까지는 / 1000.0.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "창 1 에서 gpioset 17=1 이 실행 중일 때 창 2 에서 아래 명령을 실행했다. 결과는?",
+    "c": "$ gpioset -c gpiochip0 17=0",
+    "o": [
+     "LED 가 꺼지고 창 1 의 명령이 끝남",
+     "resource busy 로 거절됨",
+     "창 1 의 요청을 빼앗아 LED 를 끔",
+     "Permission denied 로 실패함"
+    ],
+    "a": 1,
+    "w": "라인은 커널이 소유권을 관리 → 창 1 이 쥐고 있는 동안 다른 요청은 Device or resource busy.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "SPI 를 켠 상태에서 아래 명령이 busy 로 실패하는 이유는?",
+    "c": "$ gpioset -c gpiochip0 8=1",
+    "o": [
+     "GPIO8 은 출력이 안 되는 입력 전용 핀이라서",
+     "사용자에게 gpio 그룹 권한이 없어서",
+     "SPI 드라이버가 GPIO8 을 쓰고 있어서",
+     "GPIO8 에 LED 가 연결되어 있지 않아서"
+    ],
+    "a": 2,
+    "w": "SPI 를 켜면 spidev 가 GPIO8(CE0)을 쓰고 있어 busy — 커널이 핀 소유권을 관리한다.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "check_env.sh 가 아래처럼 [ -f ] 로 검사했다. /dev/i2c-1 이 있을 때 결과는?",
+    "c": "if [ -f /dev/i2c-1 ]; then echo OK; else echo FAIL; fi",
+    "o": [
+     "OK",
+     "문법 오류",
+     "아무것도 출력되지 않음",
+     "FAIL"
+    ],
+    "a": 3,
+    "w": "/dev/i2c-1 은 일반 파일이 아니라 문자 장치 → [ -f ] 는 거짓 → FAIL. 장치 파일은 [ -e ] 로.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "버튼을 한 번 눌렀는데 아래처럼 찍혔다. 알맞은 해결은?",
+    "c": "$ gpiomon -c gpiochip0 -b pull-up -e falling 5\n1261.087120554  falling  \"5\"\n1261.093004713  falling  \"5\"",
+    "o": [
+     "-p 10ms 로 디바운스를 준다",
+     "-e rising 으로 바꾼다",
+     "bias 를 pull-down 으로 바꾼다",
+     "LED 저항을 1 kΩ 으로 바꾼다"
+    ],
+    "a": 0,
+    "w": "약 6ms 간격의 falling 두 번 = 접점 바운싱 → `-p 10ms` 로 디바운스.",
+    "by": "wiki"
+   }
+  ],
+  "2": [
+   {
+    "n": 1,
+    "p": "libgpiod v2 에서 아래 함수들 중 커널에 실제로 라인을 요청하는 것은?",
+    "c": null,
+    "o": [
+     "gpiod_line_settings_new()",
+     "gpiod_line_config_add_line_settings()",
+     "gpiod_chip_request_lines()",
+     "gpiod_request_config_set_consumer()"
+    ],
+    "a": 2,
+    "w": "settings · line_config · request_config 는 설정 객체를 만들 뿐이고, gpiod_chip_request_lines() 에서 비로소 커널에 라인을 요청한다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "SIGINT 핸들러가 없는 01_blink 를 Ctrl+C 로 끝냈다. 맞는 설명은?",
+    "c": null,
+    "o": [
+     "라인은 해제되지만 LED 끄기는 실행되지 않는다",
+     "라인이 blink 소유로 남아 재부팅해야 한다",
+     "커널이 LED 를 끄고 라인도 해제해 준다",
+     "다음 실행 때 busy 가 나서 다시 쓸 수 없다"
+    ],
+    "a": 0,
+    "w": "프로세스가 죽으면 fd 가 닫혀 커널이 라인은 해제하지만, LED 를 끄는 코드는 실행되지 않아 켜진 채 남을 수 있다 → 그래서 직접 끄고 반납.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "SIGINT 핸들러를 등록할 때 SA_RESTART 를 주지 않는 이유는?",
+    "c": "sa.sa_handler = on_sigint;   /* SA_RESTART 없음 */\nsigaction(SIGINT, &sa, NULL);",
+    "o": [
+     "핸들러가 두 번 이상 실행되지 않게 하려고",
+     "Ctrl+C 를 완전히 무시하도록 만들려고",
+     "라인 요청이 자동으로 다시 걸리게 하려고",
+     "잠든 호출이 EINTR 로 깨어나 루프를 끝내려고"
+    ],
+    "a": 3,
+    "w": "SA_RESTART 가 없으면 poll() · nanosleep() 같은 잠든 호출이 EINTR 로 돌아와 루프 조건(g_stop)을 확인하고 끝난다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "세 라인을 아래 순서로 요청했다. set_values() 에 {1, 0, 0} 을 쓰면 켜지는 LED 는?",
+    "c": "LINES[3] = { 22, 27, 17 };   /* G Y R 순서로 요청 */\ngpio_request(\"traffic\", LINES, 3, s);",
+    "o": [
+     "GPIO17 (빨강)",
+     "GPIO22 (초록)",
+     "GPIO27 (노랑)",
+     "세 개 모두"
+    ],
+    "a": 1,
+    "w": "set_values 의 배열 순서 = 요청할 때 넘긴 offsets 순서(22, 27, 17) → 첫 칸 1 은 GPIO22(초록).",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "3V3 → 220Ω → LED → GPIO 로 배선한 LED 를 코드에서 \"1 = 켜짐\" 으로 쓰려면?",
+    "c": null,
+    "o": [
+     "active-low 로 요청한다",
+     "drive 를 OPEN_DRAIN 으로 요청한다",
+     "bias 를 PULL_UP 으로 요청한다",
+     "방향을 INPUT 으로 요청한다"
+    ],
+    "a": 0,
+    "w": "이 배선은 핀이 LOW 일 때 전류가 흘러 켜진다 → active-low 로 요청하면 코드의 1(ACTIVE) = 핀 0V = 켜짐.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "drive 를 OPEN_DRAIN 으로 요청한 라인에 1 을 쓰면?",
+    "c": null,
+    "o": [
+     "핀이 3.3 V 를 강하게 밀어 낸다",
+     "핀이 0 V 로 끌어 내려진다",
+     "핀을 놓아 외부 풀업이 High 로 만든다",
+     "라인 요청이 Invalid argument 로 실패한다"
+    ],
+    "a": 2,
+    "w": "오픈 드레인은 0 만 능동적으로 끌어내리고 1 은 핀을 놓는다 → 외부 풀업이 High 를 만든다 (I2C 선처럼).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "GPIO17 의 기능을 바꾸려면 어느 레지스터의 몇 번 비트를 고쳐야 하는가?",
+    "c": "번호 = pin / 10 · 시작 비트 = (pin % 10) × 3",
+    "o": [
+     "GPFSEL1, 비트 17~19",
+     "GPFSEL1, 비트 21~23",
+     "GPFSEL7, 비트 1~3",
+     "GPFSEL0, 비트 51~53"
+    ],
+    "a": 1,
+    "w": "17 / 10 = 1 → GPFSEL1, 시작 비트 (17 % 10) × 3 = 21 → 비트 21~23.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "GPIO17 을 High 로 만드는 코드로 맞는 것은? (gpio 는 uint32_t 포인터)",
+    "c": null,
+    "o": [
+     "gpio[0x28/4] = 1u << 17;",
+     "gpio[0x34/4] = 1u << 17;",
+     "gpio[0x1C] |= 17;",
+     "gpio[0x1C/4] = 1u << 17;"
+    ],
+    "a": 3,
+    "w": "GPSET0 은 바이트 오프셋 0x1C → 워드 인덱스 0x1C / 4, 1 을 쓴 비트의 핀이 High (0x28 은 CLR, 0x34 는 LEV 읽기).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "/dev/gpiomem mmap 이 libgpiod 보다 훨씬 빠른데도 평소에 쓰지 않는 이유가 아닌 것은?",
+    "c": null,
+    "o": [
+     "소유권이 없어 다른 프로그램과 충돌해도 모른다",
+     "Pi 5 같은 다른 보드에서는 레지스터가 다르다",
+     "엣지 인터럽트를 받을 수 없어 계속 읽어야 한다",
+     "토글 속도가 너무 빨라 LED 가 망가져서"
+    ],
+    "a": 3,
+    "w": "mmap 의 진짜 문제는 소유권 없음 · 이식성 없음 · 인터럽트 없음 · 정리 책임이다. 토글이 빨라도 LED 가 망가지지는 않는다.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "GND 쪽에 연결한 버튼을 GPIO5 로 읽을 때 알맞은 bias 와 누르지 않았을 때 값은?",
+    "c": null,
+    "o": [
+     "PULL_UP, 1",
+     "PULL_DOWN, 0",
+     "DISABLED, 1",
+     "PULL_UP, 0"
+    ],
+    "a": 0,
+    "w": "버튼이 GND 로 이어지므로 평소엔 내부 풀업으로 High → PULL_UP, 안 누르면 1 (누르면 0).",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "05_button_poll 의 소프트웨어 디바운스에서 same 이 하는 일은?",
+    "c": "same = (v == last) ? same + 1 : 0;\nlast = v;\nif (same >= 20 && v != stable) { stable = v; ... }\nsleep_ms(1);",
+    "o": [
+     "버튼이 눌린 총횟수를 세는 카운터",
+     "바운싱이 일어난 횟수를 세는 카운터",
+     "같은 값이 연속된 횟수 — 20 ms 안정되면 인정",
+     "마지막으로 눌린 뒤 지난 시간 (ms)"
+    ],
+    "a": 2,
+    "w": "같은 값이 연속된 횟수 — 1ms 마다 읽으니 20번 = 20ms 안정되면 확정값으로 인정.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "폴링 간격을 10 ms 로 늘렸을 때 생기는 문제는?",
+    "c": null,
+    "o": [
+     "CPU 사용률이 100 % 로 올라간다",
+     "10 ms 보다 짧은 펄스를 놓칠 수 있다",
+     "버튼 값이 반대로 읽힌다",
+     "bias 설정이 해제된다"
+    ],
+    "a": 1,
+    "w": "확인 간격 사이에 시작하고 끝난 펄스는 보지 못한다 → 10ms 보다 짧은 펄스를 놓칠 수 있다 (대신 CPU 는 더 적게 씀).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "엣지 이벤트를 기다릴 때 poll() 에 넘기는 fd 는?",
+    "c": null,
+    "o": [
+     "gpiod_line_request_get_fd(req)",
+     "open(\"/dev/gpiochip0\") 의 fd",
+     "STDIN_FILENO",
+     "timerfd_create() 의 fd"
+    ],
+    "a": 0,
+    "w": "엣지 이벤트가 쌓이면 '읽을 수 있음' 이 되는 fd 는 gpiod_line_request_get_fd(req).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "아래 코드의 ts 에 대한 설명으로 맞는 것은?",
+    "c": "ts = gpiod_edge_event_get_timestamp_ns(ev);",
+    "o": [
+     "poll 에서 깨어난 순간의 벽시계 시각",
+     "이벤트를 read 한 순간의 CPU 사이클 수",
+     "1970년부터 지난 밀리초 (ms) 값",
+     "인터럽트 순간의 CLOCK_MONOTONIC 시각 (ns)"
+    ],
+    "a": 3,
+    "w": "커널이 인터럽트 순간에 CLOCK_MONOTONIC 으로 찍은 나노초 — 프로그램이 늦게 깨어나도 시각은 정확하다.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "06 예제에서 짧게 / 길게 누름을 구분하는 방법은?",
+    "c": null,
+    "o": [
+     "falling 이벤트의 개수를 센다",
+     "rising ts − falling ts 로 누른 시간을 잰다",
+     "poll 의 timeout 이 몇 번 났는지 센다",
+     "get_value 로 1 ms 마다 읽는다"
+    ],
+    "a": 1,
+    "w": "falling 시각을 저장해 두고 rising 이 오면 차이를 계산 → 500ms 이상이면 길게, 미만이면 짧게.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "epoll 루프에서 timerfd 가 준비됐는데 read 하지 않으면?",
+    "c": null,
+    "o": [
+     "타이머가 자동으로 멈추고 다시는 오지 않는다",
+     "다음 만료까지 epoll_wait 가 잠든다",
+     "epoll_wait 가 계속 즉시 반환해 busy loop 가 된다",
+     "프로그램이 SIGALRM 으로 종료된다"
+    ],
+    "a": 2,
+    "w": "timerfd 는 만료 횟수를 read 해야 다시 '안 준비됨' 이 된다 → 안 읽으면 epoll_wait 가 계속 즉시 반환 (CPU 100%).",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "PIR 센서 VCC 를 3V3 에 연결하는 이유는?",
+    "c": null,
+    "o": [
+     "3V3 에서 감지 거리가 두 배가 되어서",
+     "5V 핀은 PIR 전류를 줄 수 없어서",
+     "PIR 은 3V3 에서만 안정화가 필요 없어서",
+     "5V 면 OUT 이 3.3 V 를 넘을 수 있어서"
+    ],
+    "a": 3,
+    "w": "PIR 출력은 전원 전압 근처까지 올라갈 수 있다 → 5V 로 주면 OUT 이 3.3V 를 넘어 GPIO 가 위험하다.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "반응속도 게임 라운드 시작 전에 drain() 을 하는 이유는?",
+    "c": null,
+    "o": [
+     "LED 를 미리 꺼 두어 전류를 아끼려고",
+     "난수 시드를 새로 정하려고",
+     "이전에 남은 이벤트가 부정 출발로 읽히지 않게",
+     "버튼 bias 를 다시 설정하려고"
+    ],
+    "a": 2,
+    "w": "이전 라운드에서 뗄 때 생긴 이벤트·바운싱이 남아 있으면 다음 라운드의 부정 출발로 잡힌다 → drain 으로 버린다.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "react.c 에서 반응 시간을 아래처럼 계산한다. 단위는?",
+    "c": "long ms = (ts - t_on) / 1000000;",
+    "o": [
+     "밀리초 — ns 를 10⁶ 으로 나눔",
+     "마이크로초 — ns 를 10⁶ 으로 나눔",
+     "초 — ns 를 10⁶ 으로 나눔",
+     "틱 — CPU 클럭 단위"
+    ],
+    "a": 0,
+    "w": "타임스탬프는 ns → 10⁶ 으로 나누면 ms.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "부하(yes × 4)를 걸고 react 를 다시 했을 때 기록이 거의 변하지 않는 이유는?",
+    "c": null,
+    "o": [
+     "react 가 실시간 우선순위로 실행되어서",
+     "커널 타임스탬프가 인터럽트 순간에 찍혀서",
+     "yes 프로세스가 GPIO 를 쓰지 않아서",
+     "부저가 하드웨어 PWM 으로 울려서"
+    ],
+    "a": 1,
+    "w": "반응 시간은 커널이 인터럽트 순간에 찍은 타임스탬프로 잰다 → 프로그램이 늦게 깨어나도 기록은 그대로 (now_ns 로 재면 늦어지고 들쭉날쭉).",
+    "by": "wiki"
+   }
+  ],
+  "3": [
+   {
+    "n": 1,
+    "p": "주기 5 ms, 듀티 20% 인 PWM 의 주파수와 켜짐 시간은?",
+    "c": null,
+    "o": [
+     "200 Hz, 4 ms",
+     "200 Hz, 1 ms",
+     "20 Hz, 1 ms",
+     "500 Hz, 0.2 ms"
+    ],
+    "a": 1,
+    "w": "주파수 = 1 / 5ms = 200Hz, 켜짐 = 5ms × 20% = 1ms.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "아래 코드처럼 다음 주기를 계산해 잠드는 방식의 장점은?",
+    "c": "ts_add(&next, PERIOD_NS);\nclock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);",
+    "o": [
+     "부하가 있어도 깨어나는 지연이 0 이 된다",
+     "root 권한 없이 실시간 우선순위를 얻는다",
+     "GPIO 를 하드웨어 PWM 으로 바꿔 준다",
+     "한 번 늦어도 다음 목표 시각이 밀리지 않는다"
+    ],
+    "a": 3,
+    "w": "다음 목표를 '이전 목표 + 주기' 로 정하는 절대 시각 sleep → 한 번 늦게 깨어나도 그다음 목표는 밀리지 않는다 (누적 오차 없음). 깨어나는 지연 자체는 0 이 아니다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "yes 4개로 부하를 건 뒤 01_swpwm 결과에서 가장 크게 바뀌는 것은?",
+    "c": null,
+    "o": [
+     "1 ms 이상 늦게 깨어난 횟수가 늘어난다",
+     "평균 주파수가 절반으로 떨어진다",
+     "GPIO17 요청이 busy 로 실패한다",
+     "듀티 값이 자동으로 바뀌어 버린다"
+    ],
+    "a": 0,
+    "w": "부하가 걸리면 일반 쓰레드가 늦게 깨어나 ≥1ms 구간이 크게 늘어난다 (최대 수 ms ~ 10ms 이상, LED 깜빡임).",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "일반 사용자로 ./02_rgb -f 를 실행했더니 아래 오류가 났다. 알맞은 해결은?",
+    "c": "pthread_create: Operation not permitted",
+    "o": [
+     "sudo chmod 777 ./02_rgb 로 권한 열기",
+     "sudo usermod -aG gpio,video $USER",
+     "sudo setcap cap_sys_nice,cap_ipc_lock+ep ./02_rgb",
+     "export SCHED_FIFO=1 후 다시 실행"
+    ],
+    "a": 2,
+    "w": "SCHED_FIFO 는 권한이 필요 → 실행 파일에 cap_sys_nice(우선순위)와 cap_ipc_lock(mlockall) 능력만 준다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "아래 설정에서 마지막 줄을 빼면 어떻게 되는가?",
+    "c": "pthread_attr_setschedpolicy(&at, SCHED_FIFO);\npthread_attr_setschedparam(&at, &sp);\npthread_attr_setinheritsched(&at, PTHREAD_EXPLICIT_SCHED);",
+    "o": [
+     "쓰레드 생성이 권한과 관계없이 실패한다",
+     "우선순위가 자동으로 최고값 99 가 된다",
+     "mlockall 로 고정한 메모리가 풀린다",
+     "FIFO 설정이 무시되고 부모 정책을 물려받는다"
+    ],
+    "a": 3,
+    "w": "PTHREAD_EXPLICIT_SCHED 가 없으면 attr 의 정책·우선순위가 무시되고 부모(SCHED_OTHER)를 물려받는다 — 가장 흔한 실수.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "export 직후 아래 순서로 썼다. 결과는?",
+    "c": "echo 0 > /sys/class/pwm/pwmchip0/export\necho 250000  > pwm0/duty_cycle\necho 1000000 > pwm0/period",
+    "o": [
+     "period 를 쓸 때 Permission denied",
+     "duty 를 쓸 때 Invalid argument",
+     "enable 을 쓸 때 Device busy",
+     "오류 없이 25 % 파형이 나온다"
+    ],
+    "a": 1,
+    "w": "export 직후 period 는 0 → duty 250000 > period 0 이라 Invalid argument. 항상 duty ≤ period 가 되도록 순서를 지킨다 (늘릴 땐 period 먼저).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "1 kHz, 듀티 25% 를 sysfs PWM 에 쓸 때 알맞은 값은?",
+    "c": null,
+    "o": [
+     "period 1000000, duty_cycle 250000",
+     "period 1000, duty_cycle 250",
+     "period 1000000, duty_cycle 25",
+     "period 1000, duty_cycle 250000"
+    ],
+    "a": 0,
+    "w": "sysfs 값은 나노초: 1kHz = 1ms = 1000000ns, 25% = 250000ns.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "지금 period 1000000 · duty 900000 이다. 주기를 500000 으로 줄이는 올바른 순서는?",
+    "c": null,
+    "o": [
+     "period 를 먼저 줄이고 duty 를 쓴다",
+     "enable 을 0 으로 해야만 바꿀 수 있다",
+     "duty 를 먼저 줄이고 period 를 쓴다",
+     "unexport 후 다시 export 해야 한다"
+    ],
+    "a": 2,
+    "w": "주기를 줄일 때는 duty 를 먼저 줄인다 → 중간에 duty > period 인 순간이 생기지 않게 (pwm_set 이 알아서 고르는 순서).",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "SG90 서보를 90° 로 두는 설정은? (주기 20 ms)",
+    "c": null,
+    "o": [
+     "duty_cycle 1500000",
+     "duty_cycle 10000000",
+     "period 1500000",
+     "period 90000000"
+    ],
+    "a": 0,
+    "w": "SG90: 20ms 주기에서 0.5ms(0°) ~ 2.5ms(180°) → 90° = 1.5ms = duty_cycle 1500000ns.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "라(440 Hz)를 패시브 부저로 낼 때 period 에 가장 가까운 값은?",
+    "c": "period = 1000000000 / hz;\npwm_set(&g_p, period, period / 2);",
+    "o": [
+     "440000",
+     "4400000",
+     "227272",
+     "2272727"
+    ],
+    "a": 3,
+    "w": "1000000000 / 440 ≈ 2272727ns (약 2.27ms).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "L293D 에서 EN = 1, IN1 = 1, IN2 = 1 이면 모터는?",
+    "c": null,
+    "o": [
+     "정회전한다",
+     "브레이크 — 빠르게 멈춘다",
+     "역회전한다",
+     "관성으로 천천히 멈춘다"
+    ],
+    "a": 1,
+    "w": "IN1 · IN2 가 둘 다 1 이면 양쪽 단자를 같은 전위로 묶어 브레이크 → 빠르게 멈춘다 (00 은 자유 정지).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "06_dcmotor 가 방향을 바꿀 때 거치는 순서로 맞는 것은?",
+    "c": null,
+    "o": [
+     "반대 방향 → 속도 0 → 브레이크 → 대기",
+     "브레이크 → 반대 방향 → 속도 0 → 대기",
+     "속도 0 → 브레이크 → 대기 → 반대 방향",
+     "바로 반대 방향으로 IN1 · IN2 만 바꿈"
+    ],
+    "a": 2,
+    "w": "속도 0 → 브레이크(11) → 잠깐 대기(300ms) → 반대 방향 → 원래 속도. 돌던 방향을 바로 뒤집으면 큰 역전류.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "릴레이가 ON 일 때 COM 과 연결되는 단자는?",
+    "c": null,
+    "o": [
+     "NC",
+     "VCC",
+     "NO",
+     "IN"
+    ],
+    "a": 2,
+    "w": "코일 ON = COM–NO 연결 (OFF 면 COM–NC).",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "28BYJ-48 을 하프 스텝으로 90° 돌리려면 몇 스텝인가? (1회전 4096)",
+    "c": null,
+    "o": [
+     "1024",
+     "512",
+     "2048",
+     "90"
+    ],
+    "a": 0,
+    "w": "4096 스텝 = 360° → 90° = 1024 스텝.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "스텝 간격을 1.0 ms 로 줄였더니 모터가 떨기만 하고 돌지 않는다. 알맞은 대책은?",
+    "c": null,
+    "o": [
+     "코일 순서를 거꾸로 바꾼다",
+     "스텝마다 GPIO 를 새로 요청한다",
+     "코일을 켠 채로 두고 끝낸다",
+     "천천히 출발하는 가감속을 넣는다"
+    ],
+    "a": 3,
+    "w": "갑자기 빠르게 출발하면 회전자가 따라오지 못해 탈조(떨기만 함) → 느리게 출발해 빨라지는 사다리꼴 가감속.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "Echo 가 High 였던 시간이 2900 µs 이다. 거리는?",
+    "c": "cm = us * 0.0343 / 2;",
+    "o": [
+     "약 100 cm",
+     "약 50 cm",
+     "약 29 cm",
+     "약 10 cm"
+    ],
+    "a": 1,
+    "w": "2900 × 0.0343 / 2 ≈ 49.7 → 약 50cm (왕복이라 ÷2).",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "HC-SR04 Echo(5V) 를 GPIO24 로 받을 때 알맞은 분압은?",
+    "c": null,
+    "o": [
+     "Echo 쪽 2 kΩ, GND 쪽 1 kΩ",
+     "Echo 쪽 1 kΩ, GND 쪽 2 kΩ",
+     "Echo 쪽 220 Ω, GND 쪽 없음",
+     "저항 없이 GPIO24 에 직결"
+    ],
+    "a": 1,
+    "w": "Echo 쪽 1kΩ, GND 쪽 2kΩ → 5 × 2 / 3 ≈ 3.3V. 반대로 하면 1.7V 로 너무 낮다.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "5번 잰 값이 아래와 같을 때 09_sonar 의 출력은?",
+    "c": "[40.0, 40.0, 4.8, 39.8, 40.0]  → 정렬 후 가운데 값",
+    "o": [
+     "32.9 cm",
+     "4.8 cm",
+     "39.8 cm",
+     "40.0 cm"
+    ],
+    "a": 3,
+    "w": "정렬하면 [4.8, 39.8, 40.0, 40.0, 40.0] → 가운데 40.0. 튀는 4.8 에 흔들리지 않는다.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "거리 30 cm 일 때 alarm.c 의 LED 와 부저 동작은?",
+    "c": null,
+    "o": [
+     "빨강, 연속음",
+     "초록, 조용",
+     "노랑, 300 ms 마다 삑",
+     "노랑, 30 ms 마다 삑"
+    ],
+    "a": 2,
+    "w": "20~50cm 는 노랑, 부저 간격 = 거리 × 10ms = 300ms 마다 50ms 삑.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "부하(yes × 4)를 걸어도 경보기의 부저 음정 · 서보 위치가 흔들리지 않는 이유는?",
+    "c": null,
+    "o": [
+     "파형을 하드웨어 PWM 이 만들어서",
+     "메인 루프가 SCHED_FIFO 라서",
+     "mutex 가 CPU 를 예약해서",
+     "중앙값 필터가 지연을 없애서"
+    ],
+    "a": 0,
+    "w": "부저 음정과 서보 펄스는 SoC 의 하드웨어 PWM 블록이 만든다 → 프로그램이 늦게 깨어나도 파형은 그대로 (반응만 조금 늦을 수 있음).",
+    "by": "wiki"
+   }
+  ],
+  "4": [
+   {
+    "n": 1,
+    "p": "Linux 에서 I2C 장치 0x48 과 통신하기 위해 open 다음에 해야 할 일은?",
+    "c": "int fd = open(\"/dev/i2c-1\", O_RDWR);\n/* ? */\nwrite(fd, &ctrl, 1);",
+    "o": [
+     "ioctl(fd, SPI_IOC_WR_MODE, 0x48)",
+     "tcsetattr(fd, TCSANOW, 0x48)",
+     "write(fd, \"0x48\", 4)",
+     "ioctl(fd, I2C_SLAVE, 0x48)"
+    ],
+    "a": 3,
+    "w": "open 후 ioctl(fd, I2C_SLAVE, 0x48) 로 대상 주소를 정해야 이후 read/write 가 그 장치로 간다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "i2cget -y 1 0x48 0x40 을 한 번 실행했더니 가변저항 위치와 다른 값이 나왔다. 이유는?",
+    "c": null,
+    "o": [
+     "DAC 출력이 입력에 섞여 들어와서",
+     "첫 바이트는 지난번 변환 값이라서",
+     "I2C 클럭이 너무 느리게 설정돼서",
+     "가변저항이 IN1 에 연결돼 있어서"
+    ],
+    "a": 1,
+    "w": "PCF8591 은 읽을 때 변환을 시작해서 첫 바이트는 지난번 변환 값 → 한 박자 늦은 값이 나온다 (그래서 2바이트 읽고 두 번째 사용).",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "PCF8591 모듈의 Vcc 를 5V 에 꽂으면 생기는 문제는?",
+    "c": null,
+    "o": [
+     "I2C 주소가 0x49 로 바뀌어 버린다",
+     "DAC 출력이 영원히 꺼져 버린다",
+     "기판 풀업 때문에 SDA·SCL 이 5V 가 된다",
+     "변환 속도가 너무 빨라 값이 튄다"
+    ],
+    "a": 2,
+    "w": "모듈 기판의 풀업 저항이 Vcc 에 붙어 있어 SDA · SCL 이 5V 로 올라간다 → Pi 의 3.3V 핀이 위험. 모듈 Vcc 는 3V3.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "AIN2 를 읽고 DAC 를 켜는 제어 바이트는?",
+    "c": null,
+    "o": [
+     "0x42",
+     "0x24",
+     "0x02",
+     "0x46"
+    ],
+    "a": 0,
+    "w": "0x40(DAC 켜기) | 2(AIN2) = 0x42.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "아래 묶음 트랜잭션에서 buf[0] 을 버리는 이유는?",
+    "c": "ctrl = 0x44;   /* 자동 증가 */\nstruct i2c_msg m[2] = { {0x48,0,1,&ctrl}, {0x48,I2C_M_RD,5,buf} };\nioctl(fd, I2C_RDWR, &data);",
+    "o": [
+     "buf[0] 은 항상 제어 바이트 0x44 라서",
+     "첫 바이트는 이전 변환 값이라서",
+     "buf[0] 은 DAC 출력값이 들어와서",
+     "buf[0] 은 I2C 주소가 되돌아와서"
+    ],
+    "a": 1,
+    "w": "자동 증가로 5바이트를 읽어도 첫 바이트는 이전 변환 값 → buf[1]~buf[4] 가 AIN0~3.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "LM35 출력을 PCF8591 로 읽었더니 raw 가 23 이었다. 온도는 약? (기준 3.3 V)",
+    "c": "mV = raw * 3300 / 255;   °C = mV / 10;",
+    "o": [
+     "약 2.3 °C",
+     "약 23 °C",
+     "약 29.8 °C",
+     "약 7.6 °C"
+    ],
+    "a": 2,
+    "w": "23 × 3300 / 255 ≈ 297.6mV → 10mV = 1°C → 약 29.8°C.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "오늘 MQ-2 가스 센서를 PCF8591 에 바로 연결하지 않은 이유는?",
+    "c": null,
+    "o": [
+     "MQ-2 는 I2C 주소가 PCF8591 과 같아서",
+     "MQ-2 는 디지털 출력만 가지고 있어서",
+     "히터가 3V3 에서만 동작하는 센서라서",
+     "AO 가 5V 까지 올라가 입력 한계를 넘어서"
+    ],
+    "a": 3,
+    "w": "MQ-2 는 5V 로 동작해 AO 가 5V 근처까지 올라간다 → 3.3V 기준 입력의 한계를 넘는다 (MCU 에서는 분압해서 읽었다).",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "74HC595 의 ST_CP(래치) 에 Pi 의 CE0 를 연결하는 이유는?",
+    "c": null,
+    "o": [
+     "전송이 끝나면 CE0 가 올라가 그 에지가 래치가 되므로",
+     "CE0 가 데이터 비트를 내보내는 선이므로",
+     "CE0 가 SCLK 보다 빠르게 토글되므로",
+     "CE0 를 쓰면 LSB 먼저 전송이 되므로"
+    ],
+    "a": 0,
+    "w": "CE0 는 전송 동안 LOW, 끝나면 HIGH → 그 상승 에지가 595 의 래치(ST_CP) → SPI 전송 한 번 = shiftOut + 래치.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "MSB 먼저 0x06 을 보냈다. 595 의 Q0 ~ Q7 중 1 이 되는 핀은?",
+    "c": null,
+    "o": [
+     "Q5 · Q6",
+     "Q0 · Q7",
+     "Q1 · Q2",
+     "Q3 · Q4"
+    ],
+    "a": 2,
+    "w": "MSB 먼저 보내면 bitN 이 QN 에 놓인다 → 0x06 = bit1 · bit2 → Q1 · Q2.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "4자리 7-Segment 에서 세그먼트 저항을 220Ω 대신 1kΩ 으로 한 이유는?",
+    "c": null,
+    "o": [
+     "595 클럭 속도를 높이기 위해서",
+     "자리 핀 하나로 모이는 전류를 16 mA 아래로",
+     "고스팅을 완전히 없애기 위해서",
+     "공통 양극 부품에 맞추기 위해서"
+    ],
+    "a": 1,
+    "w": "멀티플렉싱에서 자리 공통 핀 하나로 켜진 세그먼트 전류가 모인다 → 8개 × 약 1.3mA ≈ 10mA 로 핀 한계(16mA) 아래 (220Ω 이면 훨씬 넘음).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "옆 자리에 숫자가 희미하게 겹쳐 보인다. 고쳐야 할 순서는?",
+    "c": null,
+    "o": [
+     "끄기 → 모양 바꾸기 → 켜기",
+     "모양 바꾸기 → 끄기 → 켜기",
+     "켜기 → 모양 바꾸기 → 끄기",
+     "모양 바꾸기 → 켜기 → 끄기"
+    ],
+    "a": 0,
+    "w": "모든 자리 끄기 → 595 모양 바꾸기 → 이 자리만 켜기. 끄지 않고 모양을 바꾸면 이전 자리에 새 모양이 잠깐 비친다(고스팅).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "부하 중 한 자리만 번쩍이는 깜빡임을 줄이는 방법은?",
+    "c": null,
+    "o": [
+     "세그먼트 저항을 220Ω 으로 바꾼다",
+     "자리당 시간을 20 ms 로 늘린다",
+     "SPI 속도를 100 kHz 로 낮춘다",
+     "표시 쓰레드를 SCHED_FIFO 로 올린다"
+    ],
+    "a": 3,
+    "w": "부하 중 표시 쓰레드가 늦게 깨어나 한 자리가 오래 켜진다 → SCHED_FIFO 로 올려 먼저 실행 (595 에는 스스로 도는 하드웨어가 없다).",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "07_matrix 에서 rev8() 로 비트를 뒤집어 보내는 이유는?",
+    "c": null,
+    "o": [
+     "595 가 LSB 먼저 데이터만 받기 때문에",
+     "행 극성을 반대로 바꾸기 위해서",
+     "이중 버퍼의 앞 · 뒤를 바꾸기 위해서",
+     "bit7 이 Q7 로 가는데 왼쪽 열 C1 은 Q0 이라서"
+    ],
+    "a": 3,
+    "w": "MSB 먼저 보내면 bit7 이 Q7 로 가는데 배선상 왼쪽 열 C1 은 Q0 → 비트 순서를 뒤집어 bit7 이 Q0 에 오게 한다.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "버퍼 1장으로 스크롤하면 생기는 현상은?",
+    "c": null,
+    "o": [
+     "위 몇 행은 옛 그림, 아래 행은 새 그림",
+     "모든 점이 한꺼번에 꺼졌다 켜진다",
+     "그림이 좌우로 뒤집혀 표시된다",
+     "스크롤 속도가 두 배로 빨라진다"
+    ],
+    "a": 0,
+    "w": "그리는 중간에 스캔이 같은 버퍼를 보여 주면 위 몇 행은 이전 그림, 아래는 새 그림 → 찢어짐(tearing). 이중 버퍼로 프레임 경계에서 교체.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "115200 bps 8N1 의 처리량은 초당 약 몇 바이트?",
+    "c": null,
+    "o": [
+     "약 14 400",
+     "약 11 520",
+     "약 115 200",
+     "약 1 152"
+    ],
+    "a": 1,
+    "w": "8N1 은 한 글자 = 시작 1 + 데이터 8 + 정지 1 = 10비트 → 115200 / 10 = 11520 바이트/초.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "termios 에서 VMIN = 0, VTIME = 1 일 때 read() 의 동작은?",
+    "c": null,
+    "o": [
+     "10바이트가 모일 때까지 기다림",
+     "바이트가 올 때까지 무한정 대기",
+     "오면 바로, 없으면 0.1초 뒤 0",
+     "기다리지 않고 언제나 0 을 반환"
+    ],
+    "a": 2,
+    "w": "VMIN 0 · VTIME 1(0.1초) → 받은 게 있으면 바로 돌려주고, 0.1초 동안 없으면 0 을 돌려준다.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "Pi 와 ESP32 를 UART 로 연결하는 올바른 배선은?",
+    "c": null,
+    "o": [
+     "Pi TXD → ESP32 RX2, Pi RXD ← TX2, GND 공통",
+     "Pi TXD → ESP32 TX2, Pi RXD → RX2, 3V3 공통",
+     "Pi TXD → ESP32 RX2 하나만, GND 생략",
+     "Pi 5V → ESP32 VIN, TX · RX 같은 이름끼리"
+    ],
+    "a": 0,
+    "w": "TX 는 상대 RX 로 엇갈려 연결, GND 는 반드시 공통 (3V3·5V 는 잇지 않음, 둘 다 3.3V 논리).",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "\"LED=1\" 의 XOR 체크섬은?",
+    "c": "'L' 0x4C ^ 'E' 0x45 ^ 'D' 0x44 ^ '=' 0x3D ^ '1' 0x31",
+    "o": [
+     "0x40",
+     "0x31",
+     "0x41",
+     "0x4C"
+    ],
+    "a": 2,
+    "w": "0x4C ^ 0x45 = 0x09 → ^ 0x44 = 0x4D → ^ 0x3D = 0x70 → ^ 0x31 = 0x41 → `LED=1*41`.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "gateway 가 체크섬이 맞지 않는 줄을 받았을 때의 동작은?",
+    "c": null,
+    "o": [
+     "마지막 바이트만 고쳐서 쓴다",
+     "ESP32 를 다시 시작시킨다",
+     "프로그램을 바로 종료한다",
+     "버리고 다음 줄을 기다린다"
+    ],
+    "a": 3,
+    "w": "체크섬이 틀린 줄은 '버림(체크섬)' 으로 세기만 하고 다음 줄을 기다린다 (고치거나 멈추지 않음).",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "ESP32 의 전원을 끄면 3초 뒤 7-Segment 에 나타나는 것은?",
+    "c": null,
+    "o": [
+     "0000",
+     "----",
+     "마지막 온도 그대로",
+     "Err"
+    ],
+    "a": 1,
+    "w": "3초 동안 정상 프레임이 없으면 타임아웃 → 7-Segment 에 ----, 다시 켜면 '수신 재개'.",
+    "by": "wiki"
+   }
+  ]
+ },
+ "mcu": {
+  "1": [
+   {
+    "n": 1,
+    "p": "핀 번호를 받아 \"출력으로 써도 안전한가\"를 판단하는 함수입니다. 아래 코드를 실행했을 때 시리얼 모니터에 출력되는 내용은 무엇입니까?",
+    "c": "const int STRAP_PINS[] = {0, 2, 5, 12, 15};\n\nint is_safe_output(int pin) {\n    if (pin >= 34 && pin <= 39) return 0;      // 입력 전용\n    for (int i = 0; i < 5; i++)\n        if (STRAP_PINS[i] == pin) return 0;    // Strapping\n    return 1;\n}\n\nSerial.printf(\"%d %d %d\\n\", is_safe_output(25), is_safe_output(35), is_safe_output(12));",
+    "o": [
+     "1 1 0",
+     "1 0 0",
+     "0 0 1",
+     "1 0 1"
+    ],
+    "a": 1,
+    "w": "25 는 안전 → 1, 35 는 입력 전용(34~39) → 0, 12 는 Strapping → 0 → 1 0 0.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "GPIO 34 에 220Ω 과 LED 를 올바르게 연결하고 아래 코드를 업로드했습니다. LED 는 어떻게 됩니까?",
+    "c": "void setup() {\n    pinMode(34, OUTPUT);\n    digitalWrite(34, HIGH);\n}\nvoid loop() { }",
+    "o": [
+     "LED 가 밝게 켜진다",
+     "컴파일 에러가 난다",
+     "LED 가 켜지지 않는다",
+     "부팅이 무한 반복된다"
+    ],
+    "a": 2,
+    "w": "GPIO 34~39 는 입력 전용이라 출력이 없다 — 컴파일·부팅은 정상이지만 LED 는 켜지지 않는다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "ESP32 DevKit 에 아래 코드를 업로드하고 시리얼 모니터(115200)를 열었습니다. 출력되는 내용은 무엇입니까?",
+    "c": "void setup() {\n    Serial.begin(115200);\n    delay(500);\n    Serial.printf(\"Cores : %d\\n\", ESP.getChipCores());\n}\nvoid loop() { }",
+    "o": [
+     "Cores : 1",
+     "Cores : 2",
+     "Cores : 4",
+     "Cores : 240"
+    ],
+    "a": 1,
+    "w": "ESP32 는 듀얼 코어 → Cores : 2 (CPU 240MHz 는 getCpuFreqMHz).",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "setup() 과 loop() 가 어떤 순서로 불리는지 확인하는 코드입니다. 시리얼 모니터에 처음 출력되는 세 줄은 무엇입니까?",
+    "c": "int n = 0;\n\nvoid setup() {\n    Serial.begin(115200);\n    Serial.printf(\"setup %d\\n\", n);\n    n = 10;\n}\n\nvoid loop() {\n    n++;\n    Serial.printf(\"loop %d\\n\", n);\n    delay(1000);\n}",
+    "o": [
+     "setup 0 · loop 1 · loop 2",
+     "setup 10 · loop 11 · loop 11",
+     "setup 0 · loop 11 · loop 11",
+     "setup 0 · loop 11 · loop 12"
+    ],
+    "a": 3,
+    "w": "setup 이 한 번 먼저(n=0 출력 후 10), 그 뒤 loop 가 반복 → loop 11, loop 12.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "loop() 안에 static 변수와 일반 지역 변수를 함께 둔 코드입니다. 시리얼 모니터에 출력되는 세 번째 줄은 무엇입니까?",
+    "c": "void loop() {\n    static int count = 0;\n    int temp = 0;\n    count++;\n    temp++;\n    Serial.printf(\"%d %d\\n\", count, temp);\n    delay(1000);\n}",
+    "o": [
+     "1 1",
+     "1 3",
+     "3 1",
+     "3 3"
+    ],
+    "a": 2,
+    "w": "static 은 loop 가 끝나도 값 유지(3), 일반 지역 변수는 매번 0 에서 시작(1) → 세 번째 줄 3 1.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "신호등 상태를 enum 으로 정의했습니다. 아래 코드의 출력은 무엇입니까?",
+    "c": "typedef enum { ST_RED, ST_GREEN, ST_YELLOW } light_t;\n\nlight_t s = ST_YELLOW;\nSerial.printf(\"%d\\n\", s + 1);",
+    "o": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ],
+    "a": 3,
+    "w": "enum 은 0 부터: ST_YELLOW = 2 → 2 + 1 = 3.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "LED 핀 번호를 배열에 담고 개수를 계산합니다. 아래 코드의 출력은 무엇입니까?",
+    "c": "const int LED_PINS[] = {25, 26, 27, 14};\nSerial.printf(\"%u\\n\", sizeof(LED_PINS) / sizeof(LED_PINS[0]));",
+    "o": [
+     "1",
+     "4",
+     "16",
+     "27"
+    ],
+    "a": 1,
+    "w": "sizeof 전체(16) / sizeof 하나(4) = 요소 개수 4.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "초록 LED(순방향 전압 Vf = 2.2V)에 220Ω 저항을 직렬로 연결하고 GPIO 를 HIGH(3.3V)로 했습니다. LED 에 흐르는 전류는 약 얼마입니까?",
+    "c": null,
+    "o": [
+     "약 15.0mA",
+     "약 10.0mA",
+     "약 5.0mA",
+     "약 2.2mA"
+    ],
+    "a": 2,
+    "w": "옴의 법칙 I = (3.3 − 2.2) / 220 = 1.1 / 220 ≈ 5mA.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "GPIO 25 와 27 을 켜기 위한 비트 마스크를 만듭니다. 아래 코드의 출력은 무엇입니까?",
+    "c": "uint32_t mask = (1UL << 25) | (1UL << 27);\nSerial.printf(\"0x%08lX\\n\", mask);",
+    "o": [
+     "0x0E000000",
+     "0x05000000",
+     "0xA0000000",
+     "0x0A000000"
+    ],
+    "a": 3,
+    "w": "비트 25 = 0x02000000, 비트 27 = 0x08000000 → OR = 0x0A000000.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "LED 가 GPIO 25 · 26 · 27 에 연결되어 있고 모두 출력으로 설정했습니다. 아래 두 줄을 차례로 실행한 뒤 LED 상태는 어떻게 됩니까?",
+    "c": "REG_WRITE(GPIO_OUT_W1TS_REG, (1UL << 25) | (1UL << 26) | (1UL << 27));\nREG_WRITE(GPIO_OUT_W1TC_REG, 1UL << 26);",
+    "o": [
+     "25 · 27 만 켜진다",
+     "26 만 켜진다",
+     "셋 다 꺼져 버린다",
+     "셋 다 계속 켜져 있다"
+    ],
+    "a": 0,
+    "w": "W1TS 로 셋 다 켠 뒤 W1TC 에 26 만 → 1 을 쓴 비트(26)만 꺼진다 → 25 · 27 만 켜짐.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "LED 25 · 26 · 27 이 모두 켜진 상태에서 아래 한 줄을 실행했습니다. LED 상태는 어떻게 됩니까?",
+    "c": "REG_WRITE(GPIO_OUT_REG, 1UL << 25);",
+    "o": [
+     "25 만 켜지고 나머지는 꺼진다",
+     "셋 다 그대로 켜져 있다",
+     "25 만 꺼지고 나머지는 켜져 있다",
+     "셋 다 꺼진다"
+    ],
+    "a": 0,
+    "w": "GPIO_OUT_REG 는 32비트를 통째로 덮어쓴다 → 25 만 1, 나머지 0 → 25 만 켜짐 (W1TS/W1TC 를 쓰는 이유).",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "버튼을 GPIO 4 와 GND 사이에 연결하고 아래 코드를 실행했습니다. 버튼을 누르지 않은 상태에서 출력되는 값은 무엇입니까?",
+    "c": "pinMode(4, INPUT_PULLUP);\nSerial.println(digitalRead(4));     // 버튼을 누르지 않은 상태",
+    "o": [
+     "0 (LOW)",
+     "1 (HIGH)",
+     "-1 (오류)",
+     "0 과 1 이 요동"
+    ],
+    "a": 1,
+    "w": "INPUT_PULLUP 은 내부 저항으로 3.3V 에 연결 → 안 누르면 HIGH(1), 누르면 LOW.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "예제 5-3 의 button_pressed() 는 30ms 디바운스 후 \"눌림(HIGH → LOW)이 확정되는 순간\"에만 1 을 반환합니다. 버튼을 한 번 눌렀다 뗐고 접점이 누를 때 5번 튀었다면 count 는 얼마나 증가합니까?",
+    "c": "button_t btn = {4, HIGH, HIGH, 0};\nint count = 0;\n\nvoid loop() {\n    if (button_pressed(&btn)) count++;\n}",
+    "o": [
+     "1",
+     "2",
+     "0",
+     "튄 횟수만큼 (5)"
+    ],
+    "a": 0,
+    "w": "디바운스는 30ms 동안 값이 그대로일 때 한 번만 확정 → 튀어도 눌림 1번.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "millis() 는 약 49.7일마다 0 으로 돌아옵니다. 넘치기 직전에 기록한 시각과 넘친 뒤 시각을 뺄셈으로 비교합니다. 출력은 무엇입니까?",
+    "c": "uint32_t changed_at = 4294967290UL;   // 넘치기 직전\nuint32_t now = 20;                    // 넘친 뒤\nSerial.printf(\"%lu\\n\", now - changed_at);",
+    "o": [
+     "26",
+     "0",
+     "4294967270",
+     "-4294967270"
+    ],
+    "a": 0,
+    "w": "unsigned 뺄셈은 넘침을 감아서 계산: 20 − 4294967290 = 26 (2^32 를 더한 값). 그래서 millis 비교는 뺄셈으로.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "loop() 가 버튼을 확인한 뒤 2초 동안 쉽니다. 이 2초 동안 버튼을 5번 짧게 눌렀다 뗐다면 count 는 대략 얼마나 증가합니까?",
+    "c": "void loop() {\n    if (digitalRead(4) == LOW) count++;\n    delay(2000);\n}",
+    "o": [
+     "정확히 5",
+     "10 (누름과 뗌)",
+     "2 또는 3",
+     "0 또는 1"
+    ],
+    "a": 3,
+    "w": "폴링은 확인하는 순간에 눌려 있어야만 센다 → 2초에 한 번 보니 대부분 놓쳐 0 또는 1.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "버튼 인터럽트를 FALLING 으로 등록했습니다. 채터링이 없는 이상적인 버튼을 3번 눌렀다 떼면 press_count 는 얼마입니까?",
+    "c": "volatile int press_count = 0;\n\nvoid IRAM_ATTR onButton() {\n    press_count++;\n}\n\n// setup 안\npinMode(4, INPUT_PULLUP);\nattachInterrupt(digitalPinToInterrupt(4), onButton, FALLING);",
+    "o": [
+     "0",
+     "1",
+     "3",
+     "6"
+    ],
+    "a": 2,
+    "w": "FALLING 은 HIGH → LOW(누르는 순간)에만 → 3번 누르면 3.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "loop() 에서 ISR 이 올린 카운터를 읽고 0 으로 지웁니다. 두 줄 사이(★)에 버튼 ISR 이 실행되어 press_count 가 1 증가하면 그 눌림은 어떻게 됩니까?",
+    "c": "// loop 안 — 임계 구역 없이\nint n = press_count;\n// ★ 여기서 ISR 실행\npress_count = 0;\nSerial.printf(\"%d\\n\", n);",
+    "o": [
+     "n 에 포함되어 함께 출력된다",
+     "다음 loop 에서 이어서 세진다",
+     "사라져서 세지지 않는다",
+     "ESP32 가 즉시 리셋된다"
+    ],
+    "a": 2,
+    "w": "읽은 뒤 · 지우기 전에 ISR 이 더한 1 은 곧바로 0 으로 지워진다 → 눌림이 사라짐. 그래서 portENTER_CRITICAL 로 한 덩어리로.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "LED 에 8비트 PWM 을 설정하고 아래 값을 썼습니다. 듀티비(한 주기 중 HIGH 인 시간의 비율)는 약 얼마입니까?",
+    "c": "ledcAttach(25, 5000, 8);     // 5kHz, 8비트 (0~255)\nledcWrite(25, 64);",
+    "o": [
+     "약 64%",
+     "약 50%",
+     "약 6.4%",
+     "약 25%"
+    ],
+    "a": 3,
+    "w": "8비트 최대 255 → 64 / 255 ≈ 25%.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "멜로디를 {주파수, 길이} 구조체 배열로 저장했습니다. 아래 코드의 출력은 무엇입니까? (uint16_t 는 2바이트)",
+    "c": "typedef struct { uint16_t freq; uint16_t ms; } note_t;\n\nconst note_t song[] = {\n    {262, 300}, {294, 300}, {330, 300}, {0, 150}, {349, 600}\n};\n\nSerial.printf(\"%u %u\\n\", sizeof(song), sizeof(song) / sizeof(song[0]));",
+    "o": [
+     "20 5",
+     "10 5",
+     "5 20",
+     "40 5"
+    ],
+    "a": 0,
+    "w": "note_t 는 2 + 2 = 4바이트 × 5개 = 20, 요소 개수 20 / 4 = 5.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "상태마다 함수를 두고 함수 포인터 표로 상태를 바꿉니다. 반복문이 끝난 뒤 출력되는 값은 무엇입니까?",
+    "c": "typedef enum { ST_A, ST_B, ST_C, ST_COUNT } st_t;\n\nst_t fa(void) { return ST_B; }\nst_t fb(void) { return ST_C; }\nst_t fc(void) { return ST_A; }\n\nst_t (*table[ST_COUNT])(void) = { fa, fb, fc };\n\nst_t cur = ST_A;\nfor (int i = 0; i < 4; i++) cur = table[cur]();\nSerial.printf(\"%d\\n\", cur);",
+    "o": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ],
+    "a": 1,
+    "w": "A→B→C→A→B (4번) → ST_B = 1.",
+    "by": "wiki"
+   }
+  ],
+  "2": [
+   {
+    "n": 1,
+    "p": "ADC 값을 단순 비례식으로 전압(mV)으로 바꿉니다. 아래 코드의 출력은 무엇입니까?",
+    "c": "int raw = 2048;\nfloat mv = raw * 3300.0f / 4095;\nSerial.printf(\"%.0f\\n\", mv);",
+    "o": [
+     "1650",
+     "2048",
+     "3300",
+     "825"
+    ],
+    "a": 0,
+    "w": "2048 × 3300 / 4095 ≈ 1650.4 → %.0f 로 1650. 단순 비례라 실제 칩 오차는 반영되지 않는다 (그래서 analogReadMilliVolts).",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "여러 번 읽은 값의 평균을 반환하고 최소 · 최대는 포인터로 돌려주는 함수입니다. 출력은 무엇입니까?",
+    "c": "int read_avg(const int *a, int n, int *mn, int *mx) {\n    long s = 0;  *mn = 4095;  *mx = 0;\n    for (int i = 0; i < n; i++) {\n        s += a[i];\n        if (a[i] < *mn) *mn = a[i];\n        if (a[i] > *mx) *mx = a[i];\n    }\n    return s / n;\n}\n\nint smp[4] = {2010, 2030, 2025, 2015};\nint mn, mx;\nint avg = read_avg(smp, 4, &mn, &mx);\nSerial.printf(\"%d %d %d\\n\", avg, mn, mx);",
+    "o": [
+     "2020 0 4095",
+     "2020 2010 2030",
+     "2025 2010 2030",
+     "8080 2010 2030"
+    ],
+    "a": 1,
+    "w": "합 8080 / 4 = 2020, 최소 2010, 최대 2030 — 평균은 반환값, 최소·최대는 포인터 인자로 돌려준다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "기본 감쇠(11dB)에서 GPIO34 에 3.25V 를 넣고 analogRead(34) 를 읽었습니다. 결과로 가장 알맞은 것은 무엇입니까?",
+    "c": null,
+    "o": [
+     "약 3250",
+     "약 4033",
+     "4095",
+     "0"
+    ],
+    "a": 2,
+    "w": "11dB 감쇠에서 약 3.1V 이상은 4095 로 포화된다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "3V3 — 포토레지스터 — (GPIO35) — 10kΩ — GND 분압 회로에서, 어두워서 포토레지스터가 30kΩ 이 되었습니다. GPIO35 의 전압은 약 얼마입니까?",
+    "c": null,
+    "o": [
+     "약 2.475V",
+     "약 0.825V",
+     "약 1.65V",
+     "약 3.3V"
+    ],
+    "a": 1,
+    "w": "분압: 3.3 × 10k / (30k + 10k) = 0.825V — 어두울수록 포토레지스터가 커져 GPIO 전압이 작아진다.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "크기 4 인 링 버퍼에 값 다섯 개를 차례로 넣었습니다. 마지막 ring_push 가 돌려주는 평균과 head 는 무엇입니까?",
+    "c": "#define RN 4\ntypedef struct { int buf[RN]; int head; int count; long sum; } ring_t;\n\nint ring_push(ring_t *r, int v) {\n    if (r->count == RN) r->sum -= r->buf[r->head];\n    else r->count++;\n    r->buf[r->head] = v;\n    r->sum += v;\n    r->head = (r->head + 1) % RN;\n    return r->sum / r->count;\n}\n\nring_t r = {0};\nint avg = 0;\nint vals[5] = {10, 20, 30, 40, 50};\nfor (int i = 0; i < 5; i++) avg = ring_push(&r, vals[i]);\nSerial.printf(\"%d %d\\n\", avg, r.head);",
+    "o": [
+     "30 0",
+     "38 1",
+     "35 1",
+     "35 5"
+    ],
+    "a": 2,
+    "w": "4개가 찬 뒤(합 100, head 0) 50 을 넣으면 가장 오래된 10 을 빼고 50 을 더해 합 140, head 1 → 140 / 4 = 35.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "자동 조명에서 어두울수록 LED 를 밝게 합니다. 평균 조도 avg 가 1024 일 때 duty 는 얼마입니까? (정수 연산)",
+    "c": "int avg = 1024;\nint duty = 255 - avg * 255 / 4095;\nif (duty < 20) duty = 0;\nSerial.printf(\"%d\\n\", duty);",
+    "o": [
+     "63",
+     "255",
+     "0",
+     "192"
+    ],
+    "a": 3,
+    "w": "1024 × 255 / 4095 = 63 (정수) → 255 − 63 = 192, 20 이상이라 그대로.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "서보에 1.5ms(90°) 펄스를 주려고 LEDC 14비트 duty 를 계산합니다. 출력은 무엇입니까?",
+    "c": "const int MAX_DUTY = (1 << 14) - 1;        // 16383\nlong us = 1500;\nSerial.printf(\"%ld\\n\", us * MAX_DUTY / 20000);",
+    "o": [
+     "1500",
+     "1228",
+     "16383",
+     "819"
+    ],
+    "a": 1,
+    "w": "1500 × 16383 / 20000 = 1228 (14비트에서 20ms 중 1.5ms).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "조이스틱 X 값을 서보 각도로 바꿉니다. my_map(1024, 0, 4095, 0, 180) 의 결과는 무엇입니까?",
+    "c": "long my_map(long x, long in_min, long in_max, long out_min, long out_max) {\n    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;\n}",
+    "o": [
+     "0",
+     "90",
+     "45",
+     "180"
+    ],
+    "a": 2,
+    "w": "1024 × 180 / 4095 = 45 — 곱셈을 먼저 해서 정수 나눗셈 손실을 줄인다.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "조이스틱 가운데 값을 1900 으로 저장해 두고 데드존 ±150 을 적용합니다. x 가 2000 일 때 deg 는 얼마입니까?",
+    "c": "int center = 1900;\nint x = 2000;\nint deg = (abs(x - center) < 150) ? 90 : my_map(x, 0, 4095, 0, 180);\nSerial.printf(\"%d\\n\", deg);",
+    "o": [
+     "87",
+     "94",
+     "180",
+     "90"
+    ],
+    "a": 3,
+    "w": "|2000 − 1900| = 100 < 150 → 데드존 안이라 90° 유지.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "LM35 를 analogReadMilliVolts 로 16번 읽어 합이 3920 이었습니다. 아래 식의 결과(°C)는 무엇입니까?",
+    "c": "long sum = 3920;                       // 16번 읽은 mV 합\nfloat temp_c = sum / 16.0f / 10.0f;\nSerial.printf(\"%.1f\\n\", temp_c);",
+    "o": [
+     "245.0",
+     "24.5",
+     "2.4",
+     "392.0"
+    ],
+    "a": 1,
+    "w": "3920 / 16 = 245mV 평균 → 10mV = 1°C → 24.5°C.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "DHT11 읽기가 실패해 t 에 NaN 이 들어왔습니다. 어느 줄이 출력됩니까?",
+    "c": "float t = NAN;                         // 읽기 실패\nif (t == NAN)        Serial.println(\"실패 A\");\nelse if (isnan(t))   Serial.println(\"실패 B\");\nelse                 Serial.println(\"정상\");",
+    "o": [
+     "실패 A",
+     "정상",
+     "컴파일 에러",
+     "실패 B"
+    ],
+    "a": 3,
+    "w": "NaN 은 자기 자신과도 같지 않아 `t == NAN` 은 항상 거짓 → isnan 으로 검사해야 '실패 B'.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "MQ-2 AO 를 10kΩ : 10kΩ 로 분압해 GPIO32 에서 900mV 를 읽었습니다. 코드가 출력하는 실제 AO 전압(mV)은 무엇입니까?",
+    "c": "int mv = 900;                // analogReadMilliVolts(32)\nint ao_mv = mv * 2;          // 분압 전 실제 AO\nSerial.printf(\"%d\\n\", ao_mv);",
+    "o": [
+     "1800",
+     "900",
+     "450",
+     "3600"
+    ],
+    "a": 0,
+    "w": "같은 저항 둘로 반으로 나눴으니 ×2 → 1800mV.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "ON = 1500, OFF = 1200 인 히스테리시스 경보에 값이 차례로 들어옵니다. 출력되는 다섯 글자는 무엇입니까?",
+    "c": "int g[5] = {1400, 1550, 1300, 1150, 1450};\nbool alarm = false;\nfor (int i = 0; i < 5; i++) {\n    if (!alarm && g[i] > 1500)      alarm = true;\n    else if (alarm && g[i] < 1200)  alarm = false;\n    Serial.print(alarm);\n}",
+    "o": [
+     "01100",
+     "01000",
+     "01110",
+     "01101"
+    ],
+    "a": 0,
+    "w": "1400(꺼짐 0) → 1550(1500 초과, 켜짐 1) → 1300(1200 이상이라 유지 1) → 1150(1200 미만, 꺼짐 0) → 1450(1500 이하라 0) → 01100.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "2핀 불꽃 센서를 3V3 — (짧은 다리) 센서 (긴 다리) — GPIO34 — 10kΩ — GND 로 연결했습니다. TV 리모컨의 적외선을 가까이 비추면 analogRead(34) 는 어떻게 됩니까?",
+    "c": null,
+    "o": [
+     "점점 작아진다",
+     "점점 커진다",
+     "변하지 않는다",
+     "0 과 4095 를 오간다"
+    ],
+    "a": 1,
+    "w": "이 배선(센서가 위, 10kΩ 이 GND 쪽)에서는 적외선이 강할수록 센서 저항이 작아져 GPIO 전압이 커진다.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "HC-SR04 의 Echo 펄스 폭이 1740µs 였습니다. read_cm() 의 반환값은 무엇입니까?",
+    "c": "unsigned long us = 1740;           // pulseIn(PIN_ECHO, HIGH, 30000)\nif (us == 0) return -1;\nreturn us / 58.0f;",
+    "o": [
+     "17.4",
+     "58.0",
+     "15.0",
+     "30.0"
+    ],
+    "a": 3,
+    "w": "왕복 58µs ≈ 1cm → 1740 / 58 = 30.0cm.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "5V 로 동작하는 HC-SR04 의 Echo 를 10kΩ(직렬) · 20kΩ(GND 쪽)으로 분압했습니다. GPIO16 에 들어가는 최대 전압은 약 얼마입니까?",
+    "c": null,
+    "o": [
+     "약 3.33V",
+     "약 1.67V",
+     "약 2.5V",
+     "약 5V"
+    ],
+    "a": 0,
+    "w": "5V × 20k / (10k + 20k) ≈ 3.33V — 3.3V 핀이 견디는 범위로 낮춘다.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "토양 습도 센서의 전원을 GPIO 로 잴 때만 켭니다. 아래 loop 에서 센서에 전원이 들어가 있는 시간의 비율은 약 얼마입니까?",
+    "c": "int read_soil(void) {\n    digitalWrite(14, HIGH);  delay(10);   // 전원 ON\n    int v = analogRead(34);\n    digitalWrite(14, LOW);               // 바로 OFF\n    return v;\n}\nvoid loop() {\n    Serial.println(read_soil());\n    delay(1000);\n}",
+    "o": [
+     "약 10%",
+     "약 0.1%",
+     "약 1%",
+     "약 100%"
+    ],
+    "a": 2,
+    "w": "1초 남짓 한 주기에 10ms 만 켜짐 → 약 1% (전극 부식 방지).",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "sensor.h 에 아래 한 줄을 넣고, 이 헤더를 sensor.cpp 와 main.ino 두 파일에서 #include 했습니다. 빌드 결과는 무엇입니까?",
+    "c": "// sensor.h\nint sensor_read_count = 0;          // extern 이 아니라 정의",
+    "o": [
+     "undefined reference 오류",
+     "redefinition of struct 오류",
+     "multiple definition 오류",
+     "오류 없이 정상 빌드"
+    ],
+    "a": 2,
+    "w": "헤더에 정의를 두면 include 한 파일마다 정의가 생겨 링커가 multiple definition. 헤더엔 extern 선언, 정의는 .cpp 한 곳.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "센서 표에서 주기가 지난 센서만 읽습니다. loop 가 now = 100, 200, … 1000 에서 한 번씩 돌 때(last_ms 는 모두 0 에서 시작) 각 센서의 read() 호출 횟수는 몇 번입니까?",
+    "c": "// period_ms: pot = 100, lm35 = 500, dht = 2000\nif (now - sensors[i].last_ms >= sensors[i].period_ms) {\n    sensors[i].value = sensors[i].read();\n    sensors[i].last_ms = now;\n}",
+    "o": [
+     "pot 10 · lm35 5 · dht 1",
+     "pot 10 · lm35 2 · dht 1",
+     "pot 1 · lm35 1 · dht 1",
+     "pot 10 · lm35 2 · dht 0"
+    ],
+    "a": 3,
+    "w": "pot(100ms) 은 매번 → 10번, lm35(500ms) 는 now = 500, 1000 → 2번, dht(2000ms) 는 1000 까지 아직 주기가 안 됨 → 0번.",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "시리얼 플로터 형식으로 두 센서 값을 한 줄에 출력합니다. 출력되는 줄은 무엇입니까?",
+    "c": "const char *names[2] = {\"pot\", \"light\"};\nfloat vals[2] = {2041, 1733};\nfor (int i = 0; i < 2; i++)\n    Serial.printf(\"%s%s:%.1f\", i ? \",\" : \"\", names[i], vals[i]);\nSerial.println();",
+    "o": [
+     "pot:2041.0,light:1733.0",
+     ",pot:2041.0,light:1733.0",
+     "pot:2041.0,light:1733.0,",
+     "pot 2041.0 light 1733.0"
+    ],
+    "a": 0,
+    "w": "첫 항목 앞에는 쉼표가 없고(i 가 0) 두 번째부터 앞에 쉼표 → pot:2041.0,light:1733.0 (플로터의 이름:값 형식).",
+    "by": "wiki"
+   }
+  ],
+  "3": [
+   {
+    "n": 1,
+    "p": "오늘 규칙(a = bit0 … g = bit6)으로 숫자 2 의 비트맵에서 a~g 비트를 차례로 꺼내 출력합니다. 출력되는 7글자는 무엇입니까?",
+    "c": "const uint8_t DIGITS[10] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};\n\nuint8_t pattern = DIGITS[2];\nfor (int i = 0; i < 7; i++)\n    Serial.print((pattern >> i) & 1);",
+    "o": [
+     "1011011",
+     "1101101",
+     "0101101",
+     "1101100"
+    ],
+    "a": 1,
+    "w": "0x5B = 0101 1011 → bit0 부터 1,1,0,1,1,0,1 → 1101101 (a b d e g 켜짐 = 숫자 2).",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "공통 양극(CA) 7-Segment 에 숫자 1 을 표시하려고 비트맵을 뒤집었습니다. 출력되는 값은 무엇입니까?",
+    "c": "uint8_t p = 0x06;              // 숫자 1 (b, c)\nconst bool COMMON_ANODE = true;\nif (COMMON_ANODE) p = ~p;\nSerial.printf(\"0x%02X\\n\", p);",
+    "o": [
+     "0x60",
+     "0x06",
+     "0xF9",
+     "0xF6"
+    ],
+    "a": 2,
+    "w": "~0x06 = 1111 1001 = 0xF9 — 공통 양극은 LOW 가 켜짐이라 패턴을 뒤집는다.",
+    "by": "wiki"
+   },
+   {
+    "n": 1,
+    "p": "16진수 한 자리를 표시하고 점(dp)도 켭니다. 아래 코드의 출력은 무엇입니까?",
+    "c": "const uint8_t HEX_FONT[16] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,\n                              0x7F,0x6F,0x77,0x7C,0x39,0x5E,0x79,0x71};\n\nuint8_t p = HEX_FONT[0x1A & 0x0F];\np |= 0x80;\nSerial.printf(\"0x%02X\\n\", p);",
+    "o": [
+     "0xF7",
+     "0x77",
+     "0x8A",
+     "0x9A"
+    ],
+    "a": 0,
+    "w": "0x1A & 0x0F = 0xA → HEX_FONT[10] = 0x77('A'), dp(0x80) 켜기 → 0xF7. & 0x0F 는 배열 범위를 지키는 안전장치.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "74HC595 에 LSB 먼저 8비트를 밀어 넣는 과정을 변수로 흉내 냈습니다. 새 비트가 S0 으로 들어오고 기존 비트는 한 칸씩 밀립니다. 출력은 무엇입니까?",
+    "c": "uint8_t reg = 0, data = 0xA0;         // 1010 0000\nfor (int i = 0; i < 8; i++)           // LSB(bit0) 먼저\n    reg = (reg << 1) | ((data >> i) & 1);\nSerial.printf(\"0x%02X\\n\", reg);",
+    "o": [
+     "0xA0",
+     "0x0A",
+     "0x50",
+     "0x05"
+    ],
+    "a": 3,
+    "w": "LSB 먼저 넣으면 처음 넣은 bit0 가 맨 위(bit7)까지 밀려 비트 순서가 뒤집힌다 → 1010 0000 의 역순 0000 0101 = 0x05.",
+    "by": "wiki"
+   },
+   {
+    "n": 2,
+    "p": "74HC595 에 DS 로 8비트를 올리며 SH_CP 를 8번 올렸지만, ST_CP(래치)는 한 번도 올리지 않았습니다. 출력 Q0~Q7 은 어떻게 됩니까?",
+    "c": null,
+    "o": [
+     "보낸 8비트가 그대로 나온다",
+     "이전 출력이 그대로 유지된다",
+     "8개 출력이 모두 HIGH 가 된다",
+     "마지막 비트만 Q0 에 나온다"
+    ],
+    "a": 1,
+    "w": "SH_CP 로는 내부 시프트 레지스터만 바뀌고, ST_CP(래치) ↑ 가 있어야 출력이 바뀐다 → 이전 출력 유지.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "4자리 7-Segment 에 숫자를 표시하되 앞자리 0 은 끕니다. show_number(407) 을 호출하면 네 자리(D1~D4)에는 어떻게 보입니까?",
+    "c": "void show_number(int n) {\n    for (int k = 3; k >= 0; k--) {\n        if (n == 0 && k < 3) disp[k] = 0x00;     // 빈칸\n        else disp[k] = DIGITS[n % 10];\n        n /= 10;\n    }\n}",
+    "o": [
+     "\" 407\"",
+     "\"0407\"",
+     "\"407 \"",
+     "\" 47\""
+    ],
+    "a": 0,
+    "w": "오른쪽 자리부터 7, 0, 4 를 채우고, 남은 맨 왼쪽은 n == 0 이라 빈칸 → \" 407\" (가운데 0 은 n 이 0 이 아니라서 표시).",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "4자리 멀티플렉싱에서 타이머 ISR 이 2000µs 마다 한 자리씩 바꿉니다. 네 자리 전체가 한 번 갱신되는 빈도는 약 얼마입니까?",
+    "c": "timer = timerBegin(1000000);             // 1틱 = 1µs\ntimerAttachInterrupt(timer, &onTimer);   // 호출마다 다음 자리\ntimerAlarm(timer, 2000, true, 0);",
+    "o": [
+     "약 500Hz",
+     "약 2000Hz",
+     "약 31Hz",
+     "약 125Hz"
+    ],
+    "a": 3,
+    "w": "한 자리 2ms × 4자리 = 8ms → 1 / 0.008 = 125Hz.",
+    "by": "wiki"
+   },
+   {
+    "n": 3,
+    "p": "core 3.x 타이머 API 에서 아래 설정의 ISR 호출 주기는 얼마입니까?",
+    "c": "hw_timer_t *t = timerBegin(1000000);\ntimerAttachInterrupt(t, &onTimer);\ntimerAlarm(t, 5000, true, 0);",
+    "o": [
+     "5µs 마다",
+     "50ms 마다",
+     "5ms 마다",
+     "5초마다"
+    ],
+    "a": 2,
+    "w": "1MHz → 1틱 = 1µs, 5000틱 = 5ms 마다 반복.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "8×8 매트릭스의 한 행(img[2])이 비어 있습니다. 맨 왼쪽(x=0)과 맨 오른쪽(x=7) 점을 켠 뒤의 값은 무엇입니까? (bit7 = 왼쪽 열)",
+    "c": "uint8_t img2 = 0x00;\nimg2 |= 0x80 >> 0;\nimg2 |= 0x80 >> 7;\nSerial.printf(\"0x%02X\\n\", img2);",
+    "o": [
+     "0x18",
+     "0x80",
+     "0x81",
+     "0x01"
+    ],
+    "a": 2,
+    "w": "0x80 >> 0 = 0x80(왼쪽), 0x80 >> 7 = 0x01(오른쪽) → 0x81.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "모든 점이 켜진 행에서 x=2 인 점 하나만 끕니다. 출력은 무엇입니까?",
+    "c": "uint8_t img3 = 0xFF;\nimg3 &= ~(0x80 >> 2);\nSerial.printf(\"0x%02X\\n\", img3);",
+    "o": [
+     "0xDF",
+     "0xFB",
+     "0x20",
+     "0x7F"
+    ],
+    "a": 0,
+    "w": "0x80 >> 2 = 0x20 → ~0x20 = 0xDF 와 AND → 그 점만 꺼짐.",
+    "by": "wiki"
+   },
+   {
+    "n": 4,
+    "p": "두 글자의 한 행을 16비트 띠로 이어 붙이고 왼쪽으로 4칸 밀어 위 8비트만 봅니다. 출력은 무엇입니까?",
+    "c": "uint8_t FONT_H_r = 0x66, FONT_I_r = 0x18;\nuint16_t line = (FONT_H_r << 8) | FONT_I_r;      // 0x6618\nuint8_t shown = (line << 4) >> 8;\nSerial.printf(\"0x%02X\\n\", shown);",
+    "o": [
+     "0x66",
+     "0x61",
+     "0x18",
+     "0x16"
+    ],
+    "a": 1,
+    "w": "0x6618 << 4 = 0x66180 (int 로 승격돼 위 비트를 잃지 않음) → >> 8 = 0x661 → uint8_t 로 0x61.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "병렬 LCD(1602A)를 4비트 모드로 쓸 때, 글자 'A'(0x41)를 보내면 두 번째로 D7 D6 D5 D4 에 올라가는 값은 무엇입니까?",
+    "c": null,
+    "o": [
+     "0100",
+     "1000",
+     "0010",
+     "0001"
+    ],
+    "a": 3,
+    "w": "4비트 모드는 위 4비트 먼저(0100), 그다음 아래 4비트(0001) → 두 번째는 0001.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "LCD 의 칸 주소(DDRAM)는 윗줄 0x00~0x0F, 아랫줄 0x40~0x4F 입니다. setCursor(3, 1) 이 LCD 에 보내는 명령 바이트는 무엇입니까? (커서 이동 명령 = 0x80 | 주소)",
+    "c": null,
+    "o": [
+     "0x83",
+     "0xC3",
+     "0x43",
+     "0x13"
+    ],
+    "a": 1,
+    "w": "아랫줄 3번째 칸 주소 = 0x40 + 3 = 0x43 → 0x80 | 0x43 = 0xC3.",
+    "by": "wiki"
+   },
+   {
+    "n": 5,
+    "p": "LCD 첫 칸부터 \"1000\" 이 표시되어 있습니다. 아래 코드를 실행한 뒤 첫 네 칸에 보이는 것은 무엇입니까?",
+    "c": "lcd.setCursor(0, 0);\nlcd.print(42);          // 폭 지정 없이",
+    "o": [
+     "\"42 \"",
+     "\"4200\"",
+     "\"0042\"",
+     "\"1042\""
+    ],
+    "a": 1,
+    "w": "LCD 는 덮어쓴 칸만 바뀐다 → 앞 두 칸만 42 로 바뀌어 \"4200\". 그래서 %4d 같은 고정 폭.",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "PCF8591 제어 바이트를 만드는 코드에 잘못된 채널 값 6 이 들어갔습니다. 실제로 보내지는 값은 무엇입니까?",
+    "c": "uint8_t ch = 6;\nSerial.printf(\"0x%02X\\n\", 0x40 | (ch & 0x03));",
+    "o": [
+     "0x46",
+     "0x06",
+     "0x42",
+     "0x40"
+    ],
+    "a": 2,
+    "w": "6 & 0x03 = 2 → 0x40 | 2 = 0x42 (채널 범위 0~3 을 강제).",
+    "by": "wiki"
+   },
+   {
+    "n": 6,
+    "p": "PCF8591 의 직전 변환 값은 128 이고, 지금 IN0 의 실제 값은 200 입니다. 1바이트만 읽는 아래 코드는 무엇을 돌려줍니까?",
+    "c": "Wire.beginTransmission(0x48);\nWire.write(0x40);                 // AIN0 + DAC 켜기\nWire.endTransmission();\nWire.requestFrom(0x48, 1);        // ← 1바이트만\nreturn Wire.read();",
+    "o": [
+     "128",
+     "200",
+     "0",
+     "255"
+    ],
+    "a": 0,
+    "w": "PCF8591 은 읽을 때 변환을 시작해서 첫 바이트는 직전 변환 값 → 1바이트만 읽으면 128 (한 박자 늦은 값).",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "L293D 모터 함수에 범위를 벗어난 속도를 넣었습니다. IN1 · IN2 · EN(duty)은 각각 어떻게 됩니까?",
+    "c": "void motor_set(int speed) {\n    if (speed > 255)  speed = 255;\n    if (speed < -255) speed = -255;\n    digitalWrite(PIN_IN1, speed > 0);\n    digitalWrite(PIN_IN2, speed < 0);\n    ledcWrite(PIN_EN, abs(speed));\n}\n\nmotor_set(-300);",
+    "o": [
+     "IN1=0 · IN2=1 · duty=255",
+     "IN1=1 · IN2=0 · duty=255",
+     "IN1=0 · IN2=1 · duty=300",
+     "IN1=0 · IN2=0 · duty=0"
+    ],
+    "a": 0,
+    "w": "−300 은 −255 로 잘린다 → speed < 0 이라 IN1=0 · IN2=1(역방향), duty = abs(−255) = 255.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "실습 7-3 ③ 의 relay_request 입니다. 부팅 후 버튼을 300 · 700 · 1500 · 1800 · 2600ms 에 한 번씩 눌렀습니다(누를 때마다 relay_request(!motor_on) 호출). 출력 순서는 무엇입니까?",
+    "c": "const uint32_t MIN_SWITCH_MS = 1000;\nbool motor_on = false;\nuint32_t last_switch = 0;\nint switch_count = 0;\n\nbool relay_request(bool on) {\n    if (on == motor_on) return true;\n    if (switch_count > 0 && millis() - last_switch < MIN_SWITCH_MS) {\n        Serial.print(\"무시 \");  return false;\n    }\n    relay_set(on);  motor_on = on;\n    last_switch = millis();  switch_count++;\n    Serial.print(on ? \"ON \" : \"OFF \");\n    return true;\n}",
+    "o": [
+     "ON OFF ON OFF ON",
+     "무시 ON 무시 OFF 무시",
+     "ON 무시 OFF 무시 ON",
+     "ON 무시 무시 무시 OFF"
+    ],
+    "a": 2,
+    "w": "300 ON(첫 전환 허용) → 700 은 400ms 만이라 무시 → 1500 은 1200ms 지나 OFF → 1800 은 300ms 라 무시 → 2600 은 1100ms 지나 ON.",
+    "by": "wiki"
+   },
+   {
+    "n": 7,
+    "p": "실습 7-3 ② 처럼 릴레이 COM 에 3V3, NO 쪽에 빨강 LED, NC 쪽에 초록 LED 를 (각각 220Ω 을 거쳐) 연결했습니다. 코일이 OFF 일 때 켜지는 LED 는 무엇입니까?",
+    "c": null,
+    "o": [
+     "NO 쪽 빨강 LED",
+     "두 LED 모두 켜짐",
+     "두 LED 모두 꺼짐",
+     "NC 쪽 초록 LED"
+    ],
+    "a": 3,
+    "w": "코일 OFF 면 COM 이 NC 에 붙어 있다 → 초록 LED. 코일 ON 이면 NO(빨강).",
+    "by": "wiki"
+   },
+   {
+    "n": 8,
+    "p": "스테퍼 반스텝 시퀀스에서 phase 가 1 인 상태로 역방향(-1) 두 스텝을 진행했습니다. 출력은 무엇입니까?",
+    "c": "const uint8_t SEQ[8] = {0b0001, 0b0011, 0b0010, 0b0110,\n                        0b0100, 0b1100, 0b1000, 0b1001};\nint phase = 1;\nfor (int k = 0; k < 2; k++) phase = (phase - 1 + 8) % 8;\nSerial.printf(\"%d %d\\n\", phase, SEQ[phase]);",
+    "o": [
+     "-1 1",
+     "7 1",
+     "0 1",
+     "7 9"
+    ],
+    "a": 3,
+    "w": "(1 − 1 + 8) % 8 = 0 → (0 − 1 + 8) % 8 = 7, SEQ[7] = 0b1001 = 9 → 7 9 (+8 이 음수를 막는다).",
+    "by": "wiki"
+   }
+  ]
+ }
+}
