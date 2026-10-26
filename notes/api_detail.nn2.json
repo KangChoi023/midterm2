@@ -1,0 +1,21 @@
+{
+ "_설명": "NN Day 2 함수 상세",
+ "perceptron()": {"role": "퍼셉트론 (직접 구현)", "args": [["x", "입력 (2,)"], ["W", "가중치 (2,)"], ["b", "편향"]], "flow": "s = x @ W + b (가중합) → s > 0 이면 1, 아니면 0 (계단 함수)", "ret": "0 또는 1 — AND (0.5, 0.5, −0.7) · NAND (−0.5, −0.5, 0.7) · OR (0.5, 0.5, −0.2)", "hdr": "NN Day2 노트북"},
+ "train_perceptron()": {"role": "퍼셉트론 학습 (직접 구현)", "args": [["X", "입력 (N, 2)"], ["T", "정답 0/1 (N,)"], ["lr", "학습률"], ["epochs", "전체 데이터 반복 횟수"]], "flow": "W, b 를 0(float)으로 시작 → 샘플마다 y = perceptron → W −= lr·(y − t)·x, b −= lr·(y − t) → epoch 마다 정확도 기록", "ret": "(W, b, history) — XOR 은 정확도 1.0 에 도달 불가", "hdr": "NN Day2 노트북"},
+ "boundary_x2()": {"role": "결정 경계 직선", "args": [["x1", "x₁ 값들"], ["W", "(2,)"], ["b", "편향"]], "flow": "x₁W₁ + x₂W₂ + b = 0 을 x₂ 에 대해 푼 −(W₁x₁ + b) / W₂", "ret": "x₂ 값들. W₂ = 0 이면 0 으로 나눔 → 세로선 x₁ = −b / W₁", "hdr": "NN Day2 노트북"},
+ "sigmoid()": {"role": "시그모이드 활성화", "args": [["a", "가중합 배열"]], "flow": "1 / (1 + exp(−a)) — 큰 음수 → 0, 0 → 0.5, 큰 양수 → 1", "ret": "(0, 1) 범위 배열. 미분 σ(1 − σ) 최대 0.25 → 깊으면 기울기 소실", "hdr": "NN Day2 노트북"},
+ "relu()": {"role": "ReLU 활성화", "args": [["a", "가중합 배열"]], "flow": "np.maximum(0, a) — 원소별로 음수를 0 으로 (np.max 아님!)", "ret": "[0, ∞) 배열. 양수 구간 기울기 1 → 은닉층 기본", "hdr": "NN Day2 노트북"},
+ "leaky_relu()": {"role": "Leaky ReLU", "args": [["a", "가중합"], ["alpha", "음수 구간 기울기 (0.01)"]], "flow": "np.where(a > 0, a, alpha * a)", "ret": "배열 — 음수에서도 기울기 α 라 0 에 갇히지 않음", "hdr": "NN Day2 노트북"},
+ "sigmoid_grad()": {"role": "sigmoid 미분", "args": [["a", "가중합"]], "flow": "s = sigmoid(a); s * (1 − s) — 출력값만으로 기울기 계산 (역전파에서 저장한 출력 재사용)", "ret": "배열, 최댓값 0.25 (a = 0)", "hdr": "NN Day2 노트북"},
+ "relu_grad()": {"role": "ReLU 미분", "args": [["a", "가중합"]], "flow": "(a > 0).astype(float)", "ret": "양수 자리 1, 나머지 0", "hdr": "NN Day2 노트북"},
+ "forward()": {"role": "3층 순전파 (직접 구현)", "args": [["network", "W1 b1 W2 b2 W3 b3 dict"], ["X", "입력 (N, 2) — 1개면 (1, 2)"]], "flow": "A1 = X@W1+b1 → Z1 = sigmoid → A2 = Z1@W2+b2 → Z2 = sigmoid → A3 = Z2@W3+b3 → identity", "ret": "출력 (N, 2)", "hdr": "NN Day2 노트북"},
+ "count_params()": {"role": "파라미터 수", "args": [["network", "파라미터 dict"]], "flow": "sum(p.size for p in network.values())", "ret": "정수 — 2-3-2-2 망 23개, 784-100-10 망 79,510개(float32 약 311KB)", "hdr": "NN Day2 노트북"},
+ "softmax()": {"role": "softmax (수치 안정화)", "args": [["A", "점수 (K,) 또는 (N, K)"]], "flow": "A − max(A, keepdims) → exp → 합으로 나눔. 최댓값을 빼도 값은 같고 overflow 가 사라진다", "ret": "합이 1 인 확률, 순서 불변 (argmax 같음)", "hdr": "NN Day2 노트북"},
+ "one_hot()": {"role": "one-hot 인코딩", "args": [["t", "레이블 정수 또는 배열"], ["num_classes", "클래스 수 (10)"]], "flow": "np.eye(num_classes)[t] — 단위행렬의 t 번째 행", "ret": "(K,) 또는 (N, K), 정답 자리만 1", "hdr": "NN Day2 노트북"},
+ "mse()": {"role": "평균제곱오차", "args": [["y", "예측"], ["t", "정답"]], "flow": "np.mean((y − t) ** 2)", "ret": "스칼라 — 회귀용. 분류에는 둔감 (정답 확률 0.6 → 0.1 에 0.02 → 0.12)", "hdr": "NN Day2 노트북"},
+ "cross_entropy()": {"role": "교차 엔트로피", "args": [["y", "softmax 출력 (N, K)"], ["t", "one-hot 정답 (N, K)"]], "flow": "1차원이면 (1, K) 로 → −Σ t·log(y + 1e-7) / N", "ret": "스칼라 = −log(정답 확률)의 배치 평균 — 정답 확률 0.6 → 0.51, 0.1 → 2.30", "hdr": "NN Day2 노트북"},
+ "grads()": {"role": "선형 회귀 기울기", "args": [["X", "(N, 1)"], ["T", "(N, 1)"], ["W", "(1, 1)"], ["b", "(1,)"]], "flow": "Y = X@W + b → dW = Xᵀ(Y − T)/N, db = mean(Y − T, axis=0) — ½MSE 의 미분", "ret": "(dW, db) — W, b 와 같은 shape", "hdr": "NN Day2 노트북"},
+ "predict_proba()": {"role": "로지스틱 회귀 확률", "args": [["X", "(N, 2)"], ["W", "(2, 1)"], ["b", "(1,)"]], "flow": "sigmoid(X @ W + b)", "ret": "클래스 1 확률 (N, 1)", "hdr": "NN Day2 노트북"},
+ "bce_loss()": {"role": "이진 교차 엔트로피", "args": [["P", "확률 (N, 1)"], ["T", "정답 0/1 (N, 1)"]], "flow": "−mean(T·log(P + 1e-7) + (1 − T)·log(1 − P + 1e-7))", "ret": "스칼라 — 모든 확률 0.5 면 log 2 ≈ 0.693", "hdr": "NN Day2 노트북"},
+ "gradients()": {"role": "로지스틱 회귀 기울기", "args": [["X", "(N, 2)"], ["T", "(N, 1)"], ["W", "(2, 1)"], ["b", "(1,)"]], "flow": "P = predict_proba → dW = Xᵀ(P − T)/N, db = mean(P − T) — sigmoid 미분이 BCE 분모와 상쇄되어 ∂L/∂z = p − t", "ret": "(dW, db)", "hdr": "NN Day2 노트북"}
+}
