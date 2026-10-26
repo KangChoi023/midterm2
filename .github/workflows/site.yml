@@ -1,0 +1,40 @@
+# 사이트 빌드 · 배포 — notes/ 와 강사님 교안(AI_CAMPUS 최신)으로 data/ 를 만들어 GitHub Pages 에 올린다.
+# main 에 Merge 될 때, 매일 07:20 (KST), 또는 Actions 탭에서 수동 실행.
+# 처음 한 번: Settings → Pages → Build and deployment → Source 를 "GitHub Actions" 로.
+name: site
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '20 22 * * *'      # UTC 22:20 = KST 07:20
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 강사님 교안 받기
+        run: git clone --depth 1 https://github.com/imguru-mooc/AI_CAMPUS.git "$RUNNER_TEMP/study/AI_CAMPUS"
+      - name: 빌드
+        run: STUDY_ROOT="$RUNNER_TEMP/study" python3 -I tools/build_site.py
+      - name: 배포할 파일만 모으기
+        run: mkdir _site && cp -r index.html assets data anim _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
