@@ -46,7 +46,7 @@
 **새로 나온 함수**
 | 함수 | 기본형 | 용도 |
 |---|---|---|
-| `open()` | `with open("log.txt", "a", encoding="utf-8") as f:` | 파일 열기 — r 읽기 · w 새로 쓰기 · a 이어쓰기 |
+| `with open()` | `with open("log.txt", "a", encoding="utf-8") as f:` | 파일 열기 — r 읽기 · w 새로 쓰기 · a 이어쓰기 |
 
 **핵심 내용**
 
