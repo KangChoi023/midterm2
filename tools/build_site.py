@@ -22,12 +22,13 @@ NOTES = os.path.join(REPO, 'notes') if os.path.isdir(os.path.join(REPO, 'notes')
 
 # 배운 순서. 경로는 AI_CAMPUS 기준이고 목록이면 앞에서부터 있는 파일을 쓴다.
 # lecture: .html(lecture_parse) · .ipynb/.pptx(nbparse).  anim_dir=True 면 애니메이션 파일이 든 폴더를 통째로 복사.
+# ws_practice=True: 워크시트가 문항형이 아니라 칸 채우기 실습지(예측표·기록지) → 퀴즈로 옮기지 않는다.
 SUBJECTS = [
     dict(id='arch', name='컴퓨터 구조', short='구조', days=3, flow='컴퓨터 부품과 숫자 표현',
-         lecture='컴퓨터구조_Day{d}.pptx', ws=['Day{d}/day{d}_worksheet.html'], note='ARCH_day{d}.md',
+         lecture='컴퓨터구조_Day{d}.pptx', ws=['Day{d}/day{d}_worksheet.html'], ws_practice=True, note='ARCH_day{d}.md',
          anim=['Day{d}/index.html', 'anim/day{d}/index.html'], anim_dir=True),
     dict(id='os', name='운영체제 활용', short='OS', days=3, flow='파일 시스템 · 프로세스 · 셸',
-         lecture='os-day{d}/운영체제_Day{d}.pptx', ws=['os-day{d}/worksheet.html', 'os-day{d}/anim/worksheet.html'], note='OS_day{d}.md',
+         lecture='os-day{d}/운영체제_Day{d}.pptx', ws=['os-day{d}/worksheet.html', 'os-day{d}/anim/worksheet.html'], ws_practice=True, note='OS_day{d}.md',
          anim='os-day{d}/anim/index.html', anim_dir=True),
     dict(id='py', name='Python', short='PY', days=4, flow='Colab과 파이썬 기초',
          lecture='python-day{d}/Day{d}_lecture.ipynb', ws='python-day{d}/anim/worksheet.html', note='PY_day{d}.md',
@@ -302,7 +303,7 @@ def build_subject(cfg, index):
         lp_ok = os.path.exists(lp)
         lec = (lecture_parse.parse(lp) if html_lec else nbparse.parse(lp)) if lp_ok else [None] * 8
         ws = []
-        if os.path.exists(wp):
+        if os.path.exists(wp) and not cfg.get('ws_practice'):
             if wsparse.supported(wp):
                 try: ws = wsparse.load(wp)
                 except Exception as e: print('  ! worksheet', wp, e)

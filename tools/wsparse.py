@@ -2,9 +2,13 @@ import re,sys,json
 
 Q_RE=re.compile(r'const Q\s*=\s*\[')
 
+BASE_RE=re.compile(r'const BASE\s*=\s*\[')
+EXTRA_RE=re.compile(r'const EXTRA\s*=\s*\[')
+
 def supported(path):
-    """이 파서가 읽는 형식(const Q=[…]) 인가"""
-    return bool(Q_RE.search(open(path,encoding='utf8').read()))
+    """이 파서가 읽는 형식(const Q=[…] 또는 Python Day1 의 BASE + EXTRA) 인가"""
+    s=open(path,encoding='utf8').read()
+    return bool(Q_RE.search(s) or BASE_RE.search(s))
 
 def extract(path):
     s=open(path,encoding='utf8').read()
@@ -93,8 +97,15 @@ def _norm(q, seed):
     return None
 
 def load(path):
-    s,i=extract(path)
-    out=_unesc(P(s,i).val())
+    s=open(path,encoding='utf8').read()
+    if not Q_RE.search(s) and BASE_RE.search(s):          # 교시별 기본 문항 BASE + 교시별 추가 문항 EXTRA
+        out=_unesc(P(s,BASE_RE.search(s).end()-1).val())
+        m=EXTRA_RE.search(s)
+        extra=_unesc(P(s,m.end()-1).val()) if m else []
+        for les,more in zip(out,extra): les['qs']=les.get('qs',[])+more
+    else:
+        s,i=extract(path)
+        out=_unesc(P(s,i).val())
     for les in out:
         les['qs']=[x for x in (_norm(q,k) for k,q in enumerate(les.get('qs',[]))) if x]
     return out
