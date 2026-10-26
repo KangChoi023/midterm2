@@ -26,7 +26,7 @@ NOTES = os.path.join(REPO, 'notes') if os.path.isdir(os.path.join(REPO, 'notes')
 SUBJECTS = [
     dict(id='arch', name='컴퓨터 구조', short='구조', days=3, flow='컴퓨터 부품과 숫자 표현',
          lecture='컴퓨터구조_Day{d}.pptx', ws=['Day{d}/day{d}_worksheet.html'], ws_practice=True, note='ARCH_day{d}.md',
-         anim=['Day{d}/index.html', 'anim/day{d}/index.html'], anim_dir=True),
+         anim=['Day{d}/index.html', 'anim/day{d}/index.html', 'anim/index.html'], anim_dir=True),   # 맨 위 anim/ = Day 1
     dict(id='os', name='운영체제 활용', short='OS', days=3, flow='파일 시스템 · 프로세스 · 셸',
          lecture='os-day{d}/운영체제_Day{d}.pptx', ws=['os-day{d}/worksheet.html', 'os-day{d}/anim/worksheet.html'], ws_practice=True, note='OS_day{d}.md',
          anim='os-day{d}/anim/index.html', anim_dir=True),
