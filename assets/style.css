@@ -531,6 +531,13 @@ mark.chl.cur { background: var(--mark); outline: 2px solid var(--warn); }
 .apid { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); font-size: 13px; display: grid; gap: 5px; }
 .apid-row { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: baseline; line-height: 1.55; }
 .apid-row .k { font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+.apid-desc { margin: 0 0 2px; padding-left: 18px; line-height: 1.6; }
+.apid-desc li { margin: 1px 0; }
+.apid-ex { margin: 6px 0 4px; padding: 7px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--panel); display: grid; gap: 4px; font-size: 12.5px; }
+.apid-ex .k { font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+.apid-ex code { display: block; padding: 4px 8px; white-space: pre-wrap; word-break: break-word; background: var(--code-bg); border-radius: 6px; color: var(--code-ink); font-family: var(--mono); }
+.apid-ex .exlink { justify-self: start; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.apid-ex .exlink:hover { text-decoration: underline; }
 .apid-args { display: table; width: 100%; margin: 0; font-size: 12.5px; }
 .apid-args th { font-size: 11.5px; padding: 3px 7px; }
 .apid-args td { padding: 4px 7px; }

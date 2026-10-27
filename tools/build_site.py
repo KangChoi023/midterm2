@@ -243,19 +243,88 @@ def load_json(name):
     return out
 
 API = {}      # api_detail.json  (main 에서 읽음)
+API_BY = {}   # 과목 id → 그 과목 파일(api_detail.<id>*.json)만 합친 것 — 이름이 같은 다른 과목 상세보다 먼저 본다
 REVIEW = {}   # review_quiz.json (복습 퀴즈, main 에서 읽음)
 GUIDE = {}    # code_guide.json
 UNSUPPORTED_WS = []   # 아직 읽는 법이 없는 워크시트 형식
 
-def api_detail(name):
-    """함수 표 이름 → 상세. 이름 전체 → 첫 낱말(sudo 건너뜀) → 괄호 앞 식별자 순서로 찾는다."""
+def api_detail(name, sid=None):
+    """함수 표 이름 → 상세. 이름 전체 → 첫 낱말(sudo 건너뜀) → 괄호 앞 식별자 순서로 찾는다.
+    자기 과목 파일을 먼저 보고, 없으면 다른 과목 것 (C free ≠ Linux free -h)."""
     n = name.replace('`', '').strip()
-    if n in API: return API[n]
     words = [w for w in n.split() if w != 'sudo']
-    if words and words[0] in API: return API[words[0]]
     m = re.match(r'^([A-Za-z_][\w.]*)\s*\(', n)
-    if m and m.group(1) in API: return API[m.group(1)]
+    keys = [n] + words[:1] + ([m.group(1)] if m else [])
+    for D in (API_BY.get(sid, {}), API):
+        for k in keys:
+            if k in D: return D[k]
     return None
+
+EX_SKIP = re.compile(r'^\s*(#(?:\s|!|$)|//|/\*|\*|>>>?\s*$|"""|\'\'\')')
+EX_DEF = re.compile(r'^\s*(def|class|void|int|char|long|float|double|static|unsigned|bool|size_t|ssize_t|pid_t|esp_err_t)\s+\**\s*[A-Za-z_][\w.]*\s*\([^)]*\)\s*[{:;]?\s*$|^\s*class\s+\w+\s*(\([^)]*\))?\s*:\s*$')
+EX_NOISE = re.compile(r'\b(perror|fprintf|printf|print|puts|Serial\.print\w*)\s*\(\s*f?["\']')
+
+def ex_code(t):
+    """줄 끝 주석을 뺀 코드 부분 — 주석 속 낱말로 고르지 않게"""
+    return re.split(r'\s+(?:#|//)\s', t, maxsplit=1)[0]
+
+def ex_keys(name):
+    """함수 표 이름 → 코드에서 찾을 낱말 후보 (긴 것 먼저). 'np.dot()' → ['np.dot', 'dot'], 'sudo apt install …' → ['apt']"""
+    n = name.replace('`', '').strip()
+    m = re.match(r'^(?:sudo\s+)?([A-Za-z_][\w.-]*)', n)
+    if not m: return []
+    w = m.group(1).rstrip('.-')
+    keys = [w] + ([w.split('.')[-1]] if '.' in w else [])
+    return [k for k in keys if len(k) >= 2]
+
+def attach_examples(sid, S, rows):
+    """과목 교안의 코드 줄에서 함수마다 '실제로 쓰인 한 줄'을 골라 f['ex'] 와 색인 행에 붙인다.
+    같은 Day · 가까운 교시 → 호출 모양 → 짧은 줄 순. api_detail 의 "ex" 로 직접 지정("" 이면 끔)."""
+    lines = []          # (day, 교시, 토픽 id, 토픽 제목, 줄, 블록 종류)
+    for D in S['days']:
+        for L in D['lessons']:
+            for tp in L['topics']:
+                for b in tp['blocks']:
+                    if b['kind'] not in ('code', 'cmd'): continue
+                    for ln in b['text'].split('\n'):
+                        t = ln.strip()
+                        if 4 <= len(t) <= 110 and not EX_SKIP.match(t) and '___' not in t:     # 빈칸 문제 줄은 뺀다
+                            lines.append((D['n'], L['n'], tp['id'], tp['title'], t, b['kind']))
+    hit = 0
+    for d, n, f, row in rows:
+        det = f.get('detail') or {}
+        want = det.get('ex')
+        if want == '': continue
+        best, mk = None, ''
+        if want:
+            c = [x for x in lines if want in x[4]]
+            best = min(c, key=lambda x: (abs(x[0] - d) * 100 + abs(x[1] - n), len(x[4])), default=None)
+            if not best: print(f'  ! 예제 줄 못 찾음: {sid} {f["name"]} — ex={want!r}')
+        for k in ([] if want else ex_keys(f['name'])):
+            word = re.compile(r'(?<![\w-])' + re.escape(k) + r'(?![\w-])')
+            call = re.compile(r'(?<![\w-])' + re.escape(k) + r'\s*\(')
+            c = [x for x in lines if word.search(ex_code(x[4]))]
+            if not c: continue
+            def rank(x):
+                t = ex_code(x[4])
+                used = (call.search(t) or (x[5] == 'cmd' and re.match(r'^(\$\s*)?(sudo\s+)?' + re.escape(k) + r'\b', t))) and not EX_DEF.match(t)
+                noise = any(m.group(1) != k for m in EX_NOISE.finditer(t))    # 다른 출력 함수의 "문자열" 안에 이름만 나온 줄
+                return (0 if used else 1, 1 if noise else 0, abs(x[0] - d) * 100 + abs(x[1] - n), len(t))
+            best, mk = min(c, key=rank), k; break
+        if not best: continue
+        # 강조할 낱말 — 코드 패널(codeHl)처럼 앞뒤가 영문·숫자·_ 가 아닌 자리에 있어야 강조된다 (my_strcmp 속 strcmp 는 안 됨)
+        alone = lambda w: re.search(r'(?<![A-Za-z0-9_])' + re.escape(w) + r'(?![A-Za-z0-9_])', best[4])
+        mk = mk or next((w for w in reversed(ex_keys(f['name'])) if alone(w)), '')   # np.sum → sum (코드 색칠이 np · . · sum 으로 나눈다)
+        if re.fullmatch(r'[A-Za-z_][\w.]*\.\w+', mk): mk = mk.split('.')[-1]
+        if not mk:      # '%02X' · '조건' 처럼 이름으로 못 찾으면 그 줄의 가장 긴 낱말로 (코드 패널이 이 줄로 이동하는 데 쓴다)
+            code = ex_code(best[4])
+            ws = re.findall(r'(?<![A-Za-z0-9_])[A-Za-z_]\w+', code) or code.split()
+            mk = max(ws, key=len) if ws else ''
+        ex = [best[0], best[1], best[2], best[4], best[3], mk]     # day, 교시, 토픽 id, 줄, 토픽 제목, 강조할 낱말
+        f['ex'] = ex; row.append(ex); hit += 1
+    return hit, len(rows)
+
+EX_STAT = []
 
 GUIDE_MISS = {}   # 키 → 못 찾은 단계 (어느 토픽에서도 못 찾았을 때만 경고)
 GUIDE_HIT = set()
@@ -295,6 +364,7 @@ def attach_guides(sid, d, topics, n=0):
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
     meta = {'id': sid, 'name': cfg['name'], 'short': cfg['short'], 'flow': cfg.get('flow', ''), 'days': []}
+    fn_rows = []        # (day, 교시, 함수, 색인 행) — 과목을 다 읽은 뒤 교안 예제 줄을 붙인다
     for d in range(1, cfg['days'] + 1):
         lp = campus_path(cfg['lecture'], d)
         wp = campus_path(cfg['ws'], d)
@@ -330,7 +400,7 @@ def build_subject(cfg, index):
                 if s['key'] == 'funcs':
                     got = parse_funcs(s['md'])
                     for f in got:
-                        det = api_detail(f['name'])
+                        det = api_detail(f['name'], sid)
                         if det: f['detail'] = det
                     s['f0'] = len(funcs); s['fn'] = len(got); funcs += got
                     s['rest'] = '\n'.join(l for l in s['md'].split('\n') if not l.startswith('|')).strip() if got else s['md']
@@ -357,6 +427,7 @@ def build_subject(cfg, index):
                 index['search'].append(loc + ['term', f't{i}', t['name'], strip_md(t['def'])])
             for i, f in enumerate(funcs):
                 index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i, f.get('detail')])
+                fn_rows.append((d, n, f, index['funcs'][-1]))
                 index['search'].append(loc + ['func', f'f{i}', f['name'], strip_md(f['sig'] + ' ' + f['use'])])
             if kws: index['search'].append(loc + ['kw', 's-kw', '키워드', ' · '.join(kws)])
             for si, s in enumerate(sections):
@@ -383,6 +454,7 @@ def build_subject(cfg, index):
         for ln, tps, secs in pending_code:
             index['code'] += code_index(sid, d, ln, tps, secs)
         S['days'].append(D); meta['days'].append(dm)
+    EX_STAT.append((sid,) + attach_examples(sid, S, fn_rows))
     return S, meta
 
 ANIM_EXT = ('.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.json')
@@ -421,6 +493,10 @@ def copy_anim(cfg, d):
 def main():
     global API, GUIDE
     API, GUIDE = load_json('api_detail.json'), load_json('code_guide.json')
+    import glob
+    for p in sorted(glob.glob(os.path.join(NOTES, 'api_detail.*.json'))):
+        sid = re.match(r'api_detail\.([a-z]+)', os.path.basename(p)).group(1)
+        API_BY.setdefault(sid, {}).update({k: v for k, v in json.load(open(p, encoding='utf8')).items() if k != '_설명'})
     global REVIEW
     rq = os.path.join(NOTES, 'review_quiz.json')
     REVIEW = json.load(open(rq, encoding='utf8')) if os.path.exists(rq) else {}
@@ -445,6 +521,7 @@ def main():
     html = open(ip, encoding='utf8').read()
     html = re.sub(r'((?:src|href)="(?:assets|data)/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', r'\1?v=' + ver + '"', html)
     open(ip, 'w', encoding='utf8').write(html)
+    print('  · 함수 예제 줄: ' + ' · '.join(f'{s} {h}/{t}' for s, h, t in EX_STAT))
     if UNSUPPORTED_WS: print(f'  · 아직 문항을 못 읽는 워크시트 형식 {len(UNSUPPORTED_WS)}개: ' + ', '.join(UNSUPPORTED_WS))
     for k in GUIDE:
         if k not in GUIDE_HIT: print(f'  ! 코드 가이드 파일을 못 찾음: {k}')

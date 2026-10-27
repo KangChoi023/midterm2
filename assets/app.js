@@ -115,7 +115,7 @@
       map.get(k).src.push({ s, d, n, a });
     };
     IDX.terms.forEach(r => add('term', r[0], r[1], r[2], r[3], r[4], '', 't' + r[5]));
-    IDX.funcs.forEach(r => { add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]); if (r[7]) { const e = map.get('code|' + r[3].toLowerCase().replace(/\s+/g, ' ').trim()); if (e && !e.detail) e.detail = r[7]; } });
+    IDX.funcs.forEach(r => { add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]); const e = map.get('code|' + r[3].toLowerCase().replace(/\s+/g, ' ').trim()); if (e && r[7] && !e.detail) e.detail = r[7]; if (e && r[8] && !e.ex) { e.ex = r[8]; e.exS = r[0]; } });
     DICT = [...map.values()].sort((a, b) => a.o - b.o);
     DICT.forEach((e, i) => { e.i = i; e.nameLo = e.name.toLowerCase(); e.key = (e.name + ' ' + stripTags(e.def) + ' ' + stripTags(e.sig)).toLowerCase(); e.subj = [...new Set(e.src.map(x => x.s))]; });
   }
@@ -139,10 +139,17 @@
     }));
   }
   function dictItem(e, words) {
-    const hl = t => { let h = esc(t); words.forEach(w => { h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); }); return h; };
+    // 낱말을 한 번에 찾아 강조 — 하나씩 바꾸면 뒤 낱말('/' 등)이 앞서 넣은 <mark> 태그 안에 걸려 깨진다
+    const re = words.length ? new RegExp([...words].sort((a, b) => b.length - a.length).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi') : null;
+    const hl = t => {
+      if (!re) return esc(t);
+      const s = String(t); let h = '', p = 0;
+      s.replace(re, (m, at) => { h += esc(s.slice(p, at)) + `<mark>${esc(m)}</mark>`; p = at + m.length; return m; });
+      return h + esc(s.slice(p));
+    };
     const srcs = e.src.map(x => `<a href="${href(x.s, x.d, x.n, x.a)}">${loc(x.s, x.d, x.n)}</a>`).join('');
     return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span></summary>
-      <div class="dbody">${e.detail && e.detail.role ? `<div class="drole">${esc(e.detail.role)}</div>` : ''}${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail, true) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>`}<div class="dsrc">${srcs}</div></div></details>`;
+      <div class="dbody">${e.detail && e.detail.role ? `<div class="drole">${esc(e.detail.role)}</div>` : ''}${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail, true) + exHtml(e.exS, e.ex) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>` + exHtml(e.exS, e.ex)}<div class="dsrc">${srcs}</div></div></details>`;
   }
   function dictRender() {
     if (!DICT) dictBuild();
@@ -312,6 +319,30 @@
     sideCode.scrollTop += r.top - box.top - box.height / 2;                    // 창이 아니라 코드 패널 안에서만 스크롤
     const pos = $('.hlbar .hlpos', sideCode); if (pos) pos.textContent = `${CODEHL.i + 1}/${ms.length}`;
   }
+  function markLine(m) {                                                    // 강조 표시가 들어 있는 코드 줄 (앞뒤 공백 뺌)
+    const code = m.closest('code'); if (!code) return '';
+    const r = document.createRange(); r.setStart(code, 0); r.setEndBefore(m);
+    const before = r.toString(), all = code.textContent;
+    return (before.slice(before.lastIndexOf('\n') + 1) + all.slice(before.length).split('\n')[0]).trim();
+  }
+  function scrollToLine(line) {                                             // 코드 패널 안에서 그 줄을 가운데로
+    for (const code of $$('.cb pre code', sideCode)) {
+      const rows = code.textContent.split('\n'), k = rows.findIndex(r => r.trim() === line);
+      if (k < 0) continue;
+      let at = rows.slice(0, k).reduce((n, r) => n + r.length + 1, 0) + (rows[k].length - rows[k].trimStart().length);
+      const tw = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      while (tw.nextNode()) {
+        const len = tw.currentNode.nodeValue.length;
+        if (at < len) {
+          const r = document.createRange(); r.setStart(tw.currentNode, at); r.setEnd(tw.currentNode, at);
+          const box = sideCode.getBoundingClientRect();
+          sideCode.scrollTop += r.getBoundingClientRect().top - box.top - box.height / 2;
+          return;
+        }
+        at -= len;
+      }
+    }
+  }
   function codeHl(btn) {
     const key = btn.dataset.hlc || ('w:' + btn.dataset.hlWord);
     if (CODEHL.key === key && CODEHL.marks.length) return codeHlGo(CODEHL.i + 1);
@@ -465,9 +496,15 @@
       const dl = $('.xinfo', sideCode);
       if (dl) {
         dl.insertAdjacentHTML('afterbegin', `<div><dt>찾은 코드</dt><dd class="rel"><button type="button" class="callchip find" data-hl-word="${esc(CODE.find)}" title="다시 누르면 다음 위치">🔎 ${esc(CODE.find)}</button></dd></div>`);
-        requestAnimationFrame(() => codeHl($('.callchip.find', sideCode)));
+        const line = CODE.line;
+        requestAnimationFrame(() => {
+          codeHl($('.callchip.find', sideCode));
+          const i = line ? CODEHL.marks.findIndex(m => markLine(m) === line) : -1;   // 사전의 '강의 예제' 에서 왔으면 그 줄로
+          if (i > 0) codeHlGo(i);
+          else if (i < 0 && line) scrollToLine(line);                    // 낱말이 색칠 조각으로 나뉘어 못 찾으면 줄 내용으로
+        });
       }
-      CODE.find = '';
+      CODE.find = ''; CODE.line = '';
     }
   }
 
@@ -583,7 +620,14 @@
     if (!det) return '';
     const args = (det.args || []).length ? `<table class="apid-args"><thead><tr><th>인자</th><th>뜻</th></tr></thead><tbody>${det.args.map(a => `<tr><td><code>${esc(a[0])}</code></td><td>${mdInline(a[1])}</td></tr>`).join('')}</tbody></table>` : '';
     const row = (k, v) => v ? `<div class="apid-row"><span class="k">${k}</span><span>${mdInline(v)}</span></div>` : '';
-    return `<div class="apid">${noRole ? '' : row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
+    const desc = (det.desc || []).length ? `<ul class="apid-desc">${det.desc.map(x => `<li>${mdInline(x)}</li>`).join('')}</ul>` : '';
+    return `<div class="apid">${noRole ? '' : row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${desc}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
+  }
+  /* 강의 교안에서 이 함수가 실제로 쓰인 한 줄 (빌드가 고름: [day, 교시, 토픽 id, 줄, 토픽 제목, 강조할 낱말])
+   * 버튼을 누르면 오른쪽 💻 코드 패널에 그 예제를 열고, 그 줄의 함수 이름으로 이동한다 */
+  function exHtml(s, ex) {
+    if (!s || !ex) return '';
+    return `<div class="apid-ex"><div class="k">강의 예제</div><code>${esc(ex[3])}</code><button type="button" class="exlink" data-code-open="${s}|${ex[0]}|${ex[1]}|${ex[2]}" data-code-find="${esc(ex[5] || '')}" data-code-line="${esc(ex[3])}" title="오른쪽 코드 패널에서 이 예제 보기">${loc(s, ex[0], ex[1])} · ${esc(ex[4])} ▶</button></div>`;
   }
   /* 함수·명령 한 줄: 이름 + 역할만 (기본형 · 인자 · 동작은 이름을 누르면 옆 패널에) */
   function fnRole(use, det) { return det && det.role ? `<span class="frole">${esc(det.role)}</span>` : `<span class="frole">${mdInline(use || '')}</span>`; }
@@ -792,7 +836,7 @@
     if (kind === 'c') {
       const c = LK.byId[id]; if (!c) return closePeek();
       title = `<span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span> ${esc(c.name)}`;
-      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>${detailHtml(c.detail)}`;
+      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>${detailHtml(c.detail)}${exHtml(CX.s, c.ex)}`;
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, `<div class="cbtn-col">${codeBtns(c.examples)}</div>`);
@@ -826,7 +870,7 @@
     const cb = e.target.closest('[data-code-open],[data-code-back]');
     if (cb) {
       if (cb.dataset.codeBack !== undefined) { CODE.view = 'list'; rpSet(true, 'code'); return; }
-      const [cs_, cd, cn, ct] = cb.dataset.codeOpen.split('|'); CODE.find = cb.dataset.codeFind || ''; openCode(cs_, +cd, +cn, +ct); return;
+      const [cs_, cd, cn, ct] = cb.dataset.codeOpen.split('|'); CODE.find = cb.dataset.codeFind || ''; CODE.line = cb.dataset.codeLine || ''; openCode(cs_, +cd, +cn, +ct); return;
     }
     const b = e.target.closest('[data-peek-c],[data-peek-x],[data-go],[data-pk-back],[data-pk-close],[data-view]'); if (!b || !CX) return;
     if (b.dataset.peekC) { e.preventDefault(); openPeek('c', b.dataset.peekC); }
