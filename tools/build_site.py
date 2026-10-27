@@ -43,6 +43,8 @@ SUBJECTS = [
          lecture='EmbeddedIO-day{d}/lecture.html', ws='EmbeddedIO-day{d}/worksheet.html', note='EIO_day{d}.md', anim='EmbeddedIO-day{d}/animation.html'),
     dict(id='nn', name='Neural Network', short='NN', days=5, flow='NumPy로 만드는 신경망',
          lecture='NN-day{d}/NN_Day{d}_lecture.ipynb', ws='NN-day{d}/worksheet.html', note='NN_day{d}.md', anim='NN-day{d}/animation.html'),
+    dict(id='vb', name='Vision 기본 모델', short='VB', days=5, flow='PyTorch로 이미지 · 영상 인식',
+         lecture='VB-day{d}/VB_Day{d}_lecture.ipynb', ws='VB-day{d}/worksheet.html', note='VB_day{d}.md', anim='VB-day{d}/animation.html'),
 ]
 
 def campus_path(pat, d):

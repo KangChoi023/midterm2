@@ -1,7 +1,7 @@
 # 임베디드 학습 위키
 
 현대 AI 인사이트 캠퍼스 강의 정리 위키. 배운 순서대로
-컴퓨터 구조 → 운영체제 활용 → Python → C → LINUX → MCU → Embedded IO → Neural Network.
+컴퓨터 구조 → 운영체제 활용 → Python → C → LINUX → MCU → Embedded IO → Neural Network → Vision 기본 모델.
 과목 목록·교안 경로는 `tools/build_site.py` 의 `SUBJECTS` 한 곳에서 관리한다 (새 과목은 여기에 한 줄 추가).
 교시마다 **정리 노트 · 예제 코드(+빌드·실행) · 강의 개념 목록 · 연관 문제**를 한 페이지에 모으고,
 모르는 개념은 검색해서 **정의와 처음 나온 교시**로 바로 이동한다.

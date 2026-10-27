@@ -27,6 +27,7 @@ SUBJECT_DIRS = [
     (r'^mcu-day(\d+)$', '06_MCU'),
     (r'^embeddedio-day(\d+)$', '08_Embbed IO'),
     (r'^nn-day(\d+)$', '09_NeuralNetwork'),
+    (r'^vb-day(\d+)$', '10_Vision'),
     (r'^python-day(\d+)$', '03_Python'),
     (r'^os-day(\d+)$', '02_운영체제활용'),
     (r'^day(\d+)$', '01_컴퓨터구조'),            # Day3/ = 컴퓨터 구조 Day 3
