@@ -125,7 +125,7 @@
       const nm = f.name.replace(/`/g, '').trim().toLowerCase();
       const same = concepts.find(c => c.kind === 'term' && c.keys.some(k => k.toLowerCase() === nm));
       if (same) { same.sig = f.sig; same.use = f.use; same.detail = f.detail; alias['f' + i] = same.id; return; }
-      concepts.push({ id: 'f' + i, kind: 'func', name: f.name, def: f.use, sig: f.sig, detail: f.detail, keys: funcKeys(f.name) });
+      concepts.push({ id: 'f' + i, kind: 'func', name: f.name, def: f.use, sig: f.sig, detail: f.detail, ex: f.ex, keys: funcKeys(f.name) });
     });
     concepts.forEach(c => { c.ms = c.keys.map(matcher); c.bullets = []; c.usage = []; c.examples = []; c.lecture = []; c.quiz = []; });
     const pos = (c, lo) => { let b = -1; for (const f of c.ms) { const i = f(lo); if (i >= 0 && (b < 0 || i < b)) b = i; } return b; };

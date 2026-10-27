@@ -12,7 +12,7 @@
 | 경로 | 무엇 |
 |---|---|
 | `notes/<SUBJ>_dayN.md` | **노트 원본** (직접 작성). SUBJ = ARCH · OS · PY · C · LINUX · MCU · EIO · NN |
-| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, args:[[인자, 뜻]], flow, ret, hdr}}` — **Day 별 파일** (PR 끼리 충돌 방지) |
+| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, desc:[개조식 2~4줄], args:[[인자, 한글 뜻]], flow, ret, hdr, ex?}}` — **Day 별 파일** (PR 끼리 충돌 방지). 같은 이름이면 **자기 과목 파일이 먼저**. 강의 예제 한 줄은 빌드가 교안에서 자동으로 고른다 — 어색하면 `"ex": "줄의 일부"` 로 지정, `""` 면 끔 (`! 예제 줄 못 찾음` 경고 확인) |
 | `notes/code_guide*.json` · `review_quiz*.json` | 코드 읽기 가이드 · 복습 퀴즈 |
 | `tools/build_site.py` | 빌드. `SUBJECTS` 에 과목 · 교안 경로 (배운 순서). 교안은 `STUDY_ROOT/AI_CAMPUS` |
 | `tools/lecture_parse.py` · `nbparse.py` · `wsparse.py` | html · ipynb/pptx 교안, 워크시트 파서 |
