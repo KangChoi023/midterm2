@@ -164,7 +164,13 @@ def main():
     print('\n'.join(lines))
     if not a.dry_run:                                       # 변화가 없어도 한 줄 — 예약 실행이 돌았는지 확인용
         os.makedirs(os.path.join(dest, '00_강의 자료'), exist_ok=True)
-        with open(os.path.join(dest, '00_강의 자료', '_동기화기록.txt'), 'a', encoding='utf-8') as f:
+        log = os.path.join(dest, '00_강의 자료', '_동기화기록.txt')
+        if os.path.exists(log):                             # 예전 기록(BOM 없음)에 BOM 을 붙여 둔다 — 한 번만
+            with open(log, 'rb') as f: raw = f.read()
+            if not raw.startswith(b'\xef\xbb\xbf'):
+                with open(log, 'wb') as f: f.write(b'\xef\xbb\xbf' + raw)
+        # utf-8-sig: 파일 맨 앞에 BOM 표시 → Windows PowerShell · 메모장이 한글을 UTF-8 로 읽는다 (없으면 cp949 로 읽어 깨짐)
+        with open(log, 'a', encoding='utf-8-sig') as f:
             f.write('\n'.join(lines if (done['new'] or done['changed'] or unknown) else lines[:2]) + '\n\n')
 
 
