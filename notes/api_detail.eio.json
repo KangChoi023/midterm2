@@ -1,12 +1,21 @@
 {
  "pinout": {
   "role": "40핀 배치 그림",
+  "desc": [
+   "Pi 의 **40핀 배치**를 그림으로",
+   "⚠ 물리 핀 번호(1~40)와 **BCM GPIO 번호**가 다르다 — 코드는 BCM (GPIO17 = 11번 핀)"
+  ],
   "args": [],
   "flow": "물리 핀 번호(1~40)와 BCM GPIO 번호가 다르다 — 코드는 **BCM 번호**(GPIO17 = 11번 핀)",
   "ret": "텍스트 그림"
  },
  "옴의 법칙 I = (3.3 − Vf) / R": {
   "role": "LED 전류",
+  "desc": [
+   "LED 에 흐르는 **전류 계산**",
+   "(3.3 − 2.0) / 220 ≈ **5.9mA**",
+   "⚠ Pi GPIO 는 **3.3V** — 5V 를 입력하면 망가진다"
+  ],
   "args": [
    [
     "3.3",
@@ -26,12 +35,21 @@
  },
  "ncpa.cpl (Windows)": {
   "role": "네트워크 어댑터 창",
+  "desc": [
+   "Windows **네트워크 어댑터** 창 열기",
+   "USB 로 연결하면 'USB Remote NDIS' 어댑터가 보여야 한다"
+  ],
   "args": [],
   "flow": "USB gadget 으로 연결하면 'USB Remote NDIS' 어댑터가 생겨야 한다 (없으면 드라이버·케이블 확인)",
   "ret": "—"
  },
  "PuTTY rpi-07.local / 10.12.194.1 포트 22": {
   "role": "SSH 접속",
+  "desc": [
+   "PC 에서 Pi 로 **SSH 접속**",
+   "이름(rpi-07.local)이 안 되면 USB 쪽 IP 로",
+   "리눅스 · 맥은 `ssh 사용자@rpi-07.local`"
+  ],
   "args": [
    [
     "rpi-07.local",
@@ -51,6 +69,10 @@
  },
  "sudo raspi-config nonint do_hostname rpi-07": {
   "role": "호스트 이름 변경",
+  "desc": [
+   "Pi 의 **호스트 이름** 바꾸기 — 같은 망에서 겹치지 않게",
+   "`nonint` = 메뉴 없이 명령으로"
+  ],
   "args": [
    [
     "nonint",
@@ -66,6 +88,10 @@
  },
  "ip -4 addr show usb0 / wlan0": {
   "role": "IP 확인",
+  "desc": [
+   "인터페이스의 **IP 주소** 확인 — `inet …/24` 줄",
+   "usb0 = USB 연결, wlan0 = Wi-Fi"
+  ],
   "args": [
    [
     "-4",
@@ -81,6 +107,10 @@
  },
  "vcgencmd get_throttled / measure_temp": {
   "role": "전원·온도 상태",
+  "desc": [
+   "**전원 · 온도** 상태",
+   "get_throttled 0x0 = 정상, 그 외 = 저전압 기록 — 이상한 리셋이면 전원부터 의심"
+  ],
   "args": [
    [
     "get_throttled",
@@ -96,6 +126,10 @@
  },
  "sudo raspi-config nonint do_wifi_country KR": {
   "role": "무선 국가 코드",
+  "desc": [
+   "**무선 국가 코드**를 한국으로",
+   "⚠ **가장 먼저** — 없으면 Wi-Fi 가 막혀 스캔 목록이 비어 있다"
+  ],
   "args": [
    [
     "KR",
@@ -103,16 +137,24 @@
    ]
   ],
   "flow": "**가장 먼저** — 없으면 rfkill 로 Wi-Fi 가 막혀 스캔 목록이 비어 있다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "do_wifi_country"
  },
  "sudo nmcli dev wifi rescan / nmcli dev wifi list": {
   "role": "Wi-Fi 스캔",
+  "desc": [
+   "주변 **Wi-Fi 스캔** → 몇 초 뒤 목록"
+  ],
   "args": [],
   "flow": "rescan 후 몇 초 뒤 list",
-  "ret": "AP 목록"
+  "ret": "AP 목록",
+  "ex": "wifi list"
  },
  "sudo nmcli dev wifi connect \"SSID\" password \"PW\"": {
   "role": "Wi-Fi 접속",
+  "desc": [
+   "**Wi-Fi 접속** — 프로필이 저장돼 재부팅해도 자동 접속"
+  ],
   "args": [
    [
     "\"SSID\"",
@@ -128,16 +170,26 @@
    ]
   ],
   "flow": "NetworkManager 가 연결 프로필을 저장 → 재부팅해도 자동 접속",
-  "ret": "성공 메시지"
+  "ret": "성공 메시지",
+  "ex": "wifi connect"
  },
  "nmcli dev status / sudo nmtui": {
   "role": "연결 상태 / 메뉴 방식",
+  "desc": [
+   "**연결 상태** 보기 / 화살표로 고르는 메뉴 방식 설정"
+  ],
   "args": [],
   "flow": "nmtui 는 화살표로 고르는 텍스트 UI",
-  "ret": "—"
+  "ret": "—",
+  "ex": "nmcli dev status"
  },
  "sudo apt update && sudo apt full-upgrade -y": {
   "role": "패키지 관리 (Ubuntu)",
+  "desc": [
+   "Raspberry Pi OS 의 **프로그램 설치 · 업데이트** 도구",
+   "`update` 목록 새로 받기 → `full-upgrade` 전부 최신으로 / `install` 설치",
+   "관리자 권한이라 `sudo`, `-y` 는 묻지 않고 예"
+  ],
   "args": [
    [
     "update",
@@ -157,12 +209,21 @@
  },
  "sudo rpi-usb-gadget off": {
   "role": "USB gadget 끄기",
+  "desc": [
+   "**USB 연결 모드 끄기**",
+   "⚠ Wi-Fi 로 접속되는 걸 **확인한 뒤에만** — 먼저 끄면 접속할 방법이 없어진다"
+  ],
   "args": [],
   "flow": "**Wi-Fi 로 접속되는 걸 확인한 뒤에만** — 먼저 끄면 접속 방법이 없어진다",
-  "ret": "—"
+  "ret": "—",
+  "ex": ""
  },
  "sudo raspi-config nonint do_i2c 0 / do_spi 0 / do_serial_hw 0": {
   "role": "I2C · SPI · UART 켜기",
+  "desc": [
+   "**I2C · SPI · UART** 하드웨어 켜기",
+   "⚠ raspi-config 는 **0 = 켬, 1 = 끔** (반대라 주의) → 재부팅"
+  ],
   "args": [
    [
     "0",
@@ -174,6 +235,10 @@
  },
  "sudo raspi-config nonint do_serial_cons 1": {
   "role": "시리얼 콘솔 끄기",
+  "desc": [
+   "**시리얼 콘솔 끄기** (1 = 끔)",
+   "콘솔이 UART 를 쓰고 있으면 우리 프로그램이 못 쓴다"
+  ],
   "args": [
    [
     "1",
@@ -181,10 +246,16 @@
    ]
   ],
   "flow": "콘솔이 UART 를 쓰고 있으면 우리 프로그램이 못 쓴다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "do_serial_cons"
  },
  "sudo nano /boot/firmware/config.txt": {
   "role": "터미널 텍스트 편집기",
+  "desc": [
+   "Pi 의 **부팅 설정 파일** 편집",
+   "dtparam · dtoverlay 줄로 하드웨어 기능을 켠다 → 재부팅해야 반영",
+   "nano: Ctrl+O 저장, Ctrl+X 종료"
+  ],
   "args": [
    [
     "파일",
@@ -208,18 +279,32 @@
  },
  "sudo systemctl disable hciuart": {
   "role": "블루투스 UART 서비스 끄기",
+  "desc": [
+   "**블루투스 UART 서비스** 끄기",
+   "`dtoverlay=disable-bt` 와 짝 — 좋은 UART 를 GPIO14 · 15 에 돌려받는다"
+  ],
   "args": [],
   "flow": "`dtoverlay=disable-bt` 와 짝 — PL011 UART 를 GPIO14·15 에 돌려받는다",
   "ret": "—"
  },
  "ls /dev/i2c-* /dev/spidev* /dev/serial0 / ls /sys/class/pwm/": {
   "role": "재부팅 후 장치 파일 확인",
+  "desc": [
+   "재부팅 후 **장치 파일이 생겼는지** 확인",
+   "/dev/i2c-1 · /dev/spidev0.0 · /dev/serial0 · pwmchip"
+  ],
   "args": [],
   "flow": "/dev/i2c-1, /dev/spidev0.0, /dev/serial0, pwmchip 가 보여야 한다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "/dev/spidev"
  },
  "sudo apt install -y build-essential gpiod libgpiod-dev i2c-tools": {
   "role": "패키지 관리 (Ubuntu)",
+  "desc": [
+   "Raspberry Pi OS 의 **프로그램 설치 · 업데이트** 도구",
+   "`update` 목록 새로 받기 → `full-upgrade` 전부 최신으로 / `install` 설치",
+   "관리자 권한이라 `sudo`, `-y` 는 묻지 않고 예"
+  ],
   "args": [
    [
     "update",
@@ -235,28 +320,48 @@
    ]
   ],
   "flow": "update 로 목록을 갱신한 뒤 install 로 설치한다",
-  "ret": "성공 0"
+  "ret": "성공 0",
+  "ex": "libgpiod-dev"
  },
  "pkg-config --modversion libgpiod": {
   "role": "libgpiod 버전",
+  "desc": [
+   "**libgpiod 버전** 확인",
+   "⚠ **2.x** 여야 한다 — 1.x 와 API 가 완전히 달라 인터넷 예제 주의"
+  ],
   "args": [],
   "flow": "**2.x** 여야 한다 (1.x 와 API 가 완전히 다름 — 인터넷 예제 주의)",
   "ret": "2.2.1"
  },
  "pkg-config --cflags --libs libgpiod": {
   "role": "빌드 옵션 알려 주기",
+  "desc": [
+   "libgpiod 를 쓰는 데 필요한 **빌드 옵션**을 알려 준다",
+   "`gcc a.c $(pkg-config --cflags --libs libgpiod)` → `-lgpiod`"
+  ],
   "args": [],
   "flow": "`gcc a.c $(pkg-config --cflags --libs libgpiod)` → `-lgpiod`",
-  "ret": "옵션 문자열"
+  "ret": "옵션 문자열",
+  "ex": "--cflags --libs"
  },
  "ls -l /dev/gpiochip0 /dev/i2c-1 /dev/spidev0.0 /dev/ttyAMA0 / groups": {
   "role": "장치 권한 / 내 그룹",
+  "desc": [
+   "장치 파일의 **그룹**과 **내가 속한 그룹** 확인",
+   "장치 그룹(gpio · i2c · spi · dialout)에 속해야 sudo 없이 연다"
+  ],
   "args": [],
   "flow": "장치 파일의 그룹(gpio, i2c, spi, dialout)에 내가 속해야 sudo 없이 연다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "/dev/gpiochip0 /dev"
  },
  "sudo usermod -aG gpio,i2c,spi,dialout $USER": {
   "role": "그룹에 추가",
+  "desc": [
+   "내 계정을 **장치 그룹에 추가** — sudo 없이 GPIO · I2C 사용",
+   "⚠ `-a` 를 빼먹으면 다른 그룹에서 빠진다",
+   "⚠ **다시 로그인**해야 반영"
+  ],
   "args": [
    [
     "-a",
@@ -272,6 +377,10 @@
  },
  "access(path, R_OK | W_OK)": {
   "role": "내 권한으로 열 수 있나",
+  "desc": [
+   "**내 권한으로 열 수 있는지** 미리 확인",
+   "'파일이 없음' 과 '권한 없음' 을 구분하는 진단용"
+  ],
   "args": [
    [
     "path",
@@ -288,12 +397,19 @@
  },
  "gpiodetect": {
   "role": "GPIO 칩 목록",
+  "desc": [
+   "**GPIO 칩 목록** — Pi 4 의 40핀 = gpiochip0"
+  ],
   "args": [],
   "flow": "Pi 4 의 40핀 GPIO = gpiochip0 (pinctrl-bcm2711, 58 lines)",
   "ret": "—"
  },
  "gpioinfo -c gpiochip0 [17]": {
   "role": "라인 정보",
+  "desc": [
+   "**라인(핀) 정보** — 방향 · consumer(누가 쓰는 중인지)",
+   "Device busy 원인 찾기"
+  ],
   "args": [
    [
     "-c gpiochip0",
@@ -305,10 +421,15 @@
    ]
   ],
   "flow": "이름·방향·**consumer**(누가 쓰는 중인지) — Device busy 원인 찾기",
-  "ret": "—"
+  "ret": "—",
+  "ex": "gpioinfo -c"
  },
  "gpioset -c gpiochip0 17=1": {
   "role": "라인 출력",
+  "desc": [
+   "명령줄에서 **핀 출력** — 17번 라인을 1 로",
+   "⚠ 끝나지 않고 기다린다 — 라인을 쥐고 있어야 값이 유지, Ctrl+C 로 놓으면 원래대로"
+  ],
   "args": [
    [
     "17=1",
@@ -316,10 +437,14 @@
    ]
   ],
   "flow": "**끝나지 않고 기다린다** — 라인을 쥐고 있어야 값이 유지되니까. Ctrl+C 로 놓으면 원래대로",
-  "ret": "—"
+  "ret": "—",
+  "ex": "gpioset -c gpiochip0 17=1"
  },
  "gpioset -c gpiochip0 -t 500ms 17=1": {
   "role": "토글하며 출력",
+  "desc": [
+   "0.5초마다 **값을 뒤집으며** 출력 — 깜빡이 확인"
+  ],
   "args": [
    [
     "-t 500ms",
@@ -327,10 +452,14 @@
    ]
   ],
   "flow": "깜빡이 확인용",
-  "ret": "—"
+  "ret": "—",
+  "ex": "-t 500ms"
  },
  "gpioset GPIO17=1": {
   "role": "이름으로 지정",
+  "desc": [
+   "칩 대신 **라인 이름**으로 지정해 출력"
+  ],
   "args": [
    [
     "GPIO17",
@@ -342,21 +471,30 @@
  },
  "dmesg | grep -iE \"gpio|pwm|spi|i2c|ttyAMA\"": {
   "role": "커널 로그 보기",
+  "desc": [
+   "커널 로그에서 **GPIO · PWM · SPI · I2C · UART** 관련 줄만",
+   "부팅 때 드라이버가 장치를 잡았는지 확인"
+  ],
   "args": [
    [
-    "sudo",
-    "일반 사용자는 막혀 있는 경우가 많다"
+    "dmesg",
+    "**커널 로그** 출력 (드라이버가 남긴 메시지)"
    ],
    [
-    "| tail -5",
-    "마지막 5줄만"
+    "| grep -i 낱말",
+    "그 낱말이 든 줄만 — `-i` 대소문자 무시, `-E` 여러 낱말을 `|` 로"
    ]
   ],
-  "flow": "OOM killer 가 죽인 기록(`Out of memory: Killed process …`), 드라이버 메시지 확인",
+  "flow": "부팅 때 드라이버가 장치를 잡은 기록을 본다. 일반 사용자에게 막혀 있으면 앞에 sudo",
   "ret": "텍스트"
  },
  "gpioget -c gpiochip0 -b pull-up 5": {
   "role": "입력 읽기",
+  "desc": [
+   "명령줄에서 **입력 읽기** — 내부 풀업 켜고 5번 라인",
+   "풀업 버튼: 안 누르면 active(1), 누르면 inactive(0)",
+   "⚠ bias 없이 읽으면 떠 있는 핀이라 값이 들쭉날쭉"
+  ],
   "args": [
    [
     "-b pull-up",
@@ -372,10 +510,15 @@
    ]
   ],
   "flow": "풀업 버튼: 안 누르면 active(1), 누르면 inactive(0)",
-  "ret": "\"5\"=active / inactive"
+  "ret": "\"5\"=active / inactive",
+  "ex": "-b pull-up 5"
  },
  "gpiomon -c gpiochip0 -b pull-up -e falling 5": {
   "role": "엣지 이벤트 감시",
+  "desc": [
+   "**엣지(변화) 이벤트 감시** — 누를 때마다 한 줄",
+   "커널이 타임스탬프와 함께 알려 준다 — 계속 확인(폴링) 안 함"
+  ],
   "args": [
    [
     "-e falling",
@@ -391,6 +534,10 @@
  },
  "-e both / -p 10ms / -n 3": {
   "role": "gpiomon 옵션",
+  "desc": [
+   "gpiomon **옵션** — 누름 · 뗌 모두 / 디바운스 10ms / 3개 받고 끝",
+   "채터링을 커널 쪽에서 거른다"
+  ],
   "args": [
    [
     "-e both",
@@ -406,10 +553,15 @@
    ]
   ],
   "flow": "채터링을 커널 쪽에서 거른다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "-p 10ms"
  },
  "gpiod_chip_open(\"/dev/gpiochip0\") / gpiod_chip_close": {
   "role": "GPIO 칩 열기 / 닫기",
+  "desc": [
+   "**GPIO 칩 열기 / 닫기** (libgpiod 2)",
+   "칩 핸들로 라인을 요청한다 — 요청한 라인은 칩을 닫아도 유지"
+  ],
   "args": [
    [
     "path",
@@ -422,6 +574,10 @@
  },
  "gpiod_line_settings_new / _set_direction(s, GPIOD_LINE_DIRECTION_OUTPUT) / _set_output_value(s, GPIOD_LINE_VALUE_INACTIVE)": {
   "role": "라인 설정 만들기",
+  "desc": [
+   "**'이 라인을 어떻게 쓸지'** 설정 객체 — 방향 · 초기값",
+   "아직 커널에는 아무 일도 안 일어난다 (request 할 때 적용)"
+  ],
   "args": [
    [
     "direction",
@@ -437,6 +593,10 @@
  },
  "gpiod_line_config_new / gpiod_line_config_add_line_settings(cfg, &offset, 1, s)": {
   "role": "어느 라인에 그 설정을",
+  "desc": [
+   "**어느 라인(번호)에** 그 설정을 적용할지 묶는다",
+   "여러 라인에 같은 설정을 한 번에"
+  ],
   "args": [
    [
     "cfg",
@@ -460,6 +620,10 @@
  },
  "gpiod_request_config_new / _set_consumer(rc, \"blink\")": {
   "role": "요청 전체 설정",
+  "desc": [
+   "요청 전체 설정 — **consumer 이름**",
+   "gpioinfo 에 '누가 쓰는지' 로 보여 Device busy 진단에 쓰인다"
+  ],
   "args": [
    [
     "consumer",
@@ -471,6 +635,11 @@
  },
  "gpiod_chip_request_lines(chip, rc, cfg)": {
   "role": "**커널에 라인 요청**",
+  "desc": [
+   "**커널에 라인을 요청** — 성공하면 이 프로세스가 라인 주인",
+   "⚠ 다른 프로세스가 쓰고 있으면 실패 (**EBUSY**)",
+   "libgpiod 순서: 칩 열기 → 설정 → 라인 지정 → **요청** → 쓰기 → 반납"
+  ],
   "args": [
    [
     "chip",
@@ -490,6 +659,10 @@
  },
  "gpiod_line_request_set_value(req, off, GPIOD_LINE_VALUE_ACTIVE)": {
   "role": "라인 값 쓰기",
+  "desc": [
+   "요청한 라인에 **값 쓰기** — ACTIVE(1) / INACTIVE(0)",
+   "내부적으로 ioctl 시스템 콜 1번"
+  ],
   "args": [
    [
     "req",
@@ -509,6 +682,10 @@
  },
  "gpiod_line_request_release(req) / *_free(...)": {
   "role": "반납 / 재료 해제",
+  "desc": [
+   "라인을 커널에 **반납**하고 설정 객체들 **해제**",
+   "Ctrl+C 로 끝나도 반납하려면 SIGINT → 플래그 → 루프 탈출 → release"
+  ],
   "args": [
    [
     "release(req)",
@@ -524,6 +701,9 @@
  },
  "gpiod_line_request_set_value(req, off, v)": {
   "role": "라인 하나 쓰기",
+  "desc": [
+   "라인 **하나**에 값 쓰기 — 라인마다 시스템 콜 1번"
+  ],
   "args": [
    [
     "off",
@@ -539,6 +719,10 @@
  },
  "gpiod_line_request_set_values(req, v[])": {
   "role": "요청한 모든 라인 한 번에",
+  "desc": [
+   "요청한 **모든 라인을 한 번에** — 시스템 콜 1번이라 동시에 바뀐다",
+   "⚠ 값 배열 순서 = **요청할 때 넘긴 라인 순서**"
+  ],
   "args": [
    [
     "v[]",
@@ -550,6 +734,9 @@
  },
  "gpiod_line_request_set_values_subset(req, n, offsets, v)": {
   "role": "일부 라인만",
+  "desc": [
+   "요청한 라인 중 **일부만** 바꾸고 나머지는 그대로"
+  ],
   "args": [
    [
     "n",
@@ -569,6 +756,10 @@
  },
  "gpiod_line_settings_set_active_low(s, true)": {
   "role": "논리 반전",
+  "desc": [
+   "**논리 반전** — 코드의 1 = 전압 0V",
+   "LOW 에서 켜지는 장치(릴레이 모듈 등)를 코드에서는 '1 = 켬' 으로 쓰게"
+  ],
   "args": [
    [
     "true",
@@ -580,6 +771,10 @@
  },
  "gpiod_line_settings_set_drive(s, GPIOD_LINE_DRIVE_OPEN_DRAIN)": {
   "role": "출력 회로 종류",
+  "desc": [
+   "**출력 회로 종류** — 푸시풀(기본) / 오픈 드레인",
+   "오픈 드레인: 0 만 끌어내리고 1 은 놓음 → 여러 장치가 한 선 공유 (I2C 처럼)"
+  ],
   "args": [
    [
     "PUSH_PULL",
@@ -595,6 +790,11 @@
  },
  "gpio[1] = (gpio[1] & ~(7u << 21)) | (1u << 21)": {
   "role": "GPIO17 을 출력으로 (레지스터)",
+  "desc": [
+   "레지스터로 **GPIO17 을 출력**으로 — 라이브러리 없이",
+   "GPFSEL1 의 17번 자리 3비트(21~23)만 지우고 001 을 넣는다",
+   "읽기-수정-쓰기로 **다른 핀 설정은 지킨다**"
+  ],
   "args": [
    [
     "gpio[1]",
@@ -610,10 +810,15 @@
    ]
   ],
   "flow": "읽기-수정-쓰기: 다른 핀의 비트를 지키며 3비트만 바꾼다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "(7u << 21)"
  },
  "gpio[0x1C / 4] = 1u << 22": {
   "role": "GPIO22 High",
+  "desc": [
+   "레지스터로 **GPIO22 를 HIGH** — GPSET0",
+   "SET 레지스터는 1 쓴 비트만 HIGH → 읽기-수정-쓰기 불필요 (끄기는 CLR 0x28)"
+  ],
   "args": [
    [
     "0x1C / 4",
@@ -621,10 +826,15 @@
    ]
   ],
   "flow": "SET 레지스터는 1 쓴 비트만 High — 읽기-수정-쓰기 불필요 (CLR = 0x28)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "0x1C / 4"
  },
  "!(gpio[0x34 / 4] & (1u << 5))": {
   "role": "GPIO5 눌림 검사",
+  "desc": [
+   "레지스터로 **GPIO5 버튼 눌림** 검사 — GPLEV0",
+   "풀업 버튼은 누르면 0 → `!` 로 눌림 = 참"
+  ],
   "args": [
    [
     "0x34 / 4",
@@ -632,10 +842,15 @@
    ]
   ],
   "flow": "풀업 버튼은 누르면 0 → `!` 로 눌림 = 참",
-  "ret": "0/1"
+  "ret": "0/1",
+  "ex": "0x34 / 4"
  },
  "gpiod_line_settings_set_bias(s, GPIOD_LINE_BIAS_PULL_UP)": {
   "role": "내부 풀업/풀다운",
+  "desc": [
+   "**내부 풀업 / 풀다운** 저항 설정",
+   "버튼 → GND 배선이면 PULL_UP, PIR 처럼 스스로 0/1 을 내면 DISABLED"
+  ],
   "args": [
    [
     "PULL_UP / PULL_DOWN",
@@ -647,10 +862,15 @@
    ]
   ],
   "flow": "버튼 → GND 배선이면 PULL_UP",
-  "ret": "—"
+  "ret": "—",
+  "ex": "GPIOD_LINE_BIAS_PULL_UP"
  },
  "gpiod_line_request_get_value(req, off)": {
   "role": "입력 읽기",
+  "desc": [
+   "입력 라인 **값 읽기** — 1 / 0, 음수는 오류",
+   "주기적으로 부르면 폴링 (CPU 사용)"
+  ],
   "args": [
    [
     "off",
@@ -662,6 +882,10 @@
  },
  "gpiod_line_settings_set_debounce_period_us(s, us)": {
   "role": "커널 디바운스",
+  "desc": [
+   "**커널 디바운스** — 이 시간보다 짧은 변화는 무시",
+   "버튼 채터링을 이벤트 받기 전에 커널이 거른다 (10000 = 10ms)"
+  ],
   "args": [
    [
     "us",
@@ -673,6 +897,10 @@
  },
  "gpiod_line_settings_set_edge_detection(s, GPIOD_LINE_EDGE_BOTH)": {
   "role": "엣지 이벤트 켜기",
+  "desc": [
+   "**엣지 이벤트** 켜기 — 어떤 변화를 알려 줄지",
+   "커널이 변화 순간을 **타임스탬프**와 함께 큐에 쌓는다"
+  ],
   "args": [
    [
     "FALLING / RISING / BOTH / NONE",
@@ -684,12 +912,21 @@
  },
  "gpiod_line_request_get_fd(req)": {
   "role": "poll 할 fd",
+  "desc": [
+   "이벤트를 **poll 로 기다릴 fd**",
+   "이벤트가 쌓이면 '읽을 수 있음' 이 된다"
+  ],
   "args": [],
   "flow": "이벤트가 쌓이면 이 fd 가 '읽을 수 있음' 이 된다",
   "ret": "fd"
  },
  "poll(&pfd, 1, -1)": {
   "role": "fd 가 준비될 때까지 잠",
+  "desc": [
+   "fd 가 **준비될 때까지 잠든다** — 기다리는 동안 CPU 0%",
+   "타임아웃 -1 무한, 0 즉시 확인",
+   "시그널이 오면 -1 + EINTR"
+  ],
   "args": [
    [
     "&pfd",
@@ -710,6 +947,10 @@
  },
  "gpiod_edge_event_buffer_new(16) / gpiod_line_request_read_edge_events(req, buf, 16)": {
   "role": "이벤트 버퍼 / 이벤트 읽기",
+  "desc": [
+   "**이벤트 버퍼**를 만들고 쌓인 이벤트를 **한꺼번에** 읽는다",
+   "poll 이 깨면 호출"
+  ],
   "args": [
    [
     "16",
@@ -721,6 +962,10 @@
  },
  "gpiod_edge_event_buffer_get_event(buf, i)": {
   "role": "i 번째 이벤트",
+  "desc": [
+   "버퍼의 **i 번째 이벤트** 꺼내기",
+   "버퍼 안의 포인터라 해제하지 않는다"
+  ],
   "args": [
    [
     "i",
@@ -732,6 +977,11 @@
  },
  "gpiod_edge_event_get_event_type / _get_timestamp_ns / _get_line_offset / _get_line_seqno": {
   "role": "이벤트 정보",
+  "desc": [
+   "이벤트 정보 — **종류(누름/뗌) · 시각 · 라인 · 일련번호**",
+   "시각은 **커널이 찍은** 것 — 늦게 읽어도 정확",
+   "일련번호가 건너뛰면 놓친 이벤트"
+  ],
   "args": [
    [
     "event_type",
@@ -755,6 +1005,10 @@
  },
  "epoll_create1(0)": {
   "role": "epoll 인스턴스",
+  "desc": [
+   "**epoll** 만들기 — 여러 fd 를 한꺼번에 기다리는 감시자",
+   "감시 목록을 커널에 두고 재사용"
+  ],
   "args": [
    [
     "0",
@@ -767,6 +1021,10 @@
  },
  "epoll_ctl(ep, EPOLL_CTL_ADD, fd, &e)": {
   "role": "감시 목록에 fd 추가",
+  "desc": [
+   "감시 목록에 **fd 추가** — 처음 한 번만",
+   "`.data.u32` 에 태그를 넣어 돌아올 때 어느 fd 인지 구분"
+  ],
   "args": [
    [
     "EPOLL_CTL_ADD",
@@ -786,6 +1044,10 @@
  },
  "epoll_wait(ep, evs, max, -1)": {
   "role": "준비된 fd 기다리기",
+  "desc": [
+   "**준비된 fd 만** 돌려받을 때까지 잠든다",
+   "`evs[i].data.u32` 로 switch — 버튼 · 타이머 · 시그널을 한 루프에서"
+  ],
   "args": [
    [
     "evs",
@@ -805,6 +1067,10 @@
  },
  "timerfd_create(CLOCK_MONOTONIC, 0)": {
   "role": "타이머를 fd 로",
+  "desc": [
+   "**타이머를 fd 로** 만든다",
+   "만료되면 읽을 수 있는 fd → epoll 에 같이 넣는다"
+  ],
   "args": [
    [
     "CLOCK_MONOTONIC",
@@ -817,6 +1083,10 @@
  },
  "timerfd_settime(tfd, 0, &its, NULL)": {
   "role": "타이머 시작",
+  "desc": [
+   "타이머 **시작** — 첫 만료 시각과 반복 주기",
+   "⚠ 만료 후 read 로 **만료 횟수**를 읽어야 다시 잠든다"
+  ],
   "args": [
    [
     "its.it_value",
@@ -831,33 +1101,46 @@
   "ret": "0 / -1"
  },
  "read(tfd, &exp, 8)": {
-  "role": "fd 에서 바이트 읽기",
+  "role": "timerfd 만료 횟수 읽기",
+  "desc": [
+   "timerfd 에서 **만료 횟수(8바이트)** 를 읽는다",
+   "읽어야 fd 가 다시 '준비 안 됨' 이 된다 — 안 읽으면 epoll 이 계속 깨움"
+  ],
   "args": [
    [
-    "fd",
-    "읽을 파일 디스크립터 (0 = stdin)"
+    "tfd",
+    "**timerfd**"
    ],
    [
-    "buf",
-    "읽은 데이터를 담을 곳"
+    "&exp",
+    "만료 횟수를 받을 **uint64_t 변수의 주소**"
    ],
    [
-    "n",
-    "최대 몇 바이트까지 (buf 크기)"
+    "8",
+    "**8바이트** (uint64_t 크기)"
    ]
   ],
-  "flow": "커널이 최대 n 바이트를 buf 에 채운다. 남은 양이 적으면 그만큼만, 파이프·장치·inotify 는 올 때까지 **잠든다**",
-  "ret": "읽은 바이트 수 / **0 = 파일 끝(EOF)** / -1 + errno",
+  "flow": "마지막으로 읽은 뒤 몇 번 만료됐는지 돌려받고 카운트가 0 으로 돌아간다 — 1 보다 크면 그만큼 늦었다는 뜻",
+  "ret": "8 (읽은 바이트 수) / -1",
   "hdr": "<unistd.h>"
  },
  "drain()": {
   "role": "쌓인 이벤트 버리기 (직접 구현)",
+  "desc": [
+   "**쌓여 있던 이벤트를 버린다** (직접 구현)",
+   "이전 라운드의 늦은 이벤트가 부정 출발로 잡히지 않게"
+  ],
   "args": [],
   "flow": "`poll(…, 0)` 이 준비됨인 동안 read — 이전 라운드에서 뗀 이벤트가 부정 출발로 잡히지 않게",
   "ret": "없음"
  },
  "wait_press(timeout_ms, &ts, &who)": {
   "role": "시간 제한 누름 대기 (직접 구현)",
+  "desc": [
+   "**시간 제한**을 두고 버튼 누름 기다리기 (직접 구현)",
+   "남은 시간을 **매번 다시 계산**해 poll — 다른 이벤트로 깨도 전체 시간이 늘지 않게",
+   "1 눌림 · 0 시간 초과 · -1 Ctrl+C"
+  ],
   "args": [
    [
     "timeout_ms",
@@ -877,6 +1160,9 @@
  },
  "beep(ms)": {
   "role": "부저 (직접 구현)",
+  "desc": [
+   "**부저**를 ms 동안 울린다 (직접 구현) — 켜기 → 대기 → 끄기"
+  ],
   "args": [
    [
     "ms",
@@ -888,6 +1174,10 @@
  },
  "./react / ./react 10 / ./react -2": {
   "role": "반응속도 게임 실행",
+  "desc": [
+   "Day 2 **반응속도 게임** — 1인 5라운드 / 라운드 수 / 2인 대전",
+   "결과는 react_log.csv 에"
+  ],
   "args": [
    [
     "(없음)",
@@ -903,10 +1193,14 @@
    ]
   ],
   "flow": "결과는 react_log.csv 에 추가",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./react"
  },
  "column -t -s, react_log.csv": {
   "role": "CSV 를 표로 보기",
+  "desc": [
+   "**CSV 를 표처럼** 칸 맞춰 보기"
+  ],
   "args": [
    [
     "-t",
@@ -922,6 +1216,10 @@
  },
  "yes > /dev/null & ×4 / killall yes": {
   "role": "CPU 부하 / 정리",
+  "desc": [
+   "**CPU 부하**를 일부러 — 4번 띄우면 4코어 100%",
+   "⚠ 실험 후 **반드시 killall yes**"
+  ],
   "args": [
    [
     "yes > /dev/null &",
@@ -937,6 +1235,10 @@
  },
  "clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL)": {
   "role": "지정한 시계 기준으로 잠들기 (절대 시각 가능)",
+  "desc": [
+   "**정한 시각까지** 잠든다 (절대 시각)",
+   "다음 목표 = 이전 목표 + 주기 → 오차가 쌓이지 않는 **소프트웨어 PWM** 주기"
+  ],
   "args": [
    [
     "id",
@@ -961,6 +1263,10 @@
  },
  "pthread_create / pthread_mutex_lock": {
   "role": "쓰레드 만들기",
+  "desc": [
+   "**쓰레드 만들기** / 공유 데이터 **잠그기**",
+   "PWM 은 전용 쓰레드가 돌리고, 메인은 듀티만 바꾼다 — 공유 값은 뮤텍스로"
+  ],
   "args": [
    [
     "th",
@@ -985,6 +1291,10 @@
  },
  "pthread_attr_setschedpolicy(&at, SCHED_FIFO)": {
   "role": "쓰레드 정책을 FIFO 로",
+  "desc": [
+   "만들 쓰레드의 정책을 **실시간 FIFO** 로",
+   "더 높은 우선순위가 오거나 스스로 잠들 때까지 계속 실행"
+  ],
   "args": [
    [
     "&at",
@@ -1001,6 +1311,9 @@
  },
  "pthread_attr_setschedparam(&at, &sp)": {
   "role": "실시간 우선순위",
+  "desc": [
+   "만들 쓰레드의 **실시간 우선순위** (1~99, 수업은 50)"
+  ],
   "args": [
    [
     "sp.sched_priority",
@@ -1012,6 +1325,10 @@
  },
  "pthread_attr_setinheritsched(&at, PTHREAD_EXPLICIT_SCHED)": {
   "role": "속성의 정책을 쓰라고 지정",
+  "desc": [
+   "'**속성에 적은 정책을 써라**' 지정",
+   "⚠ 빼면 위 두 설정이 무시되고 부모(일반 정책)를 물려받는다 — 가장 흔한 실수"
+  ],
   "args": [
    [
     "PTHREAD_EXPLICIT_SCHED",
@@ -1023,6 +1340,10 @@
  },
  "mlockall(MCL_CURRENT | MCL_FUTURE)": {
   "role": "프로세스 메모리 전부 RAM 에 잠그기",
+  "desc": [
+   "프로세스 메모리를 **RAM 에 잠근다** — page fault 지연 제거",
+   "실시간 PWM 쓰레드의 흔들림(지터)을 줄인다"
+  ],
   "args": [
    [
     "flags",
@@ -1035,6 +1356,11 @@
  },
  "sudo setcap cap_sys_nice,cap_ipc_lock+ep ./02_rgb": {
   "role": "실행 파일에 권한만 주기",
+  "desc": [
+   "실행 파일에 **필요한 권한만** 준다 (전체 sudo 대신)",
+   "cap_sys_nice = 실시간 정책, cap_ipc_lock = mlockall",
+   "⚠ **다시 빌드하면 사라진다**"
+  ],
   "args": [
    [
     "cap_sys_nice",
@@ -1054,6 +1380,10 @@
  },
  "echo 0 > /sys/class/pwm/pwmchip0/export": {
   "role": "PWM 채널 꺼내기",
+  "desc": [
+   "**하드웨어 PWM 채널** 꺼내기 — pwm0 폴더가 생긴다",
+   "채널 0 = GPIO18, 1 = GPIO19"
+  ],
   "args": [
    [
     "0",
@@ -1061,10 +1391,16 @@
    ]
   ],
   "flow": "pwm0 디렉터리(period · duty_cycle · enable)가 생긴다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "echo 0 > export"
  },
  "echo 1000000 > pwm0/period / echo 250000 > pwm0/duty_cycle / echo 1 > pwm0/enable": {
   "role": "주기 · 듀티 · 켜기",
+  "desc": [
+   "PWM **주기 · 듀티 · 켜기**를 파일에 쓴다 (단위 **나노초**)",
+   "1000000ns = 1ms = 1kHz, 250000 = 25%",
+   "⚠ 항상 **duty ≤ period** — 주기를 줄일 땐 duty 먼저"
+  ],
   "args": [
    [
     "period",
@@ -1080,10 +1416,15 @@
    ]
   ],
   "flow": "항상 **duty ≤ period** 여야 해서 쓰는 순서가 중요 (주기를 줄일 땐 duty 먼저)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "pwm0/period"
  },
  "pwm_open(&p, 0, ch) / pwm_set(&p, period_ns, duty_ns) / pwm_set_duty / pwm_enable / pwm_close": {
   "role": "pwm_sysfs.h 도우미",
+  "desc": [
+   "sysfs PWM 파일 쓰기를 감싼 **도우미 함수들** (pwm_sysfs.h)",
+   "pwm_set 이 duty ≤ period 순서를 알아서 지킨다"
+  ],
   "args": [
    [
     "pwm_open",
@@ -1107,10 +1448,15 @@
    ]
   ],
   "flow": "sysfs 파일 쓰기를 함수로 감쌌다",
-  "ret": "0 / -1"
+  "ret": "0 / -1",
+  "ex": "pwm_set(&"
  },
  "angle_to_ns(deg)": {
   "role": "각도 → 펄스 폭 (직접 구현)",
+  "desc": [
+   "서보 **각도 → 펄스 폭(ns)** (직접 구현)",
+   "0°~180° 를 min~max µs 사이로 비례 — 끝점은 서보마다 달라 보정"
+  ],
   "args": [
    [
     "deg",
@@ -1118,10 +1464,15 @@
    ]
   ],
   "flow": "`min_us + (max_us − min_us) × deg / 180` → ×1000 ns. 끝점은 서보마다 달라 인자로 보정",
-  "ret": "ns"
+  "ret": "ns",
+  "ex": "pwm_set_duty(&p, angle_to_ns(deg))"
  },
  "tone(hz, ms)": {
   "role": "부저 음 (직접 구현)",
+  "desc": [
+   "부저로 **음 하나** (직접 구현) — 주기 = 1e9 / hz, 듀티 50%",
+   "0 Hz = 쉼표, 음 사이 30ms 끊어 같은 음도 구분"
+  ],
   "args": [
    [
     "hz",
@@ -1137,6 +1488,10 @@
  },
  "./04_servo 90 500 2400": {
   "role": "서보 실행 + 끝점 보정",
+  "desc": [
+   "서보 실행 + **끝점 보정** — 각도 · 0° 펄스 · 180° 펄스",
+   "끝에서 '지지직' 하면 범위를 줄인다"
+  ],
   "args": [
    [
     "90",
@@ -1152,10 +1507,15 @@
    ]
   ],
   "flow": "끝에서 '지지직' 하면 범위를 줄인다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./04_servo"
  },
  "set_dir(in1, in2)": {
   "role": "모터 방향 (직접 구현)",
+  "desc": [
+   "DC 모터 **방향** (직접 구현)",
+   "10 정회전 · 01 역회전 · 00 자유 정지 · 11 브레이크"
+  ],
   "args": [
    [
     "in1, in2",
@@ -1167,6 +1527,10 @@
  },
  "pwm_set(&en, 50000, 0)": {
   "role": "모터 EN PWM",
+  "desc": [
+   "모터 EN 핀 PWM — **20kHz** (들리지 않는 대역), 처음엔 정지",
+   "속도 = 듀티"
+  ],
   "args": [
    [
     "50000",
@@ -1182,12 +1546,21 @@
  },
  "vcgencmd get_throttled": {
   "role": "전원 부족 기록",
+  "desc": [
+   "**전원 부족 기록** — 모터가 돌 때 Pi 가 리셋되면 확인",
+   "0x0 이 아니면 모터 전원을 분리"
+  ],
   "args": [],
   "flow": "모터가 돌 때 Pi 가 리셋되면 확인 — 0x0 이 아니면 전원 분리 필요",
-  "ret": "0x…"
+  "ret": "0x…",
+  "ex": "get_throttled"
  },
  "phase = (phase + dir + 8) % 8": {
   "role": "스텝 위상 순환",
+  "desc": [
+   "스테퍼 **위상 순환** 0~7",
+   "C 의 `%` 는 음수가 나올 수 있어 **+8** 로 방지"
+  ],
   "args": [
    [
     "dir",
@@ -1195,10 +1568,15 @@
    ]
   ],
   "flow": "C 의 `%` 는 음수가 나올 수 있어 +8 로 방지",
-  "ret": "0~7"
+  "ret": "0~7",
+  "ex": "+ 8) % 8"
  },
  "gpiod_line_request_set_values(req, v)": {
   "role": "요청한 모든 라인 한 번에",
+  "desc": [
+   "스테퍼 코일 4개를 **같은 순간에** 바꾼다",
+   "하나씩 쓰면 중간 상태가 생긴다"
+  ],
   "args": [
    [
     "v",
@@ -1210,6 +1588,10 @@
  },
  "./08_stepper 90 / -360 / 360 0": {
   "role": "스테퍼 실행",
+  "desc": [
+   "스테퍼 실행 — 시계 90° / 반시계 한 바퀴 / 가감속 없이",
+   "가감속 없이 빠르게 시작하면 떨기만 하고 안 돈다 (**탈조**)"
+  ],
   "args": [
    [
     "90",
@@ -1225,22 +1607,36 @@
    ]
   ],
   "flow": "가감속 없이 빠르게 시작하면 떨기만 하고 안 돈다(탈조)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./08_stepper"
  },
  "measure_cm()": {
   "role": "초음파 1회 측정 (직접 구현)",
+  "desc": [
+   "**초음파 1회 측정** (직접 구현)",
+   "Trig 10µs → Echo 의 rising · falling **커널 타임스탬프** 차이 → × 0.0343 / 2 = cm",
+   "실패(30000µs 초과)면 -1"
+  ],
   "args": [],
   "flow": "찌꺼기 이벤트 버리기 → Trig 10µs → 60ms 마감 안에서 rising·falling 커널 타임스탬프 → 폭(µs) × 0.0343 / 2",
   "ret": "cm / 실패 -1 (30000µs 초과 = 약 5m)"
  },
  "median_cm()": {
   "role": "5회 중앙값 (직접 구현)",
+  "desc": [
+   "초음파 **5회 측정의 중앙값** (직접 구현)",
+   "튀는 값 하나에 흔들리지 않는다 — 측정 사이 60ms (메아리 소멸)"
+  ],
   "args": [],
   "flow": "사이 60ms(메아리 소멸) → qsort → 가운데. 튀는 값 하나에 흔들리지 않는다",
   "ret": "cm / -1"
  },
  "i2cdetect -y 1": {
   "role": "I2C 버스 스캔",
+  "desc": [
+   "**I2C 버스 스캔** — 응답하는 장치 주소 표",
+   "숫자(48) = 응답, -- = 없음, UU = 커널 드라이버가 사용 중"
+  ],
   "args": [
    [
     "-y",
@@ -1256,6 +1652,10 @@
  },
  "i2cget -y 1 0x48 0x40": {
   "role": "레지스터(제어) 쓰고 1바이트 읽기",
+  "desc": [
+   "I2C 장치에 제어 바이트를 쓰고 **1바이트 읽기**",
+   "⚠ PCF8591 은 첫 바이트가 **이전 변환 값** — 두 번 실행해 보면 안다"
+  ],
   "args": [
    [
     "0x48",
@@ -1271,6 +1671,10 @@
  },
  "i2cset -y 1 0x48 0x40 200": {
   "role": "제어 + 값 쓰기",
+  "desc": [
+   "I2C 장치에 **제어 + 값 쓰기** — DAC 200/255 × 3.3V",
+   "Aout LED 가 켜진다"
+  ],
   "args": [
    [
     "0x40",
@@ -1282,10 +1686,15 @@
    ]
   ],
   "flow": "Aout LED 가 켜진다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "i2cset -y 1 0x48 0x40"
  },
  "pcf_open(bus, addr) / pcf_read(fd, ch) / pcf_mv(raw)": {
   "role": "pcf8591.h 도우미",
+  "desc": [
+   "PCF8591 **I2C ADC 도우미** (pcf8591.h)",
+   "I2C 장치도 **파일처럼** open · write · read — ioctl(I2C_SLAVE) 로 주소 지정"
+  ],
   "args": [
    [
     "pcf_open",
@@ -1305,6 +1714,10 @@
  },
  "struct i2c_msg {addr, flags, len, buf}": {
   "role": "I2C 메시지 하나",
+  "desc": [
+   "I2C **메시지 하나** — 주소 · 읽기/쓰기 · 길이 · 데이터",
+   "여러 개를 배열로 묶어 한 트랜잭션으로"
+  ],
   "args": [
    [
     "addr",
@@ -1325,10 +1738,14 @@
   ],
   "flow": "여러 개를 배열로 묶어 한 트랜잭션으로",
   "ret": "—",
-  "hdr": "<linux/i2c.h>"
+  "hdr": "<linux/i2c.h>",
+  "ex": "struct i2c_msg"
  },
  "struct i2c_rdwr_ioctl_data {msgs, nmsgs}": {
   "role": "메시지 배열 포장",
+  "desc": [
+   "메시지 배열을 **ioctl(I2C_RDWR) 에 넘기는 포장**"
+  ],
   "args": [
    [
     "msgs",
@@ -1340,10 +1757,15 @@
    ]
   ],
   "flow": "ioctl(I2C_RDWR) 에 넘긴다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "i2c_rdwr_ioctl_data"
  },
  "ioctl(fd, I2C_RDWR, &data)": {
   "role": "묶음 트랜잭션",
+  "desc": [
+   "쓰기 + 읽기를 **끊김 없는 한 덩어리**로 (repeated START)",
+   "사이에 다른 장치가 끼어들지 못한다"
+  ],
   "args": [
    [
     "I2C_RDWR",
@@ -1355,6 +1777,10 @@
  },
  "pcf_read_all(fd, 0x48, out[4]) / pcf_write_dac(fd, v)": {
   "role": "네 채널 / DAC",
+  "desc": [
+   "PCF8591 **네 채널 한 번에** 읽기 / DAC 쓰기",
+   "자동 증가로 5바이트 읽고 첫 바이트는 버림"
+  ],
   "args": [
    [
     "out[4]",
@@ -1370,6 +1796,10 @@
  },
  "avg_push(&a, v)": {
   "role": "이동 평균 (직접 구현)",
+  "desc": [
+   "**이동 평균** (직접 구현) — 최근 N 개 평균",
+   "가장 오래된 값을 합에서 빼고 새 값을 더한다 (MCU ring_push 와 같은 원리)"
+  ],
   "args": [
    [
     "&a",
@@ -1385,6 +1815,10 @@
  },
  "히스테리시스 FLAME_ON 120 / FLAME_OFF 90": {
   "role": "문턱 두 개",
+  "desc": [
+   "**문턱 두 개** — 120 위면 경보, 90 아래로 내려가야 해제",
+   "경계 근처에서 켜졌다 꺼졌다 **떨지 않게**"
+  ],
   "args": [
    [
     "ON 120",
@@ -1396,16 +1830,24 @@
    ]
   ],
   "flow": "경계에서 켜졌다 꺼졌다 떨지 않게",
-  "ret": "—"
+  "ret": "—",
+  "ex": "FLAME_ON"
  },
  "ls -l /dev/spidev0.*": {
   "role": "SPI 장치 파일",
+  "desc": [
+   "**SPI 장치 파일** 확인 — spidev0.0 = CE0, spidev0.1 = CE1"
+  ],
   "args": [],
   "flow": "spidev0.0 = CE0, spidev0.1 = CE1 (칩 선택 핀마다 하나)",
   "ret": "—"
  },
  "ioctl(fd, SPI_IOC_WR_MODE, &mode) / SPI_IOC_WR_BITS_PER_WORD / SPI_IOC_WR_MAX_SPEED_HZ": {
   "role": "SPI 설정",
+  "desc": [
+   "**SPI 설정** — 모드 · 비트 수 · 속도",
+   "열자마자 한 번"
+  ],
   "args": [
    [
     "MODE",
@@ -1426,6 +1868,10 @@
  },
  "struct spi_ioc_transfer {tx_buf, len, speed_hz, bits_per_word} + ioctl(fd, SPI_IOC_MESSAGE(1), &tr)": {
   "role": "SPI 전송",
+  "desc": [
+   "**SPI 전송** — 보낼 버퍼 · 길이를 구조체에 담아 ioctl",
+   "전송 동안 CE0 가 LOW → 끝나며 HIGH 로 올라가는 순간이 595 의 래치"
+  ],
   "args": [
    [
     "tx_buf",
@@ -1445,10 +1891,15 @@
    ]
   ],
   "flow": "CE0 가 전송 동안 LOW, 끝나면 HIGH → 그 상승 에지가 595 의 래치",
-  "ret": "바이트 수 / -1"
+  "ret": "바이트 수 / -1",
+  "ex": "SPI_IOC_MESSAGE(1)"
  },
  "spi_open(dev, hz) / spi_send(fd, b) / rev8(x) / SEG_HEX[16] / seg_char(c)": {
   "role": "spi595.h 도우미",
+  "desc": [
+   "SPI 로 **74HC595** 를 쓰는 도우미 (spi595.h)",
+   "MCU Day 3 의 shiftOut 을 SPI 하드웨어가 대신"
+  ],
   "args": [
    [
     "spi_open",
@@ -1472,10 +1923,15 @@
    ]
   ],
   "flow": "MCU Day3 의 595 를 SPI 하드웨어로",
-  "ret": "—"
+  "ret": "—",
+  "ex": "spi_send("
  },
  "seg4_start(&d, spi_fd, fifo)": {
   "role": "4자리 표시 시작",
+  "desc": [
+   "**4자리 7-Segment 표시** 시작",
+   "2ms 마다 한 자리씩 그리는 쓰레드 — 빨리 돌아 4자리가 동시에 켜진 것처럼 보임"
+  ],
   "args": [
    [
     "d",
@@ -1495,6 +1951,10 @@
  },
  "seg4_text(&d, \"23.4\")": {
   "role": "글자 표시",
+  "desc": [
+   "4자리에 **글자 표시** — 오른쪽 정렬, '.' 은 앞 글자의 점",
+   "화면 버퍼는 뮤텍스로 보호"
+  ],
   "args": [
    [
     "\"23.4\"",
@@ -1506,12 +1966,19 @@
  },
  "seg4_stop(&d)": {
   "role": "표시 끝내기",
+  "desc": [
+   "4자리 표시 **끝내기** — 쓰레드 종료 → 595 끄기 → 라인 반납"
+  ],
   "args": [],
   "flow": "run = 0 → join → 595 끄기 → 라인 반납",
   "ret": "없음"
  },
  "D1~D4": {
   "role": "자리 선택 핀",
+  "desc": [
+   "4자리의 **자리 선택 핀** GPIO 17 · 27 · 22 · 5",
+   "공통 음극 — LOW 가 그 자리 켜짐 → active-low 로 요청해 코드에선 1 = 켬"
+  ],
   "args": [
    [
     "GPIO 17 · 27 · 22 · 5",
@@ -1519,10 +1986,15 @@
    ]
   ],
   "flow": "공통 음극 — LOW 가 그 자리 켜짐 → active-low 로 요청해 코드에서는 1 = 켬",
-  "ret": "—"
+  "ret": "—",
+  "ex": "SEG4_DIG"
  },
  "atomic_int g_front, g_swap (<stdatomic.h>)": {
   "role": "버퍼 번호 / 교체 요청",
+  "desc": [
+   "**잠금 없이** 안전하게 읽고 쓰는 변수 — 이중 버퍼 번호 · 교체 요청",
+   "변수 **하나**짜리 공유에 뮤텍스보다 가볍다"
+  ],
   "args": [
    [
     "g_front",
@@ -1534,10 +2006,15 @@
    ]
   ],
   "flow": "잠금 없이 한 변수를 안전하게 읽고 쓰기 (atomic_load/store)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "atomic_int g_front"
  },
  "show(img)": {
   "role": "이중 버퍼에 그리기 (직접 구현)",
+  "desc": [
+   "**이중 버퍼**에 그리기 (직접 구현)",
+   "뒤 버퍼에 그리고 교체 요청 → 스캔 쓰레드가 프레임 경계에서 바꿈 → **찢어짐 없음**"
+  ],
   "args": [
    [
     "img",
@@ -1549,12 +2026,20 @@
  },
  "img[r] = 0x80": {
   "role": "r 행의 가장 왼쪽 칸",
+  "desc": [
+   "8×8 매트릭스 r 행의 **가장 왼쪽 칸**만 켜기 (bit7 = 왼쪽 열)"
+  ],
   "args": [],
   "flow": "bit7 = 왼쪽 열 (C1)",
-  "ret": "—"
+  "ret": "—",
+  "ex": ""
  },
  "cfmakeraw(&t)": {
   "role": "termios 를 raw 로",
+  "desc": [
+   "시리얼(UART) 설정을 **raw** 로 — 줄 편집 · 에코 · Ctrl+C 처리 모두 끔",
+   "받은 바이트를 그대로 프로그램에"
+  ],
   "args": [
    [
     "&t",
@@ -1567,6 +2052,10 @@
  },
  "cfsetispeed(&t, B115200) / cfsetospeed": {
   "role": "입출력 속도",
+  "desc": [
+   "UART **입출력 속도** 설정",
+   "⚠ `B115200` 상수 (숫자 115200 아님), 상대와 다르면 글자가 깨진다"
+  ],
   "args": [
    [
     "B115200",
@@ -1578,6 +2067,10 @@
  },
  "tcsetattr(fd, TCSANOW, &t) / tcflush(fd, TCIOFLUSH)": {
   "role": "설정 적용 / 버퍼 비우기",
+  "desc": [
+   "설정 **적용** / 쌓인 **버퍼 비우기**",
+   "열 때 이전에 쌓인 쓰레기 바이트를 버린다"
+  ],
   "args": [
    [
     "TCSANOW",
@@ -1593,6 +2086,10 @@
  },
  "uart_open(dev, baud) / lb_feed(&lb, c) / cs_xor / uart_send_line": {
   "role": "uart.h 도우미",
+  "desc": [
+   "UART **도우미** (uart.h) — 열기 · 줄 모으기 · 체크섬 · 보내기",
+   "UART 는 바이트 흐름 → 줄 단위로 끊어 처리"
+  ],
   "args": [
    [
     "uart_open",
@@ -1616,6 +2113,10 @@
  },
  "./08_uart_term -t / -b 9600": {
   "role": "UART 터미널",
+  "desc": [
+   "**UART 터미널** — `-t` 루프백(TXD↔RXD 선) 시험, `-b` 속도",
+   "Pi 혼자 먼저 확인 → 그다음 ESP32"
+  ],
   "args": [
    [
     "-t",
@@ -1627,34 +2128,56 @@
    ]
   ],
   "flow": "Pi 혼자 먼저 확인 → 그다음 ESP32",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./08_uart_term"
  },
  "./gateway": {
   "role": "게이트웨이 (ESP32 연결)",
+  "desc": [
+   "Day 4 종합 **게이트웨이** — ESP32 프레임을 받아 7-Segment 에 표시, 조도에 따라 LED 명령"
+  ],
   "args": [],
   "flow": "ESP32 프레임 → 7-Segment, 조도 → LED 명령",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./gateway"
  },
  "./gateway -s": {
   "role": "루프백 모의",
+  "desc": [
+   "게이트웨이 **루프백 모의** — Pi 가 가짜 프레임을 보내 자기가 받는다"
+  ],
   "args": [],
   "flow": "TXD↔RXD 선 + Pi 가 가짜 프레임을 보내 자기가 받는다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./gateway -s"
  },
  "./gateway -k": {
   "role": "키보드 입력 모의",
+  "desc": [
+   "게이트웨이 **키보드 입력 모의** — `T=23.0,H=45` 를 직접 입력"
+  ],
   "args": [],
   "flow": "`T=23.0,H=45` 를 직접 입력 (체크섬 없이도 받음)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "./gateway -k"
  },
  "./gateway -f": {
   "role": "표시 쓰레드 FIFO",
+  "desc": [
+   "표시 쓰레드를 **FIFO** 로 — 부하에서 깜빡임 비교"
+  ],
   "args": [],
   "flow": "부하에서 깜빡임 비교",
-  "ret": "—"
+  "ret": "—",
+  "ex": ""
  },
  "Serial2.begin(115200, SERIAL_8N1, 16, 17) (ESP32)": {
   "role": "ESP32 두 번째 UART",
+  "desc": [
+   "ESP32 의 **두 번째 UART** 시작 — Pi 와 연결",
+   "Pi TXD → ESP32 RX(16), ESP32 TX(17) → Pi RXD",
+   "⚠ **GND 공통** 연결 필수, 속도 같게"
+  ],
   "args": [
    [
     "115200",
@@ -1674,6 +2197,10 @@
  },
  "gpiod_line_request_reconfigure_lines(req, cfg)": {
   "role": "요청한 라인 설정 바꾸기",
+  "desc": [
+   "**반납 없이** 라인 설정 바꾸기 — 출력 ↔ 입력 전환",
+   "DHT11: 시작 신호(출력 LOW 20ms) 뒤 바로 입력으로"
+  ],
   "args": [
    [
     "req",
@@ -1689,6 +2216,10 @@
  },
  "gpiod_request_config_set_event_buffer_size(rc, 256)": {
   "role": "커널 이벤트 버퍼 크기",
+  "desc": [
+   "커널 **이벤트 버퍼 크기** 늘리기 (기본 라인당 16)",
+   "DHT11 은 4ms 안에 엣지 80개 — 작으면 넘쳐서 잃는다"
+  ],
   "args": [
    [
     "256",
@@ -1700,6 +2231,11 @@
  },
  "dtoverlay=dht11,gpiopin=4 (config.txt) + 재부팅": {
   "role": "커널 DHT11 드라이버",
+  "desc": [
+   "**커널 DHT11 드라이버** 켜기 — µs 타이밍을 커널이 처리",
+   "사용자 프로그램은 IIO 파일만 읽으면 된다",
+   "⚠ GPIO4 는 이제 커널 것 — libgpiod 로 요청하면 busy"
+  ],
   "args": [
    [
     "gpiopin=4",
@@ -1707,31 +2243,54 @@
    ]
   ],
   "flow": "µs 타이밍을 커널이 처리 → 사용자 공간은 IIO 파일만 읽는다. **GPIO4 는 이제 커널 것**(libgpiod 로 요청하면 busy)",
-  "ret": "—"
+  "ret": "—",
+  "ex": "dtoverlay=dht11"
  },
  "dmesg | grep -i dht / lsmod | grep dht11 / ls /sys/bus/iio/devices/": {
   "role": "커널 로그 보기",
+  "desc": [
+   "DHT11 **커널 드라이버가 올라왔는지** 확인",
+   "커널 로그 · 모듈 목록 · IIO 장치 폴더"
+  ],
   "args": [
    [
-    "sudo",
-    "일반 사용자는 막혀 있는 경우가 많다"
+    "dmesg",
+    "**커널 로그** 출력 (드라이버가 남긴 메시지)"
    ],
    [
-    "| tail -5",
-    "마지막 5줄만"
+    "| grep -i 낱말",
+    "그 낱말이 든 줄만 — `-i` 대소문자 무시, `-E` 여러 낱말을 `|` 로"
+   ],
+   [
+    "lsmod | grep dht11",
+    "**dht11 모듈**이 올라왔나"
+   ],
+   [
+    "ls /sys/bus/iio/devices/",
+    "**IIO 장치 폴더**가 생겼나"
    ]
   ],
-  "flow": "OOM killer 가 죽인 기록(`Out of memory: Killed process …`), 드라이버 메시지 확인",
-  "ret": "텍스트"
+  "flow": "overlay 를 적용하고 재부팅한 뒤 드라이버 · 모듈 · 장치 파일을 차례로 확인",
+  "ret": "텍스트",
+  "ex": "grep -i dht"
  },
  "cat /sys/bus/iio/devices/iio:device0/in_temp_input": {
   "role": "IIO 온도 파일",
+  "desc": [
+   "IIO **온도 파일** 읽기 — 밀리 °C (24000 = 24.0°C)",
+   "읽는 순간 측정 — 실패하면 EIO / ETIMEDOUT"
+  ],
   "args": [],
   "flow": "밀리 °C 정수 (24000 = 24.0°C). 읽을 때 측정 — 실패하면 EIO/ETIMEDOUT",
   "ret": "정수"
  },
  "glob(\"/sys/bus/iio/devices/iio:device*/in_humidityrelative_input\", …)": {
   "role": "와일드카드로 파일 찾기",
+  "desc": [
+   "`*` **와일드카드로 파일 찾기**",
+   "장치 번호가 부팅마다 바뀔 수 있어 '습도 파일이 있는 장치' 로 찾는다",
+   "끝나면 globfree"
+  ],
   "args": [
    [
     "pattern",
@@ -1756,6 +2315,10 @@
  },
  "dtc -@ -I dts -O dtb -o eio.dtbo eio-overlay.dts (make eio.dtbo)": {
   "role": "Device Tree overlay 컴파일",
+  "desc": [
+   "**Device Tree overlay** 컴파일 — 텍스트(.dts) → 바이너리(.dtbo)",
+   "하드웨어 구성을 코드가 아니라 **데이터**로 커널에 알려 준다"
+  ],
   "args": [
    [
     "-@",
@@ -1771,22 +2334,34 @@
    ]
   ],
   "flow": "하드웨어 구성을 코드가 아닌 **데이터**로 커널에 알려 준다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "dtc -@"
  },
  "sudo cp eio.dtbo /boot/firmware/overlays/ + config.txt dtoverlay=eio + reboot": {
   "role": "overlay 적용",
+  "desc": [
+   "overlay **적용** — 복사 → config.txt → 재부팅",
+   "부팅 때 gpio-leds · gpio-keys 드라이버가 장치를 만든다"
+  ],
   "args": [],
   "flow": "부팅 때 펌웨어가 기본 DT 에 덧붙인다 → gpio-leds · gpio-keys 드라이버가 장치를 만든다",
   "ret": "—"
  },
  "ls /sys/class/leds/ / cat …/eio:green/trigger": {
   "role": "LED 클래스 확인",
+  "desc": [
+   "**LED 클래스** 확인 — trigger 파일은 가능한 목록, 지금 것은 [대괄호]"
+  ],
   "args": [],
   "flow": "trigger 파일은 가능한 목록을 보여 주고 지금 것은 [대괄호]",
   "ret": "`[heartbeat]`"
  },
  "echo timer | sudo tee /sys/class/leds/eio:green/trigger": {
   "role": "LED 트리거 바꾸기",
+  "desc": [
+   "LED **트리거 바꾸기** — timer · heartbeat · none …",
+   "⚠ `sudo echo … >` 는 실패 → `| sudo tee`"
+  ],
   "args": [
    [
     "timer",
@@ -1794,10 +2369,14 @@
    ]
   ],
   "flow": "`sudo echo … >` 는 리다이렉션이 일반 권한이라 실패 → `| sudo tee`",
-  "ret": "—"
+  "ret": "—",
+  "ex": "| sudo tee /sys/class/leds"
  },
  "echo 1 | sudo tee …/brightness": {
   "role": "LED 켜기",
+  "desc": [
+   "LED **직접 켜기** — trigger 를 none 으로 한 뒤"
+  ],
   "args": [
    [
     "1",
@@ -1805,10 +2384,14 @@
    ]
   ],
   "flow": "trigger 를 none 으로 한 뒤 직접 제어",
-  "ret": "—"
+  "ret": "—",
+  "ex": "brightness"
  },
  "cat /proc/bus/input/devices | grep -A4 eio-keys": {
   "role": "input 장치 찾기",
+  "desc": [
+   "**input 장치 찾기** — `Handlers=kbd event0` → /dev/input/event0"
+  ],
   "args": [
    [
     "-A4",
@@ -1816,10 +2399,15 @@
    ]
   ],
   "flow": "`Handlers=kbd event0` → /dev/input/event0",
-  "ret": "—"
+  "ret": "—",
+  "ex": "/proc/bus/input/devices"
  },
  "ioctl(fd, EVIOCGNAME(sizeof name), name)": {
   "role": "input 장치 이름 묻기",
+  "desc": [
+   "input 장치의 **이름 묻기**",
+   "event 번호가 바뀌어도 이름(\"eio-keys\")으로 찾는다"
+  ],
   "args": [
    [
     "EVIOCGNAME(len)",
@@ -1836,6 +2424,10 @@
  },
  "lcd_open() / lcd_close(l) / lcd_release(l)": {
   "role": "LCD 열기 / 닫기",
+  "desc": [
+   "**LCD 열기 / 닫기**",
+   "lcd_t 는 불투명 타입 — 내부 구조는 lcd.c 만 안다 (캡슐화)"
+  ],
   "args": [
    [
     "lcd_open",
@@ -1851,10 +2443,15 @@
    ]
   ],
   "flow": "lcd_t 는 불투명 타입 — 내부(struct lcd)는 lcd.c 만 안다",
-  "ret": "lcd_t * / NULL"
+  "ret": "lcd_t * / NULL",
+  "ex": "lcd_open()"
  },
  "lcd_cmd / lcd_putc / lcd_goto(l, col, row) / lcd_puts": {
   "role": "명령 / 글자 / 커서 / 문자열",
+  "desc": [
+   "LCD **명령 · 글자 · 커서 · 문자열**",
+   "1바이트를 4비트씩 두 번 + E 펄스"
+  ],
   "args": [
    [
     "lcd_cmd",
@@ -1874,6 +2471,10 @@
  },
  "lcd_printf(l, row, fmt, …)": {
   "role": "한 행 서식 출력",
+  "desc": [
+   "LCD **한 행 서식 출력**",
+   "16칸을 공백으로 채워 덮어써 이전 글자가 남지 않는다"
+  ],
   "args": [
    [
     "row",
@@ -1889,6 +2490,11 @@
  },
  "lcd_custom(l, slot, bitmap8)": {
   "role": "사용자 문자",
+  "desc": [
+   "LCD **사용자 문자** 만들기",
+   "⚠ slot 은 **1~7** — 0 은 문자열 끝 '\\0' 과 같아서 안 씀",
+   "문자열 속 `\"\\x01\"` 로 출력"
+  ],
   "args": [
    [
     "slot",
@@ -1904,36 +2510,56 @@
  },
  "gpio_common.h": {
   "role": "Day 2 공통 헤더",
+  "desc": [
+   "Day 2 **공통 헤더** — 라인 요청 · 종료 플래그 · 시각 · sleep"
+  ],
   "args": [],
   "flow": "gpio_request_output/input · g_stop · now_ns · sleep_ms",
   "ret": "—"
  },
  "dht.h": {
   "role": "IIO DHT 모듈",
+  "desc": [
+   "IIO **DHT 모듈** 헤더 — 장치 찾기 · 3번 재시도 읽기"
+  ],
   "args": [],
   "flow": "dht_open (장치 찾기) · dht_read(&t, &h) (3번 재시도)",
   "ret": "—"
  },
  "pcf8591.h": {
   "role": "I2C ADC 모듈",
+  "desc": [
+   "**I2C ADC 모듈** 헤더 — pcf_open · pcf_read"
+  ],
   "args": [],
   "flow": "pcf_open · pcf_read(fd, 0)",
   "ret": "—"
  },
  "sonar.h": {
   "role": "초음파 모듈",
+  "desc": [
+   "**초음파 모듈** 헤더 — Day 3 측정 코드를 모듈로"
+  ],
   "args": [],
   "flow": "sonar_open(23, 24) · sonar_median(s, 3) (−1 = 실패) — Day3 09_sonar 를 모듈로",
   "ret": "—"
  },
  "lcd.h": {
   "role": "LCD 모듈",
+  "desc": [
+   "**LCD 모듈** 헤더 — lcd_open · lcd_printf · lcd_custom"
+  ],
   "args": [],
   "flow": "lcd_open · lcd_printf(l, row, …) · lcd_custom",
   "ret": "—"
  },
  "pthread_cond_timedwait(&S.cv, &S.mx, &dl)": {
   "role": "시간 제한 조건 대기",
+  "desc": [
+   "**시간 제한**이 있는 조건 대기",
+   "0.5초 기다리되 signal 이 오면 바로 깨어남 → 화면 전환 즉시 반영",
+   "⚠ 시간은 **절대 시각** (CLOCK_REALTIME 기준)"
+  ],
   "args": [
    [
     "&S.cv",
@@ -1953,6 +2579,9 @@
  },
  "tail -f envmon.csv": {
   "role": "파일 끝 따라 보기",
+  "desc": [
+   "파일 끝에 **추가되는 줄을 계속** 보여 준다 — 다른 창에서 기록 확인"
+  ],
   "args": [
    [
     "-f",
@@ -1964,12 +2593,20 @@
  },
  "sudo cp envmon.service /etc/systemd/system/ → sudo systemctl daemon-reload": {
   "role": "서비스 등록",
+  "desc": [
+   "**서비스 등록** — unit 파일을 복사하고 systemd 에 다시 읽히기",
+   "⚠ unit 파일을 고치면 **먼저 daemon-reload**"
+  ],
   "args": [],
   "flow": "unit 파일을 고치거나 추가하면 **먼저 daemon-reload**",
   "ret": "—"
  },
  "sudo systemctl enable --now envmon": {
   "role": "부팅 자동 + 지금 시작",
+  "desc": [
+   "**부팅 자동 시작 + 지금 시작**",
+   "Restart=on-failure 면 죽어도 다시 띄운다"
+  ],
   "args": [
    [
     "enable",
@@ -1981,16 +2618,25 @@
    ]
   ],
   "flow": "Restart=on-failure 면 죽어도 다시 띄운다",
-  "ret": "—"
+  "ret": "—",
+  "ex": "enable --now"
  },
  "systemctl status envmon": {
   "role": "서비스 상태",
+  "desc": [
+   "**서비스 상태** — active (running) · PID · 최근 로그"
+  ],
   "args": [],
   "flow": "`active (running)` · PID · 최근 로그",
   "ret": "—"
  },
  "journalctl -u envmon -f / -n 20": {
   "role": "서비스 로그",
+  "desc": [
+   "**서비스 로그** — 프로그램의 출력이 여기로",
+   "`-f` 따라 보기, `-n 20` 최근 20줄",
+   "⚠ 줄 단위로 보이려면 setvbuf 로 줄 버퍼링"
+  ],
   "args": [
    [
     "-u envmon",
@@ -2010,12 +2656,22 @@
  },
  "sudo systemctl stop / start / restart envmon": {
   "role": "정지 / 시작 / 재시작",
+  "desc": [
+   "**systemd 서비스**로 등록한 프로그램 관리",
+   "부팅 때 자동 시작 · 죽으면 재시작 · 로그는 journalctl",
+   "stop = SIGTERM → 프로그램이 정리 후 종료"
+  ],
   "args": [],
   "flow": "stop = SIGTERM → g_stop → 정리 후 종료",
-  "ret": "—"
+  "ret": "—",
+  "ex": ""
  },
  "sudo kill -9 $(pidof envmon)": {
   "role": "비정상 종료 시험",
+  "desc": [
+   "**강제 종료**로 재시작 정책 시험 — SIGKILL 은 잡을 수 없다",
+   "systemd 가 Restart 설정대로 다시 띄우는지 확인"
+  ],
   "args": [
    [
     "-9",
@@ -2027,8 +2683,12 @@
  },
  "sudo systemctl disable --now envmon": {
   "role": "자동 시작 해제 + 정지",
+  "desc": [
+   "**자동 시작 해제 + 지금 정지** — 과정이 끝나면 정리"
+  ],
   "args": [],
   "flow": "과정이 끝나면 정리",
-  "ret": "—"
+  "ret": "—",
+  "ex": ""
  }
 }
