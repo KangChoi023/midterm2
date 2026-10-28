@@ -1,0 +1,102 @@
+{
+  "_설명": "VB Day 2 함수 · 계층 상세",
+  "datasets.CIFAR10()": {
+    "role": "CIFAR-10 컬러 이미지 데이터셋 불러오기",
+    "desc": ["32×32 RGB · 10 클래스 · train 50,000 / test 10,000", "원본 `.data` 는 (50000, 32, 32, 3) uint8 (HWC), 꺼내면 transform 을 거쳐 (3, 32, 32)", "첫 실행에 약 170 MB 내려받음"],
+    "args": [["root", "저장 폴더"], ["train", "True 면 train, False 면 test"], ["download", "없으면 내려받기"], ["transform", "이미지에 적용할 변환"]],
+    "flow": "dataset[i] → (이미지 텐서, 레이블)",
+    "ret": "Dataset 객체 (len 50,000 또는 10,000)",
+    "hdr": "VB Day2 노트북"
+  },
+  "transforms.Compose()": {
+    "role": "변환 여러 개를 순서대로 묶기",
+    "desc": ["리스트의 변환을 앞에서부터 차례로 적용", "ToTensor 가 있어야 Normalize 를 쓸 수 있다 (텐서가 입력)"],
+    "args": [["transforms", "변환의 리스트"]],
+    "flow": "PIL 이미지 → 변환1 → 변환2 → … → 텐서",
+    "ret": "하나의 변환처럼 쓰는 객체"
+  },
+  "transforms.Normalize()": {
+    "role": "채널별로 (x − 평균) / 표준편차",
+    "desc": ["평균 · 표준편차는 train 데이터로만 구해 train · test 에 같이 쓴다", "그림으로 되돌릴 때는 × std + mean"],
+    "args": [["mean", "채널별 평균 (3개)"], ["std", "채널별 표준편차 (3개)"]],
+    "flow": "(3, H, W) 0 ~ 1 → 평균 0 근처",
+    "ret": "정규화된 텐서"
+  },
+  "torchvision.models.alexnet()": {
+    "role": "AlexNet 구조 만들기",
+    "desc": ["weights=None 이면 학습 안 된 무작위 가중치", "총 약 6,110만 파라미터 — classifier.1 (9216→4096) 가중치 하나가 37,748,736 개로 61.8%"],
+    "args": [["weights", "None 이면 가중치 없이 구조만"]],
+    "flow": "(N, 3, 224, 224) → (N, 1000)",
+    "ret": "nn.Module (AlexNet)"
+  },
+  "Module.named_parameters()": {
+    "role": "(이름, 파라미터) 쌍을 하나씩 꺼내기",
+    "desc": ["어느 층의 텐서가 큰지 찾을 때 `max(..., key=lambda kv: kv[1].numel())`", "`numel()` 은 원소 개수"],
+    "args": [],
+    "flow": "for name, p in model.named_parameters()",
+    "ret": "('classifier.1.weight', Parameter) 같은 쌍의 반복자"
+  },
+  "nn.BatchNorm2d()": {
+    "role": "Conv 뒤에서 채널마다 정규화 (배치 · 세로 · 가로 평균)",
+    "desc": ["학습 때는 배치 통계, 추론 때(eval)는 running 평균 · 분산을 쓴다", "학습 파라미터 γ(weight) · β(bias) 각 C 개 → 2C 개", "buffer: running_mean · running_var · num_batches_tracked (state_dict 에 저장됨)"],
+    "args": [["C", "채널 수 (직전 Conv 의 출력 채널)"]],
+    "flow": "(N, C, H, W) → (N, C, H, W) 모양 그대로",
+    "ret": "nn.BatchNorm2d(16) 은 학습 파라미터 32 개"
+  },
+  "nn.AdaptiveAvgPool2d()": {
+    "role": "입력 크기와 상관없이 지정한 출력 크기로 평균 풀링",
+    "desc": ["(1) 이면 GAP — 채널마다 전체 평균 하나", "뒤에 Flatten + Linear 를 붙이면 거대한 FC 가 필요 없다"],
+    "args": [["output_size", "출력 H, W (1 이면 1×1)"]],
+    "flow": "(N, 64, 8, 8) → (N, 64, 1, 1)",
+    "ret": "ResNet-20 head: GAP + Linear(64, 10) = 650 개 파라미터"
+  },
+  "nn.Identity()": {
+    "role": "입력을 그대로 내보내는 층",
+    "desc": ["ResNet 에서 모양이 안 바뀌는 지름길", "파라미터 0 개"],
+    "args": [],
+    "flow": "x → x",
+    "ret": "입력과 같은 텐서"
+  },
+  "torch.utils.data.Subset()": {
+    "role": "데이터셋의 일부(번호 목록)만 쓰는 데이터셋",
+    "desc": ["빠른 실험용 — `Subset(train_set, range(10000))` 은 앞 10,000 장"],
+    "args": [["dataset", "원본 데이터셋"], ["indices", "쓸 번호들"]],
+    "flow": "Subset → DataLoader",
+    "ret": "길이 10,000 인 데이터셋"
+  },
+  "transforms.RandomCrop()": {
+    "role": "무작위 위치에서 자르기 (이동 증강)",
+    "desc": ["padding=4 는 사방에 0 을 4픽셀 덧댄 뒤 32×32 를 자름 → 최대 ±4 픽셀 이동", "꺼낼 때마다 다른 위치 — train 에만"],
+    "args": [["size", "자를 크기"], ["padding", "덧댈 0 의 두께"]],
+    "flow": "32×32 → (패딩 40×40) → 32×32",
+    "ret": "잘라 낸 이미지"
+  },
+  "transforms.RandomHorizontalFlip()": {
+    "role": "50% 확률로 좌우 반전",
+    "desc": ["정답이 안 바뀌는 데이터에만 (숫자 6 ↔ 9 는 안 됨)", "train 에만 쓰고 test 는 원본"],
+    "args": [["p", "뒤집을 확률 (기본 0.5)"]],
+    "flow": "이미지 → 좌우 반전 또는 그대로",
+    "ret": "이미지"
+  },
+  "OneCycleLR()": {
+    "role": "학습률을 올렸다 내리는 스케줄러",
+    "desc": ["시작 max_lr/25 → 30% 지점에서 max_lr → 끝은 시작의 1/10⁴", "배치마다 `scheduler.step()` (옵티마이저 step 뒤)", "steps_per_epoch 는 len(train_loader) 와 같아야 한다"],
+    "args": [["optimizer", "대상 옵티마이저"], ["max_lr", "최대 학습률"], ["epochs", "총 epoch 수"], ["steps_per_epoch", "epoch 당 배치 수"]],
+    "flow": "step 호출마다 학습률 갱신",
+    "ret": "scheduler 객체 (`get_last_lr()` 로 현재 값)"
+  },
+  "np.bincount()": {
+    "role": "정수 값이 몇 번 나왔는지 세기",
+    "desc": ["`정답 × K + 예측` 을 세면 K×K 칸 각각의 개수 → 혼동 행렬", "minlength 로 안 나온 값도 0 으로 채움"],
+    "args": [["x", "음이 아닌 정수 배열"], ["minlength", "결과 최소 길이 (K·K)"]],
+    "flow": "(10000,) → (100,) → reshape(10, 10)",
+    "ret": "길이 K·K 의 개수 배열"
+  },
+  "Module.register_forward_hook()": {
+    "role": "계층이 실행될 때마다 불리는 함수 등록",
+    "desc": ["hook(module, 입력, 출력) — 출력 shape 으로 MAC 을 센다", "다 쓰면 반환된 핸들의 `remove()` 로 떼야 중복 등록이 안 된다"],
+    "args": [["hook", "hook(m, inp, out) 함수"]],
+    "flow": "model(x) 실행 → 각 Conv · Linear 에서 hook 호출",
+    "ret": "핸들 (`h.remove()`)"
+  }
+}
