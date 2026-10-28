@@ -1,52 +1,177 @@
 #!/usr/bin/env python3
 r"""강사님 교안 저장소(AI_CAMPUS)를 받아 내 과목 폴더(06_HyundaiAI, 구글 드라이브 동기화)로 정리한다.
+PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그램을 돌린다 (.claude/skills/campus-sync).
 
-    py tools\sync_campus.py                     # Windows: 받기 + 정리
-    py tools\sync_campus.py --dry-run           # 무엇을 복사할지만 보기
-    python3 tools/sync_campus.py                 # WSL · 리눅스
+    py tools\sync_campus.py --dry-run     # 무엇을 할지만 보기
+    py tools\sync_campus.py               # 받기 + 정리
+    py tools\sync_campus.py --migrate     # 처음 한 번: 예전 방식 폴더를 과목별 _예전정리/ 로 옮기고 정리
+    … --add "vision=10_Vision=Vision"     # 처음 보는 과목: 강사님 폴더 앞부분=과목 폴더=파일 이름에 쓸 과목명
     … --dest "<06_HyundaiAI 폴더>" --repo "<AI_CAMPUS 를 받아 둘 폴더>"
 
-Windows 와 WSL 모두 동작한다. 강사님 저장소는 기본으로 이 midterm2 폴더 옆의 AI_CAMPUS 에 받는다.
-작업 스케줄러에서 창 없이(pyw) 돌려도 되도록, 매 실행 결과를 00_강의 자료/_동기화기록.txt 에 한 줄 이상 남긴다.
+정리 모양 (Day 폴더 하나)
+    10_Vision/01_강의자료/Day1 · <사이트 노트 제목>/
+        1. 교안 - Vision D1.pdf · .pptx
+        2. 애니메이션 - Vision D1.html          ← _원본 의 애니메이션을 여는 바로가기
+        3. 강의 노트북 (Colab) - Vision D1.ipynb  /  3. 강의 노트 (웹) - … .html (바로가기)
+        4. 워크시트 - Vision D1.html            ← 바로가기
+        5. 실습 코드/                           ← 강사님 src/ 와 맨 위 .py · .c · .zip
+        6. 참고 - <원래 이름>.html               ← 그 밖의 html (바로가기)
+        _원본/                                  ← 나머지 원본 그대로 (html 끼리의 링크가 깨지지 않게)
+        _이전판/                                ← 강사님이 고친 파일의 옛 판 (생길 때만)
 
 규칙
-- 강사님 폴더 → 과목 폴더/01_강의자료/DayN/…, 그 안의 src/ → 과목 폴더/02_실습자료/DayN/…
-- 새 파일만 복사, 내용이 바뀐 파일은 덮어쓰기 전에 같은 폴더의 _이전판/ 으로 옮겨 둔다
-- 강사님 쪽에서 지워진 파일도 내 사본은 지우지 않는다
-- 과목을 모르는 폴더 · 파일은 00_강의 자료/_새로온자료/ 로 (새 과목) — 결과에 따로 표시
-- 내가 만든 파일(01_강의자료 바로 아래의 날짜 붙은 노트북, 03_개인실습, 04_자체학습 …)은 건드리지 않는다
+- 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
+- Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
+- 과목을 모르는 폴더는 복사하지 않고 알려 준다 (→ --add).
+- 내가 만든 파일 · 폴더(03_개인실습, 04_자체학습 …)는 건드리지 않는다.
 """
 import argparse, datetime, filecmp, glob, os, re, shutil, subprocess, sys
+from urllib.parse import quote
 
 REPO_URL = 'https://github.com/imguru-mooc/AI_CAMPUS.git'
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))          # midterm2 폴더
 
-# 강사님 폴더 이름(소문자) → 과목 폴더
-SUBJECT_DIRS = [
-    (r'^c-day(\d+)$', '04_C'),
-    (r'^linux-day(\d+)$', '07_LINUX'),
-    (r'^mcu-day(\d+)$', '06_MCU'),
-    (r'^embeddedio-day(\d+)$', '08_Embbed IO'),
-    (r'^nn-day(\d+)$', '09_NeuralNetwork'),
-    (r'^vb-day(\d+)$', '10_Vision'),
-    (r'^python-day(\d+)$', '03_Python'),
-    (r'^os-day(\d+)$', '02_운영체제활용'),
-    (r'^day(\d+)$', '01_컴퓨터구조'),            # Day3/ = 컴퓨터 구조 Day 3
-]
-# 정해진 위치가 있는 예외
-SPECIAL = {                                         # 앞에 있는 것부터 대조 (anim/day2 가 anim 보다 먼저)
-    'OS': ('02_운영체제활용', '01_강의자료/OS_24H'),
-    'anim/day2': ('01_컴퓨터구조', '01_강의자료/Day2/anim'),
-    'anim': ('01_컴퓨터구조', '01_강의자료/Day1/anim'),      # 맨 위 anim/ = 컴퓨터 구조 Day 1 애니메이션
-    '1st_re_evaluation': ('03_Python', '01_강의자료/1st_re_evaluation'),
+# 강사님 폴더 앞부분(소문자, "-dayN" 앞) → (노트 파일 앞부분, 과목 폴더, 파일 이름에 쓸 과목명)
+SUBJECTS = {
+    'day': ('ARCH', '01_컴퓨터구조', '컴퓨터구조'),            # Day3/ = 컴퓨터 구조 Day 3
+    'os': ('OS', '02_운영체제활용', '운영체제'),
+    'python': ('PY', '03_Python', 'Python'),
+    'c': ('C', '04_C', 'C'),
+    'mcu': ('MCU', '06_MCU', 'MCU'),
+    'linux': ('LINUX', '07_LINUX', 'Linux'),
+    'embeddedio': ('EIO', '08_Embbed IO', 'EmbeddedIO'),
+    'nn': ('NN', '09_NeuralNetwork', 'NN'),
+    'vb': ('VB', '10_Vision', 'Vision'),
 }
-# 저장소 맨 위 파일
-ROOT_FILES = [
-    (r'^컴퓨터구조_Day(\d+)', '01_컴퓨터구조'),
-    (r'^운영체제', '02_운영체제활용'),
-    (r'^(python|score|sensor)_template', '03_Python'),
-]
+DAY_DIR = re.compile(r'^(.*?)-?day(\d+)$', re.I)                  # NN-day3, Day3 (앞부분 없음 = 컴퓨터 구조)
+# Day 가 아닌 묶음: 이름 → (과목 앞부분, 폴더 이름, 파일 이름 표시, 그대로 복사?)
+SPECIAL_UNITS = {
+    'os24': ('os', '00 · 24시간 통합본', '운영체제 24H', False),
+    'pyextra': ('python', '99 · 재평가 · 템플릿', 'Python', True),
+}
 SKIP = {'.git', '.github', 'README.md', '.gitignore', '.gitattributes', '.nojekyll'}
-NEW_STUFF = os.path.join('00_강의 자료', '_새로온자료')
+LECTURES = '01_강의자료'
+ORIG, OLD, MIGRATED = '_원본', '_이전판', '_예전정리'
+CODE_EXT = {'.py', '.c', '.h', '.zip'}
+BAD = re.compile(r'[\\/:*?"<>|]')
+
+
+def units_of(repo, extra):
+    """저장소 → {(과목 앞부분, 묶음 키): [(원본 절대경로, 묶음 안 상대경로)]}, 모르는 것 목록"""
+    subjects = dict(SUBJECTS, **extra)
+    units, unknown = {}, []
+    add = lambda key, src, rel: units.setdefault(key, []).append((src, rel))
+    for root, dirs, files in os.walk(repo):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP)
+        for fn in sorted(files):
+            src = os.path.join(root, fn)
+            rel = os.path.relpath(src, repo).replace(os.sep, '/')
+            parts = rel.split('/')
+            if fn in SKIP or parts[0] in SKIP: continue
+            top, rest = parts[0], '/'.join(parts[1:])
+            m = DAY_DIR.match(top) if len(parts) > 1 else None
+            subj = (m.group(1).lower() or 'day') if m else None
+            if subj in subjects:                                                 # NN-day3/…
+                add((subj, int(m.group(2))), src, rest)
+            elif top == 'anim':                                                  # 맨 위 anim/ = 컴퓨터 구조 애니메이션
+                d = re.match(r'day(\d+)/(.+)', rest)
+                add(('day', int(d.group(1)) if d else 1), src, 'anim/' + (d.group(2) if d else rest))
+            elif top == 'OS':
+                add(('os', 'os24'), src, rest)
+            elif top == '1st_re_evaluation' or re.match(r'^(python|score|sensor)_template', top):
+                add(('python', 'pyextra'), src, rel)
+            elif len(parts) == 1 and re.match(r'^운영체제활용교안', top):
+                add(('os', 'os24'), src, top)
+            elif len(parts) == 1 and re.match(r'^컴퓨터구조_Day(\d+)', top):
+                add(('day', int(re.match(r'^컴퓨터구조_Day(\d+)', top).group(1))), src, top)
+            elif rel == 'worksheet.html':                                        # 맨 위 worksheet.html = Embedded IO Day 5 의 다른 판
+                add(('embeddedio', 5), src, 'worksheet (저장소 맨 위).html')
+            else:
+                unknown.append(top)
+    return units, sorted(set(unknown))
+
+
+def classify(files, label):
+    """묶음 안 파일 → ({보일 이름: 원본}, {바로가기 이름: _원본 안 상대경로})"""
+    top = {rel: src for src, rel in files if '/' not in rel}
+    rels = sorted(rel for _, rel in files)
+    shown, links = {}, {}
+    moved, linked = set(), set()                                      # 맨 위로 꺼낸 파일 · 바로가기를 만든 html
+
+    def put(name, rel, src):
+        if name in shown:                                             # 같은 자리에 두 개 → 원래 이름을 덧붙인다
+            b, e = os.path.splitext(name); name = f'{b} ({os.path.basename(rel)}){e}'
+        shown[name] = src; moved.add(rel)
+
+    for ext in ('.pdf', '.pptx'):
+        for i, r in enumerate(sorted(r for r in top if r.lower().endswith(ext))):
+            put(f'1. 교안 - {label}{"" if i == 0 else " (" + os.path.splitext(r)[0] + ")"}{ext}', r, top[r])
+    for slot, name, cands in (
+            ('2', '애니메이션', (r'animation\.html', r'anim/index\.html', r'index\.html', r'animations\.html')),
+            ('3', '강의 노트 (웹)', (r'lecture\.html', r'[^/]*_lecture\.html')),
+            ('4', '워크시트', (r'worksheet\.html', r'[^/]*worksheet[^/]*\.html', r'anim/worksheet\.html'))):
+        r = next((r for c in cands for r in rels if re.fullmatch(c, r, re.I) and r not in linked), None)
+        if r: links[f'{slot}. {name} - {label}.html'] = r; linked.add(r)
+    nbs = sorted((r for r in top if r.lower().endswith('.ipynb')), key=lambda r: ('lecture' not in r.lower(), r))
+    for i, r in enumerate(nbs):
+        put(f'3. 강의 노트북 (Colab) - {label}.ipynb' if i == 0 else f'3. 노트북 - {os.path.splitext(r)[0]}.ipynb', r, top[r])
+    for src, rel in files:
+        if rel.startswith('src/'): put('5. 실습 코드/' + rel[4:], rel, src)
+        elif rel in top and os.path.splitext(rel)[1].lower() in CODE_EXT: put('5. 실습 코드/' + rel, rel, src)
+    for r in sorted(top):
+        if r.lower().endswith('.html') and r not in linked and r.lower() != 'index.html':
+            links[f'6. 참고 - {os.path.splitext(r)[0]}.html'] = r; linked.add(r)
+    for src, rel in files:                                            # 나머지(바로가기 대상 html 포함)는 원본 그대로
+        if rel not in moved: shown[f'{ORIG}/{rel}'] = src
+    return shown, links
+
+
+def shortcut(target, title):
+    url = quote(f'{ORIG}/{target}')
+    return (f'<!doctype html><meta charset="utf-8"><title>{title}</title>\n'
+            f'<meta http-equiv="refresh" content="0; url={url}">\n'
+            f'<p><a href="{url}">{title} 열기</a></p>\n')
+
+
+def note_title(prefix, day):
+    try:
+        with open(os.path.join(HERE, 'notes', f'{prefix}_day{day}.md'), encoding='utf-8') as f:
+            m = re.match(r'##\s*Day\s*\d+\s*[—-]\s*(.+)', f.readline())
+    except OSError:
+        return None
+    if not m: return None
+    t = re.sub(r'\s+', ' ', BAD.sub(' ', m.group(1))).strip().rstrip('.')
+    return t[:50].rstrip()
+
+
+def day_dir(base, day, title, dry, renames):
+    """과목/01_강의자료 안의 이 Day 폴더 경로 (노트 제목이 새로 생겼으면 이름을 바꾼다)"""
+    want = f'Day{day} · {title}' if title else f'Day{day}'
+    have = [d for d in (os.listdir(base) if os.path.isdir(base) else [])
+            if (d == f'Day{day}' or d.startswith(f'Day{day} · ')) and os.path.isdir(os.path.join(base, d, ORIG))]
+    if have and have[0] != want and title:
+        renames.append((have[0], want))
+        if not dry: os.rename(os.path.join(base, have[0]), os.path.join(base, want))
+        return os.path.join(base, want)
+    return os.path.join(base, have[0] if have else want)
+
+
+def old_layout(dest):
+    """예전 정리 방식이 만든 폴더들 (과목/01_강의자료/DayN 처럼 _원본 이 없는 것)"""
+    out = []
+    for _, folder, _ in SUBJECTS.values():
+        for sub in (LECTURES, '02_실습자료'):
+            base = os.path.join(dest, folder, sub)
+            if not os.path.isdir(base): continue
+            for d in sorted(os.listdir(base)):
+                p = os.path.join(base, d)
+                if (re.fullmatch(r'Day\d+|OS_24H|1st_re_evaluation|공통', d) and os.path.isdir(p)
+                        and not os.path.isdir(os.path.join(p, ORIG))):
+                    out.append((p, os.path.join(dest, folder, MIGRATED, sub, d)))
+    for name in ('_새로온자료', '_동기화기록.txt'):
+        p = os.path.join(dest, '00_강의 자료', name)
+        if os.path.exists(p): out.append((p, os.path.join(dest, '00_강의 자료', MIGRATED, name)))
+    return out
 
 
 def find_dest():
@@ -57,8 +182,7 @@ def find_dest():
                 '/mnt/c/Users/*/Desktop', '/mnt/c/Users/*/OneDrive/Desktop']
     for depth in range(4):
         for d in desktops:
-            pat = os.path.join(d, *(['*'] * depth), '06_HyundaiAI')
-            hits = [p for p in glob.glob(pat) if os.path.isdir(p)]
+            hits = [p for p in glob.glob(os.path.join(d, *(['*'] * depth), '06_HyundaiAI')) if os.path.isdir(p)]
             if hits: return hits[0]
     return None
 
@@ -66,113 +190,116 @@ def find_dest():
 def update_repo(repo):
     if os.path.isdir(os.path.join(repo, '.git')):
         r = subprocess.run(['git', '-C', repo, 'pull', '--ff-only', '-q'], capture_output=True, text=True)
-        if r.returncode: print('! git pull 실패 — 받아 둔 내용으로 계속:', r.stderr.strip()[:200])
+        if r.returncode: print('! 강사님 저장소 받기 실패 — 받아 둔 내용으로 계속:', r.stderr.strip()[:200])
     elif not os.path.exists(repo):
         subprocess.run(['git', 'clone', '-q', REPO_URL, repo], check=True)
     else:
-        sys.exit(f'! {repo} 가 git 저장소가 아닙니다. 폴더 이름을 바꾸거나 --repo 로 다른 위치를 지정하세요.')
-    r = subprocess.run(['git', '-C', repo, 'log', '-1', '--format=%h %ad %s', '--date=short'], capture_output=True, text=True)
+        sys.exit(f'! {repo} 가 git 저장소가 아닙니다. --repo 로 다른 위치를 지정하세요.')
+    r = subprocess.run(['git', '-C', repo, 'log', '-1', '--format=%h %ad %s', '--date=format:%Y-%m-%d %H:%M'],
+                       capture_output=True, text=True)
     return r.stdout.strip()
 
 
-def target_for(rel):
-    """저장소 안 상대 경로 → (과목 폴더, 과목 폴더 안 상대 경로). 모르면 과목 폴더 None."""
-    parts = rel.split('/')
-    for key, (subj, base) in SPECIAL.items():
-        if rel == key or rel.startswith(key + '/'):
-            return subj, os.path.join(base, rel[len(key) + 1:]) if rel != key else base
-    if len(parts) == 1:                                   # 맨 위 파일
-        for pat, subj in ROOT_FILES:
-            m = re.match(pat, parts[0])
-            if m:
-                day = f'Day{m.group(1)}' if m.groups() and m.group(1) and m.group(1).isdigit() else '공통'
-                return subj, os.path.join('01_강의자료', day, parts[0])
-        if parts[0] == 'worksheet.html':                  # 맨 위 worksheet.html = Embedded IO Day 5 (Day5 폴더 것과 다른 판)
-            return '08_Embbed IO', os.path.join('01_강의자료', 'Day5', 'worksheet (저장소 맨 위).html')
-        return None, rel
-    top = parts[0]
-    for pat, subj in SUBJECT_DIRS:
-        m = re.match(pat, top.lower())
-        if m:
-            day, rest = f'Day{m.group(1)}', parts[1:]
-            if rest and rest[0] == 'src':                 # 실습 코드
-                return subj, os.path.join('02_실습자료', day, *rest[1:])
-            return subj, os.path.join('01_강의자료', day, *rest)
-    return None, rel
-
-
-def copy_one(src, dst, dry, stamp):
-    """새 파일이면 복사, 내용이 다르면 이전 판을 _이전판/ 에 남기고 복사. 반환: 'new' | 'changed' | None"""
-    if os.path.exists(dst):
-        if filecmp.cmp(src, dst, shallow=False): return None
-        if not dry:
-            old_dir = os.path.join(os.path.dirname(dst), '_이전판')
-            os.makedirs(old_dir, exist_ok=True)
-            base, ext = os.path.splitext(os.path.basename(dst))
-            shutil.move(dst, os.path.join(old_dir, f'{base}.{stamp}{ext}'))
-            shutil.copy2(src, dst)
-        return 'changed'
+def write(path, data, dry, stamp, udir):
+    """data = 원본 경로(str) 또는 바로가기 내용(bytes). 반환 'new' | 'changed' | None"""
+    if os.path.exists(path):
+        with open(path, 'rb') as f: same = filecmp.cmp(data, path, shallow=False) if isinstance(data, str) else f.read() == data
+        if same: return None
+        if not dry and isinstance(data, str):                         # 강사님이 고친 파일 → 옛 판을 Day 폴더/_이전판 에
+            b, e = os.path.splitext(os.path.basename(path))
+            os.makedirs(os.path.join(udir, OLD), exist_ok=True)
+            shutil.move(path, os.path.join(udir, OLD, f'{b}.{stamp}{e}'))
+        kind = 'changed'
+    else:
+        kind = 'new'
     if not dry:
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copy2(src, dst)
-    return 'new'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if isinstance(data, str): shutil.copy2(data, path)
+        else:
+            with open(path, 'wb') as f: f.write(data)
+    return kind
 
 
 def main():
-    if sys.stdout is None:                                  # pyw (창 없음) 로 실행 — 출력은 버리고 기록 파일만
-        sys.stdout = sys.stderr = open(os.devnull, 'w', encoding='utf-8')
-    elif hasattr(sys.stdout, 'reconfigure'):                # Windows 명령창(cp949)에서 기호 · 한글 깨짐 방지
+    if hasattr(sys.stdout, 'reconfigure'):                            # Windows 명령창(cp949)에서 기호 · 한글 깨짐 방지
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(description='강사님 교안 → 내 과목 폴더 정리')
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))        # midterm2 폴더
-    ap.add_argument('--repo', default=os.path.join(os.path.dirname(here), 'AI_CAMPUS'), help='강사님 저장소를 받아 둘 위치 (기본: midterm2 옆)')
+    ap.add_argument('--repo', default=os.path.join(os.path.dirname(HERE), 'AI_CAMPUS'), help='강사님 저장소를 받아 둘 위치 (기본: midterm2 옆)')
     ap.add_argument('--dest', help='06_HyundaiAI 폴더 (생략하면 바탕화면 아래에서 찾음)')
     ap.add_argument('--dry-run', action='store_true', help='복사하지 않고 무엇을 할지만 출력')
-    ap.add_argument('--no-pull', action='store_true', help='저장소를 새로 받지 않음')
+    ap.add_argument('--no-pull', action='store_true', help='강사님 저장소를 새로 받지 않음')
+    ap.add_argument('--migrate', action='store_true', help='예전 방식 폴더를 과목별 _예전정리/ 로 옮긴 뒤 정리')
+    ap.add_argument('--add', action='append', default=[], metavar='앞부분=과목폴더=과목명',
+                    help='처음 보는 과목 (예: vision=10_Vision=Vision)')
     a = ap.parse_args()
 
+    extra = {}
+    for s in a.add:
+        p = [x.strip() for x in s.split('=')]
+        if len(p) != 3: sys.exit(f'! --add 형식: 앞부분=과목폴더=과목명 (받은 값: {s})')
+        extra[p[0].lower()] = (p[0].upper(), p[1], p[2])
     dest = a.dest or find_dest()
     if not dest or not os.path.isdir(dest): sys.exit('! 06_HyundaiAI 폴더를 찾지 못했습니다. --dest 로 지정하세요.')
     head = '(받지 않음)' if a.no_pull else update_repo(a.repo)
     stamp = datetime.datetime.now().strftime('%y%m%d-%H%M')
+    print(f'강사님 저장소: {head}')
+    print(f'내 폴더: {dest}' + ('   (dry-run — 바꾸지 않음)' if a.dry_run else ''))
 
-    done = {'new': [], 'changed': []}
-    unknown, used = set(), {}
-    for root, dirs, files in os.walk(a.repo):
-        dirs[:] = sorted(d for d in dirs if d not in SKIP)
-        for fn in sorted(files):
-            rel = os.path.relpath(os.path.join(root, fn), a.repo).replace(os.sep, '/')
-            if fn in SKIP or rel.split('/')[0] in SKIP: continue
-            subj, sub = target_for(rel)
-            if subj is None:
-                unknown.add(rel.split('/')[0])
-                dst = os.path.join(dest, NEW_STUFF, sub)
-            else:
-                dst = os.path.join(dest, subj, sub)
-            if dst in used and used[dst] != rel:              # 두 원본이 같은 자리로 오면 뒤엣것에 이름표
-                b, e = os.path.splitext(dst); dst = f'{b} ({rel.split("/")[0]}){e}'
-            used[dst] = rel
-            r = copy_one(os.path.join(root, fn), dst, a.dry_run, stamp)
-            if r: done[r].append(os.path.relpath(dst, dest))
+    olds = old_layout(dest)
+    if olds and not a.migrate:
+        print(f'\n! 예전 방식으로 정리된 폴더가 {len(olds)}개 있습니다 (예: {os.path.relpath(olds[0][0], dest)}).')
+        print('  --migrate 를 붙이면 과목 폴더 안 _예전정리/ 로 옮긴 뒤 새 방식으로 정리합니다 (지우지 않음).')
+        return
+    for src, dst in olds:
+        print(f'  옮김: {os.path.relpath(src, dest)} → {os.path.relpath(dst, dest)}')
+        if not a.dry_run:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.move(src, dst)
+            try: os.rmdir(os.path.dirname(src))                       # 비어 버린 02_실습자료 는 치운다
+            except OSError: pass
+    if olds and a.dry_run:                                            # dry-run 에서는 옮긴 셈 치고 계속 볼 수 없다
+        print('  (dry-run: 옮긴 뒤의 정리 결과는 실제 실행 때 보입니다)')
+        return
 
-    lines = [f'[{stamp}] 강사님 저장소: {head}',
-             f'새 파일 {len(done["new"])}개 · 바뀐 파일 {len(done["changed"])}개' + (' (dry-run — 복사 안 함)' if a.dry_run else '')]
-    for k, label in (('changed', '바뀜(이전 판은 _이전판/)'), ('new', '새로')):
-        for p in done[k][:200]: lines.append(f'  {label}: {p}')
-        if len(done[k]) > 200: lines.append(f'  … 외 {len(done[k]) - 200}개')
+    units, unknown = units_of(a.repo, extra)
+    subjects = dict(SUBJECTS, **extra)
+    total = {'new': 0, 'changed': 0}
+    order = list(subjects)
+    for (subj, key) in sorted(units, key=lambda k: (order.index(k[0]), str(k[1]).zfill(3))):
+        prefix, folder, label = subjects[subj]
+        base = os.path.join(dest, folder, LECTURES)
+        renames = []
+        if key in SPECIAL_UNITS:
+            _, dirname, ulabel, plain = SPECIAL_UNITS[key]
+            udir = os.path.join(base, dirname)
+        else:
+            ulabel, plain = f'{label} D{key}', False
+            udir = day_dir(base, key, note_title(prefix, key), a.dry_run, renames)
+        if plain:
+            shown, links = {rel: src for src, rel in units[(subj, key)]}, {}
+        else:
+            shown, links = classify(units[(subj, key)], ulabel)
+            if not a.dry_run: os.makedirs(os.path.join(udir, ORIG), exist_ok=True)
+        done = {'new': [], 'changed': []}
+        for name, src in shown.items():
+            r = write(os.path.join(udir, *name.split('/')), src, a.dry_run, stamp, udir)
+            if r: done[r].append(name)
+        for name, target in links.items():
+            r = write(os.path.join(udir, name), shortcut(target, os.path.splitext(name)[0]).encode('utf-8'), a.dry_run, stamp, udir)
+            if r: done[r].append(name)
+        if not (done['new'] or done['changed'] or renames): continue
+        print(f'\n■ {os.path.relpath(udir, dest)}   새 {len(done["new"])} · 바뀜 {len(done["changed"])}')
+        for o, n in renames: print(f'  폴더 이름: {o} → {n}')
+        for k, mark in (('changed', '바뀜(옛 판은 _이전판/)'), ('new', '새로')):
+            names = [n for n in done[k] if not n.startswith(ORIG + '/')]
+            for n in sorted(names): print(f'  {mark}: {n}')
+            hidden = len(done[k]) - len(names)
+            if hidden: print(f'  {mark}: {ORIG}/ 안 {hidden}개')
+        for k in total: total[k] += len(done[k])
+    print(f'\n합계: 새 파일 {total["new"]}개 · 바뀐 파일 {total["changed"]}개')
     if unknown:
-        lines.append('⚠ 과목을 모르는 자료 (새 과목?) → ' + NEW_STUFF + ': ' + ', '.join(sorted(unknown)))
-    print('\n'.join(lines))
-    if not a.dry_run:                                       # 변화가 없어도 한 줄 — 예약 실행이 돌았는지 확인용
-        os.makedirs(os.path.join(dest, '00_강의 자료'), exist_ok=True)
-        log = os.path.join(dest, '00_강의 자료', '_동기화기록.txt')
-        if os.path.exists(log):                             # 예전 기록(BOM 없음)에 BOM 을 붙여 둔다 — 한 번만
-            with open(log, 'rb') as f: raw = f.read()
-            if not raw.startswith(b'\xef\xbb\xbf'):
-                with open(log, 'wb') as f: f.write(b'\xef\xbb\xbf' + raw)
-        # utf-8-sig: 파일 맨 앞에 BOM 표시 → Windows PowerShell · 메모장이 한글을 UTF-8 로 읽는다 (없으면 cp949 로 읽어 깨짐)
-        with open(log, 'a', encoding='utf-8-sig') as f:
-            f.write('\n'.join(lines if (done['new'] or done['changed'] or unknown) else lines[:2]) + '\n\n')
+        print('\n⚠ 과목을 모르는 자료 (복사하지 않음): ' + ', '.join(unknown))
+        print('  → 과목 폴더 이름을 정해 --add "앞부분=과목폴더=과목명" 으로 다시 실행하세요 (예: vision=11_Vision=Vision)')
 
 
 if __name__ == '__main__':
