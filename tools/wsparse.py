@@ -70,9 +70,17 @@ def _plain(x):
     import html as _h
     return _h.unescape(re.sub(r'<[^>]+>','',str(x)))
 
+def _safe_svg(svg):
+    """워크시트 그림(SVG 조각)을 위키에 그대로 넣기 전에 스크립트 · on* 속성 · javascript: 링크를 지운다"""
+    svg=re.sub(r'<script\b[^>]*>.*?</script\s*>','',svg,flags=re.S|re.I)
+    svg=re.sub(r'<(foreignObject|iframe|object|embed)\b[^>]*>.*?</\1\s*>','',svg,flags=re.S|re.I)
+    svg=re.sub(r'<(foreignObject|iframe|object|embed)\b[^>]*/>','',svg,flags=re.I)
+    svg=re.sub(r'\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)','',svg,flags=re.I)
+    return re.sub(r'(href\s*=\s*["\']?)\s*javascript:','\\1#',svg,flags=re.I)
+
 def _norm(q, seed):
-    """NN 형 워크시트 문항({type: single|multi|ox|short|drop|match|order|code|hot}) → 위키 형식({ty: mc|multi|ox|match|order|short}).
-    hot(그림 클릭)은 옮길 수 없어 None. drop·code 는 정답 보기만 되는 short(ro=1)."""
+    """NN 형 워크시트 문항({type: single|multi|ox|short|drop|match|order|code|hot}) → 위키 형식({ty: mc|multi|ox|match|order|short|hot}).
+    hot(그림에서 정답 칸 클릭)은 그림 · 클릭 영역을 그대로 옮기고 a = 정답 영역 번호. drop·code 는 정답 보기만 되는 short(ro=1)."""
     t=q.get('type')
     if not t: return q
     base={k:q[k] for k in ('p','w','an') if k in q}
@@ -85,6 +93,12 @@ def _norm(q, seed):
         if perm==list(range(n)): perm=perm[::-1]
         return dict(base,ty='order',steps=[_plain(q['items'][k]) for k in perm],a=[perm.index(k) for k in range(n)])
     if t=='short': return dict(base,ty='short',a=[str(x) for x in q['a']])
+    if t=='hot':
+        # 사각형 {x, y, w, h} 또는 원 {shape: circle, x, y, r}
+        regs=[{k:r[k] for k in ('shape','x','y','w','h','r') if k in r} | {'label':_plain(r.get('label',''))} for r in q['regions']]
+        ids=[r['id'] for r in q['regions']]
+        if q['a'] not in ids: return None
+        return dict(base,ty='hot',svg=_safe_svg(q['svg']),vb=q['viewBox'],sw=q.get('sw'),regions=regs,a=ids.index(q['a']))
     if t=='drop':
         it=iter(q['opts'])
         p=re.sub(r'\{\}',lambda m:'[ '+' / '.join(next(it))+' ]',q['p2'])
@@ -118,11 +132,13 @@ def q_answer_text(q):
     if ty=='multi': return ', '.join(f"{CIRC[i]} {q['o'][i]}" for i in a)
     if ty=='match': return ' / '.join(f"{q['left'][k]} → {q['right'][v]}" for k,v in enumerate(a))
     if ty=='order': return ' → '.join(q['steps'][i] for i in a)
+    if ty=='hot': return q['regions'][a]['label']
+    if ty=='short': return a[0]
     return f"{CIRC[a]} {q['o'][a]}"
 
 def q_body(q, n, md=True):
     ty=q.get('ty','mc'); lines=[]
-    tag={'ox':'[O/X] ','multi':'[복수선택] ','match':'[짝짓기] ','order':'[순서] '}.get(ty,'')
+    tag={'ox':'[O/X] ','multi':'[복수선택] ','match':'[짝짓기] ','order':'[순서] ','hot':'[그림 클릭] '}.get(ty,'')
     lines.append(f"**Q{n}.** {tag}{q['p']}")
     if q.get('c'): lines.append("```c\n"+q['c']+"\n```" if md else "```\n"+q['c']+"\n```")
     if ty in ('mc','multi'):
@@ -132,6 +148,8 @@ def q_body(q, n, md=True):
         lines.append('- 오른쪽: '+' / '.join(q['right']))
     elif ty=='order':
         lines.append('- 항목: '+' / '.join(q['steps']))
+    elif ty=='hot':
+        lines.append('- 클릭할 칸: '+' / '.join(r['label'] for r in q['regions']))
     lines.append(f"- **정답**: {q_answer_text(q)}")
     lines.append(f"- 해설: {q['w']}")
     return '\n'.join(lines)
