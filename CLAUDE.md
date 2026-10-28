@@ -18,7 +18,7 @@
 | `tools/lecture_parse.py` · `nbparse.py` · `wsparse.py` | html · ipynb/pptx 교안, 워크시트 파서 |
 | `tools/dump_lecture.py` | 교안을 교시별 글로 뽑기 — 노트 쓰기 전에 읽는다 |
 | `tools/check_note.py` | 노트 검증 (빌드 경고 · 링크 · 함수 상세 · 이름 겹침) |
-| `tools/sync_campus.py` | 사용자 PC 에서 교안 → 구글 드라이브 과목 폴더 정리 (클라우드에서 실행하지 않음) |
+| `tools/sync_campus.py` · `.claude/skills/campus-sync/` | 사용자 PC 의 Claude 가 "강의자료 정리해줘" 에 돌리는 교안 → 06_HyundaiAI 과목 폴더 정리 (클라우드에서 실행하지 않음) |
 | `data/` · `anim/` · `index.html` 의 `?v=` | **빌드 산출물** — 노트 PR 에 넣지 않는다 (Actions 가 만든다) |
 
 강사님 교안: https://github.com/imguru-mooc/AI_CAMPUS (공개) — `git clone --depth 1 … $STUDY_ROOT/AI_CAMPUS`.
@@ -65,5 +65,5 @@
 5. **`notes/` 만** 커밋 → push → `main` 으로 PR. 본문: 교시별 요약 표 · 함수 수 · 연결 수 · 점검 결과
 
 ## 새 과목이 올라왔을 때
-- 강사님 저장소에 처음 보는 폴더(예: `Vision-day1/`)가 생기면: `tools/build_site.py` 의 `SUBJECTS` 에 과목 추가(배운 순서 끝, id · 이름 · 교안 · 워크시트 · 애니메이션 경로), 새 교안 · 워크시트 형식이면 파서 보강, `assets/style.css` 에 `--<id>` 색 · `.sc-<id>`, `tools/sync_campus.py` 의 `SUBJECT_DIRS` 에 폴더 대응 추가 → **과목 추가 PR 을 먼저** 따로 올린 뒤 노트 PR.
+- 강사님 저장소에 처음 보는 폴더(예: `Vision-day1/`)가 생기면: `tools/build_site.py` 의 `SUBJECTS` 에 과목 추가(배운 순서 끝, id · 이름 · 교안 · 워크시트 · 애니메이션 경로), 새 교안 · 워크시트 형식이면 파서 보강, `assets/style.css` 에 `--<id>` 색 · `.sc-<id>`, `tools/sync_campus.py` 의 `SUBJECTS` 에 `'강사님 폴더 앞부분': ('노트 앞부분', '번호_과목폴더', '파일 이름 과목명')` 추가 → **과목 추가 PR 을 먼저** 따로 올린 뒤 노트 PR.
 - 검증: `python3 -I tools/build_site.py` 경고 0, 브라우저 점검 (`tools/browsertest/`, 로컬 Chromium 으로 `--remote-debugging-port=9333`).
