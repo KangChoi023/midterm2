@@ -12,6 +12,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 정리 모양 (Day 폴더 하나)
     10_Vision/Day1 · <사이트 노트 제목>/          ← 과목 폴더를 열면 바로 Day 폴더 (특수 묶음 00 · 24시간 통합본 · 99 · 재평가 · 템플릿 도 같은 층)
         1. 강의 노트북 (Colab) - Vision D1.ipynb  /  1. 강의 노트 (웹) - … .html (바로가기)
+                                                ← 노트북 = 내 실습 사본: 맨 앞에 Drive 마운트 셀(→ _원본 으로 이동)을 넣는다
         2. 애니메이션 - Vision D1.html          ← _원본 의 애니메이션을 여는 바로가기
         3. 교안 - Vision D1.pdf · .pptx
         4. 워크시트 - Vision D1.html            ← 바로가기
@@ -25,6 +26,8 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 - 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
 - 예전 위치(과목/01_강의자료/)의 Day 폴더 · 특수 폴더는 과목 바로 아래로 올린다. 같은 이름이 이미 있으면 옮기지 않고 경고.
   01_강의자료 가 비면 치우고, 내 파일이 남아 있으면 그대로 두고 알려 준다.
+- 노트북(1. 강의 노트북 · 1. 노트북)은 내 실습 사본이다. 맨 앞에 Colab 마운트 셀을 넣고, 마지막으로 쓴 해시를 _원본/.sync_state.json 에 남긴다.
+  내가 고친 노트북은 절대 덮어쓰지 않는다 — 강사님 원본이 바뀌면 옆에 "… (강사님 새 판 YYMMDD).ipynb" 로 따로 둔다.
 - 번호를 바꾼 파일(예전 1. 교안 · 3. 강의 노트)은 옛 이름 파일이 있고 새 이름 파일이 없으면 이름만 바꾼다 (다시 복사하지 않음).
 - Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
 - 과목을 모르는 폴더는 복사하지 않고 알려 준다 (→ --add).
@@ -32,7 +35,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
   강사님 파일과 내용이 똑같은 것은 중복이므로 과목 폴더/_예전정리/ 로. Day 번호가 없는 것은 그대로.
 - 내가 만든 파일 · 폴더(03_개인실습, 04_자체학습 …)는 건드리지 않는다.
 """
-import argparse, datetime, filecmp, glob, os, re, shutil, subprocess, sys
+import argparse, datetime, filecmp, glob, hashlib, json, os, re, shutil, subprocess, sys
 from urllib.parse import quote
 
 REPO_URL = 'https://github.com/imguru-mooc/AI_CAMPUS.git'
@@ -66,6 +69,55 @@ OLD_DIRS = re.compile(r'Day\d+|OS_24H|1st_re_evaluation|공통')       # 예전 
 DAYNUM = re.compile(r'day\s*0*(\d+)', re.I)
 CODE_EXT = {'.py', '.c', '.h', '.zip'}
 BAD = re.compile(r'[\\/:*?"<>|]')
+STATE = '.sync_state.json'                                        # _원본/ 안: 정리 프로그램이 마지막으로 쓴 노트북 해시
+NB_TOP = ('1. 강의 노트북 (Colab) - ', '1. 노트북 - ')
+# Day 폴더 노트북 맨 앞에 넣는 셀 — Colab 에서 Drive 를 연결하고 그 Day 폴더의 _원본 으로 이동한다 (__SUBJECT__ · __DAY__ 는 채워 넣음)
+MOUNT_CELL = """# [정리 프로그램(sync_campus.py)이 넣은 셀] Drive 연결 → 이 Day 폴더의 _원본 으로 이동 (data/… · img/… 상대 경로가 그대로 동작)
+# Colab 밖(내 PC 의 Jupyter)에서는 아무것도 하지 않는다. 이 노트북은 내 실습 사본 — 고쳐도 정리 프로그램이 덮어쓰지 않는다.
+import os
+SUBJECT, DAY = __SUBJECT__, __DAY__
+
+def find_hyundai(root='/content/drive', depth=5):
+    \"\"\"Drive 의 Othercomputers/<컴퓨터>/ · MyDrive/ 아래 depth 단계 안에서 06_HyundaiAI 폴더를 찾는다\"\"\"
+    tops = sorted(os.path.join(root, 'Othercomputers', n) for n in (os.listdir(os.path.join(root, 'Othercomputers'))
+                  if os.path.isdir(os.path.join(root, 'Othercomputers')) else []))
+    for top in tops + [os.path.join(root, 'MyDrive')]:
+        level = [top]
+        for _ in range(depth + 1):
+            nxt = []
+            for d in level:
+                try: entries = sorted(os.scandir(d), key=lambda e: e.name)
+                except OSError: continue
+                for e in entries:
+                    if e.name.startswith('.') or not e.is_dir(): continue
+                    if e.name == '06_HyundaiAI': return e.path
+                    nxt.append(e.path)
+            level = nxt
+    return None
+
+def find_day_dir(root='/content/drive', subject=SUBJECT, day=DAY):
+    \"\"\"06_HyundaiAI/<과목>/Day<N> 또는 Day<N> · 제목/_원본 경로 (못 찾으면 None)\"\"\"
+    base = find_hyundai(root)
+    sub = os.path.join(base, subject) if base else None
+    if not sub or not os.path.isdir(sub): return None
+    for n in sorted(os.listdir(sub)):
+        if (n == f'Day{day}' or n.startswith(f'Day{day} · ')) and os.path.isdir(os.path.join(sub, n, '_원본')):
+            return os.path.join(sub, n, '_원본')
+    return None
+
+try:
+    from google.colab import drive
+except ImportError:
+    drive = None
+if drive:
+    drive.mount('/content/drive')
+    HERE = find_day_dir()
+    if HERE:
+        os.chdir(HERE)
+        print('작업 폴더:', HERE)
+    else:
+        print(f'⚠ Drive 에서 06_HyundaiAI/{SUBJECT}/Day{DAY} 폴더를 찾지 못했습니다 — 계속 실행은 됩니다.')
+        print('  구글 드라이브(컴퓨터 동기화)에 06_HyundaiAI 가 올라가 있는지 확인하거나, os.chdir("…/_원본") 으로 직접 옮기세요.')"""
 
 
 def units_of(repo, extra):
@@ -150,6 +202,55 @@ def renumber(udir, names, dry):
                 if not dry: os.rename(os.path.join(udir, was), os.path.join(udir, name))
             break
     return out
+
+
+def with_mount(src, folder, day):
+    """강사님 노트북 + 맨 앞 마운트 셀 (bytes). 이미 drive.mount( 가 있거나 nbformat 4 가 아니면 원본 그대로"""
+    with open(src, 'rb') as f: raw = f.read()
+    try: nb = json.loads(raw.decode('utf-8'))
+    except ValueError: return raw
+    cells = nb.get('cells')
+    if nb.get('nbformat') != 4 or not isinstance(cells, list): return raw
+    if any('drive.mount(' in ''.join(c.get('source', '')) for c in cells): return raw
+    code = MOUNT_CELL.replace('__SUBJECT__', repr(folder)).replace('__DAY__', str(day)).split('\n')
+    cell = {'cell_type': 'code', 'execution_count': None, 'metadata': {}, 'outputs': [],
+            'source': [l + '\n' for l in code[:-1]] + [code[-1]]}
+    if nb.get('nbformat_minor', 0) >= 5: cell['id'] = 'sync-campus-mount'
+    nb['cells'] = [cell] + cells
+    return (json.dumps(nb, ensure_ascii=False, indent=1) + '\n').encode('utf-8')
+
+
+def sha(data): return hashlib.sha256(data).hexdigest()
+
+
+def write_nb(path, src, want, dry, stamp, udir, state, name):
+    """Day 폴더 노트북 = 내 실습 사본. 내가 고친 것(해시가 기록과 다름)은 절대 덮어쓰지 않는다.
+    반환 (종류, 보일 이름): 'new' | 'changed' | 'cell'(기록 없는 옛 노트북에 셀 넣음) | 'side'(강사님 새 판 따로 둠) | 'kept' | None"""
+    with open(src, 'rb') as f: raw = f.read()
+    rec, s_src = state.get(name), sha(raw)
+    def put(p, kind, show=name, out=True):
+        if not dry:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, 'wb') as f: f.write(want)
+        state[name] = {'out': sha(want) if out else (rec or {}).get('out'), 'src': s_src}
+        return kind, show
+    if not os.path.exists(path): return put(path, 'new')
+    with open(path, 'rb') as f: cur = f.read()
+    if rec is None:                                                   # 기록 전에 정리된 노트북
+        if cur == want: state[name] = {'out': sha(want), 'src': s_src}; return None, name
+        if cur == raw: return put(path, 'cell')                       # 강사님 원본 그대로 → 셀 넣은 판으로 (_이전판 없이)
+        state[name] = {'out': None, 'src': s_src}; return 'kept', name   # 내가 고친 것 → 그대로
+    if sha(cur) == rec.get('out'):                                    # 내가 손대지 않음
+        if cur == want: return None, name
+        if not dry:                                                   # 강사님이 고침 → 옛 판을 _이전판 에
+            b, e = os.path.splitext(os.path.basename(path))
+            os.makedirs(os.path.join(udir, OLD), exist_ok=True)
+            shutil.move(path, os.path.join(udir, OLD, f'{b}.{stamp}{e}'))
+        return put(path, 'changed')
+    if rec.get('src') == s_src: return None, name                     # 내가 고쳤고 강사님 원본은 그대로
+    b, e = os.path.splitext(path)                                     # 내가 고쳤는데 강사님 원본도 바뀜 → 새 판을 옆에
+    side = f'{b} (강사님 새 판 {stamp[:6]}){e}'
+    return put(side, 'side', os.path.basename(side), out=False)
 
 
 def shortcut(target, title):
@@ -347,7 +448,7 @@ def main():
         else:
             print(f'  {os.path.relpath(old, dest)} 에 남은 것 {len(left)}개 (그대로 둠): ' + ', '.join(left))
 
-    total = {'new': 0, 'changed': 0, 'renamed': 0}
+    total = {'new': 0, 'changed': 0, 'cell': 0, 'side': 0, 'kept': 0, 'renamed': 0}
     order = list(subjects)
     for (subj, key) in sorted(units, key=lambda k: (order.index(k[0]), str(k[1]).zfill(3))):
         prefix, folder, label = subjects[subj]
@@ -369,19 +470,32 @@ def main():
             if not a.dry_run: os.makedirs(os.path.join(udir, ORIG), exist_ok=True)
         moved = renumber(here, list(shown) + list(links), a.dry_run) if os.path.isdir(here) else {}
         at = lambda name: os.path.join(here, *(moved.get(name, name) if a.dry_run else name).split('/'))
-        done = {'new': [], 'changed': []}
+        done = {'new': [], 'changed': [], 'cell': [], 'side': [], 'kept': []}
+        nbs = [n for n in shown if isinstance(key, int) and not plain and n.startswith(NB_TOP) and n.endswith('.ipynb')]
+        try:
+            with open(os.path.join(here, ORIG, STATE), encoding='utf-8') as f: state = json.load(f)
+        except (OSError, ValueError):
+            state = {}
+        before = json.dumps(state, sort_keys=True)
+        for name in nbs:
+            r, show = write_nb(at(name), shown[name], with_mount(shown[name], folder, key), a.dry_run, stamp, udir, state, name)
+            if r: done[r].append(show)
+        if not a.dry_run and json.dumps(state, sort_keys=True) != before:
+            with open(os.path.join(udir, ORIG, STATE), 'w', encoding='utf-8') as f: json.dump(state, f, ensure_ascii=False, indent=1)
         for name, src in shown.items():
+            if name in nbs: continue
             r = write(at(name), src, a.dry_run, stamp, udir)
             if r: done[r].append(name)
         for name, target in links.items():
             r = write(at(name), shortcut(target, os.path.splitext(name)[0]).encode('utf-8'), a.dry_run, stamp, udir)
             if r and name not in moved: done[r].append(name)          # 이름 바꾼 바로가기는 제목만 새로 쓴 것
-        if not (done['new'] or done['changed'] or renames or moved): continue
+        if not (any(done.values()) or renames or moved): continue
         print(f'\n■ {os.path.relpath(udir, dest)}   새 {len(done["new"])} · 바뀜 {len(done["changed"])}'
               + (f' · 이름 바꿈 {len(moved)}' if moved else ''))
         for o, n in renames: print(f'  폴더 이름: {o} → {n}')
         for n, o in sorted(moved.items()): print(f'  이름 바꿈: {o} → {n}')
-        for k, mark in (('changed', '바뀜(옛 판은 _이전판/)'), ('new', '새로')):
+        for k, mark in (('changed', '바뀜(옛 판은 _이전판/)'), ('new', '새로'), ('cell', '마운트 셀 넣음'),
+                        ('side', '새 판 따로 둠 (내가 고친 노트북은 그대로)'), ('kept', '내가 고친 노트북 — 그대로 둠')):
             names = [n for n in done[k] if not n.startswith(ORIG + '/')]
             for n in sorted(names): print(f'  {mark}: {n}')
             hidden = len(done[k]) - len(names)
@@ -389,7 +503,8 @@ def main():
         for k in done: total[k] += len(done[k])
         total['renamed'] += len(moved)
     print(f'\n합계: 새 파일 {total["new"]}개 · 바뀐 파일 {total["changed"]}개'
-          + (f' · 이름 바꾼 파일 {total["renamed"]}개' if total['renamed'] else ''))
+          + ''.join(f' · {t} {total[k]}개' for k, t in (('renamed', '이름 바꾼 파일'), ('cell', '마운트 셀 넣은 노트북'),
+                                                         ('side', '강사님 새 판 따로 둔 노트북')) if total[k]))
 
     moves = mine_moves(dest, subjects, units)
     if moves:
