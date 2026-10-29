@@ -32,7 +32,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
   강사님 파일과 내용이 똑같은 것은 중복이므로 과목 폴더/_예전정리/ 로. Day 번호가 없는 것은 그대로.
 - 내가 만든 파일 · 폴더(03_개인실습, 04_자체학습 …)는 건드리지 않는다.
 """
-import argparse, datetime, filecmp, glob, os, re, shutil, subprocess, sys
+import argparse, datetime, filecmp, glob, os, re, shutil, subprocess, sys, time
 from urllib.parse import quote
 
 REPO_URL = 'https://github.com/imguru-mooc/AI_CAMPUS.git'
@@ -196,6 +196,16 @@ def lift_plan(dest, subjects):
     return out
 
 
+def tidy(path, tries=3):
+    """빈 폴더를 치운다. Windows 에서 구글 드라이브 · 탐색기가 잠깐 잡고 있으면 실패하므로 0.5초씩 기다려 다시 해 본다."""
+    for i in range(tries):
+        try:
+            os.rmdir(path); return True
+        except OSError:
+            if i < tries - 1: time.sleep(0.5)
+    return False
+
+
 def old_layout(dest):
     """예전 정리 방식이 만든 폴더들 (과목/01_강의자료/DayN 처럼 _원본 이 없는 것)"""
     out = []
@@ -342,8 +352,8 @@ def main():
     for old in sorted({os.path.dirname(s) for s, _ in lifts}):
         left = sorted(n for n in os.listdir(old) if os.path.join(old, n) not in pending)
         if not left:
-            print(f'  빈 폴더 치움: {os.path.relpath(old, dest)}')
-            if not a.dry_run: os.rmdir(old)
+            if a.dry_run or tidy(old): print(f'  빈 폴더 치움: {os.path.relpath(old, dest)}')
+            else: print(f'  ! 빈 폴더를 치우지 못함 (다른 프로그램이 사용 중일 수 있음 — 나중에 직접 지워도 됨): {os.path.relpath(old, dest)}')
         else:
             print(f'  {os.path.relpath(old, dest)} 에 남은 것 {len(left)}개 (그대로 둠): ' + ', '.join(left))
 
