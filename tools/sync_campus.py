@@ -10,7 +10,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
     … --dest "<06_HyundaiAI 폴더>" --repo "<AI_CAMPUS 를 받아 둘 폴더>"
 
 정리 모양 (Day 폴더 하나)
-    10_Vision/01_강의자료/Day1 · <사이트 노트 제목>/
+    10_Vision/Day1 · <사이트 노트 제목>/          ← 과목 폴더를 열면 바로 Day 폴더 (특수 묶음 00 · 24시간 통합본 · 99 · 재평가 · 템플릿 도 같은 층)
         1. 강의 노트북 (Colab) - Vision D1.ipynb  /  1. 강의 노트 (웹) - … .html (바로가기)
         2. 애니메이션 - Vision D1.html          ← _원본 의 애니메이션을 여는 바로가기
         3. 교안 - Vision D1.pdf · .pptx
@@ -23,6 +23,8 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 
 규칙
 - 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
+- 예전 위치(과목/01_강의자료/)의 Day 폴더 · 특수 폴더는 과목 바로 아래로 올린다. 같은 이름이 이미 있으면 옮기지 않고 경고.
+  01_강의자료 가 비면 치우고, 내 파일이 남아 있으면 그대로 두고 알려 준다.
 - 번호를 바꾼 파일(예전 1. 교안 · 3. 강의 노트)은 옛 이름 파일이 있고 새 이름 파일이 없으면 이름만 바꾼다 (다시 복사하지 않음).
 - Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
 - 과목을 모르는 폴더는 복사하지 않고 알려 준다 (→ --add).
@@ -180,6 +182,20 @@ def day_dir(base, day, title, dry, renames):
     return os.path.join(base, have[0] if have else want)
 
 
+def lift_plan(dest, subjects):
+    """예전 위치(과목/01_강의자료/)의 Day 폴더 · 특수 폴더 → 과목 바로 아래. 반환 [(옛 경로, 새 경로)]"""
+    specials = {v[1] for v in SPECIAL_UNITS.values()}
+    out = []
+    for _, folder, _ in subjects.values():
+        old = os.path.join(dest, folder, LECTURES)
+        if not os.path.isdir(old): continue
+        for d in sorted(os.listdir(old)):
+            p = os.path.join(old, d)
+            if d in specials and os.path.isdir(p) or (re.fullmatch(r'Day\d+( · .+)?', d) and os.path.isdir(os.path.join(p, ORIG))):
+                out.append((p, os.path.join(dest, folder, d)))
+    return out
+
+
 def old_layout(dest):
     """예전 정리 방식이 만든 폴더들 (과목/01_강의자료/DayN 처럼 _원본 이 없는 것)"""
     out = []
@@ -217,7 +233,7 @@ def mine_moves(dest, subjects, units):
                 if dup:
                     dst = os.path.join(dest, folder, MIGRATED, sub, name)
                 else:
-                    udir = day_dir(os.path.join(dest, folder, LECTURES), day, note_title(prefix, day), True, [])
+                    udir = day_dir(os.path.join(dest, folder), day, note_title(prefix, day), True, [])
                     dst = os.path.join(udir, MINE, name)
                 b, e = os.path.splitext(dst) if os.path.isfile(p) else (dst, '')
                 n = 2
@@ -315,25 +331,44 @@ def main():
 
     units, unknown = units_of(a.repo, extra)
     subjects = dict(SUBJECTS, **extra)
+    lifts, pending = lift_plan(dest, subjects), set()                 # Day 폴더를 01_강의자료/ 에서 과목 바로 아래로
+    if lifts: print('\n■ Day 폴더를 과목 바로 아래로 올림')
+    for src, dst in lifts:
+        if os.path.exists(dst):
+            print(f'  ⚠ 옮기지 않음 (같은 이름이 이미 있음): {os.path.relpath(src, dest)}'); continue
+        print(f'  폴더 올림: {os.path.relpath(src, dest)} → {os.path.relpath(dst, dest)}')
+        if a.dry_run: pending.add(src)
+        else: shutil.move(src, dst)
+    for old in sorted({os.path.dirname(s) for s, _ in lifts}):
+        left = sorted(n for n in os.listdir(old) if os.path.join(old, n) not in pending)
+        if not left:
+            print(f'  빈 폴더 치움: {os.path.relpath(old, dest)}')
+            if not a.dry_run: os.rmdir(old)
+        else:
+            print(f'  {os.path.relpath(old, dest)} 에 남은 것 {len(left)}개 (그대로 둠): ' + ', '.join(left))
+
     total = {'new': 0, 'changed': 0, 'renamed': 0}
     order = list(subjects)
     for (subj, key) in sorted(units, key=lambda k: (order.index(k[0]), str(k[1]).zfill(3))):
         prefix, folder, label = subjects[subj]
-        base = os.path.join(dest, folder, LECTURES)
+        base = os.path.join(dest, folder)
         renames = []
         if key in SPECIAL_UNITS:
             _, dirname, ulabel, plain = SPECIAL_UNITS[key]
             udir = os.path.join(base, dirname)
+            here = os.path.join(base, LECTURES, dirname)
         else:
             ulabel, plain = f'{label} D{key}', False
             udir = day_dir(base, key, note_title(prefix, key), a.dry_run, renames)
+            here = '' if not a.dry_run or os.path.isdir(udir) else day_dir(os.path.join(base, LECTURES), key, note_title(prefix, key), True, renames)
+        here = here if here in pending else udir                      # dry-run: 아직 올리지 않은 폴더를 보고 비교한다
         if plain:
             shown, links = {rel: src for src, rel in units[(subj, key)]}, {}
         else:
             shown, links = classify(units[(subj, key)], ulabel)
             if not a.dry_run: os.makedirs(os.path.join(udir, ORIG), exist_ok=True)
-        moved = renumber(udir, list(shown) + list(links), a.dry_run) if os.path.isdir(udir) else {}
-        at = lambda name: os.path.join(udir, *(moved.get(name, name) if a.dry_run else name).split('/'))
+        moved = renumber(here, list(shown) + list(links), a.dry_run) if os.path.isdir(here) else {}
+        at = lambda name: os.path.join(here, *(moved.get(name, name) if a.dry_run else name).split('/'))
         done = {'new': [], 'changed': []}
         for name, src in shown.items():
             r = write(at(name), src, a.dry_run, stamp, udir)
