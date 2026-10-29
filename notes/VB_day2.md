@@ -487,7 +487,7 @@ grads = [m.weight.grad.norm().item() for m in net.modules() if isinstance(m, nn.
 - **가중치 층 수** → stem 1 + 블록 9 × 2 + Linear 1 = **20**
 - **파라미터 272,474** → VGG-mini 307,946 보다 적고 MLP 의 1/6 — 거대 FC 대신 GAP + Linear(64 → 10) = **650** 개뿐
 - **3 epoch 비교 (강사 실행 예)** → train 손실 plain-20 1.641 vs ResNet-20 **1.438**, test 0.380 vs **0.443** → 성능 저하가 사라짐
-- **학습 전 첫 층 기울기** → plain-20 9.84e-01 vs ResNet-20 8.32e-01 (둘 다 BN 이 있어 시작은 문제없음 — 차이는 학습이 진행되며)
+- **학습 전 첫 층 기울기** → plain-20 9.84e-01 vs ResNet-20 8.32e-01 (둘 다 BN 이 있어 시작은 문제없음, 차이는 학습이 진행되며 벌어짐)
 
 **기본 사용형태**
 ```python
