@@ -409,7 +409,7 @@ def build_subject(cfg, index):
                 if s['key'] == 'kw': kws += parse_kw(s['md'])
                 if s['key'] == 'links': links += parse_links(s['md'])
             status = 'done' if N else 'todo'
-            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps', 'src', 'ro') if q.get(k) is not None} for q in Q]
+            quiz = [{k: q.get(k) for k in ('ty', 'p', 'c', 'o', 'a', 'w', 'left', 'right', 'steps', 'svg', 'vb', 'sw', 'regions', 'src', 'ro') if q.get(k) is not None} for q in Q]
             quiz += review_quiz(sid, d, n)                         # 복습 퀴즈는 worksheet 문항 뒤에 (오답 기록 번호 유지)
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)

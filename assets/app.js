@@ -67,11 +67,26 @@
     loading[id] = new Promise((res, rej) => {
       const sc = document.createElement('script');
       sc.src = `data/${id}.js?v=${encodeURIComponent(IDX.built)}`;
-      sc.onload = () => (W[id] ? res(W[id]) : rej(new Error('데이터 없음')));
+      sc.onload = () => { if (!W[id]) return rej(new Error('데이터 없음')); migrateWrong(id, W[id]); res(W[id]); };
       sc.onerror = () => { delete loading[id]; rej(new Error(`data/${id}.js 를 불러오지 못했습니다`)); };
       document.head.appendChild(sc);
     });
     return loading[id];
+  }
+
+  /* 그림 클릭(hot) 문항이 퀴즈에 들어오기 전에는 그 문항을 빼고 번호를 셌다 → 그때 저장된 오답 노트 번호를 새 번호로 (과목마다 한 번) */
+  function migrateWrong(id, S) {
+    const done = store.get('wrongHot', {}); if (done[id]) return;
+    const wrong = store.get('wrong', {}); let moved = false;
+    S.days.forEach(D => D.lessons.forEach(L => {
+      const keep = L.quiz.map((q, i) => i).filter(i => L.quiz[i].ty !== 'hot');      // 옛 번호 k → 새 번호 keep[k]
+      if (keep.length === L.quiz.length) return;
+      const pre = `${id}|${D.n}|${L.n}|`, old = {};
+      Object.keys(wrong).filter(k => k.startsWith(pre)).forEach(k => { old[k] = wrong[k]; delete wrong[k]; moved = true; });
+      Object.entries(old).forEach(([k, t]) => { const j = keep[+k.slice(pre.length)]; if (j !== undefined) wrong[pre + j] = t; });
+    }));
+    if (moved) store.set('wrong', wrong);
+    done[id] = 1; store.set('wrongHot', done);
   }
 
   /* ---------- 사이드바 ---------- */
@@ -970,7 +985,7 @@
 
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
-    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
+    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', hot: '[그림 클릭] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
     const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
     let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
     if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
@@ -982,6 +997,12 @@
       `<div class="q-ctl">${q.ro ? '' : '<button type="button" class="btn" data-check>채점</button>'}<button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>`;
     else if (ty === 'order') h += `<div class="od-tip">순서대로 누르세요 (다시 누르면 취소)</div><div class="od">${q.steps.map((s, k) => `<button type="button" class="od-i" data-k="${k}"><span class="od-n"></span><span>${esc(s)}</span></button>`).join('')}</div>` +
       '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
+    else if (ty === 'hot') {                                             // 워크시트 그림 위에 투명한 클릭 영역 (사각형 · 원)
+      const regs = q.regions.map((r, k) => (r.shape === 'circle' ? `<circle cx="${+r.x}" cy="${+r.y}" r="${+r.r}"` : `<rect x="${+r.x}" y="${+r.y}" width="${+r.w}" height="${+r.h}" rx="6"`) +
+        ` class="rg" data-k="${k}" tabindex="0" role="button" aria-label="${esc(r.label)}"><title>${esc(r.label)}</title>${r.shape === 'circle' ? '</circle>' : '</rect>'}`).join('');
+      h += `<div class="od-tip">그림에서 정답 칸을 클릭하세요</div><div class="hot"><svg viewBox="${esc(q.vb)}"${q.sw ? ` width="${+q.sw}"` : ''} xmlns="http://www.w3.org/2000/svg">${q.svg}${regs}</svg></div>` +
+        '<div class="q-ctl"><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button></div>';
+    }
     return h + '<div class="q-ans" hidden></div></div>';
   }
   function answerText(q) {
@@ -991,6 +1012,7 @@
     if (ty === 'match') return q.a.map((v, k) => `${q.left[k]} → ${q.right[v]}`).join(' / ');
     if (ty === 'order') return q.a.map(i => q.steps[i]).join(' → ');
     if (ty === 'short') return q.a[0];
+    if (ty === 'hot') return q.regions[q.a].label;
     return `${C[q.a]} ${q.o[q.a]}`;
   }
   function bindQuiz(root, qs, onResult) {
@@ -1012,11 +1034,25 @@
         $$('.od-i', card).forEach(x => { x.classList.remove('on', 'right', 'wrong'); $('.od-n', x).textContent = ''; });
         $$('.mt-row', card).forEach(r => { r.classList.remove('right', 'wrong'); $('.mt-s', r).value = ''; $('.mt-s', r).disabled = false; });
         const fix = $('.mt-fix, .od-fix', card); if (fix) fix.remove();
+        $$('.rg', card).forEach(x => x.classList.remove('ok', 'bad'));
       };
+      if (ty === 'hot') card.addEventListener('keydown', e => {           // Tab 으로 칸을 고르고 Enter · Space
+        const rg = e.target.closest('.rg'); if (!rg || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault(); rg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
       card.addEventListener('click', e => {
+        const rg = ty === 'hot' && e.target.closest('.rg');
+        if (rg) {
+          if (card.dataset.done) return;
+          card.dataset.done = 1;
+          const k = +rg.dataset.k;
+          $$('.rg', card).forEach(x => { if (+x.dataset.k === q.a) x.classList.add('ok'); });
+          if (k !== q.a) rg.classList.add('bad');
+          return show(k === q.a);
+        }
         const b = e.target.closest('button'); if (!b) return;
         if (b.dataset.reset !== undefined) return resetQ();
-        if (b.dataset.show !== undefined) return show(null);
+        if (b.dataset.show !== undefined) { if (ty === 'hot') $$('.rg', card).forEach(x => x.classList.toggle('ok', +x.dataset.k === q.a)); return show(null); }
         if (ty === 'order') {
           if (b.classList.contains('od-i')) {
             if (card.dataset.done) return;
