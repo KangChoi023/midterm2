@@ -114,6 +114,9 @@
       const hit = topics.find(tp => tp.blocks.some(b => b.text.includes(base)) || tp.text.includes(base));
       if (hit) return hit.id;
     }
+    // 노트북 교안(NN · VB)은 예제 번호 · 파일명이 없다 → 첫 칸이 코드가 있는 토픽의 제목(앞부분)이면 그 토픽
+    const tt = t.replace(/\s+/g, ' ').trim();
+    if (tt.length >= 4) { const x = topics.find(tp => tp.title.replace(/\s+/g, ' ').startsWith(tt) && tp.blocks.some(b => b.kind === 'code' || b.kind === 'cmd')); if (x) return x.id; }
     return null;
   }
 

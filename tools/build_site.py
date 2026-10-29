@@ -190,6 +190,11 @@ def row_topic(cell, n, topics):
         if k:
             r = by_title(r'예제\s*(' + str(n) + '-' + k.group(1) + '|0?' + k.group(1) + r')(?!\d)')
             if r is not None: return r
+    # 노트북 교안(NN · VB)은 예제 번호 · 파일명이 없다 → 첫 칸이 코드가 있는 토픽의 제목(앞부분)이면 그 토픽
+    tt = re.sub(r'\s+', ' ', t).strip()
+    if len(tt) >= 4:
+        for tp in topics:
+            if re.sub(r'\s+', ' ', tp['title']).startswith(tt) and any(b['kind'] in ('code', 'cmd') for b in tp['blocks']): return tp['id']
     return None
 
 def attach_figs(topics, n, intro):
