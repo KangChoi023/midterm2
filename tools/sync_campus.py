@@ -11,9 +11,9 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 
 정리 모양 (Day 폴더 하나)
     10_Vision/01_강의자료/Day1 · <사이트 노트 제목>/
-        1. 교안 - Vision D1.pdf · .pptx
+        1. 강의 노트북 (Colab) - Vision D1.ipynb  /  1. 강의 노트 (웹) - … .html (바로가기)
         2. 애니메이션 - Vision D1.html          ← _원본 의 애니메이션을 여는 바로가기
-        3. 강의 노트북 (Colab) - Vision D1.ipynb  /  3. 강의 노트 (웹) - … .html (바로가기)
+        3. 교안 - Vision D1.pdf · .pptx
         4. 워크시트 - Vision D1.html            ← 바로가기
         5. 실습 코드/                           ← 강사님 src/ 와 맨 위 .py · .c · .zip
         6. 참고 - <원래 이름>.html               ← 그 밖의 html (바로가기)
@@ -23,6 +23,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 
 규칙
 - 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
+- 번호를 바꾼 파일(예전 1. 교안 · 3. 강의 노트)은 옛 이름 파일이 있고 새 이름 파일이 없으면 이름만 바꾼다 (다시 복사하지 않음).
 - Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
 - 과목을 모르는 폴더는 복사하지 않고 알려 준다 (→ --add).
 - --mine: 이름에 DayN 이 있는 내 자료만 옮긴다 (저장한 웹페이지의 …_files 폴더도 이름이 같아 함께 간다).
@@ -56,6 +57,9 @@ SPECIAL_UNITS = {
 SKIP = {'.git', '.github', 'README.md', '.gitignore', '.gitattributes', '.nojekyll'}
 LECTURES = '01_강의자료'
 ORIG, OLD, MIGRATED, MINE = '_원본', '_이전판', '_예전정리', '7. 내 자료'
+# 번호를 바꾼 파일: (옛 이름 앞부분, 새 이름 앞부분) — 옛 이름으로 정리된 Day 폴더는 실행할 때 이름만 바꾼다
+RENUMBERED = (('1. 교안 - ', '3. 교안 - '), ('3. 강의 노트 (웹) - ', '1. 강의 노트 (웹) - '),
+              ('3. 강의 노트북 (Colab) - ', '1. 강의 노트북 (Colab) - '), ('3. 노트북 - ', '1. 노트북 - '))
 OLD_DIRS = re.compile(r'Day\d+|OS_24H|1st_re_evaluation|공통')       # 예전 방식이 만든 폴더 이름
 DAYNUM = re.compile(r'day\s*0*(\d+)', re.I)
 CODE_EXT = {'.py', '.c', '.h', '.zip'}
@@ -111,16 +115,16 @@ def classify(files, label):
 
     for ext in ('.pdf', '.pptx'):
         for i, r in enumerate(sorted(r for r in top if r.lower().endswith(ext))):
-            put(f'1. 교안 - {label}{"" if i == 0 else " (" + os.path.splitext(r)[0] + ")"}{ext}', r, top[r])
+            put(f'3. 교안 - {label}{"" if i == 0 else " (" + os.path.splitext(r)[0] + ")"}{ext}', r, top[r])
     for slot, name, cands in (
             ('2', '애니메이션', (r'animation\.html', r'anim/index\.html', r'index\.html', r'animations\.html')),
-            ('3', '강의 노트 (웹)', (r'lecture\.html', r'[^/]*_lecture\.html')),
+            ('1', '강의 노트 (웹)',(r'lecture\.html', r'[^/]*_lecture\.html')),
             ('4', '워크시트', (r'worksheet\.html', r'[^/]*worksheet[^/]*\.html', r'anim/worksheet\.html'))):
         r = next((r for c in cands for r in rels if re.fullmatch(c, r, re.I) and r not in linked), None)
         if r: links[f'{slot}. {name} - {label}.html'] = r; linked.add(r)
     nbs = sorted((r for r in top if r.lower().endswith('.ipynb')), key=lambda r: ('lecture' not in r.lower(), r))
     for i, r in enumerate(nbs):
-        put(f'3. 강의 노트북 (Colab) - {label}.ipynb' if i == 0 else f'3. 노트북 - {os.path.splitext(r)[0]}.ipynb', r, top[r])
+        put(f'1. 강의 노트북 (Colab) - {label}.ipynb' if i == 0 else f'1. 노트북 - {os.path.splitext(r)[0]}.ipynb', r, top[r])
     for src, rel in files:
         if rel.startswith('src/'): put('5. 실습 코드/' + rel[4:], rel, src)
         elif rel in top and os.path.splitext(rel)[1].lower() in CODE_EXT: put('5. 실습 코드/' + rel, rel, src)
@@ -130,6 +134,20 @@ def classify(files, label):
     for src, rel in files:                                            # 나머지(바로가기 대상 html 포함)는 원본 그대로
         if rel not in moved: shown[f'{ORIG}/{rel}'] = src
     return shown, links
+
+
+def renumber(udir, names, dry):
+    """옛 번호로 정리된 파일 → 새 이름으로 바꾼다 (새 이름 파일이 이미 있으면 그대로). 반환 {새 이름: 옛 이름}"""
+    out = {}
+    for name in names:
+        for old, new in RENUMBERED:
+            if not name.startswith(new): continue
+            was = old + name[len(new):]
+            if os.path.isfile(os.path.join(udir, was)) and not os.path.exists(os.path.join(udir, name)):
+                out[name] = was
+                if not dry: os.rename(os.path.join(udir, was), os.path.join(udir, name))
+            break
+    return out
 
 
 def shortcut(target, title):
@@ -297,7 +315,7 @@ def main():
 
     units, unknown = units_of(a.repo, extra)
     subjects = dict(SUBJECTS, **extra)
-    total = {'new': 0, 'changed': 0}
+    total = {'new': 0, 'changed': 0, 'renamed': 0}
     order = list(subjects)
     for (subj, key) in sorted(units, key=lambda k: (order.index(k[0]), str(k[1]).zfill(3))):
         prefix, folder, label = subjects[subj]
@@ -314,23 +332,29 @@ def main():
         else:
             shown, links = classify(units[(subj, key)], ulabel)
             if not a.dry_run: os.makedirs(os.path.join(udir, ORIG), exist_ok=True)
+        moved = renumber(udir, list(shown) + list(links), a.dry_run) if os.path.isdir(udir) else {}
+        at = lambda name: os.path.join(udir, *(moved.get(name, name) if a.dry_run else name).split('/'))
         done = {'new': [], 'changed': []}
         for name, src in shown.items():
-            r = write(os.path.join(udir, *name.split('/')), src, a.dry_run, stamp, udir)
+            r = write(at(name), src, a.dry_run, stamp, udir)
             if r: done[r].append(name)
         for name, target in links.items():
-            r = write(os.path.join(udir, name), shortcut(target, os.path.splitext(name)[0]).encode('utf-8'), a.dry_run, stamp, udir)
-            if r: done[r].append(name)
-        if not (done['new'] or done['changed'] or renames): continue
-        print(f'\n■ {os.path.relpath(udir, dest)}   새 {len(done["new"])} · 바뀜 {len(done["changed"])}')
+            r = write(at(name), shortcut(target, os.path.splitext(name)[0]).encode('utf-8'), a.dry_run, stamp, udir)
+            if r and name not in moved: done[r].append(name)          # 이름 바꾼 바로가기는 제목만 새로 쓴 것
+        if not (done['new'] or done['changed'] or renames or moved): continue
+        print(f'\n■ {os.path.relpath(udir, dest)}   새 {len(done["new"])} · 바뀜 {len(done["changed"])}'
+              + (f' · 이름 바꿈 {len(moved)}' if moved else ''))
         for o, n in renames: print(f'  폴더 이름: {o} → {n}')
+        for n, o in sorted(moved.items()): print(f'  이름 바꿈: {o} → {n}')
         for k, mark in (('changed', '바뀜(옛 판은 _이전판/)'), ('new', '새로')):
             names = [n for n in done[k] if not n.startswith(ORIG + '/')]
             for n in sorted(names): print(f'  {mark}: {n}')
             hidden = len(done[k]) - len(names)
             if hidden: print(f'  {mark}: {ORIG}/ 안 {hidden}개')
-        for k in total: total[k] += len(done[k])
-    print(f'\n합계: 새 파일 {total["new"]}개 · 바뀐 파일 {total["changed"]}개')
+        for k in done: total[k] += len(done[k])
+        total['renamed'] += len(moved)
+    print(f'\n합계: 새 파일 {total["new"]}개 · 바뀐 파일 {total["changed"]}개'
+          + (f' · 이름 바꾼 파일 {total["renamed"]}개' if total['renamed'] else ''))
 
     moves = mine_moves(dest, subjects, units)
     if moves:
