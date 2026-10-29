@@ -5,6 +5,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
     py tools\sync_campus.py --dry-run     # 무엇을 할지만 보기
     py tools\sync_campus.py               # 받기 + 정리
     py tools\sync_campus.py --migrate     # 처음 한 번: 예전 방식 폴더를 과목별 _예전정리/ 로 옮기고 정리
+    py tools\sync_campus.py --mine        # 내가 모아 둔 자료(이름에 DayN)를 그 Day 폴더의 "7. 내 자료" 로
     … --add "vision=10_Vision=Vision"     # 처음 보는 과목: 강사님 폴더 앞부분=과목 폴더=파일 이름에 쓸 과목명
     … --dest "<06_HyundaiAI 폴더>" --repo "<AI_CAMPUS 를 받아 둘 폴더>"
 
@@ -16,6 +17,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
         4. 워크시트 - Vision D1.html            ← 바로가기
         5. 실습 코드/                           ← 강사님 src/ 와 맨 위 .py · .c · .zip
         6. 참고 - <원래 이름>.html               ← 그 밖의 html (바로가기)
+        7. 내 자료/                             ← --mine: 01_강의자료 · 02_실습자료 에 내가 모아 둔 DayN 자료 (퀴즈 · 판서 · 풀이 노트북 …)
         _원본/                                  ← 나머지 원본 그대로 (html 끼리의 링크가 깨지지 않게)
         _이전판/                                ← 강사님이 고친 파일의 옛 판 (생길 때만)
 
@@ -23,6 +25,8 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 - 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
 - Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
 - 과목을 모르는 폴더는 복사하지 않고 알려 준다 (→ --add).
+- --mine: 이름에 DayN 이 있는 내 자료만 옮긴다 (저장한 웹페이지의 …_files 폴더도 이름이 같아 함께 간다).
+  강사님 파일과 내용이 똑같은 것은 중복이므로 과목 폴더/_예전정리/ 로. Day 번호가 없는 것은 그대로.
 - 내가 만든 파일 · 폴더(03_개인실습, 04_자체학습 …)는 건드리지 않는다.
 """
 import argparse, datetime, filecmp, glob, os, re, shutil, subprocess, sys
@@ -51,7 +55,9 @@ SPECIAL_UNITS = {
 }
 SKIP = {'.git', '.github', 'README.md', '.gitignore', '.gitattributes', '.nojekyll'}
 LECTURES = '01_강의자료'
-ORIG, OLD, MIGRATED = '_원본', '_이전판', '_예전정리'
+ORIG, OLD, MIGRATED, MINE = '_원본', '_이전판', '_예전정리', '7. 내 자료'
+OLD_DIRS = re.compile(r'Day\d+|OS_24H|1st_re_evaluation|공통')       # 예전 방식이 만든 폴더 이름
+DAYNUM = re.compile(r'day\s*0*(\d+)', re.I)
 CODE_EXT = {'.py', '.c', '.h', '.zip'}
 BAD = re.compile(r'[\\/:*?"<>|]')
 
@@ -165,13 +171,41 @@ def old_layout(dest):
             if not os.path.isdir(base): continue
             for d in sorted(os.listdir(base)):
                 p = os.path.join(base, d)
-                if (re.fullmatch(r'Day\d+|OS_24H|1st_re_evaluation|공통', d) and os.path.isdir(p)
+                if (OLD_DIRS.fullmatch(d) and os.path.isdir(p)
                         and not os.path.isdir(os.path.join(p, ORIG))):
                     out.append((p, os.path.join(dest, folder, MIGRATED, sub, d)))
     for name in ('_새로온자료', '_동기화기록.txt'):
         p = os.path.join(dest, '00_강의 자료', name)
         if os.path.exists(p): out.append((p, os.path.join(dest, '00_강의 자료', MIGRATED, name)))
     return out
+
+
+def mine_moves(dest, subjects, units):
+    """내가 모아 둔 DayN 자료 → [(지금 위치, 옮길 위치, 강사님 파일과 같은가)]"""
+    moves = []
+    for subj, (prefix, folder, _) in subjects.items():
+        for sub in (LECTURES, '02_실습자료'):
+            base = os.path.join(dest, folder, sub)
+            if not os.path.isdir(base): continue
+            for name in sorted(os.listdir(base)):
+                p = os.path.join(base, name)
+                if name.startswith('_') or (os.path.isdir(p) and (os.path.isdir(os.path.join(p, ORIG)) or OLD_DIRS.fullmatch(name))):
+                    continue                                          # 새 Day 폴더 · 예전 방식 폴더 · _예전정리
+                m = DAYNUM.search(name)
+                if not m or (subj, int(m.group(1))) not in units: continue
+                day = int(m.group(1))
+                dup = os.path.isfile(p) and any(os.path.getsize(s) == os.path.getsize(p) and filecmp.cmp(s, p, shallow=False)
+                                                for s, _ in units[(subj, day)])
+                if dup:
+                    dst = os.path.join(dest, folder, MIGRATED, sub, name)
+                else:
+                    udir = day_dir(os.path.join(dest, folder, LECTURES), day, note_title(prefix, day), True, [])
+                    dst = os.path.join(udir, MINE, name)
+                b, e = os.path.splitext(dst) if os.path.isfile(p) else (dst, '')
+                n = 2
+                while os.path.exists(dst): dst, n = f'{b} ({n}){e}', n + 1
+                moves.append((p, dst, dup))
+    return moves
 
 
 def find_dest():
@@ -229,6 +263,7 @@ def main():
     ap.add_argument('--dry-run', action='store_true', help='복사하지 않고 무엇을 할지만 출력')
     ap.add_argument('--no-pull', action='store_true', help='강사님 저장소를 새로 받지 않음')
     ap.add_argument('--migrate', action='store_true', help='예전 방식 폴더를 과목별 _예전정리/ 로 옮긴 뒤 정리')
+    ap.add_argument('--mine', action='store_true', help='내가 모아 둔 DayN 자료를 그 Day 폴더의 "7. 내 자료" 로 옮김')
     ap.add_argument('--add', action='append', default=[], metavar='앞부분=과목폴더=과목명',
                     help='처음 보는 과목 (예: vision=10_Vision=Vision)')
     a = ap.parse_args()
@@ -246,7 +281,7 @@ def main():
     print(f'내 폴더: {dest}' + ('   (dry-run — 바꾸지 않음)' if a.dry_run else ''))
 
     olds = old_layout(dest)
-    if olds and not a.migrate:
+    if olds and not a.migrate and not a.dry_run:
         print(f'\n! 예전 방식으로 정리된 폴더가 {len(olds)}개 있습니다 (예: {os.path.relpath(olds[0][0], dest)}).')
         print('  --migrate 를 붙이면 과목 폴더 안 _예전정리/ 로 옮긴 뒤 새 방식으로 정리합니다 (지우지 않음).')
         return
@@ -257,9 +292,8 @@ def main():
             shutil.move(src, dst)
             try: os.rmdir(os.path.dirname(src))                       # 비어 버린 02_실습자료 는 치운다
             except OSError: pass
-    if olds and a.dry_run:                                            # dry-run 에서는 옮긴 셈 치고 계속 볼 수 없다
-        print('  (dry-run: 옮긴 뒤의 정리 결과는 실제 실행 때 보입니다)')
-        return
+    if olds and not a.migrate:
+        print('  (위 폴더들은 --migrate 를 붙여야 옮깁니다)')
 
     units, unknown = units_of(a.repo, extra)
     subjects = dict(SUBJECTS, **extra)
@@ -297,6 +331,17 @@ def main():
             if hidden: print(f'  {mark}: {ORIG}/ 안 {hidden}개')
         for k in total: total[k] += len(done[k])
     print(f'\n합계: 새 파일 {total["new"]}개 · 바뀐 파일 {total["changed"]}개')
+
+    moves = mine_moves(dest, subjects, units)
+    if moves:
+        print(f'\n■ 내가 모아 둔 자료 {len(moves)}개' + ('' if a.mine else ' — --mine 을 붙이면 옮깁니다'))
+        for src, dst, dup in moves:
+            print(f'  {os.path.relpath(src, dest)} → {os.path.relpath(dst, dest)}' + ('   (강사님 파일과 같음 = 중복)' if dup else ''))
+            if a.mine and not a.dry_run:
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.move(src, dst)
+                try: os.rmdir(os.path.dirname(src))                   # 비어 버린 02_실습자료 는 치운다
+                except OSError: pass
     if unknown:
         print('\n⚠ 과목을 모르는 자료 (복사하지 않음): ' + ', '.join(unknown))
         print('  → 과목 폴더 이름을 정해 --add "앞부분=과목폴더=과목명" 으로 다시 실행하세요 (예: vision=11_Vision=Vision)')
