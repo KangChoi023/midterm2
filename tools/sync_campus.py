@@ -26,7 +26,7 @@ PC 에서 Claude 에게 "강의자료 정리해줘" 라고 하면 이 프로그�
 - 새 파일만 복사, 내용이 바뀐 파일은 옛 판을 _이전판/ 으로 옮긴 뒤 덮어쓴다. 아무것도 지우지 않는다.
 - 예전 위치(과목/01_강의자료/)의 Day 폴더 · 특수 폴더는 과목 바로 아래로 올린다. 같은 이름이 이미 있으면 옮기지 않고 경고.
   01_강의자료 가 비면 치우고, 내 파일이 남아 있으면 그대로 두고 알려 준다.
-- 노트북(1. 강의 노트북 · 1. 노트북)은 내 실습 사본이다. 맨 앞에 Colab 마운트 셀을 넣고, 마지막으로 쓴 해시를 _원본/.sync_state.json 에 남긴다.
+- 노트북(1. 강의 노트북 · 1. 노트북)은 내 실습 사본이다. 맨 앞에 Colab 마운트 셀을 넣고(앞쪽 코드 셀 3개 안에 강사님 drive.mount( 가 있으면 넣지 않음), 마지막으로 쓴 해시를 _원본/.sync_state.json 에 남긴다.
   내가 고친 노트북은 절대 덮어쓰지 않는다 — 강사님 원본이 바뀌면 옆에 "… (강사님 새 판 YYMMDD).ipynb" 로 따로 둔다.
 - 번호를 바꾼 파일(예전 1. 교안 · 3. 강의 노트)은 옛 이름 파일이 있고 새 이름 파일이 없으면 이름만 바꾼다 (다시 복사하지 않음).
 - Day 폴더 제목은 notes/<과목>_dayN.md 첫 줄. 노트가 아직 없으면 "DayN" 으로 두었다가 노트가 생기면 이름을 바꾼다.
@@ -71,6 +71,7 @@ CODE_EXT = {'.py', '.c', '.h', '.zip'}
 BAD = re.compile(r'[\\/:*?"<>|]')
 STATE = '.sync_state.json'                                        # _원본/ 안: 정리 프로그램이 마지막으로 쓴 노트북 해시
 NB_TOP = ('1. 강의 노트북 (Colab) - ', '1. 노트북 - ')
+MOUNT_SKIP = 3                                                    # 앞쪽 코드 셀 이만큼 안에 drive.mount( 가 있으면 셀을 넣지 않음
 # Day 폴더 노트북 맨 앞에 넣는 셀 — Colab 에서 Drive 를 연결하고 그 Day 폴더의 _원본 으로 이동한다 (__SUBJECT__ · __DAY__ 는 채워 넣음)
 MOUNT_CELL = """# [정리 프로그램(sync_campus.py)이 넣은 셀] Drive 연결 → 이 Day 폴더의 _원본 으로 이동 (data/… · img/… 상대 경로가 그대로 동작)
 # Colab 밖(내 PC 의 Jupyter)에서는 아무것도 하지 않는다. 이 노트북은 내 실습 사본 — 고쳐도 정리 프로그램이 덮어쓰지 않는다.
@@ -205,13 +206,16 @@ def renumber(udir, names, dry):
 
 
 def with_mount(src, folder, day):
-    """강사님 노트북 + 맨 앞 마운트 셀 (bytes). 이미 drive.mount( 가 있거나 nbformat 4 가 아니면 원본 그대로"""
+    """강사님 노트북 + 맨 앞 마운트 셀 (bytes).
+    앞쪽 코드 셀 MOUNT_SKIP 개 안에 drive.mount( 가 있으면(강사님 환경 셀) 또는 nbformat 4 가 아니면 원본 그대로.
+    뒤쪽에 수업 내용으로만 나오는 drive.mount 는 무시한다 (다시 실행해도 already mounted 만 나옴)"""
     with open(src, 'rb') as f: raw = f.read()
     try: nb = json.loads(raw.decode('utf-8'))
     except ValueError: return raw
     cells = nb.get('cells')
     if nb.get('nbformat') != 4 or not isinstance(cells, list): return raw
-    if any('drive.mount(' in ''.join(c.get('source', '')) for c in cells): return raw
+    head = [c for c in cells if c.get('cell_type') == 'code'][:MOUNT_SKIP]
+    if any('drive.mount(' in ''.join(c.get('source', '')) for c in head): return raw
     code = MOUNT_CELL.replace('__SUBJECT__', repr(folder)).replace('__DAY__', str(day)).split('\n')
     cell = {'cell_type': 'code', 'execution_count': None, 'metadata': {}, 'outputs': [],
             'source': [l + '\n' for l in code[:-1]] + [code[-1]]}
@@ -242,6 +246,7 @@ def write_nb(path, src, want, dry, stamp, udir, state, name):
         state[name] = {'out': None, 'src': s_src}; return 'kept', name   # 내가 고친 것 → 그대로
     if sha(cur) == rec.get('out'):                                    # 내가 손대지 않음
         if cur == want: return None, name
+        if rec.get('src') == s_src: return put(path, 'cell')          # 강사님 원본 그대로 = 셀 규칙이 바뀐 것 → _이전판 없이
         if not dry:                                                   # 강사님이 고침 → 옛 판을 _이전판 에
             b, e = os.path.splitext(os.path.basename(path))
             os.makedirs(os.path.join(udir, OLD), exist_ok=True)
