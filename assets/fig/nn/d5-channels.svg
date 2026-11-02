@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 240" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="240" fill="#fff"/>
+<text x="80.0" y="24.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">입력 (C = 3, H, W)</text>
+<rect x="44.0" y="56.0" width="90.0" height="90.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8"/>
+<text x="89.0" y="106.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">B</text>
+<rect x="32.0" y="68.0" width="90.0" height="90.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8"/>
+<text x="77.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">G</text>
+<rect x="20.0" y="80.0" width="90.0" height="90.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.8"/>
+<text x="65.0" y="130.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">R</text>
+<text x="65.0" y="192.0" font-size="11.5" fill="#64748b" text-anchor="middle">앞부터 R · G · B</text>
+<text x="195.0" y="125.0" font-size="22" fill="#1e293b" text-anchor="middle">⊙</text>
+<text x="265.0" y="24.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">필터 1개 (C = 3, FH, FW)</text>
+<rect x="249.0" y="76.0" width="50.0" height="50.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8"/>
+<text x="274.0" y="106.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700"></text>
+<rect x="237.0" y="88.0" width="50.0" height="50.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8"/>
+<text x="262.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700"></text>
+<rect x="225.0" y="100.0" width="50.0" height="50.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.8"/>
+<text x="250.0" y="130.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700"></text>
+<line x1="315.0" y1="125.0" x2="380.0" y2="125.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="348.0" y="113.0" font-size="11.5" fill="#64748b" text-anchor="middle">채널마다 곱해</text>
+<text x="348.0" y="145.0" font-size="11.5" fill="#64748b" text-anchor="middle">모두 더함 + b</text>
+<text x="445.0" y="24.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">출력 1장</text>
+<rect x="400.0" y="80.0" width="90.0" height="90.0" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="445.0" y="130.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">특징 맵</text>
+<text x="600.0" y="24.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">필터 FN 개 → FN 장</text>
+<rect x="581.0" y="54.0" width="80.0" height="80.0" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="569.0" y="66.0" width="80.0" height="80.0" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="557.0" y="78.0" width="80.0" height="80.0" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="545.0" y="90.0" width="80.0" height="80.0" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="350.0" y="205.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">입력 (N, C, H, W) · 필터 (FN, C, FH, FW) · 출력 (N, FN, OH, OW)</text>
+<text x="350.0" y="228.0" font-size="12.5" fill="#64748b" text-anchor="middle">필터 하나는 모든 채널을 덮어 곱한 뒤 더해 한 장 — 출력 채널 수 = 필터 수, 편향은 필터마다 하나</text>
+</svg>

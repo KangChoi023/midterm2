@@ -760,6 +760,198 @@ def d4_mynn():
     s.text(350, 214, '계층 규약: params · grads 딕셔너리 + forward(x, train_flg) + backward(dout)', 12.5, MUTED, 'middle')
     s.save('d4-mynn.svg')
 
+
+# ---------------- NN Day 5 ----------------
+
+def _grid(s, x0, y0, vals, cell=30, hi=None, color=BLUE, size=13, fills=None):
+    """숫자 격자. hi = 강조할 칸 집합 {(i, j)}, fills = {(i, j): 색}"""
+    for i, row in enumerate(vals):
+        for j, v in enumerate(row):
+            f = (fills or {}).get((i, j)) or (FILL[color] if hi and (i, j) in hi else '#fff')
+            s.rect(x0 + j * cell, y0 + i * cell, cell, cell, color if hi and (i, j) in hi else LINE, f, 0, 1.3)
+            if v is not None and v != '':
+                s.text(x0 + j * cell + cell / 2, y0 + i * cell + cell / 2 + 5, str(v), size, INK, 'middle')
+
+
+def d5_flatten():
+    s = Svg(700, 230)
+    s.text(112, 24, '이미지 28 × 28', 13.5, INK, 'middle', True)
+    for i in range(6):
+        for j in range(6):
+            c = {(0, 2): ORANGE, (1, 2): GREEN}.get((i, j))
+            s.rect(40 + j * 24, 40 + i * 24, 24, 24, c or LINE, FILL[c] if c else '#fff', 0, 1.2)
+    s.text(40 + 2 * 24 + 12, 40 + 17, 'a', 13, INK, 'middle', True); s.text(40 + 2 * 24 + 12, 64 + 17, 'b', 13, INK, 'middle', True)
+    s.text(112, 200, '위아래로 붙은 a, b (28칸씩 28줄)', 12, MUTED, 'middle')
+    s.line(205, 110, 255, 110, MUTED, 2, True); s.text(230, 100, '펼치기', 12, MUTED, 'middle')
+    s.text(470, 24, '펼친 벡터 784칸 — a 와 b 가 28칸 떨어진다', 13.5, INK, 'middle', True)
+    cells = [0, 1, 2, 3, 4, 5, None, 28, 29, 30, 31, 32]
+    x = 270
+    pos = {}
+    for idx in cells:
+        if idx is None:
+            s.text(x + 18, 115, '…', 16, MUTED, 'middle'); x += 36; continue
+        c = ORANGE if idx == 2 else GREEN if idx == 30 else None
+        s.rect(x, 95, 30, 30, c or LINE, FILL[c] if c else '#fff', 0, 1.2)
+        s.text(x + 15, 145, str(idx), 11.5, MUTED, 'middle'); pos[idx] = x + 15; x += 30
+    s.text(pos[2], 115, 'a', 13, INK, 'middle', True); s.text(pos[30], 115, 'b', 13, INK, 'middle', True)
+    s.line(pos[2], 160, pos[30], 160, RED, 2); s.text((pos[2] + pos[30]) / 2, 178, '28칸 거리 — Affine 은 둘이 이웃인 줄 모른다', 12.5, RED, 'middle', True)
+    s.text(350, 218, '그래서 픽셀 순서를 모든 이미지에서 똑같이 뒤섞어도 MLP 정확도는 같다 (0.9455 vs 0.9436)', 12, MUTED, 'middle')
+    s.save('d5-flatten.svg')
+
+
+def d5_conv():
+    x = [[1, 2, 3, 0], [0, 1, 2, 3], [3, 0, 1, 2], [2, 3, 0, 1]]
+    k = [[2, 0, 1], [0, 1, 2], [1, 0, 2]]
+    s = Svg(700, 250)
+    win = {(i, j) for i in range(3) for j in range(3)}
+    s.text(80, 24, '입력 4 × 4', 13.5, INK, 'middle', True); _grid(s, 20, 40, x, 30, win, BLUE)
+    s.text(175, 105, '⊙', 22, INK, 'middle')
+    s.text(260, 24, '필터 3 × 3', 13.5, INK, 'middle', True); _grid(s, 215, 55, k, 30, None, ORANGE)
+    s.line(325, 100, 395, 100, MUTED, 2, True); s.text(360, 90, '곱해서 합', 12, MUTED, 'middle')
+    s.text(440, 24, '출력 2 × 2', 13.5, INK, 'middle', True); _grid(s, 410, 70, [[15, 16], [6, 15]], 30, {(0, 0)}, BLUE)
+    s.text(500, 80, '왼쪽 위 3 × 3 영역 × 필터', 12.5, INK)
+    s.text(500, 100, '= 1·2 + 3·1 + 1·1 + 2·2', 12.5, MUTED)
+    s.text(500, 120, '  + 3·1 + 1·2 = 15', 12.5, MUTED)
+    s.text(500, 148, '한 칸 오른쪽으로 → 16', 12.5, MUTED)
+    s.text(500, 168, '한 칸 아래로 → 6, 15', 12.5, MUTED)
+    s.text(350, 218, '필터를 미끄러뜨리며 겹치는 칸끼리 곱해 모두 더한다 (P = 0, S = 1 → 출력 (4 − 3)/1 + 1 = 2)', 12.5, MUTED, 'middle')
+    s.text(350, 240, '같은 필터를 모든 위치에 쓴다 = 가중치 공유 · 3 × 3 만 본다 = 지역성', 12.5, BLUE, 'middle', True)
+    s.save('d5-conv.svg')
+
+
+def d5_padstride():
+    s = Svg(700, 270)
+    c = 22
+    s.text(150, 22, '패딩 P = 1 — 둘레에 0 을 덧대 크기 유지', 13.5, INK, 'middle', True)
+    vals = [['0'] * 6] + [['0'] + [''] * 4 + ['0'] for _ in range(4)] + [['0'] * 6]
+    fills = {(i, j): '#f1f5f9' for i in range(6) for j in range(6) if i in (0, 5) or j in (0, 5)}
+    _grid(s, 40, 40, vals, c, {(i, j) for i in range(3) for j in range(3)}, ORANGE, 11, fills)
+    s.text(40 + 3 * c, 40 + 6 * c + 22, '4 × 4 + P1 → 6 × 6', 12, MUTED, 'middle')
+    s.line(185, 106, 215, 106, MUTED, 2, True)
+    _grid(s, 225, 62, [[''] * 4 for _ in range(4)], c, {(0, 0)}, ORANGE)
+    s.text(225 + 2 * c, 62 + 4 * c + 22, '출력 4 × 4', 12, MUTED, 'middle')
+    s.text(530, 22, '스트라이드 S = 2 — 2칸씩 건너뛰기', 13.5, INK, 'middle', True)
+    hi = {(i, j) for i in range(3) for j in range(3)}
+    hi2 = {(i, j) for i in range(3) for j in range(2, 5)}
+    fills = {k: FILL[BLUE] for k in hi}; fills.update({k: FILL[GREEN] for k in hi2 - hi}); fills.update({k: '#cdeee0' for k in hi & hi2})
+    _grid(s, 400, 40, [[''] * 7 for _ in range(7)], c, None, BLUE, 11, fills)
+    s.text(400 + 3.5 * c, 40 + 7 * c + 22, '7 × 7, 3 × 3 필터 (첫 위치 · 다음 위치)', 12, MUTED, 'middle')
+    s.line(565, 116, 595, 116, MUTED, 2, True)
+    _grid(s, 605, 83, [[''] * 3 for _ in range(3)], c, {(0, 0), (0, 1)}, GREEN)
+    s.text(605 + 1.5 * c, 83 + 3 * c + 22, '출력 3 × 3', 12, MUTED, 'middle')
+    s.text(350, 258, 'OH = (H + 2P − FH) // S + 1 — (4 + 2 − 3)//1 + 1 = 4 · (7 − 3)//2 + 1 = 3', 13, INK, 'middle', True)
+    s.save('d5-padstride.svg')
+
+
+def d5_channels():
+    s = Svg(700, 240)
+    def stack(x, y, n, w, h, cols, labels):
+        for k in range(n - 1, -1, -1):
+            s.rect(x + k * 12, y - k * 12, w, h, cols[k], None, 4, 1.8)
+            if labels: s.text(x + k * 12 + w / 2, y - k * 12 + h / 2 + 5, labels[k], 13, INK, 'middle', True)
+    cols = [RED, GREEN, BLUE]
+    s.text(80, 24, '입력 (C = 3, H, W)', 13, INK, 'middle', True); stack(20, 80, 3, 90, 90, cols, ['R', 'G', 'B'])
+    s.text(65, 192, '앞부터 R · G · B', 11.5, MUTED, 'middle')
+    s.text(195, 125, '⊙', 22, INK, 'middle')
+    s.text(265, 24, '필터 1개 (C = 3, FH, FW)', 13, INK, 'middle', True); stack(225, 100, 3, 50, 50, cols, ['', '', ''])
+    s.line(315, 125, 380, 125, MUTED, 2, True); s.text(348, 113, '채널마다 곱해', 11.5, MUTED, 'middle'); s.text(348, 145, '모두 더함 + b', 11.5, MUTED, 'middle')
+    s.text(445, 24, '출력 1장', 13, INK, 'middle', True); s.rect(400, 80, 90, 90, PURPLE, None, 4, 1.8)
+    s.text(445, 130, '특징 맵', 13, INK, 'middle', True)
+    s.text(600, 24, '필터 FN 개 → FN 장', 13, INK, 'middle', True); stack(545, 90, 4, 80, 80, [PURPLE] * 4, None)
+    s.text(350, 205, '입력 (N, C, H, W) · 필터 (FN, C, FH, FW) · 출력 (N, FN, OH, OW)', 13.5, INK, 'middle', True)
+    s.text(350, 228, '필터 하나는 모든 채널을 덮어 곱한 뒤 더해 한 장 — 출력 채널 수 = 필터 수, 편향은 필터마다 하나', 12.5, MUTED, 'middle')
+    s.save('d5-channels.svg')
+
+
+def d5_im2col():
+    s = Svg(700, 270)
+    x = np.arange(16).reshape(4, 4)
+    s.text(80, 22, '입력 4 × 4 (값 = 위치 번호)', 13, INK, 'middle', True)
+    cols = [BLUE, ORANGE, GREEN, PURPLE]
+    fills = {}
+    for (i, j) in [(i, j) for i in range(4) for j in range(4)]: fills[(i, j)] = '#fff'
+    for i in range(3):
+        for j in range(3): fills[(i, j)] = FILL[BLUE]
+    _grid(s, 20, 40, x.tolist(), 30, None, BLUE, 12, fills)
+    s.text(80, 180, '파랑 = 첫 영역 (0, 0)', 12, BLUE, 'middle')
+    s.line(150, 100, 190, 100, MUTED, 2, True); s.text(170, 90, 'im2col', 12, MUTED, 'middle')
+    s.text(320, 22, 'col (출력 4칸, 3·3 = 9)', 13, INK, 'middle', True)
+    rows = []
+    for i in range(2):
+        for j in range(2): rows.append(x[i:i + 3, j:j + 3].ravel().tolist())
+    for r, row in enumerate(rows):
+        for c_, v in enumerate(row):
+            s.rect(200 + c_ * 26, 40 + r * 30, 26, 30, cols[r], FILL[cols[r]], 0, 1)
+            s.text(200 + c_ * 26 + 13, 40 + r * 30 + 20, str(v), 12, INK, 'middle')
+        s.text(200 + 9 * 26 + 8, 40 + r * 30 + 20, f'영역 {["(0,0)", "(0,1)", "(1,0)", "(1,1)"][r]}', 11.5, MUTED)
+    s.text(320, 180, '영역 하나 = 행 하나', 12.5, INK, 'middle', True)
+    s.text(505, 107, '@', 18, INK, 'middle')
+    s.text(560, 22, 'col_W (9, FN)', 13, INK, 'middle', True)
+    for r in range(9):
+        for c_ in range(2):
+            s.rect(530 + c_ * 30, 35 + r * 16, 30, 16, ORANGE if c_ == 0 else RED, None, 0, 1)
+    s.text(560, 200, '필터 하나 = 열 하나', 12.5, INK, 'middle', True)
+    s.text(350, 236, 'col @ col_W + b → (N·OH·OW, FN) → reshape · transpose(0, 3, 1, 2) → (N, FN, OH, OW)', 13, INK, 'middle', True)
+    s.text(350, 258, '합성곱이 Affine 과 같은 행렬곱 한 번 — 겹치는 픽셀을 중복 복사하므로 메모리는 더 쓴다 (MNIST 5 × 5 : 약 18.4배)', 12, MUTED, 'middle')
+    s.save('d5-im2col.svg')
+
+
+def d5_pool():
+    s = Svg(700, 230)
+    v = [[1, 3, 2, 0], [4, 2, 1, 5], [0, 1, 3, 3], [6, 2, 1, 2]]
+    q = {}
+    for i in range(4):
+        for j in range(4): q[(i, j)] = FILL[[BLUE, ORANGE, GREEN, PURPLE][(i // 2) * 2 + j // 2]]
+    s.text(80, 22, '입력 4 × 4', 13.5, INK, 'middle', True); _grid(s, 20, 40, v, 30, None, BLUE, 13, q)
+    for (i, j) in [(1, 0), (1, 3), (3, 0), (2, 2)]:
+        s.rect(20 + j * 30 + 3, 40 + i * 30 + 3, 24, 24, RED, 'none', 12, 2)
+    s.line(150, 100, 210, 100, MUTED, 2, True); s.text(180, 88, '2 × 2 최댓값', 12, MUTED, 'middle'); s.text(180, 120, 'stride 2', 12, MUTED, 'middle')
+    s.text(250, 22, '출력 2 × 2', 13.5, INK, 'middle', True)
+    _grid(s, 220, 70, [[4, 5], [6, 3]], 30, None, BLUE, 13, {(0, 0): FILL[BLUE], (0, 1): FILL[ORANGE], (1, 0): FILL[GREEN], (1, 1): FILL[PURPLE]})
+    s.text(440, 22, '역전파 — 최댓값 자리로만', 13.5, INK, 'middle', True)
+    d = [[0, 0, 0, 0], ['a', 0, 0, 'b'], [0, 0, 'd', 0], ['c', 0, 0, 0]]
+    _grid(s, 380, 40, d, 30, {(1, 0), (1, 3), (3, 0), (2, 2)}, RED, 13)
+    s.text(560, 80, 'dout = [[a, b], [c, d]]', 12.5, INK)
+    s.text(570, 120, '나머지 자리는 0', 12.5, MUTED); s.text(570, 140, '(ReLU 의 mask 처럼)', 12.5, MUTED)
+    s.text(350, 195, '파라미터 없음 · 채널 수 그대로 · 크기 절반 (30, 24, 24) → (30, 12, 12)', 13, INK, 'middle', True)
+    s.text(350, 217, '영역 안에서 조금 움직여도 최댓값은 그대로 → 작은 이동에 둔감', 12.5, MUTED, 'middle')
+    s.save('d5-pool.svg')
+
+
+def d5_cnn():
+    s = Svg(720, 230)
+    items = [('입력', '(1, 28, 28)', LINE), ('Conv 5×5', '(30, 24, 24)', BLUE), ('ReLU', '', GREEN), ('Pool 2×2', '(30, 12, 12)', ORANGE),
+             ('Affine', '4320 → 100', PURPLE), ('ReLU', '', GREEN), ('Affine', '100 → 10', PURPLE)]
+    x = 10
+    for i, (nm, sub, col) in enumerate(items):
+        w = 64 if nm == 'ReLU' else 100 if nm != '입력' else 88
+        s.box(x, 50, w, 70, nm, col, sub or None, 13.5)
+        if i < len(items) - 1: s.line(x + w, 85, x + w + 10, 85, MUTED, 2, True)
+        x += w + 12
+    s.text(360, 30, 'SimpleConvNet — 배치 100 이면 각 shape 앞에 100 이 붙는다', 13.5, INK, 'middle', True)
+    s.text(360, 152, '파라미터: Conv 780 (30·1·5·5 + 30) + Affine 432,100 (4320·100 + 100) + Affine 1,010 = 433,890', 12.5, INK, 'middle')
+    s.text(360, 176, '(28 − 5)/1 + 1 = 24 · 24 / 2 = 12 · 30 × 12 × 12 = 4,320 (Affine 이 내부에서 펼친다)', 12.5, MUTED, 'middle')
+    s.text(360, 206, 'Day 4 Sequential · Trainer 그대로 — 계층 리스트에 Convolution · Pooling 만 넣었다 → 1 epoch test 0.981', 12.5, BLUE, 'middle', True)
+    s.save('d5-cnn.svg')
+
+
+def d5_cost():
+    s = Svg(700, 250)
+    rows = [('Conv 1→30, 5×5', 780, 432000), ('Pool 2×2', 0, 0), ('Affine 4320→100', 432100, 432000), ('Affine 100→10', 1010, 1000)]
+    s.text(250, 24, '파라미터 (저장 공간)', 13.5, INK, 'middle', True); s.text(560, 24, 'MAC (시간 · 전력, 1장)', 13.5, INK, 'middle', True)
+    for r, (nm, p, m) in enumerate(rows):
+        y = 45 + r * 40
+        s.text(130, y + 18, nm, 12.5, INK, 'end')
+        wp = 220 * p / 432100; wm = 180 * m / 432000
+        if p: s.rect(140, y + 4, max(wp, 2), 20, BLUE, None, 3, 1.5)
+        s.text(140 + max(wp, 2) + 6, y + 19, f'{p:,}', 12, INK)
+        if m: s.rect(430, y + 4, max(wm, 2), 20, ORANGE, None, 3, 1.5)
+        s.text(430 + max(wm, 2) + 6, y + 19, f'{m:,}', 12, INK)
+    s.text(350, 222, '합계 파라미터 433,890 (float32 1.74 MB) · MAC 865,000 — "파라미터는 Affine 에, 연산은 Conv 에"', 13, INK, 'middle', True)
+    s.text(350, 244, 'Conv 는 가중치를 공유해 파라미터는 적지만, 같은 가중치를 24 × 24 위치마다 다시 쓰니 MAC 은 많다', 12, MUTED, 'middle')
+    s.save('d5-cost.svg')
+
+
 if __name__ == '__main__':
     for name, fn in list(globals().items()):
         if callable(fn) and name.startswith(('d1_', 'd2_', 'd3_', 'd4_', 'd5_')): fn()
