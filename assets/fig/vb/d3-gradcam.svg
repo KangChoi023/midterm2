@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="230" fill="#fff"/>
+<text x="360.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Grad-CAM — 클래스 점수를 마지막 합성곱 특징맵 A 로 미분해 "어디를 보고 판단했나"</text>
+<rect x="8.0" y="50.0" width="132.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="74.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">① A 저장</text>
+<text x="74.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">forward hook (K, h, w)</text>
+<line x1="140.0" y1="82.0" x2="148.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="150.0" y="50.0" width="132.0" height="64.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="216.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">② ∂y^c/∂A</text>
+<text x="216.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">y^c 만 backward</text>
+<line x1="282.0" y1="82.0" x2="290.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="292.0" y="50.0" width="132.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="358.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">③ α_k</text>
+<text x="358.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">기울기의 공간 평균</text>
+<line x1="424.0" y1="82.0" x2="432.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="434.0" y="50.0" width="132.0" height="64.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="500.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">④ ReLU(Σ α_k A^k)</text>
+<text x="500.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">점수를 올리는 위치만</text>
+<line x1="566.0" y1="82.0" x2="574.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="576.0" y="50.0" width="132.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="642.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">⑤ ÷ max, 키우기</text>
+<text x="642.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">bilinear → 원본에 겹침</text>
+<text x="360.0" y="146.0" font-size="12.5" fill="#1e293b" text-anchor="middle">CAM 해상도 = 마지막 특징맵 크기 — ResNet-20 (32 입력) 8 × 8 · MobileNetV3-S (96 입력) 3 × 3</text>
+<text x="360.0" y="170.0" font-size="12.5" fill="#64748b" text-anchor="middle">cls 를 지정하면 "정답이라면 어디를 봐야 했나" — 오답의 예측 CAM 과 정답 CAM 을 나란히 비교</text>
+<text x="360.0" y="194.0" font-size="12.5" fill="#dc2626" text-anchor="middle">예측 CAM 이 물체가 아닌 배경 · 가장자리에 몰려 있으면 맥락에 속은 것 → 다양한 배경 데이터를 더한다</text>
+<text x="360.0" y="218.0" font-size="12" fill="#64748b" text-anchor="middle">정밀한 위치가 필요하면 분류가 아니라 객체 탐지 (Day 4)</text>
+</svg>
