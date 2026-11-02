@@ -5,6 +5,7 @@
 
 .ipynb : 마크다운 머리글 "# 1교시 · 제목" / "## 1교시 — 제목" 이 교시, 그 아래 "###" 하나가 토픽.
          "#### ✏️ 빈칸 채우기 · 괄호 넣기" 는 fills 로 (바로 뒤 "🔒 정답 보기" 셀의 base64 를 풀어 해설로).
+         빈칸(____) 코드 셀은 강의 원문 · 코드 패널에서 그 "🔒 정답 보기" 의 정답 코드로 바꿔 보여 준다 (빈칸 탭은 문제 그대로).
 .pptx  : 슬라이드 글자만 읽는다. 바닥글 "… · S3 제목" 이나 "11:00 · S3 제목" 으로 교시를 나누고 슬라이드 하나가 토픽.
 
 사용(확인용):  python3 -I nbparse.py <파일> [교시]
@@ -92,6 +93,13 @@ def _answer(code):
     try: return base64.b64decode(''.join(parts)).decode('utf8')
     except Exception: return ''
 
+def _solution(ans):
+    """정답 글 '── 정답 1-1 ──\\n코드\\n\\n💡 해설\\n…' → (번호, 코드). 코드가 없으면 ('', '')"""
+    m = re.match(r'\s*──\s*정답\s*([^─\n]*?)\s*──\s*\n', ans)
+    if not m: return '', ''
+    code = re.split(r'\n\s*💡\s*해설', ans[m.end():], 1)[0].strip('\n')
+    return m.group(1).strip(), code if code.strip() else ''
+
 def _block(code):
     lines = code.split('\n')
     shell = [l for l in lines if l.strip() and not l.strip().startswith('#')]
@@ -114,7 +122,7 @@ PROBLEM_RE = re.compile(r'^\s*\*\*문제\s*([\d·\s-]+)\*\*')
 def parse_ipynb(path):
     nb = json.load(open(path, encoding='utf8'))
     lessons = {}
-    st = {'cur': None, 'topic': None, 'fill': None}
+    st = {'cur': None, 'topic': None, 'fill': None, 'blank': None}   # blank: 마지막 빈칸(____) 코드가 들어간 곳
 
     def new_topic(title, md=''):
         st['fill'] = None
@@ -155,12 +163,26 @@ def parse_ipynb(path):
         elif c['cell_type'] == 'code' and st['cur'] is not None:
             first = src.split('\n', 1)[0]
             if '정답 보기' in first or ('b64decode' in src and '@title' in first):
-                if st['fill'] is not None: st['fill']['ans'] += ('\n' if st['fill']['ans'] else '') + _answer(src)
+                ans = _answer(src)
+                if st['fill'] is not None: st['fill']['ans'] += ('\n' if st['fill']['ans'] else '') + ans
+                # 강의 원문 · 코드 패널에는 빈칸(____) 코드 대신 정답을 채운 코드를 보여 준다 (빈칸·괄호 탭은 문제 그대로)
+                num, sol = _solution(ans)
+                if sol and st['blank'] is not None:
+                    sol = f'# ✏️ 문제 {num} — 빈칸을 정답으로 채운 코드\n' + sol if num else sol
+                    where, k = st['blank']
+                    if where == 'topic' and k[0] is st['topic']:
+                        k[0]['blocks'][k[1]] = dict(_block(sol), solved=num)
+                    elif where == 'fill' and st['topic'] is not None:
+                        t = st['topic']
+                        t['blocks'].append(dict(_block(sol), solved=num)); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
+                st['blank'] = None
                 continue
+            if '____' in src: st['blank'] = ('fill', None) if (st['fill'] is not None and not st['fill']['ans']) else ('topic', None)
             if st['fill'] is not None and not st['fill']['ans']: st['fill']['code'].append(src); continue
             if st['topic'] is None: new_topic('들어가며')
             t = st['topic']
             t['blocks'].append(_block(src)); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
+            if '____' in src: st['blank'] = ('topic', (t, len(t['blocks']) - 1))
             out = _outputs(c)
             if out:
                 t['blocks'].append({'kind': 'out', 'lang': 'text', 'text': out}); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
