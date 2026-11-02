@@ -39,6 +39,24 @@ def main():
         if not os.path.exists(os.path.join(REPO, src)):
             print('  ❌ 그림 파일 없음:', src); bad += 1
     if imgs: print(f'그림 {len(imgs)}개 확인')
+    # 개념 카드 규칙 (경고만): 정의(>) · 사실 줄 수 · 막연한 꼬리표 — CLAUDE.md "카드 규칙"
+    VAGUE = ('해석', '쓰이는 곳', '참고', '예시', '기타', '설명', '비고', '정리', '내용')
+    cwarn = 0
+    for les in re.split(r'(?m)^(?=### \d+교시)', text)[1:]:
+        ln = les.split('\n', 1)[0].replace('### ', '')
+        core = re.search(r'\*\*핵심 내용\*\*\n(.*?)(?=\n\*\*[^*\n]+\*\*\s*\n|\Z)', les, re.S)
+        for card in re.split(r'(?m)^#### ', core.group(1))[1:] if core else []:
+            title, _, body = card.partition('\n')
+            body = body.split('##### 자세히')[0]
+            facts = [l for l in body.split('\n') if l.startswith('- ') and not l.startswith('- ⚠')]
+            msgs = []
+            if not body.lstrip().startswith('>'): msgs.append('한 줄 정의(>) 없음')
+            if len(facts) > 5: msgs.append(f'사실 {len(facts)}줄 (3~4줄 권장)')
+            for l in facts:
+                lab = re.match(r'- \*\*(.+?)\*\*', l)
+                if lab and lab.group(1).strip('` ') in VAGUE: msgs.append(f'막연한 꼬리표 "{lab.group(1)}"')
+            for msg in msgs: print(f'  ⚠ 카드 [{ln} / {title.strip()}] {msg}'); cwarn += 1
+    print('카드 경고', cwarn)
     m = re.search(r'_day(\d+)\.md$', note)
     day = int(m.group(1)) if m else None
     funcs = [f for f in idx['funcs'] if f[0] == sid and f[1] == day]
