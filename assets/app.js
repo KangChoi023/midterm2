@@ -828,9 +828,16 @@
   function notesHtml(view) {
     const { L } = CX;
     if (!L.sections.length) return '';
-    if (view !== 'concept') return L.sections.map((x, i) => x.key === 'kw' ? '' : noteSection(x, i, L)).join('');
+    if (view !== 'concept') {
+      // 상세 학습: 노트의 "상세 학습" 섹션(공부용 풀어 쓴 설명)을 먼저, 표까지 있는 전체 노트는 접어서 아래에.
+      // 상세 학습 섹션이 없는 교시는 예전 "노트 순서" 그대로.
+      const flow = L.sections.map((x, i) => x.key === 'kw' || x.key === 'study' ? '' : noteSection(x, i, L)).join('');
+      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${md(x.md)}</section>` : '').join('');
+      return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
+    }
     let h = '', placed = false;
     L.sections.forEach((x, i) => {
+      if (x.key === 'study') return;                                       // 공부용 설명은 상세 학습 탭에만
       if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { const grouped = CX.LK.sections.some(y => y.groups && y.groups.length); h += `<div class="cards-h">개념별 정리 <small>${grouped ? '큰 개념마다 정의 · 핵심 · 함수 · 사용형태 · 함정을 한 카드에' : '정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에'}</small></div>` + (grouped ? `<nav class="gtoc">${CX.LK.sections.filter(y => y.groups).flatMap(y => y.groups).map((g, gi) => `<button type="button" data-go="gc${gi}">${mdInline(g.title)}</button>`).join('')}</nav>` : '') + conceptCards(); placed = true; } return; }
       if (x.key !== 'kw') h += noteSection(x, i, L);
     });
@@ -973,12 +980,13 @@
     const v = +n.dataset.kwnav; if (v === 0) kwClear(); else kwGo(KW.i + v);
   });
 
+  const viewLabel = v => v === 'concept' ? '개념별 묶어 보기' : (CX && CX.L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서');
   function renderNotesBody(view) {
     const box = $('#notes-body', main); if (!box) return;
     kwClear();
     box.innerHTML = notesHtml(view);
     $$('[data-view]', main).forEach(x => x.classList.toggle('on', x.dataset.view === view));
-    const vn = $('#viewName', main); if (vn) vn.textContent = view === 'concept' ? '개념별 묶어 보기' : '노트 순서';
+    const vn = $('#viewName', main); if (vn) vn.textContent = viewLabel(view);
     const nt = $('#notes', main); if (nt && nt.getBoundingClientRect().top < 0) nt.scrollIntoView();
     highlightIn(box);
   }
@@ -1120,16 +1128,17 @@
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
     CX = { s, d, n, L, D, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
     const anchor = params.get('a');
-    // 기본은 개념별 묶어 보기. 검색에서 노트 섹션(s3 등)으로 오면 그 섹션이 있는 노트 순서로
-    const view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'flow' : 'concept');
+    // 기본은 개념별 묶어 보기. 검색에서 노트 섹션(s3 등)으로 오면 상세 학습(접힌 전체 노트 포함)으로
+    let view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'study' : 'concept');
+    if (view === 'flow') view = 'study';                                    // 예전 링크(노트 순서)
     let h = `<article class="lesson sc-${s}"><div class="l-head"><div class="crumb"><a href="#/">홈</a> › <a href="#/${s}">${esc(S.name)}</a> › Day ${d} ${esc(D.title)}</div>
       <div class="l-title"><h1>${n}교시 · ${esc(L.title)}</h1>${L.anim ? `<a class="btn anim-btn" href="${esc(L.anim)}" target="_blank" rel="noopener" title="이 교시의 강의 애니메이션을 새 탭에서 엽니다">🎬 애니메이션 보기</a>` : ''}</div><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="flow" class="${view === 'flow' ? 'on' : ''}">노트 순서</button><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button><button type="button" data-view="study" class="${view === 'study' ? 'on' : ''}">${L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서'}</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
 
-    h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : '노트 순서'}</small></h2>`;
+    h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : (L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서')}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
     else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>notes/${s.toUpperCase()}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
@@ -1194,7 +1203,7 @@
       const chip = $(`#notes-body .gcard .gsec [data-peek-c="${id}"]`, main) || $(`#notes-body [data-peek-c="${id}"]`, main);
       el = chip ? (chip.closest('.gfn, .gterms > div, li, .gcard')) : null;
       if (el && CX.LK.byId[id]) openPeek('c', id);                        // 정의는 옆 패널에
-      if (!el) { renderNotesBody('flow'); el = document.getElementById(anchor); }
+      if (!el) { renderNotesBody('study'); el = document.getElementById(anchor); }
     }
     if (!el) { window.scrollTo(0, 0); return; }
     let p = el; while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }

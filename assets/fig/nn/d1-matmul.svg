@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 230" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="230" fill="#fff"/>
+<rect x="20.0" y="60.0" width="150.0" height="110.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="95.0" y="112.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">X</text>
+<text x="95.0" y="130.0" font-size="12.5" fill="#64748b" text-anchor="middle">(4, 3)  행=샘플, 열=특징</text>
+<text x="190.0" y="122.0" font-size="22" fill="#1e293b" text-anchor="middle" font-weight="700">@</text>
+<rect x="210.0" y="80.0" width="110.0" height="70.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="265.0" y="112.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">W</text>
+<text x="265.0" y="130.0" font-size="12.5" fill="#64748b" text-anchor="middle">(3, 2)</text>
+<text x="340.0" y="122.0" font-size="22" fill="#1e293b" text-anchor="middle" font-weight="700">+</text>
+<rect x="360.0" y="98.0" width="80.0" height="36.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="400.0" y="113.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">b</text>
+<text x="400.0" y="131.0" font-size="12.5" fill="#64748b" text-anchor="middle">(2,)</text>
+<text x="460.0" y="122.0" font-size="22" fill="#1e293b" text-anchor="middle" font-weight="700">=</text>
+<rect x="480.0" y="60.0" width="150.0" height="110.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="555.0" y="112.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">Y</text>
+<text x="555.0" y="130.0" font-size="12.5" fill="#64748b" text-anchor="middle">(4, 2)  샘플마다 출력 2개</text>
+<text x="330.0" y="30.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">(N, D) @ (D, M) = (N, M) — 안쪽 D 가 같아야 하고, 계산 뒤 사라진다</text>
+<text x="330.0" y="205.0" font-size="13" fill="#64748b" text-anchor="middle">b 는 브로드캐스팅으로 Y 의 모든 행에 더해진다</text>
+</svg>

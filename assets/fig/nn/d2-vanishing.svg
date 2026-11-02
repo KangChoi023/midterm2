@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 170" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="170" fill="#fff"/>
+<rect x="30.0" y="50.0" width="84.0" height="50.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="72.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">출력</text>
+<text x="72.0" y="126.0" font-size="12.5" fill="#1e293b" text-anchor="middle">기울기 ≤ 1</text>
+<line x1="164.0" y1="75.0" x2="118.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="139.0" y="66.0" font-size="12" fill="#64748b" text-anchor="middle">×0.25</text>
+<rect x="164.0" y="50.0" width="84.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="206.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">층 4</text>
+<text x="206.0" y="126.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">기울기 ≤ 0.25</text>
+<line x1="298.0" y1="75.0" x2="252.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="273.0" y="66.0" font-size="12" fill="#64748b" text-anchor="middle">×0.25</text>
+<rect x="298.0" y="50.0" width="84.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="340.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">층 3</text>
+<text x="340.0" y="126.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">기울기 ≤ 0.0625</text>
+<line x1="432.0" y1="75.0" x2="386.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="407.0" y="66.0" font-size="12" fill="#64748b" text-anchor="middle">×0.25</text>
+<rect x="432.0" y="50.0" width="84.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="474.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">층 2</text>
+<text x="474.0" y="126.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">기울기 ≤ 0.0156</text>
+<line x1="566.0" y1="75.0" x2="520.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="541.0" y="66.0" font-size="12" fill="#64748b" text-anchor="middle">×0.25</text>
+<rect x="566.0" y="50.0" width="84.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="608.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">층 1</text>
+<text x="608.0" y="126.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">기울기 ≤ 0.0039</text>
+<text x="350.0" y="26.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">역전파: 출력 쪽에서 입력 쪽으로 기울기가 층마다 곱해진다</text>
+<text x="350.0" y="156.0" font-size="13" fill="#64748b" text-anchor="middle">sigmoid 기울기는 최대 0.25 → 10층이면 0.25¹⁰ ≈ 9.5 × 10⁻⁷ (거의 0)</text>
+</svg>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""노트 한 Day 를 검증한다 — 빌드 경고 · 연결 링크 · 함수 상세 · 깨진 링크 · 다른 과목 함수와 이름 겹침.
+"""노트 한 Day 를 검증한다 — 빌드 경고 · 연결 링크 · 함수 상세 · 깨진 링크 · 그림 파일 · 다른 과목 함수와 이름 겹침.
 
     STUDY_ROOT=<AI_CAMPUS 의 부모 폴더> python3 -I tools/check_note.py <과목 id> <노트 파일 이름>
     예) python3 -I tools/check_note.py nn NN_day3.md
@@ -34,6 +34,11 @@ def main():
             print('  ❌ 없는 교시:', label, (a, b, c)); bad += 1
         else:
             print('  ✓', label, '→', t)
+    imgs = re.findall(r'!\[[^\]]*\]\(([^)\s]+)\)', text)              # 상세 학습의 그림 (assets/fig/…)
+    for src in imgs:
+        if not os.path.exists(os.path.join(REPO, src)):
+            print('  ❌ 그림 파일 없음:', src); bad += 1
+    if imgs: print(f'그림 {len(imgs)}개 확인')
     m = re.search(r'_day(\d+)\.md$', note)
     day = int(m.group(1)) if m else None
     funcs = [f for f in idx['funcs'] if f[0] == sid and f[1] == day]

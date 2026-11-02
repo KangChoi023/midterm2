@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 280" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="280" fill="#fff"/>
+<line x1="50.0" y1="20.0" x2="50.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="50.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0</text>
+<line x1="150.0" y1="20.0" x2="150.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="150.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">1</text>
+<line x1="250.0" y1="20.0" x2="250.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="250.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">2</text>
+<line x1="350.0" y1="20.0" x2="350.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="350.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">3</text>
+<line x1="50.0" y1="240.0" x2="350.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="44.0" y="244.0" font-size="12" fill="#64748b" text-anchor="end">0</text>
+<line x1="50.0" y1="166.7" x2="350.0" y2="166.7" stroke="#e2e8f0" stroke-width="1"/>
+<text x="44.0" y="170.7" font-size="12" fill="#64748b" text-anchor="end">3</text>
+<line x1="50.0" y1="93.3" x2="350.0" y2="93.3" stroke="#e2e8f0" stroke-width="1"/>
+<text x="44.0" y="97.3" font-size="12" fill="#64748b" text-anchor="end">6</text>
+<line x1="50.0" y1="20.0" x2="350.0" y2="20.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="44.0" y="24.0" font-size="12" fill="#64748b" text-anchor="end">9</text>
+<line x1="50.0" y1="240.0" x2="350.0" y2="240.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="50.0" y1="20.0" x2="50.0" y2="240.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="350.0" y="234.0" font-size="13" fill="#1e293b" text-anchor="end">x</text>
+<text x="56.0" y="32.0" font-size="13" fill="#1e293b" text-anchor="start">f(x) = x²</text>
+<polyline points="50.0,240.0 52.0,240.0 54.0,240.0 56.0,239.9 58.0,239.8 60.0,239.8 62.0,239.6 64.0,239.5 66.0,239.4 68.0,239.2 70.0,239.0 72.0,238.8 74.0,238.6 76.0,238.3 78.0,238.1 80.0,237.8 82.0,237.5 84.0,237.2 86.0,236.8 88.0,236.5 90.0,236.1 92.0,235.7 94.0,235.3 96.0,234.8 98.0,234.4 100.0,233.9 102.0,233.4 104.0,232.9 106.0,232.3 108.0,231.8 110.0,231.2 112.0,230.6 114.0,230.0 116.0,229.4 118.0,228.7 120.0,228.0 122.0,227.3 124.0,226.6 126.0,225.9 128.0,225.1 130.0,224.4 132.0,223.6 134.0,222.8 136.0,221.9 138.0,221.1 140.0,220.2 142.0,219.3 144.0,218.4 146.0,217.5 148.0,216.5 150.0,215.6 152.0,214.6 154.0,213.6 156.0,212.5 158.0,211.5 160.0,210.4 162.0,209.3 164.0,208.2 166.0,207.1 168.0,206.0 170.0,204.8 172.0,203.6 174.0,202.4 176.0,201.2 178.0,200.0 180.0,198.7 182.0,197.4 184.0,196.1 186.0,194.8 188.0,193.4 190.0,192.1 192.0,190.7 194.0,189.3 196.0,187.9 198.0,186.5 200.0,185.0 202.0,183.5 204.0,182.0 206.0,180.5 208.0,179.0 210.0,177.4 212.0,175.8 214.0,174.3 216.0,172.6 218.0,171.0 220.0,169.4 222.0,167.7 224.0,166.0 226.0,164.3 228.0,162.6 230.0,160.8 232.0,159.0 234.0,157.2 236.0,155.4 238.0,153.6 240.0,151.8 242.0,149.9 244.0,148.0 246.0,146.1 248.0,144.2 250.0,142.2 252.0,140.3 254.0,138.3 256.0,136.3 258.0,134.2 260.0,132.2 262.0,130.1 264.0,128.1 266.0,126.0 268.0,123.8 270.0,121.7 272.0,119.5 274.0,117.3 276.0,115.1 278.0,112.9 280.0,110.7 282.0,108.4 284.0,106.2 286.0,103.9 288.0,101.5 290.0,99.2 292.0,96.8 294.0,94.5 296.0,92.1 298.0,89.7 300.0,87.2 302.0,84.8 304.0,82.3 306.0,79.8 308.0,77.3 310.0,74.8 312.0,72.2 314.0,69.6 316.0,67.0 318.0,64.4 320.0,61.8 322.0,59.2 324.0,56.5 326.0,53.8 328.0,51.1 330.0,48.4 332.0,45.6 334.0,42.8 336.0,40.1 338.0,37.2 340.0,34.4 342.0,31.6 344.0,28.7 346.0,25.8 348.0,22.9 350.0,20.0" fill="none" stroke="#0284c7" stroke-width="3" stroke-linejoin="round"/>
+<polyline points="90.0,240.0 210.0,177.7 330.0,89.7" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linejoin="round"/>
+<polyline points="140.0,240.0 242.5,143.4 345.0,43.2" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6 5" stroke-linejoin="round"/>
+<circle cx="200.0" cy="185.0" r="5" fill="#dc2626" stroke="#dc2626" stroke-width="2"/>
+<circle cx="300.0" cy="87.2" r="4.5" fill="#fff" stroke="#d97706" stroke-width="2"/>
+<text x="380.0" y="50.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">x = 1.5 에서의 기울기</text>
+<line x1="380.0" y1="76.0" x2="410.0" y2="76.0" stroke="#dc2626" stroke-width="2.2"/>
+<text x="416.0" y="81.0" font-size="13" fill="#1e293b" text-anchor="start">접선: 기울기 = 미분값 3</text>
+<line x1="380.0" y1="102.0" x2="410.0" y2="102.0" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6 5"/>
+<text x="416.0" y="107.0" font-size="13" fill="#1e293b" text-anchor="start">할선 (x 와 x + 1): 기울기 4</text>
+<text x="380.0" y="142.0" font-size="13" fill="#64748b" text-anchor="start">h 를 줄일수록 할선이 접선에 가까워진다</text>
+<text x="380.0" y="164.0" font-size="13" fill="#64748b" text-anchor="start">= 미분의 정의 (h → 0 의 극한)</text>
+<text x="380.0" y="196.0" font-size="13" fill="#64748b" text-anchor="start">수치 미분은 h = 1e-4 와 중앙 차분</text>
+<text x="380.0" y="218.0" font-size="13" fill="#64748b" text-anchor="start">(f(x+h) − f(x−h)) / 2h 로 근사</text>
+</svg>

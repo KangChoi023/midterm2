@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" width="640" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="640" height="280" fill="#fff"/>
+<circle cx="160.0" cy="140.0" r="27.3" fill="none" stroke="#cbd5e1" stroke-width="1.3"/>
+<circle cx="160.0" cy="140.0" r="54.5" fill="none" stroke="#cbd5e1" stroke-width="1.3"/>
+<circle cx="160.0" cy="140.0" r="81.8" fill="none" stroke="#cbd5e1" stroke-width="1.3"/>
+<circle cx="160.0" cy="140.0" r="109.1" fill="none" stroke="#cbd5e1" stroke-width="1.3"/>
+<line x1="40.0" y1="140.0" x2="280.0" y2="140.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="160.0" y1="20.0" x2="160.0" y2="260.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="280.0" y="134.0" font-size="13" fill="#1e293b" text-anchor="end">x₀</text>
+<text x="166.0" y="32.0" font-size="13" fill="#1e293b" text-anchor="start">x₁</text>
+<circle cx="214.5" cy="85.5" r="5" fill="#1e293b" stroke="#1e293b" stroke-width="2"/>
+<line x1="214.5" y1="85.5" x2="252.7" y2="47.3" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arr)"/>
+<line x1="214.5" y1="85.5" x2="176.4" y2="123.6" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arr)"/>
+<text x="248.4" y="33.6" font-size="12.5" fill="#dc2626" text-anchor="end" font-weight="700">∇f = (2, 2)</text>
+<text x="173.6" y="137.3" font-size="12.5" fill="#16a34a" text-anchor="end" font-weight="700">−∇f</text>
+<text x="320.0" y="50.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">f(x₀, x₁) = x₀² + x₁²  (그릇 모양)</text>
+<text x="320.0" y="80.0" font-size="13" fill="#64748b" text-anchor="start">회색 원 = 높이가 같은 등고선</text>
+<text x="320.0" y="104.0" font-size="13" fill="#dc2626" text-anchor="start">기울기 ∇f → 가장 가파른 오르막</text>
+<text x="320.0" y="128.0" font-size="13" fill="#16a34a" text-anchor="start">−∇f → 가장 가파른 내리막 (바닥 쪽)</text>
+<text x="320.0" y="160.0" font-size="13" fill="#64748b" text-anchor="start">점 (1, 1) 에서 ∇f = (2x₀, 2x₁) = (2, 2)</text>
+<text x="320.0" y="184.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">경사하강 = −∇f 방향으로 조금씩</text>
+</svg>

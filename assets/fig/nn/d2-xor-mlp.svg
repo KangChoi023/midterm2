@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 250" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="250" fill="#fff"/>
+<circle cx="60.0" cy="80.0" r="24" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="60.0" y="86.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">x₁</text>
+<circle cx="60.0" cy="170.0" r="24" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="60.0" y="176.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">x₂</text>
+<rect x="230.0" y="50.0" width="120.0" height="56.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="290.0" y="75.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">NAND</text>
+<text x="290.0" y="93.0" font-size="12.5" fill="#64748b" text-anchor="middle">s₁</text>
+<rect x="230.0" y="144.0" width="120.0" height="56.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="290.0" y="169.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">OR</text>
+<text x="290.0" y="187.0" font-size="12.5" fill="#64748b" text-anchor="middle">s₂</text>
+<rect x="460.0" y="97.0" width="110.0" height="56.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="515.0" y="122.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">AND</text>
+<text x="515.0" y="140.0" font-size="12.5" fill="#64748b" text-anchor="middle">y</text>
+<line x1="84.0" y1="80.0" x2="228.0" y2="78.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="84.0" y1="80.0" x2="228.0" y2="172.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="84.0" y1="170.0" x2="228.0" y2="78.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="84.0" y1="170.0" x2="228.0" y2="172.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="350.0" y1="78.0" x2="458.0" y2="118.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="350.0" y1="172.0" x2="458.0" y2="132.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="570.0" y1="125.0" x2="620.0" y2="125.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="632.0" y="130.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">y</text>
+<text x="60.0" y="230.0" font-size="13" fill="#64748b" text-anchor="middle">입력층</text>
+<text x="290.0" y="230.0" font-size="13" fill="#64748b" text-anchor="middle">은닉층 (직선 2개)</text>
+<text x="515.0" y="230.0" font-size="13" fill="#64748b" text-anchor="middle">출력층 (조합)</text>
+<text x="330.0" y="24.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">XOR = AND( NAND(x), OR(x) )</text>
+</svg>
