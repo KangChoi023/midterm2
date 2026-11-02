@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="220" fill="#fff"/>
+<text x="360.0" y="24.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">VGG-mini — [Conv3×3 → BN → ReLU] × 2 → MaxPool 블록 3개, 크기 1/2 마다 채널 2배</text>
+<rect x="8.0" y="50.0" width="96.0" height="64.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="56.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">입력</text>
+<text x="56.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(3, 32, 32)</text>
+<line x1="104.0" y1="82.0" x2="114.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="116.0" y="50.0" width="118.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="175.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">블록 1</text>
+<text x="175.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(32, 16, 16)</text>
+<line x1="234.0" y1="82.0" x2="244.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="246.0" y="50.0" width="118.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="305.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">블록 2</text>
+<text x="305.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(64, 8, 8)</text>
+<line x1="364.0" y1="82.0" x2="374.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="376.0" y="50.0" width="118.0" height="64.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="435.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">블록 3</text>
+<text x="435.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(128, 4, 4)</text>
+<line x1="494.0" y1="82.0" x2="504.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="506.0" y="50.0" width="96.0" height="64.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="554.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Flatten</text>
+<text x="554.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">2048</text>
+<line x1="602.0" y1="82.0" x2="612.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="614.0" y="50.0" width="110.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="669.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Linear</text>
+<text x="669.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">2048 → 10</text>
+<text x="360.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="middle">파라미터: 블록 10,080 + 55,296 + 221,184 · Linear 20,490 · BN 896 = 307,946</text>
+<text x="360.0" y="166.0" font-size="12.5" fill="#0284c7" text-anchor="middle" font-weight="700">3 epoch test 0.7526 (LeNet 0.5489) · MAC 38,653,952 (LeNet 의 약 59배)</text>
+<text x="360.0" y="190.0" font-size="12.5" fill="#64748b" text-anchor="middle">크기가 절반이면 위치 수 1/4 — 채널을 2배로 늘려도 층마다 연산량이 비슷하게 유지된다</text>
+</svg>

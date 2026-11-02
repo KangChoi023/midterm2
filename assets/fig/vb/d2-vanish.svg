@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 250" width="680" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="680" height="250" fill="#fff"/>
+<text x="340.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">첫 층 기울기 크기 (log 눈금) — 그냥 깊게 쌓으면 입력 쪽 기울기가 사라진다</text>
+<line x1="190.0" y1="40.0" x2="190.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="190.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1e-10</text>
+<line x1="280.0" y1="40.0" x2="280.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="280.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1e-8</text>
+<line x1="370.0" y1="40.0" x2="370.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="370.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1e-6</text>
+<line x1="460.0" y1="40.0" x2="460.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="460.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1e-4</text>
+<line x1="550.0" y1="40.0" x2="550.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="550.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1e-2</text>
+<line x1="640.0" y1="40.0" x2="640.0" y2="200.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="640.0" y="216.0" font-size="11.5" fill="#64748b" text-anchor="middle">1</text>
+<text x="180.0" y="68.0" font-size="13" fill="#1e293b" text-anchor="end">plain-8</text>
+<rect x="190.0" y="54.0" width="292.7" height="22.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="488.7" y="70.0" font-size="12" fill="#1e293b" text-anchor="start">3.2e-04</text>
+<text x="180.0" y="106.0" font-size="13" fill="#1e293b" text-anchor="end">plain-20</text>
+<rect x="190.0" y="92.0" width="46.9" height="22.0" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+<text x="242.9" y="108.0" font-size="12" fill="#1e293b" text-anchor="start">1.1e-09</text>
+<text x="180.0" y="144.0" font-size="13" fill="#1e293b" text-anchor="end">plain-20 + BN</text>
+<rect x="190.0" y="130.0" width="428.9" height="22.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="624.9" y="146.0" font-size="12" fill="#1e293b" text-anchor="start">3.4e-01</text>
+<text x="180.0" y="182.0" font-size="13" fill="#1e293b" text-anchor="end">마지막 층 (plain-20)</text>
+<rect x="190.0" y="168.0" width="375.4" height="22.0" rx="3" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="571.4" y="184.0" font-size="12" fill="#1e293b" text-anchor="start">2.2e-02</text>
+<text x="340.0" y="240.0" font-size="11.5" fill="#64748b" text-anchor="middle">강의 실행 예 · BN 이 있으면 기울기가 고르게 흐른다 — 그래도 20층의 train 손실(1.785)이 8층(1.699)보다 높다 = 성능 저하</text>
+</svg>
