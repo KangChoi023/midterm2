@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<rect x="20.0" y="30.0" width="200.0" height="60.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="120.0" y="57.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">Sequential</text>
+<text x="120.0" y="75.0" font-size="12.5" fill="#64748b" text-anchor="middle">params() · grads() · gradient()</text>
+<rect x="250.0" y="30.0" width="200.0" height="60.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="350.0" y="57.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">옵티마이저</text>
+<text x="350.0" y="75.0" font-size="12.5" fill="#64748b" text-anchor="middle">update(params, grads)</text>
+<rect x="480.0" y="30.0" width="200.0" height="60.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="580.0" y="57.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">Trainer</text>
+<text x="580.0" y="75.0" font-size="12.5" fill="#64748b" text-anchor="middle">fit: 셔플 → 배치 → 갱신</text>
+<rect x="40.0" y="140.0" width="110.0" height="44.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="95.0" y="167.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Affine</text>
+<rect x="170.0" y="140.0" width="110.0" height="44.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="225.0" y="167.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">BatchNorm</text>
+<rect x="300.0" y="140.0" width="110.0" height="44.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="355.0" y="167.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Relu</text>
+<rect x="430.0" y="140.0" width="110.0" height="44.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="485.0" y="167.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">…</text>
+<rect x="560.0" y="140.0" width="110.0" height="44.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="615.0" y="167.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Affine</text>
+<text x="350.0" y="120.0" font-size="12" fill="#dc2626" text-anchor="middle" font-weight="700">params() 는 계층의 배열을 복사하지 않고 그대로 모은다 → 옵티마이저가 제자리 갱신하면 계층에 바로 반영</text>
+<text x="350.0" y="214.0" font-size="12.5" fill="#64748b" text-anchor="middle">계층 규약: params · grads 딕셔너리 + forward(x, train_flg) + backward(dout)</text>
+</svg>

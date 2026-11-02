@@ -606,6 +606,160 @@ def d3_minibatch():
     s.text(350, 194, 'MNIST: 60,000 ÷ 100 = 600 iteration / epoch', 12.5, INK, 'middle')
     s.save('d3-minibatch.svg')
 
+
+# ---------------- NN Day 4 ----------------
+
+def _opt_paths():
+    g = lambda q: np.array([q[0] / 10.0, 2.0 * q[1]])
+    def run(step, steps=30):
+        q = np.array([-7.0, 2.0]); st = {}; out = [q.copy()]
+        for t in range(1, steps + 1): q = step(q, g(q), st, t); out.append(q.copy())
+        return np.array(out)
+    def sgd(lr): return lambda q, gr, st, t: q - lr * gr
+    def mom(lr, a=0.9):
+        def f(q, gr, st, t):
+            st['v'] = a * st.get('v', 0) - lr * gr; return q + st['v']
+        return f
+    def ada(lr):
+        def f(q, gr, st, t):
+            st['h'] = st.get('h', 0) + gr ** 2; return q - lr * gr / (np.sqrt(st['h']) + 1e-7)
+        return f
+    def adam(lr, b1=0.9, b2=0.999):
+        def f(q, gr, st, t):
+            st['m'] = b1 * st.get('m', 0) + (1 - b1) * gr; st['v'] = b2 * st.get('v', 0) + (1 - b2) * gr ** 2
+            mh = st['m'] / (1 - b1 ** t); vh = st['v'] / (1 - b2 ** t); return q - lr * mh / (np.sqrt(vh) + 1e-7)
+        return f
+    return {'SGD (0.95)': (run(sgd(0.95)), RED), 'Momentum (0.1)': (run(mom(0.1)), BLUE),
+            'AdaGrad (1.5)': (run(ada(1.5)), GREEN), 'Adam (0.3)': (run(adam(0.3)), PURPLE)}
+
+
+def d4_optimizers():
+    s = Svg(780, 300)
+    p = Plot(s, 40, 20, 420, 250, (-8, 2), (-3, 3))
+    for c in (1, 4, 9, 16, 25, 36):
+        rx, ry = math.sqrt(20 * c / 4), math.sqrt(c / 4)
+        s.add(f'<ellipse cx="{p.X(0):.1f}" cy="{p.Y(0):.1f}" rx="{rx / 10 * 420:.1f}" ry="{min(ry, 3) / 6 * 250:.1f}" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>')
+    p.axes((-6, -4, -2, 0), (-2, 0, 2), 'x', 'y', grid=False)
+    for i, (name, (path, col)) in enumerate(_opt_paths().items()):
+        s.poly([(p.X(a), p.Y(max(min(b, 3), -3))) for a, b in path], col, 2.2)
+        s.line(490, 50 + i * 28, 520, 50 + i * 28, col, 3); s.text(528, 55 + i * 28, name, 13)
+    s.circle(p.X(-7), p.Y(2), 5, INK, INK); s.text(p.X(-7) + 8, p.Y(2) + 18, '시작 (−7, 2)', 12)
+    s.circle(p.X(0), p.Y(0), 5, GREEN, '#fff')
+    s.text(490, 180, 'f = x²/20 + y², 30 step', 13, MUTED)
+    s.text(490, 202, 'y 가 20배 가파르다 → SGD 는 지그재그', 13, MUTED)
+    s.text(490, 224, 'Momentum: 관성으로 x 방향 가속', 13, MUTED)
+    s.text(490, 246, 'AdaGrad · Adam: 방향마다 걸음 조절', 13, MUTED)
+    s.save('d4-optimizers.svg')
+
+
+def d4_activations():
+    def stats(w, act, n=5, seed=0):
+        r = np.random.default_rng(seed); x = r.standard_normal((1000, 100)); out = []
+        for _ in range(n):
+            sd = {'xavier': 0.1, 'he': math.sqrt(0.02)}.get(w, w)
+            a = x @ (sd * r.standard_normal((100, 100)))
+            x = 1 / (1 + np.exp(-a)) if act == 'sigmoid' else np.maximum(0, a); out.append(x)
+        return out
+    rows = [('sigmoid · std 1', 1, 'sigmoid', (0, 1)), ('ReLU · std 0.01', 0.01, 'relu', (0, 0.2)), ('ReLU · He √(2/n)', 'he', 'relu', (0, 3))]
+    s = Svg(720, 360)
+    for r, (title, w, act, rng_) in enumerate(rows):
+        outs = stats(w, act)
+        y0 = 30 + r * 108
+        s.text(20, y0 + 40, title, 13.5, INK, bold=True)
+        for c, o in enumerate(outs):
+            x0 = 170 + c * 108
+            v = o.ravel(); v = v[v > 1e-9] if act == 'relu' else v
+            h, _ = np.histogram(v, bins=20, range=rng_)
+            mx = max(h.max(), 1)
+            for i, hv in enumerate(h):
+                bh = 60 * hv / mx
+                s.add(f'<rect x="{x0 + i * 4.5:.1f}" y="{y0 + 70 - bh:.1f}" width="4" height="{bh:.1f}" fill="{[ORANGE, RED, GREEN][r]}"/>')
+            s.line(x0, y0 + 70, x0 + 90, y0 + 70, LINE, 1)
+            s.text(x0 + 45, y0 + 86, f'층{c + 1} std {o.std():.3g}', 11, MUTED, 'middle')
+    s.text(360, 352, 'sigmoid+std 1: 0 · 1 에 몰림(포화) · ReLU+0.01: 층마다 사라짐 · ReLU+He: 유지', 12.5, MUTED, 'middle')
+    s.save('d4-activations.svg')
+
+
+def d4_bn():
+    s = Svg(700, 230)
+    s.text(350, 24, 'BatchNorm — 미니배치의 열(특성)마다 평균 0 · 분산 1 로 맞춘 뒤 γ · β 로 늘이고 옮긴다', 13.5, INK, 'middle', True)
+    s.box(10, 60, 150, 90, '입력 x (N, D)', BLUE, '열마다 평균 · 분산 제각각')
+    s.box(195, 60, 170, 90, '정규화', ORANGE, 'x̂ = (x − μ) / √(σ² + ε)')
+    s.box(400, 60, 120, 90, 'γ · x̂ + β', PURPLE, '학습되는 γ, β')
+    s.box(555, 60, 135, 90, '출력', GREEN, '평균 β · 표준편차 γ')
+    for a, b in ((160, 193), (365, 398), (520, 553)): s.line(a, 105, b, 105, MUTED, 2, True)
+    s.text(350, 180, '학습: 배치의 μ, σ² 로 정규화 + running 평균 · 분산 갱신 (0.9 · running + 0.1 · 배치값)', 12.5, MUTED, 'middle')
+    s.text(350, 202, '추론(train_flg=False): 모아 둔 running 평균 · 분산으로 — 사진 한 장이어도 같은 결과', 12.5, MUTED, 'middle')
+    s.save('d4-bn.svg')
+
+
+def d4_overfit():
+    s = Svg(660, 260)
+    ep = np.linspace(0, 1, 100)
+    p1 = Plot(s, 50, 30, 240, 170, (0, 1), (0, 1)); p1.axes((), (0, 0.5, 1), 'epoch', '정확도', grid=False)
+    p1.curve(lambda t: 1 - 0.9 * math.exp(-6 * t), BLUE, 100, 2.5)
+    p1.curve(lambda t: 0.786 - 0.69 * math.exp(-7 * t), ORANGE, 100, 2.5)
+    p2 = Plot(s, 370, 30, 240, 170, (0, 1), (0, 2.4)); p2.axes((), (0, 1, 2), 'epoch', '손실', grid=False)
+    p2.curve(lambda t: 2.3 * math.exp(-6 * t), BLUE, 100, 2.5)
+    p2.curve(lambda t: 0.75 + 1.55 * math.exp(-9 * t) + 0.5 * t, ORANGE, 100, 2.5)
+    s.line(220, 40, 245, 40, BLUE, 3); s.text(250, 45, 'train', 13)
+    s.line(220, 60, 245, 60, ORANGE, 3); s.text(250, 65, 'test', 13)
+    s.text(170, 216, 'test 정확도는 0.786 에서 멈춤', 12, MUTED, 'middle')
+    s.text(490, 216, 'test 손실은 오히려 오른다 (과신)', 12, RED, 'middle', True)
+    s.text(330, 252, '모양을 보여 주는 그림 — 300장 · 6층 실험의 경향 (실제 값: train 1.000, test 0.786)', 11.5, MUTED, 'middle')
+    s.save('d4-overfit.svg')
+
+
+def d4_dropout():
+    s = Svg(680, 240)
+    def net(ox, title, drop):
+        s.text(ox + 120, 24, title, 14, INK, 'middle', True)
+        L = [[60, 120, 180], [45, 95, 145, 195], [70, 170]]
+        xs = [ox + 20, ox + 120, ox + 220]
+        for i in range(2):
+            for a, ya in enumerate(L[i]):
+                for b, yb in enumerate(L[i + 1]):
+                    off = (i == 0 and b in drop) or (i == 1 and a in drop)
+                    s.line(xs[i] + 14, ya, xs[i + 1] - 14, yb, '#e2e8f0' if off else LINE, 1.2)
+        for i, col in enumerate(L):
+            for j, y in enumerate(col):
+                off = i == 1 and j in drop
+                s.circle(xs[i], y, 13, LINE if off else [BLUE, ORANGE, GREEN][i], '#f1f5f9' if off else None)
+                if off: s.text(xs[i], y + 5, '×', 14, MUTED, 'middle', True)
+    net(10, '학습 — 무작위로 끄기', {1, 3})
+    net(360, '추론 — 모두 켜고 × (1 − ratio)', set())
+    s.text(340, 228, '꺼진 뉴런은 순전파 출력 0, 역전파 기울기도 0 (ReLU 의 mask 와 같다) — 매번 다른 작은 망을 학습 = 앙상블 효과', 12, MUTED, 'middle')
+    s.save('d4-dropout.svg')
+
+
+def d4_search():
+    s = Svg(660, 250)
+    rng = np.random.default_rng(3)
+    for k, (title, pts) in enumerate((('격자 3 × 3', [(a, b) for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8)]),
+                                       ('랜덤 9번', list(zip(rng.uniform(0.05, 0.95, 9), rng.uniform(0.05, 0.95, 9)))))):
+        p = Plot(s, 40 + k * 320, 30, 200, 160, (0, 1), (0, 1))
+        p.axes((), (), '중요한 값 (lr)', '덜 중요 (λ)', grid=False)
+        for a, b in pts:
+            s.circle(p.X(a), p.Y(b), 5, PURPLE, PURPLE)
+            s.line(p.X(a), p.Y(0) - 3, p.X(a), p.Y(0) + 6, RED, 2.5)
+        s.text(p.x0 + 100, 22, title, 14, INK, 'middle', True)
+        s.text(p.x0 + 100, 222, f'중요한 축에서 서로 다른 값 {3 if k == 0 else 9}개', 12.5, RED, 'middle', True)
+    s.text(330, 244, '로그 스케일: lr = 10ᵘ, u ~ U(−4, 0) — 0.0001 ~ 1 을 자릿수마다 고르게', 12.5, MUTED, 'middle')
+    s.save('d4-search.svg')
+
+
+def d4_mynn():
+    s = Svg(700, 230)
+    s.box(20, 30, 200, 60, 'Sequential', BLUE, 'params() · grads() · gradient()')
+    s.box(250, 30, 200, 60, '옵티마이저', ORANGE, 'update(params, grads)')
+    s.box(480, 30, 200, 60, 'Trainer', GREEN, 'fit: 셔플 → 배치 → 갱신')
+    layers = ['Affine', 'BatchNorm', 'Relu', '…', 'Affine']
+    for i, nm in enumerate(layers):
+        s.box(40 + i * 130, 140, 110, 44, nm, PURPLE if nm != '…' else LINE, size=13)
+    s.text(350, 120, 'params() 는 계층의 배열을 복사하지 않고 그대로 모은다 → 옵티마이저가 제자리 갱신하면 계층에 바로 반영', 12, RED, 'middle', True)
+    s.text(350, 214, '계층 규약: params · grads 딕셔너리 + forward(x, train_flg) + backward(dout)', 12.5, MUTED, 'middle')
+    s.save('d4-mynn.svg')
+
 if __name__ == '__main__':
     for name, fn in list(globals().items()):
         if callable(fn) and name.startswith(('d1_', 'd2_', 'd3_', 'd4_', 'd5_')): fn()
