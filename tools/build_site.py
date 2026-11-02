@@ -56,7 +56,7 @@ def campus_path(pat, d):
 # 노트 소제목 -> 정해진 키 (앞부분 일치)
 SECTION_KEYS = [('키워드', 'kw'), ('개요', 'overview'), ('핵심 용어', 'terms'), ('새로 나온', 'funcs'),
                 ('이 교시에서 만드는', 'funcs'), ('예제 코드가 하는 일', 'examples'), ('핵심 내용', 'core'),
-                ('기본 사용형태', 'usage'), ('연결', 'links'), ('연관 문제', 'quiz')]
+                ('기본 사용형태', 'usage'), ('연결', 'links'), ('상세 학습', 'study'), ('연관 문제', 'quiz')]
 HEAD_RE = re.compile(r'^\*\*([^*]+?):?\*\*:?(.*)$')
 
 def strip_md(t):
@@ -67,13 +67,13 @@ def strip_md(t):
     return re.sub(r'\s+', ' ', t).strip()
 
 def fix_links(md):
-    """로컬 폴더 링크(예: [02_shell/](Linux_day1/02_shell/))는 사이트에서 깨지므로 코드 표기로.
+    """로컬 폴더 링크(예: [02_shell/](Linux_day1/02_shell/))는 사이트에서 깨지므로 코드 표기로 (그림 ![..](assets/fig/…) 은 그대로).
     코드 블록(```)과 인라인 코드(`…`) 안의 `a[i](x)` 같은 코드는 건드리지 않는다."""
     out = []
     for i, part in enumerate(re.split(r'(```[\s\S]*?```)', md)):
         if i % 2: out.append(part); continue
         segs = re.split(r'(`[^`\n]*`)', part)
-        out.append(''.join(seg if j % 2 else re.sub(r'\[([^\]]+)\]\((?!#|https?:)([^)\s]+)\)', r'`\1`', seg)
+        out.append(''.join(seg if j % 2 else re.sub(r'(?<!!)\[([^\]]+)\]\((?!#|https?:)([^)\s]+)\)', r'`\1`', seg)
                            for j, seg in enumerate(segs)))
     return ''.join(out)
 
@@ -91,6 +91,9 @@ def parse_notes(path):
         for line in body.split('\n'):
             if line.startswith('```'): in_code = not in_code
             mm = None if in_code else HEAD_RE.match(line.strip())
+            # 상세 학습(공부용 설명)은 안의 굵은 글씨 줄을 소제목으로 보지 않는다 — "**연관 문제**" 에서만 끝난다
+            if cur is not None and cur['key'] == 'study' and not (mm and mm.group(1).strip().startswith('연관 문제')):
+                cur['md'] += '\n' + line; continue
             key = None
             if mm:
                 label = mm.group(1).strip()

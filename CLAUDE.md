@@ -17,7 +17,8 @@
 | `tools/build_site.py` | 빌드. `SUBJECTS` 에 과목 · 교안 경로 (배운 순서). 교안은 `STUDY_ROOT/AI_CAMPUS` |
 | `tools/lecture_parse.py` · `nbparse.py` · `wsparse.py` | html · ipynb/pptx 교안, 워크시트 파서 |
 | `tools/dump_lecture.py` | 교안을 교시별 글로 뽑기 — 노트 쓰기 전에 읽는다 |
-| `tools/check_note.py` | 노트 검증 (빌드 경고 · 링크 · 함수 상세 · 이름 겹침) |
+| `tools/check_note.py` | 노트 검증 (빌드 경고 · 링크 · 함수 상세 · 그림 파일 · 이름 겹침) |
+| `tools/fig_nn.py` · `assets/fig/nn/` | 상세 학습 그림(SVG) 만들기 · 결과 — 그림은 노트 PR 에 함께 넣는다 |
 | `tools/sync_campus.py` · `.claude/skills/campus-sync/` | 사용자 PC 의 Claude 가 "강의자료 정리해줘" 에 돌리는 교안 → 06_HyundaiAI 과목 폴더 정리 (클라우드에서 실행하지 않음) |
 | `data/` · `anim/` · `index.html` 의 `?v=` | **빌드 산출물** — 노트 PR 에 넣지 않는다 (Actions 가 만든다) |
 
@@ -51,6 +52,19 @@
 **연결**
 - [NN D3·5교시 Affine 계층](#/nn/3/5) — 왜 이어지는지
 ```
+- 화면은 두 가지: **개념별 묶어 보기**(기본, 시험장 10초 확인용 — 위 형식의 카드) · **상세 학습**(공부용 — 아래 `**상세 학습**` 섹션. 없는 교시는 예전 "노트 순서").
+- **상세 학습** 섹션 — `**연결**` 다음, `**연관 문제**` 앞에 둔다 (안의 굵은 줄은 소제목으로 안 잘림, `**연관 문제**` 에서 끝남). 교시마다 순서는 **일반론 → 그림 → 예제 → 코드 → 정리**:
+  ```markdown
+  **상세 학습**
+  #### 이 교시에서 답하는 질문        ← 앞 교시에서 무엇이 부족했고, 이 교시가 무엇을 해결하나 (한두 문단)
+  #### 개념 1 · 이름 — 한 줄 요약     ← 무엇인가(쉬운 말 · 비유) → 왜 필요한가 → 원리(식 + 기호 뜻 표) → 예제 숫자
+  ![그림 설명](assets/fig/nn/d2-xxx.svg)
+  #### 코드로 확인                    ← 교시당 2~4개, 블록당 5~12줄, 정답이 채워진 강의 코드에서 발췌
+  ```python … ```
+  - **무엇을 하나**: … / - **어떤 개념**: 개념 N 의 … / - **출력**: `직접 실행해 확인한 값`
+  #### 한 번에 정리                   ← 3~5줄 + ⚠ 함정 하나
+  ```
+- **그림은 SVG** (`assets/fig/<sid>/*.svg`) — 글자 그림(```text)은 글꼴에 따라 깨지므로 쓰지 않는다. 그래프 · 점 그림은 `tools/fig_nn.py` 처럼 강의와 같은 식 · 난수로 계산해 만든다 (`python3 -I tools/fig_nn.py`). 흰 배경, 한글은 진짜 글자. 만든 뒤 브라우저로 겹침 · 잘림을 확인한다.
 - 표 칸 안의 `|` 는 `\|`.
 - **닫히지 않은 대괄호 금지** (예: 구간 `[0, ∞)`) — 연결 지도가 다음 링크까지 하나로 묶는다. `0 ~ ∞` 처럼 쓴다.
 - 함수 이름이 다른 과목 함수와 같으면 그 과목 상세가 붙는다 (예: Python `open()` ← Linux `open()`) → `with open()` 처럼 구분.
@@ -62,7 +76,7 @@
 2. `python3 -I tools/dump_lecture.py $STUDY_ROOT/AI_CAMPUS/<교안 파일> full` 로 교안 · 코드 · 빈칸 정답을 읽는다
 3. `notes/<SUBJ>_dayN.md` (+ 필요하면 `notes/api_detail.<sid><N>.json`) 작성
 4. `STUDY_ROOT=… python3 -I tools/check_note.py <sid> <SUBJ>_dayN.md` → 문제 0 · 상세 없음 0 (기록용 과목은 상세 생략 가능)
-5. **`notes/` 만** 커밋 → push → `main` 으로 PR. 본문: 교시별 요약 표 · 함수 수 · 연결 수 · 점검 결과
+5. **`notes/` (+ 그림 `assets/fig/`) 만** 커밋 → push → `main` 으로 PR. 본문: 교시별 요약 표 · 함수 수 · 연결 수 · 점검 결과
 
 ## 새 과목이 올라왔을 때
 - 강사님 저장소에 처음 보는 폴더(예: `Vision-day1/`)가 생기면: `tools/build_site.py` 의 `SUBJECTS` 에 과목 추가(배운 순서 끝, id · 이름 · 교안 · 워크시트 · 애니메이션 경로), 새 교안 · 워크시트 형식이면 파서 보강, `assets/style.css` 에 `--<id>` 색 · `.sc-<id>`, `tools/sync_campus.py` 의 `SUBJECTS` 에 `'강사님 폴더 앞부분': ('노트 앞부분', '번호_과목폴더', '파일 이름 과목명')` 추가 → **과목 추가 PR 을 먼저** 따로 올린 뒤 노트 PR.

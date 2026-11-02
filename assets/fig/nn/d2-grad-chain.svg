@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 200" width="680" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="680" height="200" fill="#fff"/>
+<rect x="20.0" y="60.0" width="90.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="65.0" y="90.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">x, W, b</text>
+<rect x="170.0" y="60.0" width="120.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="230.0" y="90.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">z = xW + b</text>
+<rect x="350.0" y="60.0" width="110.0" height="50.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="405.0" y="90.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">p = σ(z)</text>
+<rect x="520.0" y="60.0" width="140.0" height="50.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="590.0" y="90.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">L = BCE(p, t)</text>
+<line x1="110.0" y1="85.0" x2="168.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="290.0" y1="85.0" x2="348.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="460.0" y1="85.0" x2="518.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="340.0" y="28.0" font-size="13" fill="#64748b" text-anchor="middle">순전파 →</text>
+<text x="590.0" y="145.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂L/∂p = (p − t) / p(1 − p)</text>
+<text x="405.0" y="145.0" font-size="12.5" fill="#7c3aed" text-anchor="middle">∂p/∂z = p(1 − p)</text>
+<text x="230.0" y="145.0" font-size="13.5" fill="#16a34a" text-anchor="middle" font-weight="700">∂L/∂z = p − t</text>
+<text x="340.0" y="182.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">두 식을 곱하면 p(1 − p) 가 지워져 (예측 − 정답) 만 남는다</text>
+</svg>

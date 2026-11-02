@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" width="640" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif" font-size="15">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+  <rect width="640" height="230" fill="#fff"/>
+  <!-- 입력 -->
+  <circle cx="70" cy="70" r="26" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="70" y="76" text-anchor="middle" font-weight="700">x₁</text>
+  <circle cx="70" cy="160" r="26" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/><text x="70" y="166" text-anchor="middle" font-weight="700">x₂</text>
+  <text x="70" y="215" text-anchor="middle" fill="#475569" font-size="13">입력</text>
+  <!-- 가중치 선 -->
+  <line x1="96" y1="76" x2="232" y2="108" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="96" y1="154" x2="232" y2="122" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="160" y="80" text-anchor="middle" fill="#b45309" font-weight="700">× W₁</text>
+  <text x="160" y="166" text-anchor="middle" fill="#b45309" font-weight="700">× W₂</text>
+  <!-- 가중합 -->
+  <circle cx="270" cy="115" r="36" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="270" y="122" text-anchor="middle" font-size="22" font-weight="700">Σ</text>
+  <line x1="270" y1="30" x2="270" y2="77" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="270" y="22" text-anchor="middle" fill="#b45309" font-weight="700">+ b (편향)</text>
+  <text x="270" y="175" text-anchor="middle" fill="#475569" font-size="13">가중합 s = x₁W₁ + x₂W₂ + b</text>
+  <!-- 계단 -->
+  <line x1="306" y1="115" x2="392" y2="115" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="396" y="80" width="96" height="70" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M410,135 L444,135 L444,95 L478,95" fill="none" stroke="#7c3aed" stroke-width="3"/>
+  <text x="444" y="175" text-anchor="middle" fill="#475569" font-size="13">계단 함수</text>
+  <!-- 출력 -->
+  <line x1="492" y1="115" x2="548" y2="115" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <circle cx="580" cy="115" r="26" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="580" y="121" text-anchor="middle" font-weight="700">y</text>
+  <text x="580" y="166" text-anchor="middle" fill="#475569" font-size="13">s &gt; 0 → 1</text>
+  <text x="580" y="184" text-anchor="middle" fill="#475569" font-size="13">s ≤ 0 → 0</text>
+</svg>

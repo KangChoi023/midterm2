@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" width="640" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="640" height="210" fill="#fff"/>
+<text x="150.0" y="26.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">C: 변수 = 값이 든 메모리 칸</text>
+<rect x="60.0" y="50.0" width="80.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="100.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">3</text>
+<text x="100.0" y="120.0" font-size="13" fill="#64748b" text-anchor="middle">a (칸 자체)</text>
+<rect x="170.0" y="50.0" width="80.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="210.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">3</text>
+<text x="210.0" y="120.0" font-size="13" fill="#64748b" text-anchor="middle">b = a (복사)</text>
+<line x1="320.0" y1="15.0" x2="320.0" y2="195.0" stroke="#e2e8f0" stroke-width="2"/>
+<text x="480.0" y="26.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Python: 변수 = 객체에 붙인 이름표</text>
+<rect x="360.0" y="60.0" width="50.0" height="32.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="385.0" y="81.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">a</text>
+<rect x="360.0" y="120.0" width="50.0" height="32.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="385.0" y="141.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">b</text>
+<rect x="500.0" y="75.0" width="110.0" height="60.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="555.0" y="102.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">[1, 2, 3]</text>
+<text x="555.0" y="120.0" font-size="12.5" fill="#64748b" text-anchor="middle">list 객체</text>
+<line x1="410.0" y1="76.0" x2="498.0" y2="98.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="410.0" y1="136.0" x2="498.0" y2="114.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="480.0" y="180.0" font-size="13" fill="#dc2626" text-anchor="middle" font-weight="700">b = a → 같은 객체를 가리킨다 (복사 아님)</text>
+</svg>

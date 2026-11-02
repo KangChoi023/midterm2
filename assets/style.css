@@ -635,3 +635,27 @@ mark.fa { background: color-mix(in srgb, #facc15 45%, transparent); color: inher
 .q .hot .rg:hover, .q .hot .rg:focus { stroke: #f5b94288; outline: none; }
 .q .hot .rg.ok { stroke: #4ade80; fill: #4ade8026; }
 .q .hot .rg.bad { stroke: #f87171; fill: #f8717126; }
+
+/* 상세 학습 (공부용 풀어 쓴 설명) — 노트의 "**상세 학습**" 섹션 */
+.nsec.study { padding: 18px 24px; line-height: 1.75; font-size: 15.5px; }
+.nsec.study h4 { margin: 28px 0 10px; padding-bottom: 6px; font-size: 17.5px; color: var(--ink); border-bottom: 2px solid var(--line); }
+.nsec.study h4:first-child { margin-top: 0; }
+.nsec.study h5 { margin: 18px 0 6px; font-size: 15.5px; color: var(--accent); }
+.nsec.study p { margin: 8px 0; }
+.nsec.study blockquote { margin: 10px 0; padding: 8px 14px; border-left: 4px solid var(--accent); background: var(--panel-2); border-radius: 0 8px 8px 0; color: var(--ink); }
+.nsec.study blockquote p { margin: 4px 0; }
+.nsec.study table { margin: 10px 0; }
+.nsec.study img { display: block; max-width: 100%; height: auto; margin: 14px auto; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.nsec.study pre { margin: 10px 0 6px; }
+.nsec.study pre + ul { margin-top: 4px; padding: 8px 12px 8px 2em; background: var(--panel-2); border-radius: 8px; font-size: 14.5px; }
+details.fullnote { margin: 16px 0; }
+details.fullnote > summary { cursor: pointer; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); font-size: 14px; }
+details.fullnote[open] > summary { margin-bottom: 4px; }
+@media (max-width: 640px) { .nsec.study { padding: 14px 14px; font-size: 15px; } }
+.nsec.study table { display: block; max-width: 100%; overflow-x: auto; }
+.nsec.study td code, .nsec.study th code { white-space: nowrap; }
+@media (max-width: 640px) {
+  .nsec.study p:has(> img) { overflow-x: auto; margin: 10px -6px; }
+  .nsec.study img { min-width: 520px; margin: 6px 0; }
+  .nsec.study td, .nsec.study th { white-space: nowrap; }
+}

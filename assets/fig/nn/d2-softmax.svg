@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" width="680" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="680" height="220" fill="#fff"/>
+<text x="110.0" y="30.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">점수 a</text>
+<rect x="40.0" y="46.0" width="140.0" height="38.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="110.0" y="70.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0.3</text>
+<rect x="40.0" y="94.0" width="140.0" height="38.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="110.0" y="118.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">2.9</text>
+<rect x="40.0" y="142.0" width="140.0" height="38.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="110.0" y="166.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">4</text>
+<line x1="186.0" y1="112.0" x2="254.0" y2="112.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="330.0" y="30.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">exp(a)</text>
+<rect x="260.0" y="46.0" width="140.0" height="38.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="330.0" y="70.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">1.35</text>
+<rect x="260.0" y="94.0" width="140.0" height="38.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="330.0" y="118.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">18.17</text>
+<rect x="260.0" y="142.0" width="140.0" height="38.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="330.0" y="166.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">54.60</text>
+<line x1="406.0" y1="112.0" x2="474.0" y2="112.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="550.0" y="30.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">÷ 합 74.12</text>
+<rect x="480.0" y="46.0" width="140.0" height="38.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="550.0" y="70.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0.018</text>
+<rect x="480.0" y="94.0" width="140.0" height="38.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="550.0" y="118.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0.245</text>
+<rect x="480.0" y="142.0" width="140.0" height="38.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="550.0" y="166.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0.737</text>
+<text x="340.0" y="206.0" font-size="13" fill="#64748b" text-anchor="middle">모두 양수 · 합이 1 · 순서(가장 큰 점수 = 가장 큰 확률)는 그대로</text>
+</svg>
