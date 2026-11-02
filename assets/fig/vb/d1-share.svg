@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 220" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="220" fill="#fff"/>
+<text x="330.0" y="24.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">from_numpy 는 같은 메모리를 보고, torch.tensor 는 복사본을 만든다</text>
+<rect x="20.0" y="50.0" width="150.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="95.0" y="80.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">a (ndarray)</text>
+<rect x="20.0" y="140.0" width="150.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="95.0" y="170.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">b = from_numpy(a)</text>
+<rect x="250.0" y="95.0" width="46.0" height="46.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="273.0" y="125.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">7</text>
+<rect x="296.0" y="95.0" width="46.0" height="46.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="319.0" y="125.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="342.0" y="95.0" width="46.0" height="46.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="365.0" y="125.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<text x="319.0" y="166.0" font-size="12" fill="#64748b" text-anchor="middle">메모리 하나 — b[0] = 7 이 a 에도 보인다</text>
+<line x1="170.0" y1="75.0" x2="248.0" y2="108.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="170.0" y1="165.0" x2="248.0" y2="128.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="470.0" y="50.0" width="170.0" height="50.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="555.0" y="80.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">c = torch.tensor(a)</text>
+<rect x="486.0" y="120.0" width="46.0" height="46.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="509.0" y="150.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="532.0" y="120.0" width="46.0" height="46.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="555.0" y="150.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">9</text>
+<rect x="578.0" y="120.0" width="46.0" height="46.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="601.0" y="150.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<line x1="555.0" y1="100.0" x2="555.0" y2="118.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="555.0" y="190.0" font-size="12" fill="#64748b" text-anchor="middle">자기 복사본 — c[1] = 9 는 a 에 안 보인다</text>
+</svg>

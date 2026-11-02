@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="220" fill="#fff"/>
+<text x="110.0" y="24.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Dataset — 한 장씩</text>
+<rect x="20.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="33.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">0</text>
+<rect x="50.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="63.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">1</text>
+<rect x="80.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="93.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">2</text>
+<rect x="110.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="123.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">3</text>
+<rect x="140.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="153.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">4</text>
+<rect x="170.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+<text x="183.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">5</text>
+<text x="110.0" y="90.0" font-size="12" fill="#64748b" text-anchor="middle">ds[i] → (이미지 (1, 28, 28), 레이블)</text>
+<line x1="210.0" y1="53.0" x2="270.0" y2="53.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="240.0" y="45.0" font-size="12" fill="#64748b" text-anchor="middle">shuffle</text>
+<text x="380.0" y="24.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">섞인 순서</text>
+<rect x="290.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="303.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">4</text>
+<rect x="320.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="333.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">1</text>
+<rect x="350.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="363.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">5</text>
+<rect x="380.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="393.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">0</text>
+<rect x="410.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="423.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">3</text>
+<rect x="440.0" y="40.0" width="26.0" height="26.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="453.0" y="58.0" font-size="12" fill="#1e293b" text-anchor="middle">2</text>
+<line x1="470.0" y1="53.0" x2="520.0" y2="53.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="495.0" y="45.0" font-size="12" fill="#64748b" text-anchor="middle">batch</text>
+<text x="610.0" y="24.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">DataLoader — 묶음으로</text>
+<rect x="540.0" y="36.0" width="140.0" height="30.0" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="610.0" y="56.0" font-size="12" fill="#1e293b" text-anchor="middle">배치 1: 4, 1</text>
+<rect x="540.0" y="72.0" width="140.0" height="30.0" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="610.0" y="92.0" font-size="12" fill="#1e293b" text-anchor="middle">배치 2: 5, 0</text>
+<rect x="540.0" y="108.0" width="140.0" height="30.0" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="610.0" y="128.0" font-size="12" fill="#1e293b" text-anchor="middle">배치 3: 3, 2</text>
+<text x="350.0" y="170.0" font-size="12.5" fill="#1e293b" text-anchor="middle">MNIST train 60,000 장 · batch_size=100 · shuffle=True → epoch 당 600 iteration, xb (100, 1, 28, 28) · yb (100,) long</text>
+<text x="350.0" y="194.0" font-size="12.5" fill="#64748b" text-anchor="middle">NN 과정의 rng.permutation(N) + idx[i : i + 100] 루프를 대신한다 (평가 로더는 shuffle=False)</text>
+</svg>
