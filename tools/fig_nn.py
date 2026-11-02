@@ -490,6 +490,122 @@ def d1_gd_paths():
     s.save('d1-gd-paths.svg')
 
 
+
+# ---------------- NN Day 3 ----------------
+
+def d3_cost():
+    s = Svg(660, 250)
+    s.box(30, 40, 280, 70, '수치 미분', ORANGE, '손실 2P 번 × 순전파 O(P) = O(P²)')
+    s.box(350, 40, 280, 70, '역전파', GREEN, '순전파 1번 + 역방향 1번 = O(P)')
+    rows = [('784-4-10', 3190), ('784-10-10', 7960), ('784-100-10', 79510)]
+    s.text(30, 145, '망', 13, MUTED, bold=True); s.text(170, 145, '파라미터 P', 13, MUTED, bold=True); s.text(330, 145, '수치 미분: step 당 손실 계산 2P', 13, MUTED, bold=True)
+    for i, (nm, P) in enumerate(rows):
+        y = 172 + i * 24
+        s.text(30, y, nm, 13); s.text(170, y, f'{P:,}', 13); s.text(330, y, f'{2 * P:,}번', 13, RED if i == 2 else INK, bold=i == 2)
+    s.text(330, 244, '파라미터 10배 → 수치 미분 시간 100배', 12.5, MUTED)
+    s.save('d3-cost.svg')
+
+
+def d3_shopping():
+    s = Svg(700, 300)
+    def node(x, y, op): s.circle(x, y, 22, PURPLE); s.text(x, y + 6, op, 17, INK, 'middle', True)
+    s.text(40, 52, '사과 100', 13.5, INK, bold=True); s.text(40, 112, '개수 2', 13.5, INK, bold=True)
+    s.text(40, 182, '귤 150', 13.5, INK, bold=True); s.text(40, 242, '개수 3', 13.5, INK, bold=True)
+    node(200, 82, '×'); node(200, 212, '×'); node(360, 147, '+'); node(520, 147, '×')
+    s.text(470, 230, '소비세 1.1', 13.5, INK, bold=True)
+    for y1, y2 in ((47, 82), (107, 82)): s.line(110, y1, 176, y2, MUTED, 1.8, True)
+    for y1, y2 in ((177, 212), (237, 212)): s.line(100, y1, 176, y2, MUTED, 1.8, True)
+    s.line(222, 82, 338, 140, MUTED, 1.8, True); s.line(222, 212, 338, 155, MUTED, 1.8, True)
+    s.line(382, 147, 496, 147, MUTED, 1.8, True); s.line(520, 222, 520, 171, MUTED, 1.8, True)
+    s.line(542, 147, 610, 147, MUTED, 1.8, True); s.text(650, 152, '715', 16, INK, 'middle', True)
+    # 순전파 값(파랑) / 역전파 기울기(빨강)
+    s.text(270, 98, '200', 13, BLUE, 'middle', True); s.text(270, 198, '450', 13, BLUE, 'middle', True); s.text(440, 138, '650', 13, BLUE, 'middle', True)
+    s.text(270, 116, '∂ 1.1', 12.5, RED, 'middle'); s.text(270, 216, '∂ 1.1', 12.5, RED, 'middle'); s.text(440, 166, '∂ 1.1', 12.5, RED, 'middle')
+    s.text(140, 34, '∂ 2.2', 12.5, RED, 'middle', True); s.text(140, 126, '∂ 110', 12.5, RED, 'middle')
+    s.text(140, 166, '∂ 3.3', 12.5, RED, 'middle'); s.text(140, 258, '∂ 165', 12.5, RED, 'middle')
+    s.text(580, 242, '∂ 650', 12.5, RED, 'middle'); s.text(580, 138, '∂ 1', 12.5, RED, 'middle')
+    s.text(350, 285, '파랑 = 순전파 값 (왼 → 오) · 빨강 ∂ = 최종 금액에 대한 기울기 (오 → 왼)', 12.5, MUTED, 'middle')
+    s.save('d3-shopping.svg')
+
+
+def d3_nodes():
+    s = Svg(680, 230)
+    for k, (op, title, gx, gy, col) in enumerate((('+', '덧셈 노드 z = x + y', 'dout', 'dout', BLUE), ('×', '곱셈 노드 z = x · y', 'dout · y', 'dout · x', ORANGE))):
+        ox = 20 + k * 340
+        s.text(ox + 150, 26, title, 14.5, INK, 'middle', True)
+        s.circle(ox + 150, 110, 26, col); s.text(ox + 150, 117, op, 20, INK, 'middle', True)
+        s.text(ox + 20, 66, 'x', 15, INK, bold=True); s.text(ox + 20, 166, 'y', 15, INK, bold=True)
+        s.line(ox + 36, 62, ox + 124, 100, MUTED, 1.8, True); s.line(ox + 36, 162, ox + 124, 122, MUTED, 1.8, True)
+        s.line(ox + 176, 110, ox + 260, 110, MUTED, 1.8, True); s.text(ox + 272, 115, 'z', 15, INK, bold=True)
+        s.text(ox + 220, 98, '← dout', 12.5, RED, 'middle')
+        s.text(ox + 70, 98, f'← {gx}', 12.5, RED, 'middle', True); s.text(ox + 70, 148, f'← {gy}', 12.5, RED, 'middle', True)
+        s.text(ox + 150, 200, '그대로 복사' if k == 0 else '상대편 입력을 곱한다', 13, MUTED, 'middle')
+    s.save('d3-nodes.svg')
+
+
+def d3_relu():
+    s = Svg(660, 200)
+    def grid(x, y, vals, title, hl=None):
+        s.text(x + 60, y - 10, title, 13, INK, 'middle', True)
+        for r in range(2):
+            for c in range(2):
+                v = vals[r][c]; on = hl[r][c] if hl else False
+                s.rect(x + c * 60, y + r * 44, 56, 40, RED if on else BLUE, None, 6, 1.6)
+                s.text(x + c * 60 + 28, y + r * 44 + 26, str(v), 14, INK, 'middle', True)
+    m = [[False, True], [True, False]]
+    grid(20, 50, [[1, -0.5], [-2, 3]], '입력 x', m)
+    grid(180, 50, [['F', 'T'], ['T', 'F']], 'mask = (x ≤ 0)', m)
+    grid(340, 50, [[1, 0], [0, 3]], '순전파 out', m)
+    grid(500, 50, [[1, 0], [0, 1]], '역전파 dx (dout=1)', m)
+    s.text(330, 172, '빨간 칸 = 막힌 자리 — 순전파에서 0 이 된 자리는 역전파에서도 기울기 0 (스위치)', 12.5, MUTED, 'middle')
+    s.save('d3-relu.svg')
+
+
+def d3_affine():
+    s = Svg(680, 260)
+    s.text(340, 26, '순전파 Y = X @ W + b → 역전파: 기울기는 자기 자신과 shape 가 같다', 14, INK, 'middle', True)
+    rows = [('X', '(N, D)', 'dX = dout @ Wᵀ', '(N, M) @ (M, D)', BLUE), ('W', '(D, M)', 'dW = Xᵀ @ dout', '(D, N) @ (N, M)', ORANGE),
+            ('b', '(M,)', 'db = dout.sum(axis=0)', 'N 행을 모두 더함', PURPLE)]
+    for i, (nm, shp, g, how, col) in enumerate(rows):
+        y = 50 + i * 62
+        s.box(30, y, 110, 46, nm, col, shp)
+        s.line(146, y + 23, 190, y + 23, MUTED, 1.8, True)
+        s.box(196, y, 220, 46, g, col, size=14)
+        s.text(436, y + 28, how, 13, MUTED)
+    s.text(340, 246, 'dout = ∂L/∂Y (N, M) · b 는 N 번 쓰였으니(브로드캐스팅) 기울기도 N 개를 더한다', 12.5, MUTED, 'middle')
+    s.save('d3-affine.svg')
+
+
+def d3_net():
+    s = Svg(700, 200)
+    names = ['Affine1', 'Relu1', 'Affine2', 'SoftmaxWithLoss']
+    cols = [ORANGE, PURPLE, ORANGE, RED]
+    xs = [40, 200, 340, 500]
+    ws = [120, 100, 120, 170]
+    s.text(10, 92, 'X', 15, INK, bold=True)
+    for x, w, nm, c in zip(xs, ws, names, cols): s.box(x, 70, w, 44, nm, c, size=13.5)
+    for i in range(3): s.line(xs[i] + ws[i], 84, xs[i + 1], 84, BLUE, 2, True)
+    s.line(22, 84, 38, 84, BLUE, 2, True)
+    for i in range(3): s.line(xs[i + 1], 104, xs[i] + ws[i], 104, RED, 2, True)
+    s.text(350, 40, '순전파 → predict · loss (계층마다 값 저장)', 13, BLUE, 'middle', True)
+    s.text(350, 150, '← 역전파: lastLayer.backward(1) 부터 reversed 순서로 backward', 13, RED, 'middle', True)
+    s.text(350, 178, 'Affine 의 dW · db 를 모으면 gradient() 결과 = 수치 미분과 상대 오차 < 1e-7', 12.5, MUTED, 'middle')
+    s.save('d3-net.svg')
+
+
+def d3_minibatch():
+    s = Svg(700, 200)
+    s.box(20, 60, 140, 60, '학습 데이터 N', BLUE, '예: 60,000장')
+    s.box(200, 60, 120, 60, '셔플', PURPLE, 'rng.permutation')
+    s.box(360, 60, 140, 60, '배치로 자르기', ORANGE, 'batch_size 개씩')
+    s.box(540, 60, 140, 60, '기울기 · 갱신', GREEN, 'params -= lr · g')
+    for a, b in ((160, 198), (320, 358), (500, 538)): s.line(a, 90, b, 90, MUTED, 2, True)
+    s.line(610, 122, 610, 150, MUTED, 1.6); s.line(610, 150, 430, 150, MUTED, 1.6); s.line(430, 150, 430, 124, MUTED, 1.6, True)
+    s.text(520, 168, 'N // batch_size 번 반복 = 1 epoch', 12.5, MUTED, 'middle')
+    s.text(350, 30, '미니배치 SGD — 일부로 기울기를 추정해 자주 갱신한다', 14, INK, 'middle', True)
+    s.text(350, 194, 'MNIST: 60,000 ÷ 100 = 600 iteration / epoch', 12.5, INK, 'middle')
+    s.save('d3-minibatch.svg')
+
 if __name__ == '__main__':
     for name, fn in list(globals().items()):
-        if callable(fn) and name.startswith(('d1_', 'd2_')): fn()
+        if callable(fn) and name.startswith(('d1_', 'd2_', 'd3_', 'd4_', 'd5_')): fn()

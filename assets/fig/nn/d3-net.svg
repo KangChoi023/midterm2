@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 200" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="200" fill="#fff"/>
+<text x="10.0" y="92.0" font-size="15" fill="#1e293b" text-anchor="start" font-weight="700">X</text>
+<rect x="40.0" y="70.0" width="120.0" height="44.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="100.0" y="97.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Affine1</text>
+<rect x="200.0" y="70.0" width="100.0" height="44.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="250.0" y="97.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Relu1</text>
+<rect x="340.0" y="70.0" width="120.0" height="44.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="400.0" y="97.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Affine2</text>
+<rect x="500.0" y="70.0" width="170.0" height="44.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="585.0" y="97.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">SoftmaxWithLoss</text>
+<line x1="160.0" y1="84.0" x2="200.0" y2="84.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="300.0" y1="84.0" x2="340.0" y2="84.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="460.0" y1="84.0" x2="500.0" y2="84.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="22.0" y1="84.0" x2="38.0" y2="84.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="200.0" y1="104.0" x2="160.0" y2="104.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="340.0" y1="104.0" x2="300.0" y2="104.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="500.0" y1="104.0" x2="460.0" y2="104.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="40.0" font-size="13" fill="#0284c7" text-anchor="middle" font-weight="700">순전파 → predict · loss (계층마다 값 저장)</text>
+<text x="350.0" y="150.0" font-size="13" fill="#dc2626" text-anchor="middle" font-weight="700">← 역전파: lastLayer.backward(1) 부터 reversed 순서로 backward</text>
+<text x="350.0" y="178.0" font-size="12.5" fill="#64748b" text-anchor="middle">Affine 의 dW · db 를 모으면 gradient() 결과 = 수치 미분과 상대 오차 &lt; 1e-7</text>
+</svg>

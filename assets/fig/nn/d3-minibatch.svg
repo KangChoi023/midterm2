@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 200" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="200" fill="#fff"/>
+<rect x="20.0" y="60.0" width="140.0" height="60.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="90.0" y="87.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">학습 데이터 N</text>
+<text x="90.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">예: 60,000장</text>
+<rect x="200.0" y="60.0" width="120.0" height="60.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="260.0" y="87.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">셔플</text>
+<text x="260.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">rng.permutation</text>
+<rect x="360.0" y="60.0" width="140.0" height="60.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="430.0" y="87.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">배치로 자르기</text>
+<text x="430.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">batch_size 개씩</text>
+<rect x="540.0" y="60.0" width="140.0" height="60.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="610.0" y="87.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">기울기 · 갱신</text>
+<text x="610.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">params -= lr · g</text>
+<line x1="160.0" y1="90.0" x2="198.0" y2="90.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="320.0" y1="90.0" x2="358.0" y2="90.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="500.0" y1="90.0" x2="538.0" y2="90.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="610.0" y1="122.0" x2="610.0" y2="150.0" stroke="#64748b" stroke-width="1.6"/>
+<line x1="610.0" y1="150.0" x2="430.0" y2="150.0" stroke="#64748b" stroke-width="1.6"/>
+<line x1="430.0" y1="150.0" x2="430.0" y2="124.0" stroke="#64748b" stroke-width="1.6" marker-end="url(#arr)"/>
+<text x="520.0" y="168.0" font-size="12.5" fill="#64748b" text-anchor="middle">N // batch_size 번 반복 = 1 epoch</text>
+<text x="350.0" y="30.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">미니배치 SGD — 일부로 기울기를 추정해 자주 갱신한다</text>
+<text x="350.0" y="194.0" font-size="12.5" fill="#1e293b" text-anchor="middle">MNIST: 60,000 ÷ 100 = 600 iteration / epoch</text>
+</svg>
