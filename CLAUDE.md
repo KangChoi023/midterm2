@@ -19,6 +19,7 @@
 | `tools/dump_lecture.py` | 교안을 교시별 글로 뽑기 — 노트 쓰기 전에 읽는다 |
 | `tools/check_note.py` | 노트 검증 (빌드 경고 · 링크 · 함수 상세 · 그림 파일 · 카드 규칙 경고 · 이름 겹침) |
 | `tools/fig_nn.py` · `assets/fig/nn/` | 상세 학습 그림(SVG) 만들기 · 결과 — 그림은 노트 PR 에 함께 넣는다 |
+| `tools/fig_vb.py` · `assets/fig/vb/` | VB 그림 — `fig_nn.py` 의 Svg · Plot 을 가져다 쓴다 (`python3 -I tools/fig_vb.py d3_` 처럼 함수 이름 앞부분으로 일부만) |
 | `tools/sync_campus.py` · `.claude/skills/campus-sync/` | 사용자 PC 의 Claude 가 "강의자료 정리해줘" 에 돌리는 교안 → 06_HyundaiAI 과목 폴더 정리 (클라우드에서 실행하지 않음) |
 | `data/` · `anim/` · `index.html` 의 `?v=` | **빌드 산출물** — 노트 PR 에 넣지 않는다 (Actions 가 만든다) |
 
