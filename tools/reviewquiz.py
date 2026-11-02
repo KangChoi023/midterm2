@@ -9,7 +9,7 @@
 """
 import html, json, os, re, sys
 
-SUBJ = [(r'^Linux', 'linux'), (r'^MCU', 'mcu'), (r'^Embedded', 'eio'), (r'^C\b', 'c')]
+SUBJ = [(r'^Linux', 'linux'), (r'^MCU', 'mcu'), (r'^Embedded', 'eio'), (r'^C\b', 'c'), (r'^Vision', 'vb'), (r'^Neural', 'nn')]
 OUT = os.path.expanduser('~/c_study/summary/.src/review_quiz.json')
 
 
