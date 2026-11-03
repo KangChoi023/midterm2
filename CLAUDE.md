@@ -20,7 +20,7 @@
 | `tools/check_note.py` | 노트 검증 (빌드 경고 · 링크 · 함수 상세 · 그림 파일 · 카드 규칙 경고 · 이름 겹침) |
 | `tools/fig_nn.py` · `assets/fig/nn/` | 상세 학습 그림(SVG) 만들기 · 결과 — 그림은 노트 PR 에 함께 넣는다 |
 | `tools/fig_vb.py` · `assets/fig/vb/` | VB 그림 — `fig_nn.py` 의 Svg · Plot 을 가져다 쓴다 (`python3 -I tools/fig_vb.py d3_` 처럼 함수 이름 앞부분으로 일부만) |
-| `tools/cell_outputs.py` · `notes/cell_outputs.<sid><N>.json` | 강의 노트북을 실제로 실행해 "빈칸 정답 코드 + 검증 셀" 의 출력을 모은다 → 사이트는 검증 셀 대신 "▶ 실행하면" 상자로 보여 준다 (`nbparse.py`). 실행 못 한 문제는 assert 에서 "교안 기대값". 새 Day 가 올라오면 `STUDY_ROOT=… python3 -I tools/cell_outputs.py <sid> <N>` (torch · matplotlib 필요, 학습 셀은 오래 걸림) |
+| `tools/cell_outputs.py` · `notes/cell_outputs.<sid><N>.json` | 강의 노트북을 실제로 실행해 "빈칸 정답 코드 + 검증 셀" 의 출력을 모은다 → 사이트는 검증 셀 대신 "▶ 실행하면" 상자로 보여 준다 (`nbparse.py`). 실행 못 한 문제는 assert 에서 "교안 기대값". 새 Day 가 올라오면 `python3 -I tools/cell_outputs.py <sid> <N> --root <AI_CAMPUS 의 부모>` (torch · matplotlib 필요, 학습 셀은 오래 걸림). CIFAR · 사전학습 가중치가 필요한 셀은 PC 에서 — `.claude/skills/cell-outputs/` |
 | `tools/sync_campus.py` · `.claude/skills/campus-sync/` | 사용자 PC 의 Claude 가 "강의자료 정리해줘" 에 돌리는 교안 → 06_HyundaiAI 과목 폴더 정리 (클라우드에서 실행하지 않음) |
 | `data/` · `anim/` · `index.html` 의 `?v=` | **빌드 산출물** — 노트 PR 에 넣지 않는다 (Actions 가 만든다) |
 
