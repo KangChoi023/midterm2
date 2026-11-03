@@ -106,6 +106,82 @@ def _block(code):
     if shell and all(l.lstrip().startswith(('!', '%')) for l in shell): return {'kind': 'cmd', 'lang': 'bash', 'text': code}
     return {'kind': 'code', 'lang': 'python', 'text': code}
 
+# ---------------- 검증 셀 → "▶ 실행하면" ----------------
+# 빈칸 정답 코드 바로 뒤의 검증 셀(assert … print("✅"))은 코드로 보여 주지 않고, 정답 코드를 돌렸을 때의 출력으로 바꾼다.
+#   출력: notes/cell_outputs.<sid><day>.json (tools/cell_outputs.py 가 실제로 실행해 모은 값)
+#   없으면: assert 에서 기대값을 뽑는다 ("교안 기대값")
+
+def is_check(src):
+    return bool(re.search(r'^\s*assert\b', src, re.M) or re.search(r'print\(\s*["\']✅', src))
+
+_OUTS = {}
+
+def _cell_outputs(path):
+    m = re.search(r'(NN|VB)-day(\d+)', path.replace('\\', '/'))
+    if not m: return {}
+    key = m.group(1).lower() + m.group(2)
+    if key not in _OUTS:
+        import os
+        f = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'notes', f'cell_outputs.{key}.json')
+        _OUTS[key] = json.load(open(f, encoding='utf8')) if os.path.exists(f) else {}
+    return _OUTS[key]
+
+def assert_parts(src):
+    """검증 셀의 assert 들 → [(식, 기대값 또는 None, 표시 기호)]  (식 = 실행하면 값을 얻을 수 있는 코드)"""
+    import ast
+    parts = []
+    def walk(e):
+        if isinstance(e, ast.BoolOp) and isinstance(e.op, ast.And):
+            for v in e.values: walk(v)
+        elif isinstance(e, ast.Compare) and len(e.ops) == 1 and isinstance(e.ops[0], ast.Eq):
+            parts.append((ast.unparse(e.left), ast.unparse(e.comparators[0]), '='))
+        elif isinstance(e, ast.Call) and getattr(e.func, 'attr', getattr(e.func, 'id', '')) in ('allclose', 'isclose', 'array_equal') and len(e.args) >= 2:
+            parts.append((ast.unparse(e.args[0]), ast.unparse(e.args[1]), '≈'))
+        else:
+            parts.append((ast.unparse(e), None, ''))
+    for line in re.findall(r'^[ \t]*(assert\b.*)$', src, re.M):
+        stmt = re.sub(r';\s*print\(.*$', '', line).strip()
+        try:
+            node = ast.parse(stmt).body[0]
+            walk(node.test)
+        except Exception:
+            parts.append((stmt[6:].strip(), None, ''))
+    return parts
+
+def _asserts(src):
+    """검증 셀의 assert · ✅ 메시지 → 기대값 줄 (실행하지 못했을 때)"""
+    out = []
+    for a, b, sym in assert_parts(src):
+        line = f'{a} {sym} {b}' if b is not None else a
+        if re.search(r'\bfor\b', line) or len(line) > 140: continue       # all(… for …) 같은 검사식은 값이 아니라서 뺀다
+        out.append(line)
+    out += [m.strip() for m in re.findall(r'print\(\s*f?["\'](✅[^"\']+)["\']', src) if m.strip() != '✅']
+    return '\n'.join(out)
+
+def _tidy(text):
+    """출력에서 검증용 표시를 걷어 낸다: 줄 앞뒤 ✅, 채점 셀 줄(과제 N +20 · 자동 채점)"""
+    out = []
+    for l in text.split('\n'):
+        if re.match(r'^\s*(✅\s*)?과제\s*\d+\s+\+\d+', l) or re.match(r'^\s*자동 채점', l): continue
+        l = re.sub(r'^(\s*)✅\s?', r'\1', l)
+        l = re.sub(r'\s*✅\s*$', '', l)
+        if l.strip(): out.append(l.rstrip())
+    return '\n'.join(out)
+
+def _run_blocks(outs, num, check_src):
+    """정답 번호의 출력 블록 — 검증 셀의 코드(print · assert · 그래프)는 보여 주지 않는다 (사이트는 그림을 못 그린다)"""
+    blocks = []
+    o = outs.get(num)
+    text = _tidy(o['text']) if o and o.get('text') else ''
+    if text:
+        if re.search(r'\d\s*(ms|초)(?![가-힣])|\(\d+(\.\d+)?\s*s\)|\d\s*시간', text):
+            text += '\n(시간 · 속도 숫자는 실행한 컴퓨터마다 다릅니다)'
+        blocks.append({'kind': 'out', 'lang': 'text', 'text': text, 'run': 'run'})
+    elif check_src:
+        exp = _tidy(_asserts(check_src))
+        if exp: blocks.append({'kind': 'out', 'lang': 'text', 'text': exp, 'run': 'assert'})
+    return blocks
+
 def _chunks(src):
     """마크다운 셀을 머리글(#…) 줄마다 잘라 [(머리글 줄 또는 '', 본문)]"""
     out, head, buf = [], '', []
@@ -122,7 +198,25 @@ PROBLEM_RE = re.compile(r'^\s*\*\*문제\s*([\d·\s-]+)\*\*')
 def parse_ipynb(path):
     nb = json.load(open(path, encoding='utf8'))
     lessons = {}
-    st = {'cur': None, 'topic': None, 'fill': None, 'blank': None}   # blank: 마지막 빈칸(____) 코드가 들어간 곳
+    st = {'cur': None, 'topic': None, 'fill': None, 'blank': None,   # blank: 마지막 빈칸(____) 코드가 들어간 곳
+          'checks': [], 'solved': None}    # checks: 빈칸 뒤 · 정답 앞에 온 검증 셀 / solved: 방금 넣은 정답 (번호, 토픽, 위치)
+    outs = _cell_outputs(path)
+
+    def insert_after(t, k, blocks):
+        """토픽 t 의 블록 k 바로 뒤에 blocks 를 넣고 md 의 [[BLOCK]] 순서도 맞춘다"""
+        if not blocks: return
+        n0 = len(t['blocks']); t['blocks'].extend(blocks)
+        tag = f'[[BLOCK {k}]]'
+        new = ''.join(f'\n[[BLOCK {n0 + j}]]' for j in range(len(blocks)))
+        for j, x in enumerate(t['md']):
+            if tag in x: t['md'][j] = x.replace(tag, tag + new, 1); return
+        t['md'].extend(f'[[BLOCK {n0 + j}]]' for j in range(len(blocks)))
+
+    def flush(check_src=''):
+        """정답 → 검증 순서(VB)에서 미뤄 둔 출력 상자를 넣는다"""
+        if st['solved'] is None: return
+        num, t, pos = st['solved']; st['solved'] = None
+        insert_after(t, pos, _run_blocks(outs, num, check_src))
 
     def new_topic(title, md=''):
         st['fill'] = None
@@ -133,6 +227,7 @@ def parse_ipynb(path):
         src = _src(c).strip('\n')
         if not src.strip(): continue
         if c['cell_type'] == 'markdown':
+            flush()
             for head, body in _chunks(src):
                 m = LESSON_RE.match(head) if head else None
                 if m:
@@ -167,17 +262,29 @@ def parse_ipynb(path):
                 if st['fill'] is not None: st['fill']['ans'] += ('\n' if st['fill']['ans'] else '') + ans
                 # 강의 원문 · 코드 패널에는 빈칸(____) 코드 대신 정답을 채운 코드를 보여 준다 (빈칸·괄호 탭은 문제 그대로)
                 num, sol = _solution(ans)
+                flush()
                 if sol and st['blank'] is not None:
                     sol = f'# ✏️ 문제 {num} — 빈칸을 정답으로 채운 코드\n' + sol if num else sol
                     where, k = st['blank']
+                    t, pos = None, None
                     if where == 'topic' and k[0] is st['topic']:
-                        k[0]['blocks'][k[1]] = dict(_block(sol), solved=num)
+                        k[0]['blocks'][k[1]] = dict(_block(sol), solved=num); t, pos = k
                     elif where == 'fill' and st['topic'] is not None:
                         t = st['topic']
                         t['blocks'].append(dict(_block(sol), solved=num)); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
-                st['blank'] = None
+                        pos = len(t['blocks']) - 1
+                    if t is not None and num:
+                        chk = '\n'.join(st['checks'])                      # NN: 빈칸 → 검증 → 정답 순서
+                        if chk: insert_after(t, pos, _run_blocks(outs, num, chk))
+                        else: st['solved'] = (num, t, pos)                # VB: 정답 → 검증 순서 — 다음 셀을 보고 넣는다
+                st['blank'] = None; st['checks'] = []
                 continue
             if '____' in src: st['blank'] = ('fill', None) if (st['fill'] is not None and not st['fill']['ans']) else ('topic', None)
+            if st['blank'] is not None and '____' not in src and is_check(src):
+                st['checks'].append(src); continue                          # 정답이 나오면 출력 상자로
+            if st['solved'] is not None and is_check(src):
+                flush(src); continue
+            flush()
             if st['fill'] is not None and not st['fill']['ans']: st['fill']['code'].append(src); continue
             if st['topic'] is None: new_topic('들어가며')
             t = st['topic']
@@ -186,6 +293,7 @@ def parse_ipynb(path):
             out = _outputs(c)
             if out:
                 t['blocks'].append({'kind': 'out', 'lang': 'text', 'text': out}); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
+    flush()
     res = []
     for n in range(1, 9):
         L = lessons.get(n)

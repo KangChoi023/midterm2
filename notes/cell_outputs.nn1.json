@@ -1,0 +1,74 @@
+{
+ "2-1": {
+  "text": "total = 5050",
+  "check": true
+ },
+ "2-2": {
+  "text": "(a, b) = (2, 1)",
+  "check": true
+ },
+ "2-3": {
+  "text": "Point(3, 4).dist() = 5",
+  "check": true
+ },
+ "2-4": {
+  "text": "a = [1, 2, 3, 4]\nc = [1, 2, 3, 4, 5]",
+  "check": true
+ },
+ "2-5": {
+  "text": "counts = {'cat': 3, 'dog': 2, 'bird': 1}",
+  "check": true
+ },
+ "2-6": {
+  "text": "squares = [0, 4, 16, 36, 64]",
+  "check": true
+ },
+ "3-1": {
+  "text": "✅ A.T                                 정답 (4, 3)  내 답 (4, 3)\n✅ A.reshape(2, 6)                     정답 (2, 6)  내 답 (2, 6)\n✅ A.reshape(-1)                       정답 (12,)  내 답 (12,)\n✅ A[0]                                정답 (4,)  내 답 (4,)\n✅ A[:, 1:3]                           정답 (3, 2)  내 답 (3, 2)\n✅ A.sum(axis=0)                       정답 (4,)  내 답 (4,)\n✅ A.sum(axis=1)                       정답 (3,)  내 답 (3,)\n✅ A.sum(axis=1, keepdims=True)        정답 (3, 1)  내 답 (3, 1)\n✅ A + np.ones(4)                      정답 (3, 4)  내 답 (3, 4)\n✅ np.ones((3, 1)) + np.ones((1, 4))   정답 (3, 4)  내 답 (3, 4)",
+  "check": true
+ },
+ "4-1": {
+  "text": "matmul_loop(A.tolist(), B.tolist()) → [[2.1997, 1.5942], [1.6245, 1.2518], [1.5947, 0.921]]",
+  "check": true
+ },
+ "4-2": {
+  "text": "subject_mean.shape = (3,)\nsubject_mean → [72.6 80.4 78. ]\nstudent_total.tolist() = [240, 240, 225, 275, 175]\nbest_student = 3\ncentered.mean(axis=1) → [ 0.  0.  0. -0. -0.]",
+  "check": true
+ },
+ "5-1": {
+  "text": "cos_sim(np.array([1.0, 0.0]), np.array([0.0, 1.0])) → 0\ncos_sim(np.array([1.0, 1.0]), np.array([2.0, 2.0])) → 1\ncos_sim(np.array([1.0, 0.0]), np.array([-1.0, 0.0])) → -1",
+  "check": true
+ },
+ "5-2": {
+  "text": "np.array([1.0, 0.0]) @ rot(np.pi / 2).T → [0. 1.]",
+  "check": true
+ },
+ "5-3": {
+  "text": "✅ (4, 2)",
+  "check": true
+ },
+ "6-1": {
+  "text": "✅ 6.000000000012662",
+  "check": true
+ },
+ "6-2": {
+  "text": "✅ [6. 8.]",
+  "check": true
+ },
+ "7-1": {
+  "text": "✅ [0.1672 0.1664 0.1687 0.1657 0.167  0.165 ]",
+  "check": true
+ },
+ "7-2": {
+  "text": "✅ [-0.2361  0.1211 -0.7938 -0.6802 -2.5258]",
+  "check": true
+ },
+ "8-2": {
+  "text": "최대 오차: 1.6441958905488718e-11",
+  "check": false
+ },
+ "8-4": {
+  "text": "✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +30\n✅ 과제 4  +20\n자동 채점 90 / 90  (과제 5 는 강사 채점 10점)",
+  "check": true
+ }
+}

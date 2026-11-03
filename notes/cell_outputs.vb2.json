@@ -1,0 +1,58 @@
+{
+ "1-2": {
+  "text": "파라미터 수: 1,707,274",
+  "check": true
+ },
+ "2-1": {
+  "text": "N= 32 K=5 S=1 P=0 → 공식  28 | 실제  28\nN= 32 K=3 S=1 P=1 → 공식  32 | 실제  32\nN= 32 K=3 S=2 P=1 → 공식  16 | 실제  16\nN= 28 K=2 S=2 P=0 → 공식  14 | 실제  14\nN=224 K=7 S=2 P=3 → 공식 112 | 실제 112\nN=  7 K=3 S=2 P=0 → 공식   3 | 실제   3",
+  "check": true
+ },
+ "2-2": {
+  "text": "Conv2d(  3→  6, 5×5, groups= 1, bias=True ) → 공식     456 | 실제     456\nConv2d( 64→128, 3×3, groups= 1, bias=True ) → 공식  73,856 | 실제  73,856\nConv2d( 64→ 64, 3×3, groups=64, bias=True ) → 공식     640 | 실제     640\nConv2d( 64→128, 1×1, groups= 1, bias=False) → 공식   8,192 | 실제   8,192\nConv2d( 16→ 32, 3×3, groups= 1, bias=False) → 공식   4,608 | 실제   4,608",
+  "check": true
+ },
+ "2-3": {
+  "text": "3×3 ×2      : 5\n3×3 ×3      : 7\nLeNet 5-2-5-2: 16\n3×3 ×2 → pool → 3×3 ×2 → pool → 3×3 ×2 (VGG 블록 3개): 32",
+  "check": true
+ },
+ "2-4": {
+  "text": "(2, 128, 16, 16)",
+  "check": true
+ },
+ "3-1": {
+  "text": "파라미터 수: 62,006",
+  "check": true
+ },
+ "3-3": {
+  "text": "전체 61,100,840 | 가장 큰 텐서: classifier.1.weight (4096, 9216) = 37,748,736 (61.8%)",
+  "check": true
+ },
+ "4-1": {
+  "text": "5×5 한 층 102,400 vs 3×3 두 층 73,728 (28% 감소)\n7×7 한 층 200,704 vs 3×3 세 층 110,592 (45% 감소)",
+  "check": true
+ },
+ "4-2": {
+  "text": "파라미터 수: 307,946 | 출력: (2, 10)",
+  "check": true
+ },
+ "5-3": {
+  "text": "학습 파라미터: 32 | state_dict: ['weight', 'bias', 'running_mean', 'running_var', 'num_batches_tracked']",
+  "check": true
+ },
+ "6-1": {
+  "text": "(2, 16, 32, 32) (2, 32, 16, 16) | 지름길: Identity / Sequential",
+  "check": true
+ },
+ "6-2": {
+  "text": "ResNet-20 파라미터: 272,474 | 출력: (2, 10)",
+  "check": true
+ },
+ "7-2": {
+  "text": "시작 0.0040 → 최대 0.1000 (step 1758, 30% 지점) → 끝 4.15e-07",
+  "check": true
+ },
+ "7-4": {
+  "text": "MLP        파라미터  1,707,274   MAC    1,706,496\nLeNet-5    파라미터     62,006   MAC      651,720\nVGG-mini   파라미터    307,946   MAC   38,653,952\nResNet-20  파라미터    272,474   MAC   40,813,184",
+  "check": true
+ }
+}

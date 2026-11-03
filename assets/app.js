@@ -561,12 +561,17 @@
   const BLK_LABEL = { code: '코드', cmd: '빌드·실행', out: '출력·결과' };
   function codeBlock(b, bi) {
     const lang = b.kind === 'cmd' ? 'bash' : b.lang;
+    if (b.run) return `<div class="cb out run"${bi !== undefined ? ` data-bi="${bi}"` : ''}><div class="cb-h"><span class="k out">▶ 실행하면</span>${b.run === 'assert' ? '<span class="cb-tag" title="실행하지 못해 교안 검증 코드의 기대값을 옮겼습니다">교안 기대값</span>' : '<span class="cb-tag run" title="정답 코드를 직접 실행한 출력 — 시간 · 속도 숫자는 컴퓨터마다 다릅니다">직접 실행</span>'}<button type="button" data-copy>복사</button></div><pre><code data-lang="text">${esc(b.text)}</code></pre></div>`;
     return `<div class="cb ${b.kind}"${bi !== undefined ? ` data-bi="${bi}"` : ''}><div class="cb-h"><span class="k ${b.kind}">${BLK_LABEL[b.kind]}</span>${b.file ? `<span class="cb-file">${esc(b.file)}</span>` : `<span>${esc(b.lang === 'text' ? '' : b.lang)}</span>`}<button type="button" data-copy>복사</button></div><pre><code data-lang="${esc(lang)}">${esc(b.text)}</code></pre></div>`;
   }
   function exampleBody(t) {
-    const ix = t.blocks.map((b, i) => [b, i]);
-    const codes = ix.filter(([b]) => b.kind === 'code');
-    const run = ix.filter(([b]) => b.kind !== 'code');
+    // 블록 순서는 강의 원문의 [[BLOCK n]] 순서 (실행 결과 블록은 번호를 지키려고 목록 끝에 붙어 있다)
+    const seq = [...(t.html || '').matchAll(/\[\[BLOCK (\d+)\]\]/g)].map(m => +m[1]);
+    const order = [...new Set(seq.filter(i => t.blocks[i]))];
+    t.blocks.forEach((_, i) => { if (!order.includes(i)) order.push(i); });
+    const ix = order.map(i => [t.blocks[i], i]);
+    const codes = ix.filter(([b]) => b.kind === 'code' || b.run);       // 정답 코드의 "▶ 실행하면" 은 코드 바로 아래
+    const run = ix.filter(([b]) => b.kind !== 'code' && !b.run);
     let h = codes.map(([b, i]) => codeBlock(b, i)).join('');
     if (run.length) h += `<div class="runbox"><div class="rh">빌드·실행 / 결과</div>${run.map(([b, i]) => codeBlock(b, i)).join('')}</div>`;
     return h;
