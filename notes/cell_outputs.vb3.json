@@ -1,0 +1,42 @@
+{
+ "1-2": {
+  "text": "✅ ResNet-20 (32×32): 6.09 ms / 장",
+  "check": true
+ },
+ "1-3": {
+  "text": "모델                        파라미터             MAC      지연시간\nResNet-20 (32)         272,474      40,813,184     16.6 ms\nResNet-18 (224)     11,689,512   1,814,073,344    204.8 ms\nResNet-50 (224)     25,557,032   4,089,184,256    181.0 ms\nMobileNetV3-S (224)   2,542,856      56,510,400     22.5 ms",
+  "check": true
+ },
+ "2-1": {
+  "text": "ResNet-20      파라미터    1.09 MB | 활성화    0.80 MB | MAC     40.8 M\nResNet-50      파라미터  102.23 MB | 활성화   44.46 MB | MAC   4089.2 M\nMobileNetV3-S  파라미터   10.17 MB | 활성화    5.67 MB | MAC     56.5 M",
+  "check": true
+ },
+ "2-2": {
+  "text": "basic 1,179,648 | bottleneck 69,632 | 16.9배 적음",
+  "check": true
+ },
+ "3-1": {
+  "text": "(1, 128, 32, 32) (1, 128, 32, 32)",
+  "check": true
+ },
+ "3-2": {
+  "text": "가중치 73,728 → 8,768  (0.1189)\nMAC    75,497,472 → 8,978,432  (0.1189)  | 공식 0.1189",
+  "check": true
+ },
+ "3-3": {
+  "text": "일반 20.80 ms | DS 7.23 ms | 2.9배 빠름 (MAC 기준으로는 8.4배)",
+  "check": true
+ },
+ "4-1": {
+  "text": "8832 5136 (1, 24, 16, 16) (1, 24, 16, 16)",
+  "check": true
+ },
+ "4-2": {
+  "text": "h_swish(x) → [-0.   -0.   -0.   ...  5.9   5.95  6.  ]",
+  "check": true
+ },
+ "4-3": {
+  "text": "InvertedResidual 블록: 11 | SE 블록: 9 | 마지막 특징맵: (1, 576, 7, 7)\nSequential(\n  (0): Linear(in_features=576, out_features=1024, bias=True)\n  (1): Hardswish()\n  (2): Dropout(p=0.2, inplace=True)\n  (3): Linear(in_features=1024, out_features=1000, bias=True)\n)",
+  "check": true
+ }
+}

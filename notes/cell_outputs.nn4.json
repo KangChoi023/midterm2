@@ -1,0 +1,70 @@
+{
+ "1-1": {
+  "text": "끝점: [-0.3504  0.0848]  y 부호가 바뀐 횟수: 30",
+  "check": true
+ },
+ "1-2": {
+  "text": "lr =  0.1:  끝점 (  -5.178,    0.002)   f =     1.3405\nlr = 0.95:  끝점 (  -0.350,    0.085)   f =     0.0133\nlr =  1.0:  끝점 (  -0.297,    2.000)   f =     4.0044\nlr = 1.05:  끝점 (  -0.251,   34.899)   f =  1217.9297",
+  "check": true
+ },
+ "2-3": {
+  "text": "SGD      끝점 ( -0.350,  0.085)  f = 0.01333\nMomentum 끝점 (  0.896,  0.088)  f = 0.04794\nAdaGrad  끝점 ( -0.120,  0.000)  f = 0.00072\nRMSProp  끝점 ( -0.697,  0.000)  f = 0.02432\nAdam     끝점 (  0.136,  0.318)  f = 0.10221",
+  "check": true
+ },
+ "3-1": {
+  "text": "sigmoid 1.0    층별 표준편차: [0.4586 0.4393 0.4329 0.4386 0.443 ]\nsigmoid 0.01   층별 표준편차: [0.0249 0.0118 0.0114 0.0129 0.0121]\nsigmoid xavier 층별 표준편차: [0.2073 0.1227 0.1116 0.1242 0.1173]\nrelu    0.01   층별 표준편차: [0.0583 0.0041 0.0003 0.     0.    ]\nrelu    xavier 층별 표준편차: [0.583  0.4123 0.3026 0.2199 0.1767]\nrelu    he     층별 표준편차: [0.8245 0.8247 0.856  0.8795 0.9998]",
+  "check": true
+ },
+ "3-2": {
+  "text": "0.01    마지막 손실 2.301  test 0.1135\nxavier  마지막 손실 0.312  test 0.9179\nhe      마지막 손실 0.227  test 0.9378\n✅ std 0.01 은 깊은 망에서 학습이 시작조차 안 됨",
+  "check": true
+ },
+ "4-1": {
+  "text": "입력 열 평균 [0.7998 3.6697 2.781  4.5022]\n출력 열 평균 [-0.   1.  -1.   0.5]  (= β)\n출력 열 표준편차 [1.  2.  0.5 1.5]  (= γ)",
+  "check": true
+ },
+ "4-3": {
+  "text": "{'dx': '3.8e-10', 'dgamma': '9.1e-13', 'dbeta': '6.8e-14'} | dx 열 합: [-0. -0. -0. -0.]\n✅ BatchNorm backward 통과",
+  "check": true
+ },
+ "4-4": {
+  "text": "std 1.0  noBN: train 0.097  test 0.098\nstd 1.0  BN : train 0.483  test 0.347\nstd 0.1  noBN: train 0.483  test 0.435\nstd 0.1  BN : train 0.878  test 0.692\nstd 0.01 noBN: train 0.117  test 0.103\nstd 0.01 BN : train 1.000  test 0.878\nstd he   noBN: train 0.850  test 0.772\nstd he   BN : train 0.969  test 0.726",
+  "check": true
+ },
+ "5-1": {
+  "text": "간극 0.214,  test 손실 최저 epoch 25,  test 손실 25 epoch 0.79 → 200 epoch 1.12\n✅ train 은 100%, test 손실은 오히려 증가",
+  "check": true
+ },
+ "5-2": {
+  "text": "300장 · 6층  train 1.000  test 0.786  간극 0.214\n3000장 · 6층 train 1.000  test 0.926  간극 0.073\n300장 · 1층  train 1.000  test 0.802  간극 0.198\n✅ 데이터가 10배면 test 0.926",
+  "check": true
+ },
+ "6-1": {
+  "text": "CE 2.3703 + 벌점 6.1340 = 8.5044",
+  "check": true
+ },
+ "6-2": {
+  "text": "학습: 켜진 비율 0.799  / 추론: 출력 0.8   — 평균이 같다",
+  "check": true
+ },
+ "6-3": {
+  "text": "plain              train 1.000  test 0.786  test 손실 1.12\nweight decay 0.01  train 1.000  test 0.810  test 손실 0.65\ndropout 0.2        train 1.000  test 0.800  test 손실 1.33\n✅ 두 규제 모두 test 정확도 상승",
+  "check": true
+ },
+ "7-1": {
+  "text": "✅ train (800, 784)  validation (200, 784)  (test 10000장은 손대지 않음)",
+  "check": true
+ },
+ "7-2": {
+  "text": "val 0.885   lr 2.42e-01   λ 4.82e-06   train 1.000\nval 0.875   lr 2.40e-01   λ 4.10e-05   train 1.000\nval 0.870   lr 5.88e-01   λ 1.03e-02   train 0.984\nval 0.870   lr 1.34e-01   λ 2.28e-05   train 0.996\nval 0.845   lr 1.12e-01   λ 1.87e-02   train 0.959\n✅ 좋은 lr 은 0.1 ~ 0.6 근처",
+  "check": true
+ },
+ "8-3": {
+  "text": "계층 13 개 · 파라미터 110,610 개 · 학습 전 손실 2.493\nepoch   1  loss 0.2917  train 0.9731  val 0.9636\nepoch   2  loss 0.1062  train 0.9847  val 0.9709\nepoch   3  loss 0.0751  train 0.9864  val 0.9734\nepoch   4  loss 0.0577  train 0.9912  val 0.9750\nepoch   5  loss 0.0474  train 0.9920  val 0.9757",
+  "check": false
+ },
+ "8-4": {
+  "text": "불러오기 전 0.1103 → 후 0.9757   (원래 모델 0.9757)\nDrive 가 연결되지 않아 복사를 건너뜁니다 (Colab 에서는 자동으로 저장됩니다)\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +30   (test 0.9757)\n✅ 과제 4  +20\n자동 채점 90 / 90  (과제 5 는 강사 채점 10점)",
+  "check": true
+ }
+}

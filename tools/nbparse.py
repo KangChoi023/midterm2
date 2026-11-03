@@ -284,6 +284,8 @@ def parse_ipynb(path):
                 st['checks'].append(src); continue                          # 정답이 나오면 출력 상자로
             if st['solved'] is not None and is_check(src):
                 flush(src); continue
+            if re.match(r'\s*score\s*=\s*0\b', src) and is_check(src):        # 과제 채점 셀 — 점수만 매기는 검증 코드라 보여 주지 않는다
+                flush(); continue
             flush()
             if st['fill'] is not None and not st['fill']['ans']: st['fill']['code'].append(src); continue
             if st['topic'] is None: new_topic('들어가며')
