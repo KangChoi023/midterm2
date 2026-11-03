@@ -1,0 +1,98 @@
+{
+ "1-1": {
+  "text": "784-1-10 : 파라미터    805개 → 수치 미분 1 step 손실 계산   1,610번\n784-2-10 : 파라미터  1,600개 → 수치 미분 1 step 손실 계산   3,200번\n784-4-10 : 파라미터  3,190개 → 수치 미분 1 step 손실 계산   6,380번\n784-100-10 : 파라미터 79,510개 → 수치 미분 1 step 손실 계산 159,020번",
+  "check": true
+ },
+ "1-2": {
+  "text": "P =   805  수치 미분 1 step  0.145 초\nP = 1,600  수치 미분 1 step  0.329 초\nP = 3,190  수치 미분 1 step  0.846 초\n784-100-10 (P = 79,510): 손실 1회 1.01 ms × 159,020번 ≈ 161 초 / step\nMNIST 1 epoch = 600 step → 약 26.8 시간  (10 epoch 이면 268 시간)",
+  "check": true
+ },
+ "2-1": {
+  "text": "✅ 최종 금액 715.0",
+  "check": true
+ },
+ "2-2": {
+  "text": "사과 가격 · 사과 개수 · 귤 가격 · 귤 개수 · 소비세 = [  2.2 110.    3.3 165.  650. ]",
+  "check": true
+ },
+ "2-3": {
+  "text": "수치 미분: [  2.2 110.    3.3 165.  650. ]\n✅ 손 역전파 = 수치 미분",
+  "check": true
+ },
+ "3-1": {
+  "text": "가격 220.0 | d사과가격 2.2  d개수 110.0  d소비세 200",
+  "check": true
+ },
+ "3-3": {
+  "text": "최종 715.0 | 기울기 [  2.2 110.    3.3 165.  650. ]\n✅ 2교시 손 계산과 같습니다",
+  "check": true
+ },
+ "4-1": {
+  "text": "out =\n [[1. 0.]\n [0. 3.]]\nmask =\n [[False  True]\n [ True False]]\nbackward(1) =\n [[1. 0.]\n [0. 1.]]\n✅ (입력 배열은 바뀌지 않았습니다)",
+  "check": true
+ },
+ "4-2": {
+  "text": "y = [0.7311 0.1192]  backward(1) = [0.1966 0.105 ]\n✅ sigmoid'(0) = 0.25",
+  "check": true
+ },
+ "4-3": {
+  "text": "최대 차이: 2.937925458468271e-10\n✅ Sigmoid.backward 가 수치 미분과 같습니다",
+  "check": true
+ },
+ "5-1": {
+  "text": "✅ dX (2, 3)  dW (3, 4)  db (4,) — 모두 수치 미분과 일치",
+  "check": true
+ },
+ "5-2": {
+  "text": "✅ 레이블 · one-hot 모두 0.8850",
+  "check": true
+ },
+ "5-3": {
+  "text": "loss = 0.3057  y = [[0.0182 0.2452 0.7366]]  backward = [[ 0.0182  0.2452 -0.2634]]\n✅ 배치 2개도 수치 미분과 일치 — 정답 자리만 음수, 나머지는 양수",
+  "check": true
+ },
+ "5-4": {
+  "text": "계층 역전파 dW[0] = [-0.5219 -0.0877  0.6096]\nDay 2 식     dW[0] = [-0.5219 -0.0877  0.6096]\n✅ 같은 기울기 — Day 2 의 손 유도 = 계층 두 개의 역전파",
+  "check": true
+ },
+ "6-1": {
+  "text": "✅ 기울기 shape: {'W1': (784, 10), 'b1': (10,), 'W2': (10, 10), 'b2': (10,)}",
+  "check": true
+ },
+ "6-2": {
+  "text": "W1: 상대 오차 2.15e-10  ✅\nb1: 상대 오차 4.95e-11  ✅\nW2: 상대 오차 5.41e-11  ✅\nb2: 상대 오차 3.89e-10  ✅\n✅ gradient check 통과",
+  "check": true
+ },
+ "6-3": {
+  "text": "정상 : []\n버그 ①: ['b2']  ← 편향 기울기만 틀림 (상대 오차 0.5)\n버그 ②: ['W1', 'b1']  ← Affine2 의 dX 가 틀려 그 앞(Affine1)의 기울기가 모두 틀림",
+  "check": true
+ },
+ "7-1": {
+  "text": "✅ epoch 당 8 iteration, 전체 2400",
+  "check": true
+ },
+ "7-2": {
+  "text": "epoch   1: loss 1.097  train 0.329  test 0.350\nepoch  10: loss 0.785  train 0.633  test 0.667\nepoch  50: loss 0.277  train 0.871  test 0.817\nepoch 100: loss 0.278  train 0.883  test 0.817\nepoch 200: loss 0.081  train 0.967  test 0.933\nepoch 300: loss 0.039  train 0.988  test 0.983",
+  "check": true
+ },
+ "7-3": {
+  "text": "✅ 300 epoch — 세 갈래 나선을 따라 굽은 경계",
+  "check": true
+ },
+ "8-1": {
+  "text": "(60000, 784) (10000, 784) 0.0 1.0 [5 0 4 1 9 2 1 3 1 4]",
+  "check": false
+ },
+ "8-2": {
+  "text": "학습 전 손실 2.3027   vs   -log(0.1) = log 10 = 2.3026",
+  "check": false
+ },
+ "8-3": {
+  "text": "epoch  1  train 0.9079  test 0.9113  loss 0.681  (9 s)\nepoch  2  train 0.9250  test 0.9255  loss 0.294  (11 s)\nepoch  3  train 0.9414  test 0.9413  loss 0.239  (17 s)\nepoch  4  train 0.9502  test 0.9472  loss 0.200  (21 s)\nepoch  5  train 0.9558  test 0.9531  loss 0.172  (24 s)\nepoch  6  train 0.9623  test 0.9572  loss 0.150  (35 s)\nepoch  7  train 0.9653  test 0.9613  loss 0.133  (39 s)\nepoch  8  train 0.9705  test 0.9659  loss 0.119  (41 s)\nepoch  9  train 0.9732  test 0.9670  loss 0.108  (42 s)\nepoch 10  train 0.9747  test 0.9694  loss 0.099  (48 s)",
+  "check": false
+ },
+ "8-4": {
+  "text": "✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +30   (test 0.9694)\n✅ 과제 4  +20\n자동 채점 90 / 90  (과제 5 는 강사 채점 10점)",
+  "check": true
+ }
+}
