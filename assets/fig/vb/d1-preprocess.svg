@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="220" fill="#fff"/>
+<rect x="8.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="62.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">① 흑백</text>
+<text x="62.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">cvtColor</text>
+<line x1="116.0" y1="82.0" x2="124.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="126.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="180.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">② 조명 보정</text>
+<text x="180.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">g ÷ 흐린 배경</text>
+<line x1="234.0" y1="82.0" x2="242.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="244.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="298.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">③ 반전 · 이진화</text>
+<text x="298.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">INV + OTSU</text>
+<line x1="352.0" y1="82.0" x2="360.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="362.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="416.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">④ 숫자 자르기</text>
+<text x="416.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">가장 큰 윤곽</text>
+<line x1="470.0" y1="82.0" x2="478.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="480.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="534.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">⑤ 20 × 20</text>
+<text x="534.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">긴 변 = 20</text>
+<line x1="588.0" y1="82.0" x2="596.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="598.0" y="50.0" width="108.0" height="64.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="652.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">⑥ 28 × 28</text>
+<text x="652.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">무게중심 (14, 14)</text>
+<text x="360.0" y="26.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">종이 사진 → MNIST 모양 — 입력을 학습 데이터 쪽으로 옮긴다</text>
+<text x="360.0" y="146.0" font-size="12.5" fill="#1e293b" text-anchor="middle">MNIST: 검은 배경 · 흰 글씨 · 20 × 20 상자 · 무게중심 가운데  ↔  종이: 흰 배경 · 어두운 글씨 · 그림자 · 치우침</text>
+<text x="360.0" y="170.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">이 차이(domain shift) 때문에 그냥 28 × 28 로 줄이면 거의 못 맞힌다</text>
+<text x="360.0" y="194.0" font-size="12.5" fill="#64748b" text-anchor="middle">반환 (1, 1, 28, 28) float32 0 ~ 1 — 다른 해결: 증강(Day 2) · 전이학습(Day 3)</text>
+</svg>

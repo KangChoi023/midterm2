@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 200" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="200" fill="#fff"/>
+<text x="80.0" y="40.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">입력 x</text>
+<rect x="20.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="48.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">1</text>
+<rect x="80.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="108.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">-0.5</text>
+<rect x="20.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="48.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">-2</text>
+<rect x="80.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="108.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">3</text>
+<text x="240.0" y="40.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">mask = (x ≤ 0)</text>
+<rect x="180.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="208.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">F</text>
+<rect x="240.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="268.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">T</text>
+<rect x="180.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="208.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">T</text>
+<rect x="240.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="268.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">F</text>
+<text x="400.0" y="40.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">순전파 out</text>
+<rect x="340.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="368.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">1</text>
+<rect x="400.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="428.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="340.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="368.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="400.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="428.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">3</text>
+<text x="560.0" y="40.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">역전파 dx (dout=1)</text>
+<rect x="500.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="528.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">1</text>
+<rect x="560.0" y="50.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="588.0" y="76.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="500.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="528.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<rect x="560.0" y="94.0" width="56.0" height="40.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="588.0" y="120.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">1</text>
+<text x="330.0" y="172.0" font-size="12.5" fill="#64748b" text-anchor="middle">빨간 칸 = 막힌 자리 — 순전파에서 0 이 된 자리는 역전파에서도 기울기 0 (스위치)</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<text x="350.0" y="24.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">BatchNorm — 미니배치의 열(특성)마다 평균 0 · 분산 1 로 맞춘 뒤 γ · β 로 늘이고 옮긴다</text>
+<rect x="10.0" y="60.0" width="150.0" height="90.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="85.0" y="102.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">입력 x (N, D)</text>
+<text x="85.0" y="120.0" font-size="12.5" fill="#64748b" text-anchor="middle">열마다 평균 · 분산 제각각</text>
+<rect x="195.0" y="60.0" width="170.0" height="90.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="280.0" y="102.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">정규화</text>
+<text x="280.0" y="120.0" font-size="12.5" fill="#64748b" text-anchor="middle">x̂ = (x − μ) / √(σ² + ε)</text>
+<rect x="400.0" y="60.0" width="120.0" height="90.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="460.0" y="102.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">γ · x̂ + β</text>
+<text x="460.0" y="120.0" font-size="12.5" fill="#64748b" text-anchor="middle">학습되는 γ, β</text>
+<rect x="555.0" y="60.0" width="135.0" height="90.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="622.5" y="102.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">출력</text>
+<text x="622.5" y="120.0" font-size="12.5" fill="#64748b" text-anchor="middle">평균 β · 표준편차 γ</text>
+<line x1="160.0" y1="105.0" x2="193.0" y2="105.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="365.0" y1="105.0" x2="398.0" y2="105.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="520.0" y1="105.0" x2="553.0" y2="105.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="180.0" font-size="12.5" fill="#64748b" text-anchor="middle">학습: 배치의 μ, σ² 로 정규화 + running 평균 · 분산 갱신 (0.9 · running + 0.1 · 배치값)</text>
+<text x="350.0" y="202.0" font-size="12.5" fill="#64748b" text-anchor="middle">추론(train_flg=False): 모아 둔 running 평균 · 분산으로 — 사진 한 장이어도 같은 결과</text>
+</svg>

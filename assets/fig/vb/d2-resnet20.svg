@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="210" fill="#fff"/>
+<text x="360.0" y="24.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">ResNet-20 (CIFAR-10) — 깊이 6n + 2, n = 3</text>
+<rect x="8.0" y="50.0" width="118.0" height="64.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="67.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">stem</text>
+<text x="67.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">Conv3×3 · 16 · 32²</text>
+<line x1="126.0" y1="82.0" x2="136.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="138.0" y="50.0" width="130.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="203.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1</text>
+<text x="203.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">Block × 3 · 16 · 32²</text>
+<line x1="268.0" y1="82.0" x2="278.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="280.0" y="50.0" width="130.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="345.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer2</text>
+<text x="345.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">Block × 3 · 32 · 16²</text>
+<line x1="410.0" y1="82.0" x2="420.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="422.0" y="50.0" width="130.0" height="64.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="487.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer3</text>
+<text x="487.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">Block × 3 · 64 · 8²</text>
+<line x1="552.0" y1="82.0" x2="562.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="564.0" y="50.0" width="140.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="634.0" y="79.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">head</text>
+<text x="634.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">GAP + Linear 64→10</text>
+<text x="360.0" y="140.0" font-size="12.5" fill="#1e293b" text-anchor="middle">가중치 층 = stem 1 + 블록 9 × 2 + Linear 1 = 20 · layer2 · layer3 첫 블록은 stride 2 (크기 1/2, 채널 2배)</text>
+<text x="360.0" y="164.0" font-size="12.5" fill="#1e293b" text-anchor="middle">파라미터 272,474 — 거대 FC 대신 GAP + Linear(64 → 10) = 650 개 · MAC 40,813,184</text>
+<text x="360.0" y="188.0" font-size="12" fill="#0284c7" text-anchor="middle" font-weight="700">3 epoch (강의 실행 예): plain-20 train 손실 1.641 · test 0.380 → ResNet-20 1.438 · 0.443 — 성능 저하가 사라짐</text>
+</svg>

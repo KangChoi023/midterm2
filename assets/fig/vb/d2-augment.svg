@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">데이터 증강 (train 에만) — 정답이 바뀌지 않는 변형으로 매번 다른 그림</text>
+<rect x="30.0" y="50.0" width="130.0" height="130.0" rx="0" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+<rect x="43.0" y="63.0" width="104.0" height="104.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="95.0" y="120.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">32 × 32</text>
+<text x="95.0" y="200.0" font-size="12" fill="#64748b" text-anchor="middle">사방 4 px 0 패딩 → 40 × 40</text>
+<line x1="170.0" y1="115.0" x2="225.0" y2="115.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="197.5" y="105.0" font-size="12" fill="#64748b" text-anchor="middle">RandomCrop</text>
+<rect x="240.0" y="50.0" width="130.0" height="130.0" rx="0" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+<rect x="257.0" y="58.0" width="104.0" height="104.0" rx="0" fill="none" stroke="#d97706" stroke-width="3"/>
+<text x="309.0" y="200.0" font-size="12" fill="#64748b" text-anchor="middle">무작위 위치에서 32 × 32 → ±4 px 이동</text>
+<line x1="380.0" y1="115.0" x2="440.0" y2="115.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="410.0" y="105.0" font-size="12" fill="#64748b" text-anchor="middle">Flip 50%</text>
+<rect x="455.0" y="63.0" width="104.0" height="104.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="507.0" y="112.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">좌우 반전</text>
+<text x="507.0" y="130.0" font-size="12.5" fill="#64748b" text-anchor="middle">정답 그대로</text>
+<line x1="565.0" y1="115.0" x2="600.0" y2="115.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="645.0" y="105.0" font-size="12" fill="#1e293b" text-anchor="middle">ToTensor</text>
+<text x="645.0" y="125.0" font-size="12" fill="#1e293b" text-anchor="middle">Normalize</text>
+<text x="645.0" y="145.0" font-size="11.5" fill="#64748b" text-anchor="middle">(맨 뒤)</text>
+<text x="350.0" y="222.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">test 는 원본 그대로 · 숫자 6 을 뒤집으면 9 — 정답이 바뀌는 변형은 금지</text>
+</svg>

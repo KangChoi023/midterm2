@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="230" fill="#fff"/>
+<rect x="10.0" y="50.0" width="88.0" height="70.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="54.0" y="82.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">입력</text>
+<text x="54.0" y="100.0" font-size="12.5" fill="#64748b" text-anchor="middle">(1, 28, 28)</text>
+<line x1="98.0" y1="85.0" x2="108.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="110.0" y="50.0" width="100.0" height="70.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="160.0" y="82.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Conv 5×5</text>
+<text x="160.0" y="100.0" font-size="12.5" fill="#64748b" text-anchor="middle">(30, 24, 24)</text>
+<line x1="210.0" y1="85.0" x2="220.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="222.0" y="50.0" width="64.0" height="70.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="254.0" y="90.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">ReLU</text>
+<line x1="286.0" y1="85.0" x2="296.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="298.0" y="50.0" width="100.0" height="70.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="348.0" y="82.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Pool 2×2</text>
+<text x="348.0" y="100.0" font-size="12.5" fill="#64748b" text-anchor="middle">(30, 12, 12)</text>
+<line x1="398.0" y1="85.0" x2="408.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="410.0" y="50.0" width="100.0" height="70.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="460.0" y="82.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Affine</text>
+<text x="460.0" y="100.0" font-size="12.5" fill="#64748b" text-anchor="middle">4320 → 100</text>
+<line x1="510.0" y1="85.0" x2="520.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="522.0" y="50.0" width="64.0" height="70.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="554.0" y="90.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">ReLU</text>
+<line x1="586.0" y1="85.0" x2="596.0" y2="85.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="598.0" y="50.0" width="100.0" height="70.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="648.0" y="82.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Affine</text>
+<text x="648.0" y="100.0" font-size="12.5" fill="#64748b" text-anchor="middle">100 → 10</text>
+<text x="360.0" y="30.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">SimpleConvNet — 배치 100 이면 각 shape 앞에 100 이 붙는다</text>
+<text x="360.0" y="152.0" font-size="12.5" fill="#1e293b" text-anchor="middle">파라미터: Conv 780 (30·1·5·5 + 30) + Affine 432,100 (4320·100 + 100) + Affine 1,010 = 433,890</text>
+<text x="360.0" y="176.0" font-size="12.5" fill="#64748b" text-anchor="middle">(28 − 5)/1 + 1 = 24 · 24 / 2 = 12 · 30 × 12 × 12 = 4,320 (Affine 이 내부에서 펼친다)</text>
+<text x="360.0" y="206.0" font-size="12.5" fill="#0284c7" text-anchor="middle" font-weight="700">Day 4 Sequential · Trainer 그대로 — 계층 리스트에 Convolution · Pooling 만 넣었다 → 1 epoch test 0.981</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">수용 영역 — 3 × 3 두 층이 보는 입력 = 5 × 5 (5 × 5 한 층과 같다)</text>
+<rect x="30.0" y="50.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="56.0" y="50.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="82.0" y="50.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="108.0" y="50.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="134.0" y="50.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="30.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="56.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="82.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="108.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="134.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="30.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="56.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="82.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="108.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="134.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="30.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="56.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="82.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="108.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="134.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="30.0" y="154.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="56.0" y="154.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="82.0" y="154.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="108.0" y="154.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<rect x="134.0" y="154.0" width="26.0" height="26.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="95.0" y="200.0" font-size="12.5" fill="#1e293b" text-anchor="middle">입력 5 × 5</text>
+<line x1="170.0" y1="115.0" x2="230.0" y2="115.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="200.0" y="105.0" font-size="12" fill="#64748b" text-anchor="middle">3 × 3</text>
+<rect x="245.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="271.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="297.0" y="76.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="245.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="271.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="297.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="245.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="271.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<rect x="297.0" y="128.0" width="26.0" height="26.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="284.0" y="174.0" font-size="12.5" fill="#1e293b" text-anchor="middle">1층 출력 3 × 3</text>
+<line x1="335.0" y1="115.0" x2="395.0" y2="115.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="365.0" y="105.0" font-size="12" fill="#64748b" text-anchor="middle">3 × 3</text>
+<rect x="410.0" y="102.0" width="26.0" height="26.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="423.0" y="165.0" font-size="12.5" fill="#1e293b" text-anchor="middle">2층 출력 1칸</text>
+<text x="470.0" y="70.0" font-size="13" fill="#1e293b" text-anchor="start">rf ← rf + (K − 1) · jump</text>
+<text x="470.0" y="92.0" font-size="13" fill="#1e293b" text-anchor="start">jump ← jump · S</text>
+<text x="470.0" y="122.0" font-size="13" fill="#0284c7" text-anchor="start" font-weight="700">1 → 1 + 2 = 3 → 3 + 2 = 5</text>
+<text x="470.0" y="144.0" font-size="12.5" fill="#64748b" text-anchor="start">3 × 3 세 층 = 7 × 7</text>
+<text x="470.0" y="166.0" font-size="12.5" fill="#64748b" text-anchor="start">풀링 · stride 뒤엔 jump 가 커져</text>
+<text x="470.0" y="184.0" font-size="12.5" fill="#64748b" text-anchor="start">같은 3 × 3 이 더 넓게 퍼진다</text>
+<text x="350.0" y="236.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">파라미터: 5 × 5 한 층 25C² vs 3 × 3 두 층 18C² (28% 적다) — 게다가 ReLU 가 두 번</text>
+</svg>

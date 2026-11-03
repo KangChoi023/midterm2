@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="40.0" y="52.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">사과 100</text>
+<text x="40.0" y="112.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">개수 2</text>
+<text x="40.0" y="182.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">귤 150</text>
+<text x="40.0" y="242.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">개수 3</text>
+<circle cx="200.0" cy="82.0" r="22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="200.0" y="88.0" font-size="17" fill="#1e293b" text-anchor="middle" font-weight="700">×</text>
+<circle cx="200.0" cy="212.0" r="22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="200.0" y="218.0" font-size="17" fill="#1e293b" text-anchor="middle" font-weight="700">×</text>
+<circle cx="360.0" cy="147.0" r="22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="360.0" y="153.0" font-size="17" fill="#1e293b" text-anchor="middle" font-weight="700">+</text>
+<circle cx="520.0" cy="147.0" r="22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="520.0" y="153.0" font-size="17" fill="#1e293b" text-anchor="middle" font-weight="700">×</text>
+<text x="470.0" y="230.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">소비세 1.1</text>
+<line x1="110.0" y1="47.0" x2="176.0" y2="82.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="110.0" y1="107.0" x2="176.0" y2="82.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="100.0" y1="177.0" x2="176.0" y2="212.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="100.0" y1="237.0" x2="176.0" y2="212.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="222.0" y1="82.0" x2="338.0" y2="140.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="222.0" y1="212.0" x2="338.0" y2="155.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="382.0" y1="147.0" x2="496.0" y2="147.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="520.0" y1="222.0" x2="520.0" y2="171.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="542.0" y1="147.0" x2="610.0" y2="147.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="650.0" y="152.0" font-size="16" fill="#1e293b" text-anchor="middle" font-weight="700">715</text>
+<text x="270.0" y="98.0" font-size="13" fill="#0284c7" text-anchor="middle" font-weight="700">200</text>
+<text x="270.0" y="198.0" font-size="13" fill="#0284c7" text-anchor="middle" font-weight="700">450</text>
+<text x="440.0" y="138.0" font-size="13" fill="#0284c7" text-anchor="middle" font-weight="700">650</text>
+<text x="270.0" y="116.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 1.1</text>
+<text x="270.0" y="216.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 1.1</text>
+<text x="440.0" y="166.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 1.1</text>
+<text x="140.0" y="34.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">∂ 2.2</text>
+<text x="140.0" y="126.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 110</text>
+<text x="140.0" y="166.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 3.3</text>
+<text x="140.0" y="258.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 165</text>
+<text x="580.0" y="242.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 650</text>
+<text x="580.0" y="138.0" font-size="12.5" fill="#dc2626" text-anchor="middle">∂ 1</text>
+<text x="350.0" y="285.0" font-size="12.5" fill="#64748b" text-anchor="middle">파랑 = 순전파 값 (왼 → 오) · 빨강 ∂ = 최종 금액에 대한 기울기 (오 → 왼)</text>
+</svg>

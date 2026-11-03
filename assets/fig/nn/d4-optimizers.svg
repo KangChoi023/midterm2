@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" width="780" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="780" height="300" fill="#fff"/>
+<ellipse cx="376.0" cy="145.0" rx="93.9" ry="20.8" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<ellipse cx="376.0" cy="145.0" rx="187.8" ry="41.7" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<ellipse cx="376.0" cy="145.0" rx="281.7" ry="62.5" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<ellipse cx="376.0" cy="145.0" rx="375.7" ry="83.3" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<ellipse cx="376.0" cy="145.0" rx="469.6" ry="104.2" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<ellipse cx="376.0" cy="145.0" rx="563.5" ry="125.0" fill="none" stroke="#e2e8f0" stroke-width="1.2"/>
+<text x="124.0" y="286.0" font-size="12" fill="#64748b" text-anchor="middle">-6</text>
+<text x="208.0" y="286.0" font-size="12" fill="#64748b" text-anchor="middle">-4</text>
+<text x="292.0" y="286.0" font-size="12" fill="#64748b" text-anchor="middle">-2</text>
+<text x="376.0" y="286.0" font-size="12" fill="#64748b" text-anchor="middle">0</text>
+<text x="34.0" y="232.3" font-size="12" fill="#64748b" text-anchor="end">-2</text>
+<text x="34.0" y="149.0" font-size="12" fill="#64748b" text-anchor="end">0</text>
+<text x="34.0" y="65.7" font-size="12" fill="#64748b" text-anchor="end">2</text>
+<line x1="40.0" y1="145.0" x2="460.0" y2="145.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="376.0" y1="20.0" x2="376.0" y2="270.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="460.0" y="139.0" font-size="13" fill="#1e293b" text-anchor="end">x</text>
+<text x="382.0" y="32.0" font-size="13" fill="#1e293b" text-anchor="start">y</text>
+<polyline points="82.0,61.7 109.9,220.0 135.2,77.5 158.1,205.8 178.8,90.3 197.5,194.2 214.5,100.7 229.8,184.9 243.7,109.1 256.3,177.3 267.6,115.9 277.9,171.2 287.3,121.5 295.7,166.2 303.3,125.9 310.2,162.2 316.5,129.6 322.1,158.9 327.2,132.5 331.9,156.3 336.1,134.9 339.9,154.1 343.3,136.8 346.4,152.4 349.2,138.4 351.8,151.0 354.1,139.6 356.1,149.8 358.0,140.6 359.7,148.9 361.3,141.5" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="490.0" y1="50.0" x2="520.0" y2="50.0" stroke="#dc2626" stroke-width="3"/>
+<text x="528.0" y="55.0" font-size="13" fill="#1e293b" text-anchor="start">SGD (0.95)</text>
+<polyline points="82.0,61.7 84.9,78.3 90.5,106.7 98.4,139.8 108.2,170.7 119.7,193.4 132.7,204.1 146.8,201.9 161.7,188.6 177.4,167.8 193.4,144.6 209.7,123.8 226.0,109.3 242.1,103.4 258.0,106.4 273.5,116.8 288.5,131.8 302.8,148.0 316.4,161.9 329.3,171.1 341.4,174.1 352.6,171.0 362.9,163.0 372.3,152.2 380.8,141.1 388.4,131.8 395.1,126.1 400.9,124.8 406.0,127.6 410.2,133.6 413.6,141.3" fill="none" stroke="#0284c7" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="490.0" y1="78.0" x2="520.0" y2="78.0" stroke="#0284c7" stroke-width="3"/>
+<text x="528.0" y="83.0" font-size="13" fill="#1e293b" text-anchor="start">Momentum (0.1)</text>
+<polyline points="82.0,61.7 145.0,124.2 183.9,139.3 212.7,143.4 235.5,144.6 254.3,144.9 270.0,145.0 283.4,145.0 294.9,145.0 304.8,145.0 313.4,145.0 321.0,145.0 327.6,145.0 333.4,145.0 338.4,145.0 342.9,145.0 346.8,145.0 350.3,145.0 353.3,145.0 356.0,145.0 358.3,145.0 360.4,145.0 362.3,145.0 363.9,145.0 365.3,145.0 366.6,145.0 367.7,145.0 368.7,145.0 369.5,145.0 370.3,145.0 371.0,145.0" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="490.0" y1="106.0" x2="520.0" y2="106.0" stroke="#16a34a" stroke-width="3"/>
+<text x="528.0" y="111.0" font-size="13" fill="#1e293b" text-anchor="start">AdaGrad (1.5)</text>
+<polyline points="82.0,61.7 94.6,74.2 107.2,86.6 119.7,98.8 132.2,110.7 144.7,122.2 157.1,133.0 169.4,143.0 181.5,151.8 193.6,159.4 205.5,165.5 217.3,170.0 228.8,173.0 240.2,174.4 251.3,174.5 262.2,173.4 272.8,171.3 283.1,168.4 293.1,164.8 302.8,160.9 312.1,156.6 321.0,152.3 329.6,148.1 337.7,144.1 345.4,140.6 352.6,137.5 359.4,135.0 365.7,133.2 371.5,132.1 376.8,131.6 381.7,131.7" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="490.0" y1="134.0" x2="520.0" y2="134.0" stroke="#7c3aed" stroke-width="3"/>
+<text x="528.0" y="139.0" font-size="13" fill="#1e293b" text-anchor="start">Adam (0.3)</text>
+<circle cx="82.0" cy="61.7" r="5" fill="#1e293b" stroke="#1e293b" stroke-width="2"/>
+<text x="90.0" y="79.7" font-size="12" fill="#1e293b" text-anchor="start">시작 (−7, 2)</text>
+<circle cx="376.0" cy="145.0" r="5" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+<text x="490.0" y="180.0" font-size="13" fill="#64748b" text-anchor="start">f = x²/20 + y², 30 step</text>
+<text x="490.0" y="202.0" font-size="13" fill="#64748b" text-anchor="start">y 가 20배 가파르다 → SGD 는 지그재그</text>
+<text x="490.0" y="224.0" font-size="13" fill="#64748b" text-anchor="start">Momentum: 관성으로 x 방향 가속</text>
+<text x="490.0" y="246.0" font-size="13" fill="#64748b" text-anchor="start">AdaGrad · Adam: 방향마다 걸음 조절</text>
+</svg>

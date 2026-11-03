@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 260" width="680" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="680" height="260" fill="#fff"/>
+<text x="340.0" y="26.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">순전파 Y = X @ W + b → 역전파: 기울기는 자기 자신과 shape 가 같다</text>
+<rect x="30.0" y="50.0" width="110.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="85.0" y="70.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">X</text>
+<text x="85.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">(N, D)</text>
+<line x1="146.0" y1="73.0" x2="190.0" y2="73.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="196.0" y="50.0" width="220.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="306.0" y="78.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">dX = dout @ Wᵀ</text>
+<text x="436.0" y="78.0" font-size="13" fill="#64748b" text-anchor="start">(N, M) @ (M, D)</text>
+<rect x="30.0" y="112.0" width="110.0" height="46.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="85.0" y="132.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">W</text>
+<text x="85.0" y="150.0" font-size="12.5" fill="#64748b" text-anchor="middle">(D, M)</text>
+<line x1="146.0" y1="135.0" x2="190.0" y2="135.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="196.0" y="112.0" width="220.0" height="46.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="306.0" y="140.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">dW = Xᵀ @ dout</text>
+<text x="436.0" y="140.0" font-size="13" fill="#64748b" text-anchor="start">(D, N) @ (N, M)</text>
+<rect x="30.0" y="174.0" width="110.0" height="46.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="85.0" y="194.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">b</text>
+<text x="85.0" y="212.0" font-size="12.5" fill="#64748b" text-anchor="middle">(M,)</text>
+<line x1="146.0" y1="197.0" x2="190.0" y2="197.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="196.0" y="174.0" width="220.0" height="46.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="306.0" y="202.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">db = dout.sum(axis=0)</text>
+<text x="436.0" y="202.0" font-size="13" fill="#64748b" text-anchor="start">N 행을 모두 더함</text>
+<text x="340.0" y="246.0" font-size="12.5" fill="#64748b" text-anchor="middle">dout = ∂L/∂Y (N, M) · b 는 N 번 쓰였으니(브로드캐스팅) 기울기도 N 개를 더한다</text>
+</svg>

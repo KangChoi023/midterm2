@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 250" width="660" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="660" height="250" fill="#fff"/>
+<rect x="30.0" y="40.0" width="280.0" height="70.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="170.0" y="72.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">수치 미분</text>
+<text x="170.0" y="90.0" font-size="12.5" fill="#64748b" text-anchor="middle">손실 2P 번 × 순전파 O(P) = O(P²)</text>
+<rect x="350.0" y="40.0" width="280.0" height="70.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="490.0" y="72.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">역전파</text>
+<text x="490.0" y="90.0" font-size="12.5" fill="#64748b" text-anchor="middle">순전파 1번 + 역방향 1번 = O(P)</text>
+<text x="30.0" y="145.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">망</text>
+<text x="170.0" y="145.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">파라미터 P</text>
+<text x="330.0" y="145.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">수치 미분: step 당 손실 계산 2P</text>
+<text x="30.0" y="172.0" font-size="13" fill="#1e293b" text-anchor="start">784-4-10</text>
+<text x="170.0" y="172.0" font-size="13" fill="#1e293b" text-anchor="start">3,190</text>
+<text x="330.0" y="172.0" font-size="13" fill="#1e293b" text-anchor="start">6,380번</text>
+<text x="30.0" y="196.0" font-size="13" fill="#1e293b" text-anchor="start">784-10-10</text>
+<text x="170.0" y="196.0" font-size="13" fill="#1e293b" text-anchor="start">7,960</text>
+<text x="330.0" y="196.0" font-size="13" fill="#1e293b" text-anchor="start">15,920번</text>
+<text x="30.0" y="220.0" font-size="13" fill="#1e293b" text-anchor="start">784-100-10</text>
+<text x="170.0" y="220.0" font-size="13" fill="#1e293b" text-anchor="start">79,510</text>
+<text x="330.0" y="220.0" font-size="13" fill="#dc2626" text-anchor="start" font-weight="700">159,020번</text>
+<text x="330.0" y="244.0" font-size="12.5" fill="#64748b" text-anchor="start">파라미터 10배 → 수치 미분 시간 100배</text>
+</svg>

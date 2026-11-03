@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="720" height="200" fill="#fff"/>
+<rect x="6.0" y="50.0" width="78.0" height="64.0" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+<text x="45.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">입력</text>
+<text x="45.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(3, 32, 32)</text>
+<line x1="84.0" y1="82.0" x2="90.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="91.0" y="50.0" width="88.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="135.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">conv 5×5</text>
+<text x="135.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(6, 28, 28)</text>
+<line x1="179.0" y1="82.0" x2="185.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="186.0" y="50.0" width="78.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="225.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">pool</text>
+<text x="225.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(6, 14, 14)</text>
+<line x1="264.0" y1="82.0" x2="270.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="271.0" y="50.0" width="94.0" height="64.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="318.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">conv 5×5</text>
+<text x="318.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(16, 10, 10)</text>
+<line x1="365.0" y1="82.0" x2="371.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="372.0" y="50.0" width="76.0" height="64.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="410.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">pool</text>
+<text x="410.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">(16, 5, 5)</text>
+<line x1="448.0" y1="82.0" x2="454.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="455.0" y="50.0" width="80.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="495.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">FC</text>
+<text x="495.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">400 → 120</text>
+<line x1="535.0" y1="82.0" x2="541.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="542.0" y="50.0" width="74.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="579.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">FC</text>
+<text x="579.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">120 → 84</text>
+<line x1="616.0" y1="82.0" x2="622.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="623.0" y="50.0" width="70.0" height="64.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="658.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">FC</text>
+<text x="658.0" y="97.0" font-size="12.5" fill="#64748b" text-anchor="middle">84 → 10</text>
+<text x="360.0" y="28.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">LeNet-5 (1998) — Conv-Pool-Conv-Pool-FC-FC-FC 뼈대, CIFAR-10 용</text>
+<text x="360.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="middle">파라미터 62,006 (conv 456 + 2,416 · FC 48,120 + 10,164 + 850) — MLP 1,707,274 의 1/27</text>
+<text x="360.0" y="166.0" font-size="12.5" fill="#0284c7" text-anchor="middle" font-weight="700">3 epoch test: MLP 0.4994 vs LeNet-5 0.5489 — 구조의 가정(귀납적 편향)이 파라미터보다 중요</text>
+</svg>
