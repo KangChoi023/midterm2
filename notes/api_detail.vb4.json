@@ -1,0 +1,911 @@
+{
+ "_설명": "VB Day 4 함수 상세",
+ "parse_annotation()": {
+  "role": "정답 텍스트 파일 → 박스 배열",
+  "desc": [
+   "Penn-Fudan 정답 파일 한 줄이 박스 하나 (`(Xmin, Ymin) - (Xmax, Ymax)`)",
+   "정규식으로 숫자 4개씩 뽑아 `(N, 4)` float32 로 — `xyxy` 픽셀 좌표"
+  ],
+  "args": [
+   [
+    "path",
+    "정답 `.txt` 경로"
+   ]
+  ],
+  "flow": "텍스트 → 숫자 4개씩 묶음 → reshape(-1, 4)",
+  "ret": "`(N, 4)` 박스 배열",
+  "ex": ""
+ },
+ "re.findall()": {
+  "role": "정규식에 맞는 모든 부분을 목록으로",
+  "desc": [
+   "괄호 `( )` 그룹이 여러 개면 튜플 목록 — 박스 좌표 4개씩",
+   "숫자는 `\\d+` — 결과는 문자열이라 `np.array(..., dtype=float32)` 로 변환"
+  ],
+  "args": [
+   [
+    "pattern",
+    "정규식"
+   ],
+   [
+    "string",
+    "찾을 문자열"
+   ]
+  ],
+  "flow": "문자열 전체 훑기 → 그룹 튜플 모음",
+  "ret": "튜플의 리스트"
+ },
+ "np.bincount()": {
+  "role": "0 이상 정수가 각각 몇 번 나왔는지 세기",
+  "desc": [
+   "인덱스 = 값, 내용 = 횟수",
+   "사람 수별 이미지 장수를 셀 때 `np.bincount(counts)`"
+  ],
+  "args": [
+   [
+    "x",
+    "음이 아닌 정수 배열"
+   ]
+  ],
+  "flow": "값마다 카운트",
+  "ret": "길이 `max+1` 배열"
+ },
+ "n_windows()": {
+  "role": "sliding window 의 창 개수",
+  "desc": [
+   "`nx = (W − 창폭) // stride + 1`, `ny = (H − 창높이) // stride + 1`",
+   "559×536 · 창 64×128 · stride 16 → 806개"
+  ],
+  "args": [
+   [
+    "W, H",
+    "이미지 폭 · 높이"
+   ],
+   [
+    "win",
+    "창 (폭, 높이)"
+   ],
+   [
+    "stride",
+    "창 이동 간격(px)"
+   ]
+  ],
+  "flow": "가로 개수 × 세로 개수",
+  "ret": "int"
+ },
+ "xyxy_to_xywh()": {
+  "role": "두 점 표현 → 왼쪽 위 + 폭 · 높이",
+  "desc": [
+   "`w = x2 − x1`, `h = y2 − y1` (COCO 형식)",
+   "`b[..., 0]` 처럼 `...` 를 써서 박스 1개 · N개 모두 처리"
+  ],
+  "args": [
+   [
+    "b",
+    "`xyxy` 박스 (…, 4)"
+   ]
+  ],
+  "flow": "(x1, y1, x2, y2) → (x1, y1, w, h)",
+  "ret": "`(…, 4)` 배열"
+ },
+ "xywh_to_xyxy()": {
+  "role": "왼쪽 위 + 폭 · 높이 → 두 점",
+  "desc": [
+   "`x2 = x + w`, `y2 = y + h`"
+  ],
+  "args": [
+   [
+    "b",
+    "`xywh` 박스"
+   ]
+  ],
+  "flow": "(x, y, w, h) → (x, y, x+w, y+h)",
+  "ret": "`(…, 4)` 배열"
+ },
+ "xyxy_to_cxcywh_norm()": {
+  "role": "픽셀 박스 → YOLO 형식 (중심 + 크기, 0~1)",
+  "desc": [
+   "`cx = x1 + w/2` 후 이미지 폭 · 높이로 나눈다",
+   "resize 해도 값이 변하지 않는 형식"
+  ],
+  "args": [
+   [
+    "b",
+    "`xyxy` 박스"
+   ],
+   [
+    "W, H",
+    "이미지 폭 · 높이"
+   ]
+  ],
+  "flow": "중심 · 크기 계산 → ÷ (W, H)",
+  "ret": "`(…, 4)` 0~1"
+ },
+ "cxcywh_norm_to_xyxy()": {
+  "role": "YOLO 형식 → 픽셀 `xyxy`",
+  "desc": [
+   "`cx · W`, `cy · H`, `w · W`, `h · H` 로 되돌린 뒤 `cx ± w/2`"
+  ],
+  "args": [
+   [
+    "b",
+    "정규화 박스"
+   ],
+   [
+    "W, H",
+    "이미지 폭 · 높이"
+   ]
+  ],
+  "flow": "× (W, H) → 중심 ± 크기/2",
+  "ret": "`(…, 4)` 픽셀"
+ },
+ "np.stack()": {
+  "role": "같은 모양의 배열들을 새 축으로 쌓기",
+  "desc": [
+   "`axis=-1` 로 열 4개를 쌓으면 `(N, 4)` 박스 배열"
+  ],
+  "args": [
+   [
+    "arrays",
+    "쌓을 배열 목록"
+   ],
+   [
+    "axis",
+    "새로 만들 축 위치 (`-1` = 마지막)"
+   ]
+  ],
+  "flow": "`[(N,), (N,), (N,), (N,)]` → `(N, 4)`",
+  "ret": "ndarray"
+ },
+ "json.dump()": {
+  "role": "파이썬 dict · list 를 JSON 파일로 쓰기",
+  "desc": [
+   "COCO 어노테이션 저장 — `images` · `annotations` · `categories`",
+   "NumPy 값은 `float(v)` 로 바꿔서 넣는다 (JSON 으로 못 씀)"
+  ],
+  "args": [
+   [
+    "obj",
+    "저장할 dict · list"
+   ],
+   [
+    "fp",
+    "쓰기용 파일 객체"
+   ]
+  ],
+  "flow": "obj → 텍스트 → 파일",
+  "ret": "없음"
+ },
+ "iou()": {
+  "role": "박스 1개와 여러 박스의 IoU",
+  "desc": [
+   "교집합 = `(max x1, max y1)` ~ `(min x2, min y2)`, 음수는 0",
+   "IoU = 교집합 / (면적A + 면적B − 교집합)",
+   "`(0,0,10,10)` vs `(5,5,15,15)` = 0.1429"
+  ],
+  "args": [
+   [
+    "box",
+    "기준 박스 (4,)"
+   ],
+   [
+    "boxes",
+    "비교할 박스 (M, 4)"
+   ]
+  ],
+  "flow": "교집합 · 합집합 계산 (벡터화)",
+  "ret": "`(M,)` 0~1"
+ },
+ "iou_matrix()": {
+  "role": "A 의 모든 박스 × B 의 모든 박스 IoU 행렬",
+  "desc": [
+   "`A[:, None]` · `B[None, :]` 브로드캐스팅으로 한 번에 `(N, M)`",
+   "`torchvision.ops.box_iou` 와 같은 결과 — 최대 차이 ≈ 0"
+  ],
+  "args": [
+   [
+    "A",
+    "(N, 4)"
+   ],
+   [
+    "B",
+    "(M, 4)"
+   ]
+  ],
+  "flow": "모든 쌍의 교집합 · 합집합",
+  "ret": "`(N, M)`"
+ },
+ "nms()": {
+  "role": "점수 순으로 하나 남기고 겹친 박스 지우기",
+  "desc": [
+   "점수 높은 순 정렬 → 가장 높은 것을 `keep` → IoU > `iou_thr` 인 것 삭제 → 반복",
+   "`torchvision.ops.nms` 와 같은 결과 (무작위 300개로 확인)"
+  ],
+  "args": [
+   [
+    "boxes",
+    "(N, 4) xyxy"
+   ],
+   [
+    "scores",
+    "(N,) 점수"
+   ],
+   [
+    "iou_thr",
+    "이 값보다 많이 겹치면 같은 물체로 보고 지움 (기본 0.5)"
+   ]
+  ],
+  "flow": "정렬 → 선택 → 제거를 남은 박스가 없을 때까지",
+  "ret": "남길 인덱스 배열"
+ },
+ "torchvision.ops.box_iou()": {
+  "role": "두 박스 집합의 IoU 행렬 (라이브러리)",
+  "desc": [
+   "직접 만든 `iou_matrix` 와 같은 값이어야 정상",
+   "입력은 torch 텐서 `(N, 4)`, `(M, 4)` xyxy"
+  ],
+  "args": [
+   [
+    "boxes1",
+    "(N, 4) 텐서"
+   ],
+   [
+    "boxes2",
+    "(M, 4) 텐서"
+   ]
+  ],
+  "flow": "(N, 4), (M, 4) → (N, M)",
+  "ret": "`(N, M)` 텐서"
+ },
+ "torchvision.ops.nms()": {
+  "role": "NMS (라이브러리) — 남길 인덱스",
+  "desc": [
+   "직접 만든 `nms` 의 검증용",
+   "점수 높은 순으로 정렬된 인덱스를 돌려준다"
+  ],
+  "args": [
+   [
+    "boxes",
+    "(N, 4) xyxy 텐서"
+   ],
+   [
+    "scores",
+    "(N,) 텐서"
+   ],
+   [
+    "iou_threshold",
+    "겹침 기준"
+   ]
+  ],
+  "flow": "박스 · 점수 → 남은 인덱스",
+  "ret": "LongTensor"
+ },
+ "np.clip()": {
+  "role": "값의 범위를 잘라 제한",
+  "desc": [
+   "IoU 에서 `np.clip(x2 − x1, 0, None)` — 안 겹쳐 음수가 되면 0",
+   "`None` 은 그쪽 제한 없음"
+  ],
+  "args": [
+   [
+    "a",
+    "배열"
+   ],
+   [
+    "a_min",
+    "하한"
+   ],
+   [
+    "a_max",
+    "상한 (None 이면 제한 없음)"
+   ]
+  ],
+  "flow": "범위 밖 값을 경계로",
+  "ret": "배열"
+ },
+ "precision_recall()": {
+  "role": "TP/FP 열 → 누적 Precision · Recall",
+  "desc": [
+   "`ctp = cumsum(tp)`, `cfp = cumsum(1 − tp)`",
+   "`precision = ctp / (ctp + cfp)`, `recall = ctp / 정답 수`"
+  ],
+  "args": [
+   [
+    "tp",
+    "점수 순 TP(1) / FP(0) 배열"
+   ],
+   [
+    "n_gt",
+    "정답 총 수"
+   ]
+  ],
+  "flow": "누적합 → 비율",
+  "ret": "`(precision, recall)`"
+ },
+ "ap_from_pr()": {
+  "role": "P · R 곡선 → AP (envelope 아래 넓이)",
+  "desc": [
+   "앞뒤에 (0, 0) · (1, 0) 을 붙이고 오른쪽 최댓값으로 envelope",
+   "recall 이 바뀌는 구간마다 `Δrecall × precision` 을 더한다",
+   "손 계산 예제 → 0.6875"
+  ],
+  "args": [
+   [
+    "rec",
+    "recall 배열"
+   ],
+   [
+    "prec",
+    "precision 배열"
+   ]
+  ],
+  "flow": "envelope → 구간 합",
+  "ret": "float"
+ },
+ "match_detections()": {
+  "role": "모든 이미지의 탐지를 점수 순으로 TP/FP 판정",
+  "desc": [
+   "정답마다 처음 매칭된 탐지만 TP(IoU ≥ 기준), 중복 · 안 맞음은 FP",
+   "이미지별 정답 사용 여부를 `used` 로 기억"
+  ],
+  "args": [
+   [
+    "dets",
+    "이미지마다 `(K, 5)` [x1, y1, x2, y2, score] 목록"
+   ],
+   [
+    "gts",
+    "이미지마다 정답 박스 목록"
+   ],
+   [
+    "iou_thr",
+    "TP 기준 IoU (기본 0.5)"
+   ]
+  ],
+  "flow": "전체 탐지 정렬 → 순서대로 가장 IoU 큰 정답과 매칭",
+  "ret": "`(scores, tp, n_gt)`"
+ },
+ "evaluate_ap()": {
+  "role": "IoU 기준 하나의 AP",
+  "desc": [
+   "`match_detections` → `precision_recall` → `ap_from_pr`",
+   "AP50 = `iou_thr 0.5`"
+  ],
+  "args": [
+   [
+    "dets",
+    "탐지 목록"
+   ],
+   [
+    "gts",
+    "정답 목록"
+   ],
+   [
+    "iou_thr",
+    "TP 기준 IoU"
+   ]
+  ],
+  "flow": "판정 → P · R → 넓이",
+  "ret": "float 0~1"
+ },
+ "map_50_95()": {
+  "role": "IoU 기준 0.50 ~ 0.95 (10개) 평균 AP",
+  "desc": [
+   "기준이 높을수록 엄격 — 위치 정확도까지 반영",
+   "10% 밀린 박스: AP50 1.0 인데 mAP50-95 0.7 (강의 실행 값)"
+  ],
+  "args": [
+   [
+    "dets",
+    "탐지 목록"
+   ],
+   [
+    "gts",
+    "정답 목록"
+   ]
+  ],
+  "flow": "IoU 기준마다 `evaluate_ap` → 평균",
+  "ret": "float"
+ },
+ "np.cumsum()": {
+  "role": "누적합",
+  "desc": [
+   "TP 열 `[1,1,0,1,0]` → `[1,2,2,3,3]` 순위별 누적 TP"
+  ],
+  "args": [
+   [
+    "a",
+    "배열"
+   ]
+  ],
+  "flow": "앞에서부터 더해 나감",
+  "ret": "같은 길이 배열"
+ },
+ "inspect.getsource()": {
+  "role": "함수의 소스 코드를 문자열로 얻기",
+  "desc": [
+   "함수 목록을 모아 `iou_nms_map.py` 로 저장할 때 사용",
+   "노트북에서 만든 함수를 파일(모듈)로 옮기는 방법"
+  ],
+  "args": [
+   [
+    "obj",
+    "함수 · 클래스"
+   ]
+  ],
+  "flow": "객체 → 소스 문자열",
+  "ret": "str"
+ },
+ "make_anchors()": {
+  "role": "특징맵 모든 위치에 anchor 9개씩 깔기",
+  "desc": [
+   "크기 3(64 · 128 · 256) × 비율 3(0.5 · 1 · 2), 넓이 s² 유지",
+   "중심 = `(칸 번호 + 0.5) × stride`",
+   "559×536 · stride 16 → 34 × 35 × 9 = 10,710개"
+  ],
+  "args": [
+   [
+    "fh, fw",
+    "특징맵 높이 · 폭"
+   ],
+   [
+    "stride",
+    "특징맵 한 칸 = 입력 px"
+   ],
+   [
+    "sizes",
+    "anchor 크기"
+   ],
+   [
+    "ratios",
+    "높이 / 폭 비율"
+   ]
+  ],
+  "flow": "기준 박스 9개 → 모든 칸 중심으로 평행이동",
+  "ret": "`(fh·fw·9, 4)` xyxy"
+ },
+ "np.meshgrid()": {
+  "role": "가로 · 세로 좌표로 2차원 격자 만들기",
+  "desc": [
+   "칸 중심의 x 좌표 · y 좌표를 모든 칸에 대해 만든다"
+  ],
+  "args": [
+   [
+    "x",
+    "가로 좌표 1차원"
+   ],
+   [
+    "y",
+    "세로 좌표 1차원"
+   ]
+  ],
+  "flow": "`(fw,)`, `(fh,)` → `(fh, fw)` 두 개",
+  "ret": "두 배열"
+ },
+ "detection.fasterrcnn_mobilenet_v3_large_fpn()": {
+  "role": "Faster R-CNN (2-stage) · MobileNetV3-Large FPN",
+  "desc": [
+   "COCO 사전학습, 파라미터 19,386,354 · 4.49 GFLOPS · box mAP 32.8",
+   "입력은 0~1 텐서의 리스트, 출력은 이미지마다 dict (boxes · labels · scores)"
+  ],
+  "args": [
+   [
+    "weights",
+    "`\"DEFAULT\"` 이면 COCO 사전학습"
+   ]
+  ],
+  "flow": "[3×H×W 텐서] → [{boxes, labels, scores}]",
+  "ret": "nn.Module (eval 모드로)"
+ },
+ "detection.ssdlite320_mobilenet_v3_large()": {
+  "role": "SSDLite (1-stage) · 입력 320",
+  "desc": [
+   "파라미터 3,440,060 · 0.58 GFLOPS · box mAP 21.3 — 가장 가볍다",
+   "출력 형식은 Faster R-CNN 과 같다"
+  ],
+  "args": [
+   [
+    "weights",
+    "`\"DEFAULT\"` 이면 COCO 사전학습"
+   ]
+  ],
+  "flow": "[3×H×W 텐서] → [{boxes, labels, scores}]",
+  "ret": "nn.Module"
+ },
+ "run_tv()": {
+  "role": "torchvision 탐지기로 사람만 뽑기",
+  "desc": [
+   "`labels == 1` (person) 이고 `scores ≥ score_thr` 인 것만",
+   "이미지는 `(H, W, 3)` uint8 → `permute` · `/255` 로 0~1 텐서"
+  ],
+  "args": [
+   [
+    "model",
+    "탐지기"
+   ],
+   [
+    "img",
+    "RGB 이미지 배열"
+   ],
+   [
+    "score_thr",
+    "점수 기준"
+   ]
+  ],
+  "flow": "이미지 → 텐서 → 모델 → 필터",
+  "ret": "`(boxes, scores)` numpy"
+ },
+ "n_preds()": {
+  "role": "입력 크기별 예측 칸 수",
+  "desc": [
+   "`Σ (imgsz // stride)²` (stride 8 · 16 · 32)",
+   "640 → 8,400, 320 → 2,100"
+  ],
+  "args": [
+   [
+    "imgsz",
+    "입력 크기"
+   ],
+   [
+    "strides",
+    "Head 의 stride 들"
+   ]
+  ],
+  "flow": "stride 별 칸 수의 합",
+  "ret": "int"
+ },
+ "letterbox()": {
+  "role": "비율을 유지해 정사각형으로 맞추기",
+  "desc": [
+   "`r = min(size/h, size/w)` 로 줄이고 남는 곳을 회색(114)으로 채움",
+   "패딩 `(left, top)` 과 `r` 도 돌려줘 나중에 원본 좌표로 되돌린다"
+  ],
+  "args": [
+   [
+    "img",
+    "BGR 이미지"
+   ],
+   [
+    "size",
+    "출력 한 변 (640)"
+   ],
+   [
+    "color",
+    "패딩 값 (114)"
+   ]
+  ],
+  "flow": "비율 유지 resize → 가운데 붙이기",
+  "ret": "`(이미지, r, (left, top))`"
+ },
+ "decode_yolo()": {
+  "role": "YOLO 원시 출력 → 사람 박스",
+  "desc": [
+   "`out[0].T` → `(8400, 84)`, 앞 4 = cxcywh, 뒤 80 = 클래스 점수",
+   "conf = 클래스 최댓값, `conf > conf_thr` · person(0) 필터 → xyxy → `nms`"
+  ],
+  "args": [
+   [
+    "out",
+    "`(1, 84, 8400)` 원시 출력"
+   ],
+   [
+    "conf_thr",
+    "점수 기준"
+   ],
+   [
+    "iou_thr",
+    "NMS 기준"
+   ],
+   [
+    "cls",
+    "남길 클래스 번호 (person = 0)"
+   ]
+  ],
+  "flow": "전치 → 필터 → xyxy → NMS",
+  "ret": "`(boxes, conf)` (letterbox 좌표)"
+ },
+ "YOLO()": {
+  "role": "ultralytics 모델 불러오기",
+  "desc": [
+   "`\"yolov8n.pt\"` 처럼 이름을 주면 사전학습 가중치를 내려받는다",
+   "`.model` 로 안쪽 `nn.Module` 에 접근 (원시 출력 확인용)"
+  ],
+  "args": [
+   [
+    "model",
+    "가중치 파일 이름"
+   ]
+  ],
+  "flow": "파일 → 모델 객체",
+  "ret": "YOLO 객체"
+ },
+ "model.predict()": {
+  "role": "전처리 · 추론 · NMS 를 한 번에",
+  "desc": [
+   "`imgsz` · `conf` · `classes=[0]`(person) 로 조절",
+   "결과 `r.boxes.xyxy` · `r.boxes.conf`, 단계별 시간은 `r.speed` (ms)"
+  ],
+  "args": [
+   [
+    "source",
+    "이미지 · 경로 · 프레임"
+   ],
+   [
+    "imgsz",
+    "입력 크기"
+   ],
+   [
+    "conf",
+    "점수 기준"
+   ],
+   [
+    "classes",
+    "남길 클래스 번호 목록"
+   ]
+  ],
+  "flow": "letterbox → 추론 → NMS",
+  "ret": "Results 목록"
+ },
+ "cv2.resize()": {
+  "role": "이미지 크기 바꾸기",
+  "desc": [
+   "크기 인자는 **(폭, 높이)** 순서 — 배열 shape `(높이, 폭)` 과 반대",
+   "letterbox 에서 `(nw, nh)` 로 줄인다"
+  ],
+  "args": [
+   [
+    "src",
+    "이미지"
+   ],
+   [
+    "dsize",
+    "(폭, 높이)"
+   ],
+   [
+    "interpolation",
+    "보간 방식 (`INTER_LINEAR`)"
+   ]
+  ],
+  "flow": "이미지 → 새 크기",
+  "ret": "이미지"
+ },
+ "detect_people()": {
+  "role": "프레임 한 장에서 사람 찾기",
+  "desc": [
+   "`classes=[0]` 로 사람만, `r.speed` 로 단계별 시간도 반환"
+  ],
+  "args": [
+   [
+    "frame",
+    "BGR 프레임"
+   ],
+   [
+    "model",
+    "YOLO 모델"
+   ],
+   [
+    "imgsz",
+    "입력 크기"
+   ],
+   [
+    "conf",
+    "점수 기준"
+   ]
+  ],
+  "flow": "predict → 박스 · 점수 · 시간 추출",
+  "ret": "`(boxes, scores, speed)`"
+ },
+ "process_video()": {
+  "role": "영상 전체에 탐지 → 결과 영상",
+  "desc": [
+   "`VideoCapture(source)` 는 이 함수 안 한 곳에서만 연다 (규칙)",
+   "프레임별 인원 수와 단계별 평균 ms(read · preprocess · inference · postprocess · draw+write) 반환"
+  ],
+  "args": [
+   [
+    "source",
+    "영상 경로 또는 카메라 주소"
+   ],
+   [
+    "out_path",
+    "저장할 영상"
+   ],
+   [
+    "model",
+    "YOLO 모델"
+   ],
+   [
+    "conf",
+    "점수 기준"
+   ],
+   [
+    "max_frames",
+    "일부만 처리 (None 이면 전체)"
+   ]
+  ],
+  "flow": "프레임 읽기 → 탐지 → 그리기 → 쓰기 반복",
+  "ret": "`(counts, times)`"
+ },
+ "realtime_report()": {
+  "role": "단계별 시간 합 → FPS · 실시간 여부",
+  "desc": [
+   "합계 ms ≤ `1000 / 영상 FPS` 이면 ✔ 실시간"
+  ],
+  "args": [
+   [
+    "times",
+    "단계별 평균 ms dict"
+   ],
+   [
+    "label",
+    "표시 이름"
+   ],
+   [
+    "video_fps",
+    "영상 FPS"
+   ]
+  ],
+  "flow": "합 → `1000 / 합` = FPS → 예산과 비교",
+  "ret": "FPS (float)"
+ },
+ "cv2.VideoCapture()": {
+  "role": "영상 파일 · 카메라 열기",
+  "desc": [
+   "`cap.read()` → `(ok, frame)`, `ok` 가 False 면 끝",
+   "`cap.get(cv2.CAP_PROP_FPS)` 등으로 FPS · 크기 · 프레임 수"
+  ],
+  "args": [
+   [
+    "source",
+    "파일 경로 또는 카메라 번호 · 주소"
+   ]
+  ],
+  "flow": "열기 → 프레임 한 장씩 읽기",
+  "ret": "VideoCapture 객체"
+ },
+ "cv2.VideoWriter()": {
+  "role": "프레임을 영상 파일로 저장",
+  "desc": [
+   "fourcc `mp4v` 로 쓰면 브라우저에서 안 나올 수 있어 ffmpeg 으로 H.264 변환",
+   "크기 인자는 (폭, 높이) — 프레임 크기와 다르면 저장이 안 된다"
+  ],
+  "args": [
+   [
+    "filename",
+    "저장 경로"
+   ],
+   [
+    "fourcc",
+    "코덱 코드"
+   ],
+   [
+    "fps",
+    "초당 프레임"
+   ],
+   [
+    "frameSize",
+    "(폭, 높이)"
+   ]
+  ],
+  "flow": "프레임 `write()` → 마지막에 `release()`",
+  "ret": "VideoWriter 객체"
+ },
+ "cv2.rectangle()": {
+  "role": "이미지에 사각형 그리기",
+  "desc": [
+   "좌표는 정수 `(x1, y1), (x2, y2)`, 색은 BGR",
+   "원본 배열에 직접 그린다 (복사본에 그리려면 `.copy()`)"
+  ],
+  "args": [
+   [
+    "img",
+    "이미지"
+   ],
+   [
+    "pt1, pt2",
+    "왼쪽 위 · 오른쪽 아래 (정수)"
+   ],
+   [
+    "color",
+    "BGR 색"
+   ],
+   [
+    "thickness",
+    "선 두께"
+   ]
+  ],
+  "flow": "이미지 위에 그리기",
+  "ret": "이미지"
+ },
+ "cv2.putText()": {
+  "role": "이미지에 글자 그리기",
+  "desc": [
+   "인원 수 `people: N` 을 프레임 왼쪽 위에 쓴다",
+   "한글은 못 그린다 — 영문 · 숫자"
+  ],
+  "args": [
+   [
+    "img",
+    "이미지"
+   ],
+   [
+    "text",
+    "글자"
+   ],
+   [
+    "org",
+    "왼쪽 아래 좌표"
+   ],
+   [
+    "fontFace",
+    "글꼴"
+   ],
+   [
+    "fontScale",
+    "크기"
+   ],
+   [
+    "color",
+    "BGR 색"
+   ],
+   [
+    "thickness",
+    "두께"
+   ]
+  ],
+  "flow": "이미지 위에 글자",
+  "ret": "이미지"
+ },
+ "predict_dataset()": {
+  "role": "데이터셋 전체를 예측해 평가용 목록 만들기",
+  "desc": [
+   "이미지마다 `(K, 5)` `[x1, y1, x2, y2, score]` 배열",
+   "AP 를 잴 때는 conf 를 0.001 처럼 아주 낮게 해 PR 곡선 전체를 얻는다"
+  ],
+  "args": [
+   [
+    "model",
+    "탐지기"
+   ],
+   [
+    "imgsz",
+    "입력 크기"
+   ]
+  ],
+  "flow": "170장 예측 → `(K, 5)` 모음",
+  "ret": "배열의 리스트 (170개)"
+ },
+ "cpu_ms()": {
+  "role": "CPU 에서 추론 한 장 ms",
+  "desc": [
+   "GPU 에 올린 모델과 섞이지 않도록 CPU 용 모델을 따로 불러서 잰다",
+   "Day 3 의 지연시간 측정과 같은 방식 (warm-up 후 평균)"
+  ],
+  "args": [
+   [
+    "weights",
+    "가중치 파일 이름"
+   ],
+   [
+    "imgsz",
+    "입력 크기"
+   ]
+  ],
+  "flow": "CPU 모델 → warm-up → 평균 시간",
+  "ret": "ms (float)"
+ },
+ "np.argmax()": {
+  "role": "가장 큰 값의 위치",
+  "desc": [
+   "F1 이 가장 큰 conf 의 위치 → `best_conf = CONFS[np.argmax(F1_c)]`"
+  ],
+  "args": [
+   [
+    "a",
+    "배열"
+   ]
+  ],
+  "flow": "최댓값의 인덱스",
+  "ret": "int"
+ }
+}

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">IoU = 교집합 / 합집합 — 한쪽으로 5 만 밀려도 0.33 으로 떨어진다</text>
+<rect x="30.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
+<rect x="80.0" y="100.0" width="100.0" height="100.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+<rect x="80.0" y="100.0" width="50.0" height="50.0" rx="0" fill="#cfe8d5" stroke="#16a34a" stroke-width="1.5"/>
+<text x="110.0" y="185.0" font-size="12.5" fill="#64748b" text-anchor="middle">A (0,0,10,10) · B (5,5,15,15)</text>
+<text x="110.0" y="210.0" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">IoU = 25 / 175 = 0.1429</text>
+<rect x="260.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
+<rect x="260.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+<rect x="260.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#cfe8d5" stroke="#16a34a" stroke-width="1.5"/>
+<text x="340.0" y="185.0" font-size="12.5" fill="#64748b" text-anchor="middle">완전히 같음</text>
+<text x="340.0" y="210.0" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">IoU = 100 / 100 = 1</text>
+<rect x="540.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5"/>
+<rect x="490.0" y="50.0" width="100.0" height="100.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+<rect x="540.0" y="50.0" width="50.0" height="100.0" rx="0" fill="#cfe8d5" stroke="#16a34a" stroke-width="1.5"/>
+<text x="570.0" y="185.0" font-size="12.5" fill="#64748b" text-anchor="middle">가로로 5 만 밀림</text>
+<text x="570.0" y="210.0" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">IoU = 50 / 150 = 0.3333</text>
+<text x="350.0" y="240.0" font-size="12" fill="#dc2626" text-anchor="middle">안 겹치면 교집합 0 → IoU 0 · 교집합 폭 · 높이가 음수면 0 으로 자른다 (np.clip)</text>
+</svg>

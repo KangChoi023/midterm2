@@ -482,7 +482,90 @@ def d3_compare():
     s.save('d3-compare.svg')
 
 
+# ---------------- VB Day 4 ----------------
+
+def d4_iou():
+    s = Svg(700, 250)
+    s.text(350, 22, 'IoU = 교집합 / 합집합 — 한쪽으로 5 만 밀려도 0.33 으로 떨어진다', 14, INK, 'middle', True)
+    def pair(ox, a, b, title, val, col):
+        k = 10
+        s.rect(ox + a[0] * k, 50 + a[1] * k, (a[2] - a[0]) * k, (a[3] - a[1]) * k, BLUE, None, 0, 2.5)
+        s.rect(ox + b[0] * k, 50 + b[1] * k, (b[2] - b[0]) * k, (b[3] - b[1]) * k, ORANGE, None, 0, 2.5)
+        x1, y1, x2, y2 = max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])
+        if x2 > x1 and y2 > y1: s.rect(ox + x1 * k, 50 + y1 * k, (x2 - x1) * k, (y2 - y1) * k, col, '#cfe8d5', 0, 1.5)
+        s.text(ox + 80, 185, title, 12.5, MUTED, 'middle'); s.text(ox + 80, 210, val, 15, col, 'middle', True)
+    pair(30, (0, 0, 10, 10), (5, 5, 15, 15), 'A (0,0,10,10) · B (5,5,15,15)', 'IoU = 25 / 175 = 0.1429', GREEN)
+    pair(260, (0, 0, 10, 10), (0, 0, 10, 10), '완전히 같음', 'IoU = 100 / 100 = 1', GREEN)
+    pair(490, (5, 0, 15, 10), (0, 0, 10, 10), '가로로 5 만 밀림', 'IoU = 50 / 150 = 0.3333', GREEN)
+    s.text(350, 240, '안 겹치면 교집합 0 → IoU 0 · 교집합 폭 · 높이가 음수면 0 으로 자른다 (np.clip)', 12, RED, 'middle')
+    s.save('d4-iou.svg')
+
+
+def d4_nms():
+    s = Svg(700, 260)
+    s.text(350, 22, 'NMS — 점수 순으로 하나 남기고, 많이 겹친 박스(IoU > 0.5)를 지운다', 14, INK, 'middle', True)
+    boxes = [(100, 100, 200, 300, 0.95, 1), (110, 105, 205, 310, 0.90, 0), (300, 120, 380, 290, 0.85, 1), (95, 90, 190, 290, 0.60, 0), (305, 110, 390, 300, 0.40, 0)]
+    k = 0.55
+    def draw(ox, only_keep):
+        for (a, b, c, d, sc, keep) in sorted(boxes, key=lambda q: q[5]):
+            if only_keep and not keep: continue
+            col = GREEN if keep else RED
+            s.rect(ox + (a - 80) * k, 40 + (b - 80) * k, (c - a) * k, (d - b) * k, col, 'none', 0, 2.5 if keep else 1.5)
+            s.text(ox + (a - 80) * k + 3 + (0 if keep else 24), 40 + (b - 80) * k + 14 + (0 if keep else 0), f'{sc:.2f}', 11, col)
+    draw(30, False); draw(385, True)
+    s.text(150, 245, 'NMS 전 — 박스 5개 (IoU 0.80 · 0.78 · 0.75 로 겹침)', 12, MUTED, 'middle')
+    s.text(500, 245, 'NMS 후 — keep = [0, 2], 사람 2명', 12.5, GREEN, 'middle', True)
+    _arrow(s, 335, 130, 375, 130)
+    s.save('d4-nms.svg')
+
+
+def d4_ap():
+    s = Svg(700, 300)
+    s.text(350, 22, '손 계산 AP — 정답 4개 · 탐지 5개 (TP, TP, FP, TP, FP)', 14, INK, 'middle', True)
+    x0, y0, W, H = 60, 40, 300, 210
+    X = lambda r: x0 + r * W
+    Y = lambda p: y0 + H - p * H
+    s.line(x0, y0 + H, x0 + W, y0 + H, INK, 1.5); s.line(x0, y0, x0, y0 + H, INK, 1.5)
+    for v in (0, 0.5, 1):
+        s.text(x0 - 6, Y(v) + 4, f'{v:g}', 11, MUTED, 'end'); s.text(X(v), y0 + H + 16, f'{v:g}', 11, MUTED, 'middle')
+    s.text(x0 + W / 2, y0 + H + 34, 'recall', 12, MUTED, 'middle'); s.text(24, y0 - 6, 'precision', 12, MUTED)
+    for a, b, p in ((0, 0.5, 1.0), (0.5, 0.75, 0.75)):
+        s.rect(X(a), Y(p), (b - a) * W, p * H, BLUE, '#dbe7f7', 0, 1.5)
+    pts = [(0.25, 1.0), (0.5, 1.0), (0.5, 0.6667), (0.75, 0.75), (0.75, 0.6)]
+    s.poly([(X(r), Y(p)) for r, p in pts], ORANGE, 2, 'none')
+    for r, p in pts: s.circle(X(r), Y(p), 4, ORANGE, ORANGE)
+    s.text(X(0.62), Y(0.75) + 16, '0.75', 11, INK, 'middle')
+    rows = [('순위', '판정', '누적 P', 'R'), ('1', 'TP', '1.00', '0.25'), ('2', 'TP', '1.00', '0.50'), ('3', 'FP', '0.67', '0.50'), ('4', 'TP', '0.75', '0.75'), ('5', 'FP', '0.60', '0.75')]
+    for i, row in enumerate(rows):
+        for j, c in enumerate(row):
+            s.text(400 + j * 70, 70 + i * 24, c, 13, INK if i else MUTED, 'start', i == 0)
+    s.text(400, 225, 'envelope(오른쪽 최댓값) 아래 넓이', 12.5, INK)
+    s.text(400, 247, 'AP = 0.25×1 + 0.25×1 + 0.25×0.75', 12.5, BLUE)
+    s.text(400, 272, '   = 0.6875', 15, BLUE, 'start', True)
+    s.save('d4-ap.svg')
+
+
+def d4_yolo():
+    s = Svg(700, 250)
+    s.text(350, 22, 'YOLOv8 — 640×640 입력, stride 3가지에서 한 번에 예측 → 8,400 칸', 14, INK, 'middle', True)
+    s.box(20, 40, 100, 60, '입력', BLUE, '640×640×3', 14)
+    s.box(150, 40, 110, 60, 'Backbone', GREEN, 'CSP', 14)
+    s.box(290, 40, 110, 60, 'Neck', ORANGE, 'FPN + PAN', 14)
+    s.box(430, 40, 120, 60, 'Head', PURPLE, 'anchor-free', 14)
+    s.box(580, 40, 100, 60, '출력', RED, '(1, 84, 8400)', 14)
+    for a, b in ((120, 150), (260, 290), (400, 430), (550, 580)): _arrow(s, a, 70, b, 70)
+    for i, (st, n) in enumerate(((8, 80), (16, 40), (32, 20))):
+        y = 130 + i * 32
+        s.text(95, y + 16, f'stride {st}', 13, INK, 'end', True)
+        s.rect(105, y, n * 2.2, 22, [GREEN, ORANGE, PURPLE][i], None, 2, 1.5)
+        s.text(115 + n * 2.2, y + 16, f'{n}×{n} = {n * n:,} 칸', 12.5, INK)
+    s.text(560, 160, '6,400 + 1,600 + 400', 13, INK, 'middle'); s.text(560, 184, '= 8,400', 16, RED, 'middle', True)
+    s.text(350, 240, '84 = 박스 4 (cx cy w h) + 클래스 80 (sigmoid 점수)', 12, MUTED, 'middle')
+    s.save('d4-yolo.svg')
+
+
+
 if __name__ == '__main__':
-    prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_')
+    prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_')
     for name, fn in list(globals().items()):
         if callable(fn) and name.startswith(prefixes): fn()

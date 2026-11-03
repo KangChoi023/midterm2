@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">NMS — 점수 순으로 하나 남기고, 많이 겹친 박스(IoU &gt; 0.5)를 지운다</text>
+<rect x="46.5" y="53.8" width="52.3" height="112.8" rx="0" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+<text x="73.5" y="67.8" font-size="11" fill="#dc2626" text-anchor="start">0.90</text>
+<rect x="38.2" y="45.5" width="52.3" height="110.0" rx="0" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+<text x="65.2" y="59.5" font-size="11" fill="#dc2626" text-anchor="start">0.60</text>
+<rect x="153.8" y="56.5" width="46.8" height="104.5" rx="0" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+<text x="180.8" y="70.5" font-size="11" fill="#dc2626" text-anchor="start">0.40</text>
+<rect x="41.0" y="51.0" width="55.0" height="110.0" rx="0" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<text x="44.0" y="65.0" font-size="11" fill="#16a34a" text-anchor="start">0.95</text>
+<rect x="151.0" y="62.0" width="44.0" height="93.5" rx="0" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<text x="154.0" y="76.0" font-size="11" fill="#16a34a" text-anchor="start">0.85</text>
+<rect x="396.0" y="51.0" width="55.0" height="110.0" rx="0" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<text x="399.0" y="65.0" font-size="11" fill="#16a34a" text-anchor="start">0.95</text>
+<rect x="506.0" y="62.0" width="44.0" height="93.5" rx="0" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<text x="509.0" y="76.0" font-size="11" fill="#16a34a" text-anchor="start">0.85</text>
+<text x="150.0" y="245.0" font-size="12" fill="#64748b" text-anchor="middle">NMS 전 — 박스 5개 (IoU 0.80 · 0.78 · 0.75 로 겹침)</text>
+<text x="500.0" y="245.0" font-size="12.5" fill="#16a34a" text-anchor="middle" font-weight="700">NMS 후 — keep = [0, 2], 사람 2명</text>
+<line x1="335.0" y1="130.0" x2="375.0" y2="130.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+</svg>

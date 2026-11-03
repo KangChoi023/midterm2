@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">손 계산 AP — 정답 4개 · 탐지 5개 (TP, TP, FP, TP, FP)</text>
+<line x1="60.0" y1="250.0" x2="360.0" y2="250.0" stroke="#1e293b" stroke-width="1.5"/>
+<line x1="60.0" y1="40.0" x2="60.0" y2="250.0" stroke="#1e293b" stroke-width="1.5"/>
+<text x="54.0" y="254.0" font-size="11" fill="#64748b" text-anchor="end">0</text>
+<text x="60.0" y="266.0" font-size="11" fill="#64748b" text-anchor="middle">0</text>
+<text x="54.0" y="149.0" font-size="11" fill="#64748b" text-anchor="end">0.5</text>
+<text x="210.0" y="266.0" font-size="11" fill="#64748b" text-anchor="middle">0.5</text>
+<text x="54.0" y="44.0" font-size="11" fill="#64748b" text-anchor="end">1</text>
+<text x="360.0" y="266.0" font-size="11" fill="#64748b" text-anchor="middle">1</text>
+<text x="210.0" y="284.0" font-size="12" fill="#64748b" text-anchor="middle">recall</text>
+<text x="24.0" y="34.0" font-size="12" fill="#64748b" text-anchor="start">precision</text>
+<rect x="60.0" y="40.0" width="150.0" height="210.0" rx="0" fill="#dbe7f7" stroke="#0284c7" stroke-width="1.5"/>
+<rect x="210.0" y="92.5" width="75.0" height="157.5" rx="0" fill="#dbe7f7" stroke="#0284c7" stroke-width="1.5"/>
+<polyline points="135.0,40.0 210.0,40.0 210.0,110.0 285.0,92.5 285.0,124.0" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="135.0" cy="40.0" r="4" fill="#d97706" stroke="#d97706" stroke-width="2"/>
+<circle cx="210.0" cy="40.0" r="4" fill="#d97706" stroke="#d97706" stroke-width="2"/>
+<circle cx="210.0" cy="110.0" r="4" fill="#d97706" stroke="#d97706" stroke-width="2"/>
+<circle cx="285.0" cy="92.5" r="4" fill="#d97706" stroke="#d97706" stroke-width="2"/>
+<circle cx="285.0" cy="124.0" r="4" fill="#d97706" stroke="#d97706" stroke-width="2"/>
+<text x="246.0" y="108.5" font-size="11" fill="#1e293b" text-anchor="middle">0.75</text>
+<text x="400.0" y="70.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">순위</text>
+<text x="470.0" y="70.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">판정</text>
+<text x="540.0" y="70.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">누적 P</text>
+<text x="610.0" y="70.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">R</text>
+<text x="400.0" y="94.0" font-size="13" fill="#1e293b" text-anchor="start">1</text>
+<text x="470.0" y="94.0" font-size="13" fill="#1e293b" text-anchor="start">TP</text>
+<text x="540.0" y="94.0" font-size="13" fill="#1e293b" text-anchor="start">1.00</text>
+<text x="610.0" y="94.0" font-size="13" fill="#1e293b" text-anchor="start">0.25</text>
+<text x="400.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="start">2</text>
+<text x="470.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="start">TP</text>
+<text x="540.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="start">1.00</text>
+<text x="610.0" y="118.0" font-size="13" fill="#1e293b" text-anchor="start">0.50</text>
+<text x="400.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="start">3</text>
+<text x="470.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="start">FP</text>
+<text x="540.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="start">0.67</text>
+<text x="610.0" y="142.0" font-size="13" fill="#1e293b" text-anchor="start">0.50</text>
+<text x="400.0" y="166.0" font-size="13" fill="#1e293b" text-anchor="start">4</text>
+<text x="470.0" y="166.0" font-size="13" fill="#1e293b" text-anchor="start">TP</text>
+<text x="540.0" y="166.0" font-size="13" fill="#1e293b" text-anchor="start">0.75</text>
+<text x="610.0" y="166.0" font-size="13" fill="#1e293b" text-anchor="start">0.75</text>
+<text x="400.0" y="190.0" font-size="13" fill="#1e293b" text-anchor="start">5</text>
+<text x="470.0" y="190.0" font-size="13" fill="#1e293b" text-anchor="start">FP</text>
+<text x="540.0" y="190.0" font-size="13" fill="#1e293b" text-anchor="start">0.60</text>
+<text x="610.0" y="190.0" font-size="13" fill="#1e293b" text-anchor="start">0.75</text>
+<text x="400.0" y="225.0" font-size="12.5" fill="#1e293b" text-anchor="start">envelope(오른쪽 최댓값) 아래 넓이</text>
+<text x="400.0" y="247.0" font-size="12.5" fill="#0284c7" text-anchor="start">AP = 0.25×1 + 0.25×1 + 0.25×0.75</text>
+<text x="400.0" y="272.0" font-size="15" fill="#0284c7" text-anchor="start" font-weight="700">   = 0.6875</text>
+</svg>
