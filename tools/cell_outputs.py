@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""강의 노트북을 셀 순서대로 실행해 "빈칸 정답 코드 + 바로 뒤 검증 셀" 의 출력을 모은다
+r"""강의 노트북을 셀 순서대로 실행해 "빈칸 정답 코드 + 바로 뒤 검증 셀" 의 출력을 모은다
 → notes/cell_outputs.<sid><day>.json
 
-    STUDY_ROOT=… python3 -I tools/cell_outputs.py nn 3          # NN Day 3
-    STUDY_ROOT=… python3 -I tools/cell_outputs.py vb 2 --timeout 900
+    python3 -I tools/cell_outputs.py nn 3                       # NN Day 3
+    python3 -I tools/cell_outputs.py vb 2 --timeout 900         # 셀 하나에 최대 900초
+    python3 -I tools/cell_outputs.py all                        # NN · VB 전체 (Day 마다 새 프로세스)
+    python3 -I tools/cell_outputs.py all --only assert          # "교안 기대값" 이 남은 Day 만
+    py -3 -I tools\cell_outputs.py all                           # Windows (PowerShell)
+
+교안(AI_CAMPUS) 위치: --root <AI_CAMPUS 가 들어 있는 폴더> → 환경변수 STUDY_ROOT → 저장소 옆 폴더(midterm2 와 같은 곳에
+AI_CAMPUS 를 clone 해 두면 아무것도 안 줘도 된다). 필요한 것: numpy · matplotlib · ipython · torch · torchvision ·
+opencv-python-headless (VB Day 4 는 ultralytics). 자세한 PC 사용법은 .claude/skills/cell-outputs/SKILL.md.
 
 사이트의 강의 코드 화면은 검증 셀(assert … print("✅")) 대신 이 출력을 "▶ 실행하면" 상자로 보여 준다
 (tools/nbparse.py). 빌드가 매번 돌리지 않는다 — 학습이 오래 걸리고 데이터 · GPU 가 필요하기 때문.
@@ -26,6 +33,28 @@ class CellTimeout(Exception):
 
 def _alarm(signum, frame):
     raise CellTimeout()
+
+
+class Deadline:
+    """셀 하나의 시간 제한. 리눅스 · 맥은 SIGALRM, Windows(SIGALRM 없음)는 타이머 스레드가
+    메인 스레드에 CellTimeout 예외를 던진다 (파이썬 코드 실행 중이면 바로, 긴 C 연산 중이면 그것이 끝난 뒤)."""
+    def __init__(self, force_thread=False):
+        self.use_signal = hasattr(signal, 'SIGALRM') and not force_thread
+        self.timer = None
+        if self.use_signal: signal.signal(signal.SIGALRM, _alarm)
+
+    def start(self, sec):
+        if self.use_signal:
+            signal.alarm(sec); return
+        import ctypes, threading
+        tid = threading.main_thread().ident
+        def fire():
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(tid), ctypes.py_object(CellTimeout))
+        self.timer = threading.Timer(sec, fire); self.timer.daemon = True; self.timer.start()
+
+    def stop(self):
+        if self.use_signal: signal.alarm(0)
+        elif self.timer: self.timer.cancel(); self.timer = None
 
 
 def _stub_ipython():
@@ -98,11 +127,21 @@ def is_check(src):
     return nbparse.is_check(src)
 
 
-def run(sid, day, timeout):
-    root = os.environ.get('STUDY_ROOT', '')
+def study_root(argv):
+    """AI_CAMPUS 가 들어 있는 폴더"""
+    if '--root' in argv: return os.path.abspath(argv[argv.index('--root') + 1])
+    if os.environ.get('STUDY_ROOT'): return os.environ['STUDY_ROOT']
+    return os.path.dirname(os.path.dirname(HERE))                         # midterm2 와 같은 폴더
+
+
+def notebook(root, sid, day):
     nbs = glob.glob(os.path.join(root, 'AI_CAMPUS', f'{FOLDER[sid]}-day{day}', '*lecture*.ipynb'))
-    if not nbs: sys.exit(f'노트북 없음: {FOLDER[sid]}-day{day}')
-    nb_path = nbs[0]
+    return nbs[0] if nbs else None
+
+
+def run(sid, day, timeout, root, force_thread=False):
+    nb_path = notebook(root, sid, day)
+    if not nb_path: sys.exit(f'노트북 없음: {os.path.join(root, "AI_CAMPUS", f"{FOLDER[sid]}-day{day}")}')
     work = tempfile.mkdtemp(prefix=f'cellout_{sid}{day}_')
     for f in os.listdir(os.path.dirname(nb_path)):                      # mynn_day4.py 같은 동봉 파일
         p = os.path.join(os.path.dirname(nb_path), f)
@@ -112,11 +151,11 @@ def run(sid, day, timeout):
     _stub_ipython()
     g = {'__name__': '__main__'}
     nb = json.load(open(nb_path, encoding='utf8'))
-    signal.signal(signal.SIGALRM, _alarm)
+    deadline = Deadline(force_thread)
 
     def execute(src, label):
         buf = io.StringIO(); t0 = time.time(); err = None
-        signal.alarm(timeout)
+        deadline.start(timeout)
         try:
             with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
                 exec(compile(_prep(src), label, 'exec'), g)
@@ -125,7 +164,7 @@ def run(sid, day, timeout):
         except BaseException as e:                                     # SystemExit 포함
             err = f'{type(e).__name__}: {e}'
         finally:
-            signal.alarm(0)
+            deadline.stop()
             try:
                 import matplotlib.pyplot as plt; plt.close('all')
             except Exception:
@@ -193,14 +232,24 @@ def run(sid, day, timeout):
     return final
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    timeout = 600
-    if '--timeout' in sys.argv: timeout = int(sys.argv[sys.argv.index('--timeout') + 1]); args = args[:2]
-    sid, day = args[0], int(args[1])
-    repo = os.path.dirname(HERE)
-    final = run(sid, day, timeout)
-    path = os.path.join(repo, 'notes', f'cell_outputs.{sid}{day}.json')
+def _days(root, sid):
+    return sorted(int(m.group(1)) for d in glob.glob(os.path.join(root, 'AI_CAMPUS', f'{FOLDER[sid]}-day*'))
+                  for m in [re.search(r'day(\d+)$', d)] if m and notebook(root, sid, int(m.group(1))))
+
+
+def _assert_days(root, jobs):
+    """사이트에 "교안 기대값" 상자가 남는 Day 만"""
+    out = []
+    for sid, day in jobs:
+        n = sum(b.get('run') == 'assert' for L in nbparse.parse(notebook(root, sid, day)) if L
+                for t in L['topics'] for b in t['blocks'])
+        print(f'{sid}{day}: 교안 기대값 {n}개', file=sys.__stderr__)
+        if n: out.append((sid, day))
+    return out
+
+
+def save(sid, day, final):
+    path = os.path.join(os.path.dirname(HERE), 'notes', f'cell_outputs.{sid}{day}.json')
     old = json.load(open(path, encoding='utf8')) if os.path.exists(path) else {}
     for k, v in old.items():                                            # 손으로 고친 항목(fixed)은 지키고, 이번에 실패한 것은 이전 값 유지
         if v.get('fixed') or k not in final: final[k] = v
@@ -209,6 +258,31 @@ def main():
                   f, ensure_ascii=False, indent=1)
         f.write('\n')
     print(f'→ {path}  {len(final)}개', file=sys.__stderr__)
+
+
+def main():
+    argv = sys.argv[1:]
+    opts = {'--timeout', '--root', '--only'}
+    args = [a for i, a in enumerate(argv) if not a.startswith('--') and (i == 0 or argv[i - 1] not in opts)]
+    timeout = int(argv[argv.index('--timeout') + 1]) if '--timeout' in argv else 600
+    root = study_root(argv)
+    if not os.path.isdir(os.path.join(root, 'AI_CAMPUS')):
+        sys.exit(f'AI_CAMPUS 폴더를 못 찾았습니다: {root}\n  → --root "<AI_CAMPUS 가 들어 있는 폴더>" 를 붙이세요')
+    if args and args[0] == 'all':
+        jobs = [(sid, d) for sid in ('nn', 'vb') for d in _days(root, sid)]
+        if '--only' in argv and argv[argv.index('--only') + 1] == 'assert':
+            jobs = _assert_days(root, jobs)
+        import subprocess
+        for sid, d in jobs:                                             # Day 마다 새 프로세스 (변수 · 모듈이 섞이지 않게)
+            print(f'\n===== {sid} Day {d} =====', file=sys.__stderr__, flush=True)
+            subprocess.run([sys.executable, '-X', 'utf8', '-I', os.path.abspath(__file__), sid, str(d),
+                            '--timeout', str(timeout), '--root', root])
+        return
+    if not sys.flags.utf8_mode:                                         # Windows: 노트북의 open() 이 한글을 cp949 로 쓰지 않게
+        import subprocess
+        sys.exit(subprocess.run([sys.executable, '-X', 'utf8', '-I', os.path.abspath(__file__)] + argv).returncode)
+    sid, day = args[0], int(args[1])
+    save(sid, day, run(sid, day, timeout, root, force_thread='--thread-timeout' in argv))
 
 
 if __name__ == '__main__':

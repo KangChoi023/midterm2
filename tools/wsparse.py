@@ -80,7 +80,8 @@ def _safe_svg(svg):
 
 def _norm(q, seed):
     """NN 형 워크시트 문항({type: single|multi|ox|short|drop|match|order|code|hot}) → 위키 형식({ty: mc|multi|ox|match|order|short|hot}).
-    hot(그림에서 정답 칸 클릭)은 그림 · 클릭 영역을 그대로 옮기고 a = 정답 영역 번호. drop·code 는 정답 보기만 되는 short(ro=1)."""
+    hot(그림에서 정답 칸 클릭)은 그림 · 클릭 영역을 그대로 옮기고 a = 정답 영역 번호.
+    drop(문장 빈칸에 보기 고르기) → ty='drop' (parts · opts · a = 칸별 정답 번호), code(코드 빈칸 입력) → ty='code' (parts · a = 칸별 허용 답 목록 · full)."""
     t=q.get('type')
     if not t: return q
     base={k:q[k] for k in ('p','w','an') if k in q}
@@ -101,13 +102,16 @@ def _norm(q, seed):
         return dict(base,ty='hot',svg=_safe_svg(q['svg']),vb=q['viewBox'],sw=q.get('sw'),regions=regs,a=ids.index(q['a']))
     if t=='drop':
         it=iter(q['opts'])
-        p=re.sub(r'\{\}',lambda m:'[ '+' / '.join(next(it))+' ]',q['p2'])
-        return dict(base,ty='short',p=p,a=[' · '.join(o[k] for o,k in zip(q['opts'],q['a']))],ro=1)
+        p=re.sub(r'\{\}',lambda m:'[ '+' / '.join(next(it))+' ]',q['p2'])      # 검색 · 정답 문장용
+        parts=q['p2'].split('{}')
+        if len(parts)-1!=len(q['opts']): return None
+        return dict(base,ty='drop',p=p,parts=parts,opts=[[_plain(x) for x in o] for o in q['opts']],a=list(q['a']))
     if t=='code':
         parts=q['code'].split('{{}}')
+        if len(parts)-1!=len(q['a']): return None
         code=''.join(x+('____' if k<len(parts)-1 else '') for k,x in enumerate(parts))
         full=''.join(x+(q['a'][k][0] if k<len(parts)-1 else '') for k,x in enumerate(parts))
-        return dict(base,ty='short',c=code,a=[full],ro=1)
+        return dict(base,ty='code',c=code,parts=parts,a=[[str(v) for v in x] for x in q['a']],full=full)
     return None
 
 def load(path):

@@ -219,6 +219,19 @@ details.box.read > summary .t { color: var(--ink-3); text-decoration: line-throu
 .opt.right { background: var(--ok-soft); border-color: var(--ok); }
 .opt.wrong { background: var(--bad-soft); border-color: var(--bad); }
 .opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+/* 문장 빈칸: 빈칸 자리의 보기 버튼 묶음 */
+.dp { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 2px 4px; padding: 2px 4px; border: 1px dashed var(--line); border-radius: 8px; vertical-align: middle; }
+.dp-o { font: inherit; font-size: 14px; font-weight: 400; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+.dp-o:hover { border-color: var(--accent); }
+.dp-o.sel { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.dp-o.right { background: var(--ok-soft); border-color: var(--ok); font-weight: 700; }
+.dp-o.wrong { background: var(--bad-soft); border-color: var(--bad); text-decoration: line-through; }
+/* 코드 빈칸: 코드 안의 입력칸 */
+pre.cf { overflow-x: auto; white-space: pre; line-height: 1.9; }
+.cf-in { font: inherit; font-family: var(--mono); font-size: inherit; border: 0; border-bottom: 2px solid var(--accent); background: var(--accent-soft); color: var(--ink); border-radius: 4px 4px 0 0; padding: 0 4px; margin: 0 2px; min-width: 3ch; }
+.cf-in:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cf-in.right { border-bottom-color: var(--ok); background: var(--ok-soft); }
+.cf-in.wrong { border-bottom-color: var(--bad); background: var(--bad-soft); }
 .q-ans { margin-top: 8px; padding: 9px 12px; border-radius: 8px; background: var(--panel-2); font-size: 14.5px; }
 .q-ans.ok { background: var(--ok-soft); } .q-ans.no { background: var(--bad-soft); }
 .q-list { margin: 6px 0; font-size: 14.5px; color: var(--ink-2); }

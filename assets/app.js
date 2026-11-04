@@ -998,14 +998,20 @@
 
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
-    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', hot: '[그림 클릭] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
+    const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', hot: '[그림 클릭] ', drop: '[빈칸] ', code: '[코드 빈칸] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
     const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
-    let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${q.p}</div>`;
-    if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
+    // 문장 빈칸(drop): 빈칸 자리마다 보기 버튼 묶음 / 코드 빈칸(code): 코드 안 빈칸 자리마다 입력칸
+    const body = ty === 'drop' ? q.parts.map((x, k) => x + (k < q.opts.length ? `<span class="dp" data-b="${k}">${q.opts[k].map((o, j) => `<button type="button" class="dp-o" data-b="${k}" data-j="${j}">${esc(o)}</button>`).join('')}</span>` : '')).join('') : q.p;
+    let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${body}</div>`;
+    if (ty === 'code') {
+      const w = k => Math.max(4, ...q.a[k].map(x => [...x].length)) + 2;
+      h += `<div class="q-body"><pre class="cf">${q.parts.map((x, k) => esc(x) + (k < q.a.length ? `<input class="cf-in" data-b="${k}" size="${w(k)}" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="빈칸 ${k + 1}">` : '')).join('')}</pre></div>`;
+    } else if (q.c) h += `<div class="q-body"><pre><code data-lang="${/^\$ /.test(q.c) ? 'bash' : 'c'}">${esc(q.c)}</code></pre></div>`;
     if (ty === 'mc' || ty === 'multi') h += '<div class="opts">' + q.o.map((o, k) => `<button type="button" class="opt" data-k="${k}">${'①②③④⑤⑥⑦⑧'[k]} ${esc(o)}</button>`).join('') + '</div>' + (ty === 'multi' ? '<button class="btn" data-check>채점</button>' : '');
     else if (ty === 'ox') h += '<div class="opts" style="grid-template-columns:1fr 1fr"><button class="opt" data-k="1">O (참)</button><button class="opt" data-k="0">X (거짓)</button></div>';
     else if (ty === 'match') h += `<div class="mt">${q.left.map((l, k) => `<div class="mt-row" data-k="${k}"><span class="mt-l">${esc(l)}</span><span class="mt-ar">→</span><select class="mt-s" aria-label="${esc(l)} 의 짝"><option value="">— 고르기 —</option>${q.right.map((r, j) => `<option value="${j}">${esc(r)}</option>`).join('')}</select></div>`).join('')}</div>` +
       '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
+    else if (ty === 'drop' || ty === 'code') h += '<div class="q-ctl"><button type="button" class="btn" data-check>채점</button><button type="button" class="btn" data-reset>다시</button><button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>';
     else if (ty === 'short') h += (q.ro ? '' : '<input class="sh-in" type="text" placeholder="답을 입력" aria-label="답">') +
       `<div class="q-ctl">${q.ro ? '' : '<button type="button" class="btn" data-check>채점</button>'}<button type="button" class="btn ghost" data-show>정답 보기</button><span class="q-hint"></span></div>`;
     else if (ty === 'order') h += `<div class="od-tip">순서대로 누르세요 (다시 누르면 취소)</div><div class="od">${q.steps.map((s, k) => `<button type="button" class="od-i" data-k="${k}"><span class="od-n"></span><span>${esc(s)}</span></button>`).join('')}</div>` +
@@ -1025,6 +1031,8 @@
     if (ty === 'match') return q.a.map((v, k) => `${q.left[k]} → ${q.right[v]}`).join(' / ');
     if (ty === 'order') return q.a.map(i => q.steps[i]).join(' → ');
     if (ty === 'short') return q.a[0];
+    if (ty === 'drop') return q.a.map((j, k) => q.opts[k][j]).join(' · ');
+    if (ty === 'code') return q.a.map(x => x[0]).join(' · ');
     if (ty === 'hot') return q.regions[q.a].label;
     return `${C[q.a]} ${q.o[q.a]}`;
   }
@@ -1036,7 +1044,8 @@
         ans.hidden = false; ans.className = 'q-ans' + (ok === true ? ' ok' : ok === false ? ' no' : '');
         const body = ty === 'match' ? `<ul class="ans-l">${q.a.map((v, k) => `<li>${esc(q.left[k])} → <b>${esc(q.right[v])}</b></li>`).join('')}</ul>`
           : ty === 'order' ? `<ol class="ans-l">${q.a.map(k => `<li><b>${esc(q.steps[k])}</b></li>`).join('')}</ol>`
-          : ty === 'short' && q.c ? `<pre><code>${esc(q.a[0])}</code></pre>` : ` — <b>${esc(answerText(q))}</b><br>`;
+          : ty === 'short' && q.c ? `<pre><code>${esc(q.a[0])}</code></pre>`
+          : ty === 'code' ? ` — <b>${esc(answerText(q))}</b><pre><code>${esc(q.full)}</code></pre>` : ` — <b>${esc(answerText(q))}</b><br>`;
         ans.innerHTML = `${ok === true ? '✅ 정답' : ok === false ? '❌ 오답' : '정답'}${body}${mdInline(q.w || '')}`;
         if (ok !== null && onResult) onResult(card.dataset.key, ok);
       };
@@ -1048,7 +1057,22 @@
         $$('.mt-row', card).forEach(r => { r.classList.remove('right', 'wrong'); $('.mt-s', r).value = ''; $('.mt-s', r).disabled = false; });
         const fix = $('.mt-fix, .od-fix', card); if (fix) fix.remove();
         $$('.rg', card).forEach(x => x.classList.remove('ok', 'bad'));
+        $$('.dp-o', card).forEach(x => x.classList.remove('sel', 'right', 'wrong'));
+        $$('.cf-in', card).forEach(x => { x.value = ''; x.disabled = false; x.classList.remove('right', 'wrong'); });
       };
+      // 코드 빈칸 비교: 공백 차이 무시, ' 와 " 는 같게, 대소문자는 구분 (코드라서)
+      const sameCode = (a, b) => { const n = x => String(x).trim().replace(/\s+/g, '').replace(/"/g, "'"); return n(a) === n(b); };
+      const checkCode = () => {
+        const ins = $$('.cf-in', card), empty = ins.filter(x => !x.value.trim()).length;
+        if (empty) return hint(`${empty}칸을 더 채우세요`);
+        card.dataset.done = 1; hint('');
+        let all = true;
+        ins.forEach(x => { const ok = q.a[+x.dataset.b].some(v => sameCode(v, x.value)); all = all && ok; x.classList.add(ok ? 'right' : 'wrong'); x.disabled = true; });
+        show(all);
+      };
+      if (ty === 'code') card.addEventListener('keydown', e => {          // 입력칸에서 Enter = 채점
+        if (e.key === 'Enter' && e.target.classList.contains('cf-in') && !card.dataset.done) { e.preventDefault(); checkCode(); }
+      });
       if (ty === 'hot') card.addEventListener('keydown', e => {           // Tab 으로 칸을 고르고 Enter · Space
         const rg = e.target.closest('.rg'); if (!rg || (e.key !== 'Enter' && e.key !== ' ')) return;
         e.preventDefault(); rg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -1080,6 +1104,31 @@
             $$('.od-i', card).forEach(x => { const p = seq.indexOf(+x.dataset.k); x.classList.add(q.a[p] === +x.dataset.k ? 'right' : 'wrong'); });
             return show(seq.every((k, p) => q.a[p] === k));
           }
+          return;
+        }
+        if (ty === 'drop') {
+          if (b.classList.contains('dp-o')) {                          // 칸마다 하나만 선택 (다시 누르면 해제)
+            if (card.dataset.done) return;
+            $$(`.dp-o[data-b="${b.dataset.b}"]`, card).forEach(x => x.classList.toggle('sel', x === b && !x.classList.contains('sel')));
+            hint(''); return;
+          }
+          if (b.dataset.check !== undefined) {
+            if (card.dataset.done) return;
+            const left = q.opts.length - $$('.dp-o.sel', card).length;
+            if (left) return hint(`${left}칸을 더 고르세요`);
+            card.dataset.done = 1; hint('');
+            let all = true;
+            $$('.dp-o', card).forEach(x => {
+              const k = +x.dataset.b, j = +x.dataset.j;
+              if (q.a[k] === j) x.classList.add('right');
+              else if (x.classList.contains('sel')) { x.classList.add('wrong'); all = false; }
+            });
+            return show(all);
+          }
+          return;
+        }
+        if (ty === 'code') {
+          if (b.dataset.check !== undefined && !card.dataset.done) checkCode();
           return;
         }
         if (ty === 'short') {
