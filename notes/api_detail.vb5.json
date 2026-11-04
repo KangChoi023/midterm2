@@ -1,0 +1,789 @@
+{
+ "_설명": "VB Day 5 함수 상세",
+ "np.unique()": {
+  "role": "배열에 들어 있는 서로 다른 값 목록",
+  "desc": [
+   "마스크에 쓰인 값(0 = 배경, 1 · 2 = 사람)을 확인",
+   "정렬된 1차원 배열로 돌려줌"
+  ],
+  "args": [
+   [
+    "ar",
+    "값을 볼 배열"
+   ]
+  ],
+  "flow": "평탄화 → 중복 제거 → 정렬",
+  "ret": "ndarray",
+  "hdr": "import numpy as np"
+ },
+ "mask_box()": {
+  "role": "마스크 → 둘러싸는 박스",
+  "desc": [
+   "`np.where` 로 True 인 위치를 찾고 최솟값 · 최댓값을 박스로",
+   "마스크에서 박스는 바로 나온다 (반대는 불가)"
+  ],
+  "args": [
+   [
+    "m",
+    "True/False 마스크 (H×W)"
+   ]
+  ],
+  "flow": "where → (xs.min, ys.min, xs.max, ys.max)",
+  "ret": "xyxy 배열"
+ },
+ "tconv_out()": {
+  "role": "Transposed Conv 출력 크기",
+  "desc": [
+   "`(n − 1)·s − 2p + k`",
+   "n = 8, k4 s2 p1 → 16 · k3 s2 p1 → 15"
+  ],
+  "args": [
+   [
+    "n",
+    "입력 한 변"
+   ],
+   [
+    "k, s, p",
+    "커널 · stride · padding"
+   ]
+  ],
+  "flow": "공식 계산",
+  "ret": "int"
+ },
+ "nn.ConvTranspose2d()": {
+  "role": "학습하는 업샘플링 계층",
+  "desc": [
+   "해상도를 키우는 Conv — 커널 값을 학습",
+   "출력 크기는 `tconv_out` 공식"
+  ],
+  "args": [
+   [
+    "in, out",
+    "입력 · 출력 채널"
+   ],
+   [
+    "kernel_size, stride, padding",
+    "커널 · 간격 · 패딩"
+   ]
+  ],
+  "flow": "입력 칸 사이를 stride 만큼 벌려 커널을 겹쳐 더함",
+  "ret": "텐서 (N, out, H′, W′)",
+  "hdr": "torch.nn"
+ },
+ "nn.Upsample()": {
+  "role": "학습 없는 업샘플링",
+  "desc": [
+   "`bilinear` 보간으로 크기를 키움 — 파라미터 없음",
+   "보통 뒤에 Conv 를 붙임"
+  ],
+  "args": [
+   [
+    "scale_factor",
+    "배율 (2 = 2배)"
+   ],
+   [
+    "mode",
+    "보간 방식 (\"bilinear\")"
+   ],
+   [
+    "align_corners",
+    "모서리 정렬 여부 (False)"
+   ]
+  ],
+  "flow": "주변 픽셀을 섞어 새 픽셀 계산",
+  "ret": "텐서 (N, C, 2H, 2W)",
+  "hdr": "torch.nn"
+ },
+ "miou()": {
+  "role": "클래스별 IoU 와 평균 mIoU",
+  "desc": [
+   "클래스마다 `(교집합) / (합집합)` 픽셀 수",
+   "합집합 0 이면 `nan` → `nanmean` 으로 제외",
+   "4×4 예제: [0.5, 0.6667] → 0.5833"
+  ],
+  "args": [
+   [
+    "pred",
+    "예측 라벨 지도"
+   ],
+   [
+    "gt",
+    "정답 라벨 지도"
+   ],
+   [
+    "n_cls",
+    "클래스 수 (배경 포함)"
+   ]
+  ],
+  "flow": "클래스 c 마다 p = pred==c, g = gt==c → IoU → 평균",
+  "ret": "(IoU 배열, mIoU)"
+ },
+ "seg_person_mask()": {
+  "role": "YOLOv8-seg 결과 → 사람 마스크(0/1)",
+  "desc": [
+   "`classes=[0]` 로 사람만 예측",
+   "`r.masks.xy` 외곽선을 `cv2.fillPoly` 로 원본 크기 마스크에 채움",
+   "사람 0명이면 `r.masks is None`"
+  ],
+  "args": [
+   [
+    "model",
+    "YOLO seg 모델"
+   ],
+   [
+    "img_bgr",
+    "BGR 이미지"
+   ],
+   [
+    "conf",
+    "점수 기준 (0.25)"
+   ]
+  ],
+  "flow": "predict → 외곽선마다 fillPoly",
+  "ret": "(H×W uint8 마스크, 사람 수)"
+ },
+ "cv2.fillPoly()": {
+  "role": "다각형 안을 한 값으로 채움",
+  "desc": [
+   "마스크 만들기 · 위험구역 칠하기에 쓴다",
+   "다각형은 `int32` 배열의 리스트"
+  ],
+  "args": [
+   [
+    "img",
+    "그릴 배열"
+   ],
+   [
+    "pts",
+    "[다각형 점 (N, 2) int32]"
+   ],
+   [
+    "color",
+    "채울 값 / 색"
+   ]
+  ],
+  "flow": "다각형 내부 픽셀 = color",
+  "ret": "img (제자리 수정)",
+  "hdr": "import cv2"
+ },
+ "run_pose()": {
+  "role": "YOLOv8-pose 결과를 numpy 로",
+  "desc": [
+   "관절 `(사람, 17, 2)` · 신뢰도 `(사람, 17)` · 박스 `(사람, 4)` 를 돌려줌"
+  ],
+  "args": [
+   [
+    "model",
+    "YOLO pose 모델"
+   ],
+   [
+    "img_bgr",
+    "BGR 이미지"
+   ],
+   [
+    "conf",
+    "점수 기준"
+   ]
+  ],
+  "flow": "predict → keypoints.xy · conf, boxes.xyxy → cpu().numpy()",
+  "ret": "(kpts, confs, boxes)"
+ },
+ "angle()": {
+  "role": "점 b 에서 a-b-c 가 이루는 각도",
+  "desc": [
+   "`arccos(BA·BC / (|BA||BC| + 1e-9))` 를 도(°) 로",
+   "직각 90° · 일직선 180°"
+  ],
+  "args": [
+   [
+    "a, b, c",
+    "점 (b 가 꼭짓점)"
+   ]
+  ],
+  "flow": "벡터 BA, BC → 내적 → clip → arccos → degrees",
+  "ret": "float (도)"
+ },
+ "body_tilt()": {
+  "role": "몸통과 수직선 사이 각도",
+  "desc": [
+   "어깨 중점 `(5, 6)` 과 엉덩이 중점 `(11, 12)` 사용",
+   "위쪽 수직 = `[0, -1]` (이미지 y 는 아래가 +)",
+   "서 있으면 ≈ 0°, 누우면 ≈ 90°"
+  ],
+  "args": [
+   [
+    "kpts",
+    "관절 좌표 (17, 2)"
+   ]
+  ],
+  "flow": "hip 에서 (위쪽, 어깨 중점) 사이 angle",
+  "ret": "float (도)"
+ },
+ "is_fallen()": {
+  "role": "쓰러짐 판정",
+  "desc": [
+   "기울기 > thr(60°) 이면 True",
+   "어깨 · 엉덩이 conf 가 min_conf(0.5) 미만이면 판정 보류 `None`"
+  ],
+  "args": [
+   [
+    "kpts",
+    "관절 좌표"
+   ],
+   [
+    "conf",
+    "관절 신뢰도"
+   ],
+   [
+    "thr",
+    "임계 각도 (60)"
+   ],
+   [
+    "min_conf",
+    "최소 신뢰도 (0.5)"
+   ]
+  ],
+  "flow": "conf 확인 → body_tilt → 비교",
+  "ret": "True / False / None"
+ },
+ "biggest()": {
+  "role": "가장 큰 박스 번호",
+  "desc": [
+   "여러 사람 중 \"주인공\" 을 박스 넓이로 고른다"
+  ],
+  "args": [
+   [
+    "b",
+    "박스 배열 (N, 4)"
+   ]
+  ],
+  "flow": "(x2−x1)·(y2−y1) 의 argmax",
+  "ret": "int"
+ },
+ "draw_pose()": {
+  "role": "뼈대 · 관절 그리기",
+  "desc": [
+   "`SKELETON` 의 연결선을 `cv2.line`, 관절은 `cv2.circle`",
+   "conf 가 min_conf 미만인 점 · 선은 건너뜀"
+  ],
+  "args": [
+   [
+    "img",
+    "이미지"
+   ],
+   [
+    "kpts, confs",
+    "관절 · 신뢰도"
+   ],
+   [
+    "min_conf",
+    "그릴 최소 신뢰도"
+   ]
+  ],
+  "flow": "연결마다 두 끝점 conf 확인 → 선 → 점",
+  "ret": "그려진 이미지 복사본"
+ },
+ "np.arccos()": {
+  "role": "코사인 값 → 각도(라디안)",
+  "desc": [
+   "`np.degrees` 로 도(°) 변환",
+   "입력이 [−1, 1] 밖이면 nan → `np.clip` 먼저"
+  ],
+  "args": [
+   [
+    "x",
+    "코사인 값"
+   ]
+  ],
+  "flow": "역코사인",
+  "ret": "라디안",
+  "hdr": "import numpy as np"
+ },
+ "cv2.rotate()": {
+  "role": "이미지 90° 단위 회전",
+  "desc": [
+   "`ROTATE_90_CLOCKWISE` 등 — 서 있는 사람을 쓰러뜨린 것처럼 만들 때"
+  ],
+  "args": [
+   [
+    "src",
+    "이미지"
+   ],
+   [
+    "rotateCode",
+    "회전 종류 상수"
+   ]
+  ],
+  "flow": "픽셀 재배열",
+  "ret": "회전된 이미지",
+  "hdr": "import cv2"
+ },
+ "n_channels()": {
+  "role": "태스크별 칸당 출력 숫자 개수",
+  "desc": [
+   "detect `4 + nc` = 84",
+   "segment `4 + nc + nm` = 116",
+   "pose `4 + 1 + nk×3` = 56"
+  ],
+  "args": [
+   [
+    "task",
+    "\"detect\" · \"segment\" · \"pose\""
+   ],
+   [
+    "nc, nm, nk",
+    "클래스 수 80 · 마스크 계수 32 · 관절 17"
+   ]
+  ],
+  "flow": "태스크별 합",
+  "ret": "int"
+ },
+ "torch.onnx.export()": {
+  "role": "PyTorch 모델 → ONNX 파일",
+  "desc": [
+   "예시 입력으로 한 번 실행하며 연산을 기록(tracing)",
+   "`.eval()` 모델을 넣는다"
+  ],
+  "args": [
+   [
+    "model",
+    "내보낼 모델"
+   ],
+   [
+    "args",
+    "예시 입력 텐서"
+   ],
+   [
+    "f",
+    "저장 경로"
+   ],
+   [
+    "input_names, output_names",
+    "입출력 이름"
+   ],
+   [
+    "dynamic_axes",
+    "바뀔 축 (배치)"
+   ],
+   [
+    "opset_version",
+    "ONNX 연산자 버전 (17)"
+   ]
+  ],
+  "flow": "trace → 그래프 + 가중치 → 파일",
+  "ret": "None (파일 생성)",
+  "hdr": "import torch"
+ },
+ "export_onnx()": {
+  "role": "내보내기 + 그래프 검사 한 번에",
+  "desc": [
+   "모델을 복사해 cpu · eval 로 → export → `onnx.load` → `check_model`"
+  ],
+  "args": [
+   [
+    "model",
+    "PyTorch 모델"
+   ],
+   [
+    "path",
+    "저장 경로"
+   ],
+   [
+    "input_size",
+    "예시 입력 모양"
+   ]
+  ],
+  "flow": "deepcopy → export → load → check",
+  "ret": "ONNX ModelProto"
+ },
+ "onnx.load()": {
+  "role": "ONNX 파일 읽기",
+  "desc": [
+   "`graph.node` (연산 목록) · `graph.input` 으로 구조 확인",
+   "MobileNetV3-S: 노드 159개"
+  ],
+  "args": [
+   [
+    "f",
+    ".onnx 경로"
+   ]
+  ],
+  "flow": "파일 → ModelProto",
+  "ret": "ModelProto",
+  "hdr": "import onnx"
+ },
+ "onnx.checker.check_model()": {
+  "role": "ONNX 그래프가 올바른지 검사",
+  "desc": [
+   "잘못된 그래프면 예외"
+  ],
+  "args": [
+   [
+    "model",
+    "ModelProto"
+   ]
+  ],
+  "flow": "구조 · 연산 검사",
+  "ret": "None (문제 있으면 예외)",
+  "hdr": "import onnx"
+ },
+ "ort.InferenceSession()": {
+  "role": "ONNX Runtime 실행 세션",
+  "desc": [
+   "`providers=[\"CPUExecutionProvider\"]` 로 CPU 지정",
+   "`get_inputs()` · `get_outputs()` 로 이름 · 모양 확인"
+  ],
+  "args": [
+   [
+    "path",
+    ".onnx 경로"
+   ],
+   [
+    "sess_options",
+    "스레드 등 옵션"
+   ],
+   [
+    "providers",
+    "실행 장치 목록"
+   ]
+  ],
+  "flow": "그래프 로드 → 최적화 → 세션",
+  "ret": "InferenceSession",
+  "hdr": "import onnxruntime as ort"
+ },
+ "sess.run()": {
+  "role": "ONNX Runtime 추론",
+  "desc": [
+   "입력은 **이름**으로 넣는다 (`input` · YOLO 는 `images`)",
+   "입력은 numpy float32"
+  ],
+  "args": [
+   [
+    "output_names",
+    "None = 출력 전부"
+   ],
+   [
+    "input_feed",
+    "{이름: numpy 배열}"
+   ]
+  ],
+  "flow": "입력 → 그래프 실행",
+  "ret": "출력 numpy 배열의 리스트"
+ },
+ "yolo.export()": {
+  "role": "ultralytics 모델 → ONNX",
+  "desc": [
+   "`format=\"onnx\"`, `imgsz=640`, `opset=17`",
+   "원시 출력 `(1, 84, 8400)` — 후처리는 직접"
+  ],
+  "args": [
+   [
+    "format",
+    "\"onnx\""
+   ],
+   [
+    "imgsz",
+    "입력 크기"
+   ],
+   [
+    "opset",
+    "ONNX 연산자 버전"
+   ]
+  ],
+  "flow": "변환 후 파일 저장",
+  "ret": "저장된 .onnx 경로"
+ },
+ "benchmark()": {
+  "role": "반복 측정 → 통계",
+  "desc": [
+   "warm-up 은 버리고 `reps` 번 시간(ms) 측정",
+   "mean · p50 · p95 · fps 를 딕셔너리로"
+  ],
+  "args": [
+   [
+    "fn",
+    "측정할 함수 (인자 없음)"
+   ],
+   [
+    "warmup",
+    "버리는 횟수 (5)"
+   ],
+   [
+    "reps",
+    "측정 횟수 (50)"
+   ]
+  ],
+  "flow": "warm-up → 반복 시간 기록 → 통계",
+  "ret": "dict {mean, p50, p95, fps}"
+ },
+ "np.percentile()": {
+  "role": "백분위수",
+  "desc": [
+   "p50 = 중앙값, p95 = 100번 중 95번은 이보다 작은 값"
+  ],
+  "args": [
+   [
+    "a",
+    "값 배열"
+   ],
+   [
+    "q",
+    "0~100 의 백분율"
+   ]
+  ],
+  "flow": "정렬 후 위치 보간",
+  "ret": "float",
+  "hdr": "import numpy as np"
+ },
+ "ort.SessionOptions()": {
+  "role": "ONNX Runtime 세션 옵션",
+  "desc": [
+   "`intra_op_num_threads = n` 으로 스레드 수 지정"
+  ],
+  "args": [],
+  "flow": "옵션 객체 생성 후 속성 설정",
+  "ret": "SessionOptions",
+  "hdr": "import onnxruntime as ort"
+ },
+ "os.cpu_count()": {
+  "role": "CPU 코어 수",
+  "desc": [
+   "스레드 실험의 \"전체\" 값 (`{1, 2, cpu_count}`)"
+  ],
+  "args": [],
+  "flow": "운영체제에 질의",
+  "ret": "int",
+  "hdr": "import os"
+ },
+ "csv.DictWriter()": {
+  "role": "딕셔너리 → CSV",
+  "desc": [
+   "`writeheader()` 로 열 이름, `writerow(dict)` 로 한 줄"
+  ],
+  "args": [
+   [
+    "f",
+    "열린 파일 (newline=\"\")"
+   ],
+   [
+    "fieldnames",
+    "열 이름 목록"
+   ]
+  ],
+  "flow": "dict 키 순서대로 한 줄",
+  "ret": "DictWriter",
+  "hdr": "import csv"
+ },
+ "os.path.getsize()": {
+  "role": "파일 크기 (바이트)",
+  "desc": [
+   "÷ 1e6 → MB. `.pt` vs `.onnx` 비교"
+  ],
+  "args": [
+   [
+    "path",
+    "파일 경로"
+   ]
+  ],
+  "flow": "파일 시스템 질의",
+  "ret": "int",
+  "hdr": "import os"
+ },
+ "cv2.pointPolygonTest()": {
+  "role": "점이 다각형 안인지",
+  "desc": [
+   "안 `+1` · 선 위 `0` · 밖 `−1` (`measureDist=False`)",
+   "점은 float 튜플, 다각형은 int32"
+  ],
+  "args": [
+   [
+    "contour",
+    "다각형 (N, 2) int32"
+   ],
+   [
+    "pt",
+    "(x, y)"
+   ],
+   [
+    "measureDist",
+    "거리까지 구할지 (False)"
+   ]
+  ],
+  "flow": "점 · 다각형 위치 관계",
+  "ret": "float (+1 · 0 · −1)",
+  "hdr": "import cv2"
+ },
+ "in_zone()": {
+  "role": "위험구역 안 판정",
+  "desc": [
+   "`pointPolygonTest >= 0` — 선 위도 안"
+  ],
+  "args": [
+   [
+    "pt",
+    "(x, y)"
+   ],
+   [
+    "poly",
+    "다각형 (기본 GRASS)"
+   ]
+  ],
+  "flow": "점-다각형 검사",
+  "ret": "bool"
+ },
+ "foot_points()": {
+  "role": "박스 → 발 위치",
+  "desc": [
+   "`((x1 + x2) / 2, y2)` — 박스 아래 중앙",
+   "박스 `[100, 50, 200, 300]` → `(150, 300)`"
+  ],
+  "args": [
+   [
+    "boxes",
+    "박스 (N, 4) xyxy"
+   ]
+  ],
+  "flow": "가운데 x, 아래 y",
+  "ret": "(N, 2) 배열"
+ },
+ "detect_onnx()": {
+  "role": "프레임 → 원본 좌표 사람 박스",
+  "desc": [
+   "letterbox → float32 `(1,3,640,640)` → ONNX → `decode_yolo` → 패딩 빼고 ÷ r → 화면 안으로 clip"
+  ],
+  "args": [
+   [
+    "frame",
+    "BGR 프레임"
+   ],
+   [
+    "sess",
+    "ONNX 세션"
+   ],
+   [
+    "conf",
+    "점수 기준"
+   ],
+   [
+    "iou_thr",
+    "NMS IoU 기준"
+   ]
+  ],
+  "flow": "전처리 → 추론 → 디코드 → 좌표 되돌리기",
+  "ret": "(boxes, scores)"
+ },
+ "run_intrusion()": {
+  "role": "영상 전체 침입 감지",
+  "desc": [
+   "프레임마다 박스 → 발 위치 → 구역 안 인원 → streak → 경보",
+   "결과 영상 + CSV 로그 (`frame, time_s, n_people, n_inside, alarm`)"
+  ],
+  "args": [
+   [
+    "video",
+    "입력 영상"
+   ],
+   [
+    "out",
+    "결과 영상 경로"
+   ],
+   [
+    "n_consec",
+    "연속 프레임 수 (3)"
+   ]
+  ],
+  "flow": "streak = streak+1 if inside.any() else 0, alarm = streak >= n_consec",
+  "ret": "로그 · 경보 배열"
+ },
+ "find_events()": {
+  "role": "경보 배열 → 이벤트 구간",
+  "desc": [
+   "경보가 1 로 이어진 구간을 (시작 초, 끝 초) 로",
+   "`[0,0,1,1,1,0,0,1,1,0,1]`, 10 FPS → `[(0.2, 0.4), (0.7, 0.8), (1.0, 1.0)]`"
+  ],
+  "args": [
+   [
+    "alarm",
+    "프레임별 0/1"
+   ],
+   [
+    "fps",
+    "영상 FPS"
+   ]
+  ],
+  "flow": "0→1 에 시작, 1→0 에 끝 기록",
+  "ret": "[(시작 초, 끝 초)]"
+ },
+ "cv2.polylines()": {
+  "role": "다각형 테두리 그리기",
+  "desc": [
+   "`isClosed=True` 로 닫힌 선"
+  ],
+  "args": [
+   [
+    "img",
+    "이미지"
+   ],
+   [
+    "pts",
+    "[다각형]"
+   ],
+   [
+    "isClosed",
+    "닫을지"
+   ],
+   [
+    "color",
+    "색"
+   ],
+   [
+    "thickness",
+    "굵기"
+   ]
+  ],
+  "flow": "선 그리기",
+  "ret": "img",
+  "hdr": "import cv2"
+ },
+ "cv2.addWeighted()": {
+  "role": "두 이미지 가중 합 (반투명)",
+  "desc": [
+   "`a·src1 + b·src2 + γ` — 구역을 반투명으로 칠할 때"
+  ],
+  "args": [
+   [
+    "src1, alpha",
+    "첫 이미지 · 비중"
+   ],
+   [
+    "src2, beta",
+    "둘째 이미지 · 비중"
+   ],
+   [
+    "gamma",
+    "더할 값"
+   ]
+  ],
+  "flow": "픽셀별 가중합",
+  "ret": "이미지",
+  "hdr": "import cv2"
+ },
+ "to_h264()": {
+  "role": "H.264 mp4 로 변환",
+  "desc": [
+   "ffmpeg `libx264` — 브라우저 · Colab 에서 재생되게"
+  ],
+  "args": [
+   [
+    "src",
+    "원본 영상"
+   ],
+   [
+    "dst",
+    "저장 경로"
+   ]
+  ],
+  "flow": "subprocess 로 ffmpeg 실행",
+  "ret": "dst 경로"
+ }
+}
