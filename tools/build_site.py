@@ -45,6 +45,8 @@ SUBJECTS = [
          lecture='NN-day{d}/NN_Day{d}_lecture.ipynb', ws='NN-day{d}/worksheet.html', note='NN_day{d}.md', anim='NN-day{d}/animation.html'),
     dict(id='vb', name='Vision 기본 모델', short='VB', days=5, flow='PyTorch로 이미지 · 영상 인식',
          lecture='VB-day{d}/VB_Day{d}_lecture.ipynb', ws='VB-day{d}/worksheet.html', note='VB_day{d}.md', anim='VB-day{d}/animation.html'),
+    dict(id='ot', name='ONNX · TensorRT', short='OT', days=5, flow='학습한 모델을 내보내 빠르게 실행',
+         lecture='OT-day{d}/OT_Day{d}_lecture.ipynb', ws='OT-day{d}/worksheet.html', note='OT_day{d}.md', anim='OT-day{d}/animation.html'),
 ]
 
 def campus_path(pat, d):

@@ -117,7 +117,7 @@ def is_check(src):
 _OUTS = {}
 
 def _cell_outputs(path):
-    m = re.search(r'(NN|VB)-day(\d+)', path.replace('\\', '/'))
+    m = re.search(r'(NN|VB|OT)-day(\d+)', path.replace('\\', '/'))
     if not m: return {}
     key = m.group(1).lower() + m.group(2)
     if key not in _OUTS:

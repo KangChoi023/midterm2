@@ -52,6 +52,7 @@ SUBJECTS = {
     'embeddedio': ('EIO', '08_Embbed IO', 'EmbeddedIO'),
     'nn': ('NN', '09_NeuralNetwork', 'NN'),
     'vb': ('VB', '10_Vision', 'Vision'),
+    'ot': ('OT', '11_ONNX_TensorRT', 'ONNX'),
 }
 DAY_DIR = re.compile(r'^(.*?)-?day(\d+)$', re.I)                  # NN-day3, Day3 (앞부분 없음 = 컴퓨터 구조)
 # Day 가 아닌 묶음: 이름 → (과목 앞부분, 폴더 이름, 파일 이름 표시, 그대로 복사?)
