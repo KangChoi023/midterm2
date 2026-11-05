@@ -1,0 +1,347 @@
+{
+ "torch.onnx.export()": {
+  "role": "PyTorch 모델 → ONNX 파일",
+  "desc": [
+   "더미 입력으로 한 번 실행하며 연산을 녹화(tracing)",
+   "입력 shape · dtype 이 파일에 굳는다",
+   "`.eval()` 모델을 넣는다"
+  ],
+  "args": [
+   [
+    "model",
+    "내보낼 모델"
+   ],
+   [
+    "args",
+    "더미 입력 (shape · dtype 이 중요)"
+   ],
+   [
+    "f",
+    "저장 파일 이름"
+   ],
+   [
+    "input_names, output_names",
+    "입출력 이름 (리스트)"
+   ]
+  ],
+  "flow": "더미 실행 → 그래프 + 가중치 → 파일",
+  "ret": "None (파일 생성)",
+  "hdr": "import torch"
+ },
+ "Module.eval()": {
+  "role": "실행 모드로 전환",
+  "desc": [
+   "Dropout 끄기, BatchNorm 은 저장된 평균 · 분산 사용",
+   "export 전 · PyTorch 와 비교할 때 항상"
+  ],
+  "args": [],
+  "flow": "학습 모드 → 실행 모드",
+  "ret": "모델 자신",
+  "hdr": "import torch.nn as nn"
+ },
+ "onnx.load()": {
+  "role": "ONNX 파일 읽기",
+  "desc": [
+   "`graph.node` (연산) · `graph.initializer` (가중치) · `graph.input` 으로 접근"
+  ],
+  "args": [
+   [
+    "f",
+    "ONNX 파일 경로"
+   ]
+  ],
+  "flow": "파일 → ModelProto",
+  "ret": "ModelProto",
+  "hdr": "import onnx"
+ },
+ "onnx.helper.printable_graph()": {
+  "role": "그래프를 글로 출력",
+  "desc": [
+   "노드 순서 · 입출력을 텍스트로 확인"
+  ],
+  "args": [
+   [
+    "graph",
+    "`m.graph`"
+   ]
+  ],
+  "flow": "graph → 문자열",
+  "ret": "str",
+  "hdr": "import onnx"
+ },
+ "numpy_helper.to_array()": {
+  "role": "initializer → NumPy 배열",
+  "desc": [
+   "가중치 값 · shape 를 PyTorch 와 비교할 때"
+  ],
+  "args": [
+   [
+    "tensor",
+    "`m.graph.initializer[i]`"
+   ]
+  ],
+  "flow": "TensorProto → ndarray",
+  "ret": "np.ndarray",
+  "hdr": "import onnx.numpy_helper"
+ },
+ "show_netron()": {
+  "role": "Colab 에서 Netron 열기",
+  "desc": [
+   "환경 셀이 만들어 둔 도우미 함수",
+   "파일마다 다른 `port` 사용"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "port",
+    "창 번호 (8081, 8082 …)"
+   ]
+  ],
+  "flow": "서버 띄움 → 노트북 안에 창",
+  "ret": "화면 표시",
+  "hdr": "(환경 셀 제공)"
+ },
+ "ort.InferenceSession()": {
+  "role": "ONNX Runtime 세션 열기",
+  "desc": [
+   "PyTorch 없이 ONNX 를 실행",
+   "`providers` 순서 = 우선순위"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "providers",
+    "`[\"CPUExecutionProvider\"]`"
+   ]
+  ],
+  "flow": "파일 읽기 → 실행 준비",
+  "ret": "InferenceSession",
+  "hdr": "import onnxruntime as ort"
+ },
+ "sess.get_inputs()": {
+  "role": "입력 정보",
+  "desc": [
+   "`[0].name` · `.shape` · `.type`",
+   "`type` `tensor(float)` = float32"
+  ],
+  "args": [],
+  "flow": "세션 → 입력 목록",
+  "ret": "list",
+  "hdr": ""
+ },
+ "sess.run()": {
+  "role": "ONNX 실행",
+  "desc": [
+   "입력은 딕셔너리, 출력은 리스트",
+   "입력은 float32 NumPy (텐서 X)"
+  ],
+  "args": [
+   [
+    "output_names",
+    "`None` = 전부"
+   ],
+   [
+    "input_feed",
+    "`{입력 이름: 배열}`"
+   ]
+  ],
+  "flow": "입력 → forward → 출력",
+  "ret": "list of ndarray",
+  "hdr": ""
+ },
+ "np.allclose()": {
+  "role": "오차 허용 같음 비교",
+  "desc": [
+   "float32 끝자리 차이를 무시 (`atol=1e-5`)",
+   "export 후 PyTorch 와 비교할 때"
+  ],
+  "args": [
+   [
+    "a, b",
+    "비교할 배열"
+   ],
+   [
+    "atol",
+    "허용 오차"
+   ]
+  ],
+  "flow": "|a−b| ≤ atol + rtol·|b|",
+  "ret": "bool",
+  "hdr": "import numpy as np"
+ },
+ "cv2.imread()": {
+  "role": "사진 읽기",
+  "desc": [
+   "`(H, W, 3)` `uint8`, **BGR** 순서"
+  ],
+  "args": [
+   [
+    "filename",
+    "사진 경로"
+   ]
+  ],
+  "flow": "파일 → 배열",
+  "ret": "ndarray",
+  "hdr": "import cv2"
+ },
+ "cv2.cvtColor()": {
+  "role": "색 순서 바꾸기",
+  "desc": [
+   "`COLOR_BGR2RGB` 로 모델 입력 순서에 맞춤"
+  ],
+  "args": [
+   [
+    "src",
+    "이미지"
+   ],
+   [
+    "code",
+    "`cv2.COLOR_BGR2RGB`"
+   ]
+  ],
+  "flow": "BGR → RGB",
+  "ret": "ndarray",
+  "hdr": "import cv2"
+ },
+ "cv2.resize()": {
+  "role": "크기 맞추기",
+  "desc": [
+   "크기 인자는 **(W, H)**",
+   "축소는 `INTER_AREA`"
+  ],
+  "args": [
+   [
+    "src",
+    "이미지"
+   ],
+   [
+    "dsize",
+    "(너비, 높이)"
+   ],
+   [
+    "interpolation",
+    "보간법"
+   ]
+  ],
+  "flow": "크기 변환",
+  "ret": "ndarray",
+  "hdr": "import cv2"
+ },
+ "preprocess()": {
+  "role": "사진 → 모델 입력 6단계",
+  "desc": [
+   "RGB · resize · /255 · 정규화 · CHW · 배치 축",
+   "학습 때와 같은 규칙이어야 함"
+  ],
+  "args": [
+   [
+    "img_bgr",
+    "`cv2.imread` 결과"
+   ],
+   [
+    "size",
+    "한 변 길이 (224 · 64)"
+   ]
+  ],
+  "flow": "BGR 사진 → (1, 3, size, size) float32",
+  "ret": "ndarray",
+  "hdr": "(7교시에서 직접 정의)"
+ },
+ "classify()": {
+  "role": "사진 → top-k 클래스",
+  "desc": [
+   "`preprocess` → `run` → softmax → `argsort`"
+  ],
+  "args": [
+   [
+    "sess",
+    "ORT 세션"
+   ],
+   [
+    "img_bgr",
+    "사진"
+   ],
+   [
+    "k",
+    "상위 개수"
+   ]
+  ],
+  "flow": "사진 → 확률 상위 k",
+  "ret": "[(이름, 확률), …]",
+  "hdr": "(7교시에서 직접 정의)"
+ },
+ "onnx_report()": {
+  "role": "ONNX 파일 점검표",
+  "desc": [
+   "크기 · 노드 수 · 연산 종류 · 입출력을 한눈에"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ]
+  ],
+  "flow": "파일 → 딕셔너리",
+  "ret": "dict",
+  "hdr": "(8교시에서 직접 정의)"
+ },
+ "sess.get_providers()": {
+  "role": "세션이 쓰는 실행 장치 목록",
+  "desc": [
+   "`[\"CPUExecutionProvider\"]` 처럼 우선순위 순서",
+   "GPU 는 `CUDAExecutionProvider` (Day 3), TensorRT 는 `TensorrtExecutionProvider`"
+  ],
+  "args": [],
+  "flow": "세션 → provider 이름 리스트",
+  "ret": "list[str]",
+  "hdr": ""
+ },
+ "sess.get_outputs()": {
+  "role": "출력 정보",
+  "desc": [
+   "`[0].name` · `.shape`",
+   "export 때 붙인 `output_names` 가 여기 나온다"
+  ],
+  "args": [],
+  "flow": "세션 → 출력 목록",
+  "ret": "list",
+  "hdr": ""
+ },
+ "np.load()": {
+  "role": ".npz / .npy 읽기",
+  "desc": [
+   "`.npz` 는 이름으로 꺼냄: `d[\"images\"]` · `d[\"labels\"]`"
+  ],
+  "args": [
+   [
+    "file",
+    "파일 경로"
+   ]
+  ],
+  "flow": "파일 → 배열(들)",
+  "ret": "ndarray / NpzFile",
+  "hdr": "import numpy as np"
+ },
+ "ndarray.transpose()": {
+  "role": "축 순서 바꾸기",
+  "desc": [
+   "`x.transpose(2, 0, 1)` : (H, W, C) → (C, H, W)",
+   "`reshape` 는 모양만 바꾸고 축 순서는 안 바꾼다"
+  ],
+  "args": [
+   [
+    "axes",
+    "새 축 순서 (옛 축 번호)"
+   ]
+  ],
+  "flow": "축 재배열",
+  "ret": "뷰(ndarray)",
+  "hdr": ""
+ }
+}
