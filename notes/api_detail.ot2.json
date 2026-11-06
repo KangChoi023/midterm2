@@ -1,0 +1,301 @@
+{
+ "shape_of()": {
+  "role": "입출력 텐서의 shape 를 리스트로",
+  "desc": [
+   "`dim_value`(숫자 축) 와 `dim_param`(이름 붙은 축 `'batch'`) 중 있는 쪽을 고름",
+   "직접 만든 도우미 함수 — 2교시 문제 2-2"
+  ],
+  "args": [
+   [
+    "vi",
+    "`g.input[i]` 또는 `g.output[i]` (ValueInfoProto)"
+   ]
+  ],
+  "flow": "vi.type.tensor_type.shape.dim → 리스트",
+  "ret": "list (예: [1, 1, 28, 28])",
+  "hdr": "직접 정의"
+ },
+ "onnx.helper.get_attribute_value()": {
+  "role": "노드 속성 하나의 값 꺼내기",
+  "desc": [
+   "속성 종류(int · ints · float · string …)마다 필드가 달라 이 함수로 한꺼번에 처리",
+   "`a.ints` · `a.i` 를 직접 읽지 말 것"
+  ],
+  "args": [
+   [
+    "a",
+    "`node.attribute` 의 원소"
+   ]
+  ],
+  "flow": "AttributeProto → 파이썬 값",
+  "ret": "int · float · list 등",
+  "hdr": "import onnx.helper"
+ },
+ "attrs_of()": {
+  "role": "노드의 속성을 딕셔너리로",
+  "desc": [
+   "`{속성 이름: 값}` — Conv 는 `kernel_shape` · `strides` · `pads` …",
+   "직접 만든 도우미 함수 — 3교시 문제 3-2"
+  ],
+  "args": [
+   [
+    "node",
+    "`g.node[i]`"
+   ]
+  ],
+  "flow": "node.attribute → {이름: 값}",
+  "ret": "dict",
+  "hdr": "직접 정의"
+ },
+ "describe_onnx()": {
+  "role": "ONNX 파일을 노드별 표 한 장으로 요약",
+  "desc": [
+   "열: `op_type` · `data_in` · `out` · `params`(가중치 개수) · `attrs`",
+   "`params.sum()` 이 PyTorch 파라미터 수와 같은지 대조 (BN 융합으로 다를 수 있음)",
+   "직접 만든 함수 — 3교시 문제 3-3"
+  ],
+  "args": [
+   [
+    "path",
+    "`.onnx` 파일 경로"
+   ]
+  ],
+  "flow": "load → initializer 이름표 → 노드마다 한 줄",
+  "ret": "pd.DataFrame",
+  "hdr": "직접 정의"
+ },
+ "onnx.checker.check_model()": {
+  "role": "ONNX 모델이 규칙에 맞는지 검사",
+  "desc": [
+   "끊긴 화살표 · 순서 위반(topological order) · 잘못된 필드를 찾음",
+   "문제 없으면 아무 말 없이 끝, 있으면 `ValidationError`",
+   "형식 검사일 뿐 — 결과가 맞는지는 `allclose`"
+  ],
+  "args": [
+   [
+    "model",
+    "`onnx.load` 한 ModelProto"
+   ]
+  ],
+  "flow": "모델 → 규칙 검사 → 예외 또는 통과",
+  "ret": "None",
+  "hdr": "import onnx.checker"
+ },
+ "onnx.shape_inference.infer_shapes()": {
+  "role": "중간 텐서의 shape 를 계산해 채우기",
+  "desc": [
+   "결과는 **새 모델** — `m` 이 아니라 반환값의 `graph.value_info` 를 본다",
+   "화살표 중 input · output 은 이미 shape 가 있어 value_info 에 안 들어감"
+  ],
+  "args": [
+   [
+    "model",
+    "ModelProto"
+   ]
+  ],
+  "flow": "입력 shape 에서 노드마다 출력 shape 전파",
+  "ret": "ModelProto (value_info 채워짐)",
+  "hdr": "import onnx.shape_inference"
+ },
+ "Model.SerializeToString()": {
+  "role": "모델 객체를 바이트열로",
+  "desc": [
+   "파일로 저장하지 않고 `ort.InferenceSession(바이트)` 에 바로 넣을 때",
+   "고친(망가뜨린) 모델을 바로 시험하기 좋음"
+  ],
+  "args": [],
+  "flow": "ModelProto → bytes",
+  "ret": "bytes",
+  "hdr": "onnx 모델 객체의 메서드"
+ },
+ "ndarray.argmax()": {
+  "role": "가장 큰 값의 위치",
+  "desc": [
+   "`argmax(1)` = 줄(사진)마다 10개 중 가장 큰 칸",
+   "축을 안 주면 전체를 펴서 하나만 반환"
+  ],
+  "args": [
+   [
+    "axis",
+    "비교할 축 (없으면 전체)"
+   ]
+  ],
+  "flow": "배열 → 위치(들)",
+  "ret": "int 또는 ndarray",
+  "hdr": "NumPy"
+ },
+ "verify()": {
+  "role": "여러 입력으로 PyTorch 와 ONNX 비교",
+  "desc": [
+   "`{이름: 입력}` 마다 최대 차이를 구해 ✅/❌ 출력",
+   "더미 하나로만 비교하면 늘 ✅ — 음수 · 어두운 사진 · 배치 4 를 일부러 넣을 것",
+   "직접 만든 함수 — 6교시"
+  ],
+  "args": [
+   [
+    "model",
+    "PyTorch 모델"
+   ],
+   [
+    "path",
+    "`.onnx` 파일"
+   ],
+   [
+    "cases",
+    "`{이름: 입력 배열}`"
+   ],
+   [
+    "atol",
+    "허용 차이 (기본 1e-4)"
+   ]
+  ],
+  "flow": "PyTorch 결과 vs ORT 결과 → 최대 차이",
+  "ret": "bool (모두 같으면 True)",
+  "hdr": "직접 정의"
+ },
+ "export_warn()": {
+  "role": "export 하며 TracerWarning 만 골라 보기",
+  "desc": [
+   "환경 셀이 경고를 숨겨 두었기 때문에 필요한 경고만 다시 출력",
+   "끝에 그래프의 `op_type` 목록도 보여 줌",
+   "직접 만든 함수 — 6교시"
+  ],
+  "args": [
+   [
+    "model",
+    "PyTorch 모델"
+   ],
+   [
+    "dummy",
+    "더미 입력"
+   ],
+   [
+    "path",
+    "저장 파일"
+   ],
+   [
+    "**kw",
+    "`input_names` · `dynamic_axes` 등 export 옵션"
+   ]
+  ],
+  "flow": "warnings 기록 → export → 경고 출력",
+  "ret": "None",
+  "hdr": "직접 정의"
+ },
+ "torch.where()": {
+  "role": "조건에 따라 두 값 중 고르기",
+  "desc": [
+   "두 길을 **모두 계산**한 뒤 고름 → ONNX 에 `Where` 노드로 남음",
+   "파이썬 `if` 는 한쪽 길만 녹화되어 사라지는 것의 해결책"
+  ],
+  "args": [
+   [
+    "condition",
+    "bool 텐서"
+   ],
+   [
+    "input",
+    "참일 때 값"
+   ],
+   [
+    "other",
+    "거짓일 때 값"
+   ]
+  ],
+  "flow": "조건 → 두 후보 중 선택",
+  "ret": "Tensor",
+  "hdr": "import torch"
+ },
+ "Tensor.mean()": {
+  "role": "평균 구하기 (torch 연산)",
+  "desc": [
+   "`dim=` 으로 줄일 축 지정, `keepdim=True` 면 축을 1로 남겨 브로드캐스트",
+   "`float(np.mean(…))` 와 달리 그래프에 `ReduceMean` 으로 남음"
+  ],
+  "args": [
+   [
+    "dim",
+    "평균 낼 축 (예: 1 또는 (1, 2, 3))"
+   ],
+   [
+    "keepdim",
+    "True 면 줄인 축을 크기 1로 유지"
+   ]
+  ],
+  "flow": "축을 따라 평균",
+  "ret": "Tensor",
+  "hdr": "PyTorch"
+ },
+ "Tensor.flatten()": {
+  "role": "배치 축을 두고 나머지를 펴기",
+  "desc": [
+   "`x.flatten(1)` — (N, …) → (N, 나머지 곱)",
+   "`x.view(1, -1)` 처럼 배치를 숫자로 쓰면 export 후 배치가 굳음"
+  ],
+  "args": [
+   [
+    "start_dim",
+    "펴기 시작할 축 (1 = 배치 다음부터)"
+   ]
+  ],
+  "flow": "(N, C, H, W) → (N, C·H·W)",
+  "ret": "Tensor",
+  "hdr": "PyTorch"
+ },
+ "onnxslim.slim()": {
+  "role": "ONNX 그래프 단순화",
+  "desc": [
+   "상수 접기 · 불필요 노드 제거 (ViewNet 11개 → 4개)",
+   "결과는 **모델 객체** — `onnx.save` 로 저장해야 파일",
+   "결과 값은 그대로여야 함 (정확도가 오르는 게 아님)"
+  ],
+  "args": [
+   [
+    "model",
+    "`.onnx` 파일 경로 (또는 모델)"
+   ]
+  ],
+  "flow": "그래프 → 접기 · 정리 → 모델",
+  "ret": "ModelProto",
+  "hdr": "import onnxslim"
+ },
+ "onnx.save()": {
+  "role": "모델 객체를 파일로 저장",
+  "desc": [
+   "`onnxslim.slim` · `infer_shapes` 의 결과를 파일로 남길 때"
+  ],
+  "args": [
+   [
+    "model",
+    "ModelProto"
+   ],
+   [
+    "f",
+    "저장 경로"
+   ]
+  ],
+  "flow": "ModelProto → .onnx",
+  "ret": "None",
+  "hdr": "import onnx"
+ },
+ "torch.sort()": {
+  "role": "정렬",
+  "desc": [
+   "`torch.sort(x, dim=1).values[:, k:k+1]` = 가운데 값 (median 대체)",
+   "ONNX 에서는 `TopK` 로 변환"
+  ],
+  "args": [
+   [
+    "input",
+    "정렬할 텐서"
+   ],
+   [
+    "dim",
+    "정렬 축"
+   ]
+  ],
+  "flow": "텐서 → (values, indices)",
+  "ret": "namedtuple",
+  "hdr": "import torch"
+ }
+}
