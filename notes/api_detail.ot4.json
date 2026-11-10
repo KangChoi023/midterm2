@@ -1,0 +1,505 @@
+{
+ "trt.Logger()": {
+  "role": "TensorRT 메시지를 받는 곳",
+  "desc": [
+   "WARNING 이상만 보이게 하는 것이 기본",
+   "Builder · Runtime 에 넘긴다"
+  ],
+  "args": [
+   [
+    "severity",
+    "`trt.Logger.WARNING` 등 출력 수준"
+   ]
+  ],
+  "flow": "수준 지정 → 로거",
+  "ret": "Logger",
+  "hdr": "import tensorrt as trt"
+ },
+ "trt.Builder()": {
+  "role": "엔진을 만드는 공장",
+  "desc": [
+   "Network · Config 를 만들고 빌드까지 맡는다",
+   "빌드마다 새로 만든다"
+  ],
+  "args": [
+   [
+    "logger",
+    "`trt.Logger`"
+   ]
+  ],
+  "flow": "로거 → 빌더",
+  "ret": "Builder",
+  "hdr": "import tensorrt as trt"
+ },
+ "builder.create_network()": {
+  "role": "빈 설계판(Network) 만들기",
+  "desc": [
+   "`0` = explicit batch (배치를 shape 에 적음)",
+   "OnnxParser 가 이 판을 채운다"
+  ],
+  "args": [
+   [
+    "flags",
+    "`0` 이면 기본 설정"
+   ]
+  ],
+  "flow": "빌더 → 빈 Network",
+  "ret": "INetworkDefinition",
+  "hdr": "network = builder.create_network(0)"
+ },
+ "trt.OnnxParser()": {
+  "role": "ONNX 를 읽어 Network 에 옮기는 도구",
+  "desc": [
+   "`parse_from_file` 로 실행",
+   "실패 이유는 `get_error(i)`"
+  ],
+  "args": [
+   [
+    "network",
+    "채울 Network"
+   ],
+   [
+    "logger",
+    "`trt.Logger`"
+   ]
+  ],
+  "flow": "Network + 로거 → 파서",
+  "ret": "OnnxParser",
+  "hdr": "import tensorrt as trt"
+ },
+ "parser.parse_from_file()": {
+  "role": "ONNX 파일을 읽어 Network 를 채움",
+  "desc": [
+   "성공하면 True",
+   "False 면 `num_errors` · `get_error(i)` 로 이유 확인",
+   "확인 없이 빌드하면 빈 설계판 → blob 이 None"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일 경로"
+   ]
+  ],
+  "flow": "파일 → Network 채움",
+  "ret": "bool",
+  "hdr": "ok = parser.parse_from_file('m.onnx')"
+ },
+ "builder.create_builder_config()": {
+  "role": "빌드 옵션 객체 만들기",
+  "desc": [
+   "작업 메모리 · FP16 플래그 · 프로파일링 수준을 담는다"
+  ],
+  "args": [],
+  "flow": "빌더 → Config",
+  "ret": "IBuilderConfig",
+  "hdr": "config = builder.create_builder_config()"
+ },
+ "config.set_memory_pool_limit()": {
+  "role": "빌드 작업 메모리 상한 지정",
+  "desc": [
+   "`1 << 30` = 2³⁰ B ≈ 1 GiB",
+   "커널을 재 보는 작업 공간"
+  ],
+  "args": [
+   [
+    "pool",
+    "`trt.MemoryPoolType.WORKSPACE`"
+   ],
+   [
+    "size",
+    "바이트 수"
+   ]
+  ],
+  "flow": "상한 설정",
+  "ret": "None",
+  "hdr": "config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)"
+ },
+ "config.set_flag()": {
+  "role": "빌드 옵션 켜기",
+  "desc": [
+   "`trt.BuilderFlag.FP16` 로 FP16 허용",
+   "입출력 dtype 은 그대로 FP32"
+  ],
+  "args": [
+   [
+    "flag",
+    "`trt.BuilderFlag.FP16` 등"
+   ]
+  ],
+  "flow": "플래그 켬",
+  "ret": "None",
+  "hdr": "config.set_flag(trt.BuilderFlag.FP16)"
+ },
+ "builder.build_serialized_network()": {
+  "role": "엔진 빌드 → 바이트 덩어리",
+  "desc": [
+   "오래 걸림 (수십 초 ~ 분) — 이 GPU 에서 커널을 직접 재 봄",
+   "실패하면 None",
+   "돌려받은 blob 을 `.engine` 파일에 쓴다"
+  ],
+  "args": [
+   [
+    "network",
+    "파싱된 Network"
+   ],
+   [
+    "config",
+    "빌드 옵션"
+   ]
+  ],
+  "flow": "Network + Config → 커널 선택 → blob",
+  "ret": "bytes 유사(IHostMemory) 또는 None",
+  "hdr": "blob = builder.build_serialized_network(network, config)"
+ },
+ "build_engine()": {
+  "role": "빌드 여섯 단계를 묶은 오늘의 함수",
+  "desc": [
+   "파싱 실패 · 빌드 실패면 RuntimeError",
+   "호출마다 Builder · Network · Config 를 새로 만든다",
+   "`fp16=True` 로 FP16 엔진"
+  ],
+  "args": [
+   [
+    "onnx_path",
+    "입력 ONNX"
+   ],
+   [
+    "engine_path",
+    "저장할 엔진 파일"
+   ],
+   [
+    "fp16",
+    "FP16 허용 여부 (기본 False)"
+   ]
+  ],
+  "flow": "ONNX → 파싱 → Config → 빌드 → 파일",
+  "ret": "engine_path",
+  "hdr": "build_engine('m.onnx', 'm.engine', fp16=True)"
+ },
+ "trt.Runtime()": {
+  "role": "엔진 파일을 읽는 도구",
+  "desc": [
+   "빌드의 Builder 에 해당"
+  ],
+  "args": [
+   [
+    "logger",
+    "`trt.Logger`"
+   ]
+  ],
+  "flow": "로거 → 런타임",
+  "ret": "Runtime",
+  "hdr": "RUNTIME = trt.Runtime(LOGGER)"
+ },
+ "deserialize_cuda_engine()": {
+  "role": "파일 바이트 → 엔진",
+  "desc": [
+   "`open(path, 'rb').read()` 를 넣는다",
+   "GPU · TensorRT 버전이 다르면 실패"
+  ],
+  "args": [
+   [
+    "data",
+    "엔진 파일 바이트"
+   ]
+  ],
+  "flow": "바이트 → 엔진",
+  "ret": "ICudaEngine",
+  "hdr": "eng = RUNTIME.deserialize_cuda_engine(open('m.engine','rb').read())"
+ },
+ "engine.create_execution_context()": {
+  "role": "실행용 Context 만들기",
+  "desc": [
+   "입출력 주소 등 실행 상태를 가진다",
+   "엔진 하나로 여러 개 가능"
+  ],
+  "args": [],
+  "flow": "엔진 → Context",
+  "ret": "IExecutionContext",
+  "hdr": "ctx = eng.create_execution_context()"
+ },
+ "engine.get_tensor_name()": {
+  "role": "입출력 텐서 이름 얻기",
+  "desc": [
+   "`range(engine.num_io_tensors)` 로 돌며 사용",
+   "이름은 export 때 붙인 `input` · `logits`"
+  ],
+  "args": [
+   [
+    "i",
+    "텐서 번호"
+   ]
+  ],
+  "flow": "번호 → 이름",
+  "ret": "str",
+  "hdr": "name = eng.get_tensor_name(0)"
+ },
+ "engine.get_tensor_mode()": {
+  "role": "텐서가 입력인지 출력인지",
+  "desc": [
+   "`trt.TensorIOMode.INPUT` / `OUTPUT` 과 비교"
+  ],
+  "args": [
+   [
+    "name",
+    "텐서 이름"
+   ]
+  ],
+  "flow": "이름 → 모드",
+  "ret": "TensorIOMode",
+  "hdr": "eng.get_tensor_mode(n) == trt.TensorIOMode.INPUT"
+ },
+ "context.set_tensor_address()": {
+  "role": "텐서 이름에 GPU 주소 연결",
+  "desc": [
+   "NumPy 배열이 아니라 CUDA 텐서의 `data_ptr()`",
+   "버퍼는 한 번 연결하고 재사용"
+  ],
+  "args": [
+   [
+    "name",
+    "텐서 이름"
+   ],
+   [
+    "addr",
+    "GPU 메모리 주소"
+   ]
+  ],
+  "flow": "이름 + 주소 → 연결",
+  "ret": "bool",
+  "hdr": "ctx.set_tensor_address('input', d_i.data_ptr())"
+ },
+ "context.execute_async_v3()": {
+  "role": "엔진 비동기 실행",
+  "desc": [
+   "바로 돌아온다 — 뒤에 `torch.cuda.synchronize()` 필수",
+   "시간을 재기 전에도 기다려야 함"
+  ],
+  "args": [
+   [
+    "stream_handle",
+    "`torch.cuda.current_stream().cuda_stream`"
+   ]
+  ],
+  "flow": "주소의 입력 → 계산 → 주소의 출력",
+  "ret": "bool",
+  "hdr": "ctx.execute_async_v3(torch.cuda.current_stream().cuda_stream)"
+ },
+ "torch.cuda.synchronize()": {
+  "role": "GPU 작업이 끝날 때까지 기다림",
+  "desc": [
+   "비동기 실행 뒤 결과를 읽기 · 시간을 재기 전에 호출"
+  ],
+  "args": [],
+  "flow": "대기",
+  "ret": "None",
+  "hdr": "torch.cuda.synchronize()"
+ },
+ "trt_runner()": {
+  "role": "엔진 실행 준비를 묶은 오늘의 함수",
+  "desc": [
+   "엔진 · Context · 버퍼를 한 번 준비",
+   "돌려받은 `run(x)` 가 복사 → 실행 → 대기 → NumPy",
+   "`run.engine` · `run.context` 로 엔진 유지"
+  ],
+  "args": [
+   [
+    "engine_path",
+    "엔진 파일"
+   ]
+  ],
+  "flow": "파일 → 엔진 · 버퍼 → run 함수",
+  "ret": "함수 run(x)",
+  "hdr": "run = trt_runner('m.engine'); y = run(x)"
+ },
+ "np.finfo()": {
+  "role": "자료형의 한계 값",
+  "desc": [
+   "`np.finfo(np.float16).max` = 65504",
+   "`.eps` = 1 근처 최소 간격 (FP16 ≈ 0.000977)"
+  ],
+  "args": [
+   [
+    "dtype",
+    "`np.float16` · `np.float32`"
+   ]
+  ],
+  "flow": "자료형 → 한계 정보",
+  "ret": "finfo",
+  "hdr": "fi = np.finfo(np.float16)"
+ },
+ "create_engine_inspector()": {
+  "role": "엔진 레이어 정보를 꺼내는 인스펙터",
+  "desc": [
+   "빌드 때 `profiling_verbosity = DETAILED` 필요"
+  ],
+  "args": [],
+  "flow": "엔진 → 인스펙터",
+  "ret": "EngineInspector",
+  "hdr": "insp = eng.create_engine_inspector()"
+ },
+ "get_engine_information()": {
+  "role": "엔진 레이어 정보 얻기",
+  "desc": [
+   "`LayerInformationFormat.JSON` 으로 받아 `json.loads`",
+   "레이어 이름의 ` + ` = 합쳐진 레이어"
+  ],
+  "args": [
+   [
+    "format",
+    "`trt.LayerInformationFormat.JSON`"
+   ]
+  ],
+  "flow": "인스펙터 → JSON 문자열",
+  "ret": "str",
+  "hdr": "json.loads(insp.get_engine_information(trt.LayerInformationFormat.JSON))"
+ },
+ "bench_fn()": {
+  "role": "함수 하나의 지연 시간 측정",
+  "desc": [
+   "warm-up 후 n 번 재서 mean · p50 · p95 · fps"
+  ],
+  "args": [
+   [
+    "fn",
+    "인자 없는 함수 (예: `lambda: f(x)`)"
+   ],
+   [
+    "n",
+    "반복 횟수"
+   ],
+   [
+    "warm",
+    "준비 운동 횟수"
+   ]
+  ],
+  "flow": "warm-up → 반복 측정 → 통계",
+  "ret": "dict(mean, p50, p95, fps)",
+  "hdr": "bench_fn(lambda: f(x1), n=100, warm=10)"
+ },
+ "polygraphy convert": {
+  "role": "ONNX → 엔진을 명령 한 줄로",
+  "desc": [
+   "`--fp16` 으로 FP16 엔진",
+   "종료 코드 0 이 성공, 로그의 `[W]` 는 경고 · `[E]` 는 오류"
+  ],
+  "args": [
+   [
+    "-o",
+    "저장할 엔진 파일"
+   ],
+   [
+    "--fp16",
+    "FP16 허용"
+   ]
+  ],
+  "flow": "파싱 → 최적화 → 커널 선택 → 저장",
+  "ret": "종료 코드",
+  "hdr": "polygraphy convert m.onnx --fp16 -o m16.engine",
+  "ex": "m.onnx"
+ },
+ "polygraphy run": {
+  "role": "ORT · TensorRT 출력 비교",
+  "desc": [
+   "같은 무작위 입력으로 PASSED / FAILED",
+   "판정 `|a−b| ≤ atol + rtol·|b|`",
+   "FP16 은 느슨한 기준"
+  ],
+  "args": [
+   [
+    "--onnxrt",
+    "ONNX Runtime 으로 실행"
+   ],
+   [
+    "--trt",
+    "TensorRT 로 실행 (엔진 새로 빌드)"
+   ],
+   [
+    "--atol, --rtol",
+    "허용 오차"
+   ]
+  ],
+  "flow": "같은 입력 → 두 실행기 → 비교",
+  "ret": "종료 코드 · PASSED/FAILED",
+  "hdr": "polygraphy run m.onnx --onnxrt --trt --atol 1e-3 --rtol 1e-3",
+  "ex": "m.onnx"
+ },
+ "polygraphy inspect model": {
+  "role": "엔진 · 모델 구조를 명령으로 보기",
+  "desc": [
+   "`--show layers` 로 레이어 목록"
+  ],
+  "args": [
+   [
+    "--show",
+    "`layers` 등 보여 줄 정보"
+   ]
+  ],
+  "flow": "파일 → 레이어 목록",
+  "ret": "텍스트",
+  "hdr": "polygraphy inspect model m.engine --show layers",
+  "ex": ""
+ },
+ "torch.cuda.get_device_capability()": {
+  "role": "GPU 세대 번호",
+  "desc": [
+   "`(주, 부)` 튜플 — T4 = (7, 5) → `sm_75`",
+   "엔진은 이 번호가 다른 GPU 에서 다시 빌드해야 함"
+  ],
+  "args": [
+   [
+    "device",
+    "GPU 번호 (0)"
+   ]
+  ],
+  "flow": "GPU → compute capability",
+  "ret": "tuple",
+  "hdr": "import torch"
+ },
+ "np.float16()": {
+  "role": "FP16 으로 저장한 값 만들기",
+  "desc": [
+   "유효숫자 약 3자리 — 0.1 → 0.0999755859375",
+   "65504 를 넘으면 `inf`"
+  ],
+  "args": [
+   [
+    "x",
+    "변환할 값"
+   ]
+  ],
+  "flow": "값 → 16비트 부동소수점",
+  "ret": "np.float16",
+  "hdr": "import numpy as np"
+ },
+ "DataFrame.idxmin()": {
+  "role": "최솟값이 있는 행 이름",
+  "desc": [
+   "`cmp.loc[cmp['p95'].idxmin(), 'provider']` 로 가장 빠른 실행기 이름"
+  ],
+  "args": [],
+  "flow": "열 → 최솟값의 인덱스",
+  "ret": "인덱스 값",
+  "hdr": "import pandas as pd"
+ },
+ "pd.concat()": {
+  "role": "표 이어 붙이기",
+  "desc": [
+   "`ignore_index=True` 로 번호 다시 매김",
+   "Day 3 표 아래에 오늘 표를 이어 붙일 때"
+  ],
+  "args": [
+   [
+    "objs",
+    "이을 표 리스트"
+   ],
+   [
+    "ignore_index",
+    "True 면 행 번호 새로"
+   ]
+  ],
+  "flow": "표들 → 한 표",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ }
+}
