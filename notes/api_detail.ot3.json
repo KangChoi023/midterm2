@@ -1,0 +1,292 @@
+{
+ "get_providers()": {
+  "role": "세션이 실제로 쓰는 실행기 목록",
+  "desc": [
+   "`providers` 중 쓸 수 있는 것만, 우선순위 순",
+   "`[0]` 이 진짜 실행기 — GPU 확인에 사용"
+  ],
+  "args": [],
+  "flow": "세션 → 리스트",
+  "ret": "list[str]",
+  "hdr": "import onnxruntime as ort"
+ },
+ "get_available_providers()": {
+  "role": "설치된 실행기 목록",
+  "desc": [
+   "설치된 것이지 사용 중인 것이 아님"
+  ],
+  "args": [],
+  "flow": "ort → 리스트",
+  "ret": "list[str]",
+  "hdr": "import onnxruntime as ort"
+ },
+ "time.perf_counter()": {
+  "role": "짧은 시간을 정밀하게 재는 시계",
+  "desc": [
+   "두 번 호출해 차이를 구함 (초 단위)",
+   "× 1000 하면 ms"
+  ],
+  "args": [],
+  "flow": "호출 시각 → float",
+  "ret": "float",
+  "hdr": "import time"
+ },
+ "np.percentile()": {
+  "role": "백분위수 계산",
+  "desc": [
+   "p50 = 중앙값, p95 = 느린 쪽 5% 경계"
+  ],
+  "args": [
+   [
+    "a",
+    "값 배열"
+   ],
+   [
+    "q",
+    "백분위 (0~100)"
+   ]
+  ],
+  "flow": "배열 → 스칼라",
+  "ret": "float",
+  "hdr": "import numpy as np"
+ },
+ "bench()": {
+  "role": "warm-up 후 n번 재서 요약",
+  "desc": [
+   "warm 번은 버리고 n번 측정",
+   "mean · p50 · p95 · fps 를 dict 로",
+   "fps = 1000 ÷ mean × 배치"
+  ],
+  "args": [
+   [
+    "sess",
+    "ORT 세션"
+   ],
+   [
+    "x",
+    "입력 배열"
+   ],
+   [
+    "n",
+    "측정 횟수 (기본 100)"
+   ],
+   [
+    "warm",
+    "버릴 횟수 (기본 10)"
+   ]
+  ],
+  "flow": "warm-up → 측정 → 요약",
+  "ret": "dict",
+  "hdr": "(노트북에서 직접 정의)"
+ },
+ "ort.SessionOptions()": {
+  "role": "세션 실행 옵션 묶음",
+  "desc": [
+   "`intra_op_num_threads` · `graph_optimization_level` · `enable_profiling` 등을 설정",
+   "세션 만들기 전에 정함"
+  ],
+  "args": [],
+  "flow": "옵션 객체",
+  "ret": "SessionOptions",
+  "hdr": "import onnxruntime as ort"
+ },
+ "os.cpu_count()": {
+  "role": "CPU 코어 수",
+  "desc": [
+   "스레드 수를 고를 때 상한의 기준"
+  ],
+  "args": [],
+  "flow": "→ 정수",
+  "ret": "int",
+  "hdr": "import os"
+ },
+ "make_session()": {
+  "role": "손잡이를 인자로 받는 세션 공장",
+  "desc": [
+   "threads · level · providers · save_opt · profile",
+   "level 문자열을 `LEVELS` 로 상수로 바꿈"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "threads",
+    "0 = 자동"
+   ],
+   [
+    "level",
+    "DISABLE/BASIC/EXTENDED/ALL"
+   ],
+   [
+    "providers",
+    "기본 CPU"
+   ],
+   [
+    "save_opt",
+    "최적화 그래프 저장 경로"
+   ],
+   [
+    "profile",
+    "True 면 profiling"
+   ]
+  ],
+  "flow": "옵션 → 세션",
+  "ret": "InferenceSession",
+  "hdr": "(노트북에서 직접 정의)"
+ },
+ "ort.GraphOptimizationLevel": {
+  "role": "그래프 최적화 레벨 상수",
+  "desc": [
+   "ORT_DISABLE_ALL · BASIC · EXTENDED · ENABLE_ALL(기본)"
+  ],
+  "args": [],
+  "flow": "상수",
+  "ret": "enum",
+  "hdr": "import onnxruntime as ort"
+ },
+ "optimized_model_filepath": {
+  "role": "최적화된 그래프를 파일로 저장",
+  "desc": [
+   "`so` 에 경로를 주고 세션을 만들면 저장",
+   "그 장치 전용 — 배포 금지"
+  ],
+  "args": [],
+  "flow": "세션 생성 시 저장",
+  "ret": "파일",
+  "hdr": "import onnxruntime as ort"
+ },
+ "CUDAExecutionProvider": {
+  "role": "GPU 에서 실행",
+  "desc": [
+   "providers 맨 앞에 두면 GPU 우선",
+   "CPU 를 뒤에 두어 폴백",
+   "`get_providers()` 로 확인"
+  ],
+  "args": [],
+  "flow": "providers → GPU",
+  "ret": "실행기 이름",
+  "hdr": "import onnxruntime as ort"
+ },
+ "DataFrame.idxmax()": {
+  "role": "최댓값 행의 인덱스",
+  "desc": [
+   "최대 처리량 배치 고르기"
+  ],
+  "args": [],
+  "flow": "열 → 인덱스",
+  "ret": "index",
+  "hdr": "import pandas as pd"
+ },
+ "end_profiling()": {
+  "role": "profiling 기록을 닫고 파일 경로 반환",
+  "desc": [
+   "안 부르면 JSON 이 비어 있음",
+   "`dur` 는 µs"
+  ],
+  "args": [],
+  "flow": "세션 → JSON 경로",
+  "ret": "str",
+  "hdr": "import onnxruntime as ort"
+ },
+ "collections.Counter()": {
+  "role": "op 별로 값을 합산",
+  "desc": [
+   "`agg[op] += dur` 로 누적",
+   "`most_common(k)` 로 상위 k"
+  ],
+  "args": [],
+  "flow": "키별 합",
+  "ret": "Counter",
+  "hdr": "import collections"
+ },
+ "profile_top()": {
+  "role": "시간 비율 상위 k 개 연산",
+  "desc": [
+   "profiling 세션으로 n번 실행 후 op 별 비율"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "x",
+    "입력"
+   ],
+   [
+    "k",
+    "상위 개수"
+   ],
+   [
+    "n",
+    "실행 횟수"
+   ]
+  ],
+  "flow": "실행 → JSON → 합산",
+  "ret": "DataFrame",
+  "hdr": "(노트북에서 직접 정의)"
+ },
+ "bench_config()": {
+  "role": "설정 한 줄 → 조건 + 결과 한 줄",
+  "desc": [
+   "make_session + bench",
+   "model · provider · threads · level · batch · mean · p50 · p95 · fps"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "threads",
+    "스레드"
+   ],
+   [
+    "level",
+    "최적화 레벨"
+   ],
+   [
+    "batch",
+    "배치"
+   ],
+   [
+    "n",
+    "측정 횟수"
+   ]
+  ],
+  "flow": "설정 → 측정",
+  "ret": "dict",
+  "hdr": "(노트북에서 직접 정의)"
+ },
+ "pd.concat()": {
+  "role": "표 이어 붙이기",
+  "desc": [
+   "grid 와 batch_tbl 을 합쳐 CSV 로"
+  ],
+  "args": [
+   [
+    "objs",
+    "표 리스트"
+   ],
+   [
+    "ignore_index",
+    "True 면 번호 다시 매김"
+   ]
+  ],
+  "flow": "표들 → 한 표",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.idxmin()": {
+  "role": "최솟값 행의 인덱스",
+  "desc": [
+   "p95 가 가장 작은 설정 고르기"
+  ],
+  "args": [],
+  "flow": "열 → 인덱스",
+  "ret": "index",
+  "hdr": "import pandas as pd"
+ }
+}
