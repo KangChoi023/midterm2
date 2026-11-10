@@ -1,0 +1,271 @@
+{
+ "TRTInfer()": {
+  "role": "TensorRT 엔진을 함수처럼 쓰는 클래스",
+  "desc": [
+   "`__init__` 에서 엔진 · Context · 입출력 이름 · GPU 버퍼 · 주소를 한 번 준비",
+   "`__call__(x)` 에서 복사 → 실행 → 기다리기 → NumPy",
+   "`infer(x)` 모양이라 ORT 함수와 바꿔 끼울 수 있다"
+  ],
+  "args": [
+   [
+    "engine_path",
+    "`.engine` 파일 경로"
+   ],
+   [
+    "x (호출 때)",
+    "float32 NumPy 입력"
+   ]
+  ],
+  "flow": "엔진 읽기(1번) → 프레임마다 복사 · 실행 · 대기 · 출력",
+  "ret": "NumPy 배열 (예: (1, 84, 8400))",
+  "hdr": "class TRTInfer  # 교안 정의"
+ },
+ "build_once()": {
+  "role": "엔진 파일이 없을 때만 빌드",
+  "desc": [
+   "엔진 빌드는 오래 걸려 있으면 건너뜀",
+   "`fp16=True` 면 FP16 엔진",
+   "ONNX 를 바꾸면 옛 엔진 파일을 지우고 다시"
+  ],
+  "args": [
+   [
+    "onnx_path",
+    "입력 ONNX"
+   ],
+   [
+    "engine_path",
+    "저장할 엔진"
+   ],
+   [
+    "fp16",
+    "FP16 으로 빌드할지"
+   ]
+  ],
+  "flow": "파일 있나 확인 → 없으면 빌드 · 저장",
+  "ret": "엔진 파일 경로",
+  "hdr": "def build_once  # 교안 정의"
+ },
+ "get_tensor_mode()": {
+  "role": "텐서가 입력인지 출력인지 구분",
+  "desc": [
+   "`trt.TensorIOMode.INPUT` / `OUTPUT` 과 비교",
+   "이름 목록을 입력 · 출력으로 나눌 때"
+  ],
+  "args": [
+   [
+    "name",
+    "텐서 이름"
+   ]
+  ],
+  "flow": "이름 → 입력/출력",
+  "ret": "TensorIOMode",
+  "hdr": "engine.get_tensor_mode(name)"
+ },
+ "detect()": {
+  "role": "사진 한 장 → 사람 박스 · 점수",
+  "desc": [
+   "letterbox → `infer(x)` → `decode_yolo` → 원래 좌표로 되돌리기",
+   "`infer` 를 인자로 받아 ORT · TensorRT 를 바꿔 끼움",
+   "좌표는 `(박스 − 패딩) / 비율` 후 화면 안으로 clip"
+  ],
+  "args": [
+   [
+    "frame",
+    "BGR 사진"
+   ],
+   [
+    "infer",
+    "x → 원시 출력 함수"
+   ],
+   [
+    "conf",
+    "신뢰도 문턱 (AP 는 0.01)"
+   ],
+   [
+    "iou_thr",
+    "NMS IoU 문턱"
+   ]
+  ],
+  "flow": "letterbox → CHW · /255 → infer → decode · NMS → 좌표 복원",
+  "ret": "(boxes (N, 4), scores (N,))",
+  "hdr": "def detect  # 교안 정의"
+ },
+ "iou_matrix()": {
+  "role": "두 박스 집합의 IoU 표",
+  "desc": [
+   "`(A 개수, B 개수)` 행렬",
+   "`.max(1)` 로 A 박스마다 가장 잘 겹치는 B 박스 IoU (짝 IoU)"
+  ],
+  "args": [
+   [
+    "a",
+    "박스 집합 A"
+   ],
+   [
+    "b",
+    "박스 집합 B"
+   ]
+  ],
+  "flow": "모든 짝의 IoU 계산",
+  "ret": "ndarray (len(a), len(b))",
+  "hdr": "def iou_matrix  # VB 함수"
+ },
+ "map_50_95()": {
+  "role": "IoU 0.5 ~ 0.95 평균 mAP",
+  "desc": [
+   "임계값 10개(0.05 간격)의 AP 평균",
+   "AP50 보다 박스 위치까지 엄격하게 본다"
+  ],
+  "args": [
+   [
+    "dets",
+    "사진별 [x1, y1, x2, y2, score]"
+   ],
+   [
+    "gts",
+    "사진별 정답 박스"
+   ]
+  ],
+  "flow": "임계값마다 AP → 평균",
+  "ret": "float",
+  "hdr": "def map_50_95  # 교안 정의"
+ },
+ "time_stages()": {
+  "role": "한 프레임을 네 조각으로 시간 재기",
+  "desc": [
+   "pre · infer · post · draw 를 ms 로",
+   "합 = 프레임 시간, FPS = 1000 ÷ 합",
+   "warm-up 후 여러 프레임 평균"
+  ],
+  "args": [
+   [
+    "frame",
+    "BGR 프레임"
+   ],
+   [
+    "infer",
+    "추론기"
+   ],
+   [
+    "conf",
+    "신뢰도 문턱"
+   ]
+  ],
+  "flow": "t0~t4 를 찍어 구간 차이 × 1000",
+  "ret": "딕셔너리 {pre, infer, post, draw} (ms)",
+  "hdr": "def time_stages  # 교안 정의"
+ },
+ "time.perf_counter()": {
+  "role": "짧은 시간 측정용 타이머",
+  "desc": [
+   "두 시각의 차이 × 1000 = ms"
+  ],
+  "args": [],
+  "flow": "시각 기록",
+  "ret": "float (초)",
+  "hdr": "import time"
+ },
+ "idxmax()": {
+  "role": "가장 큰 값의 이름(인덱스)",
+  "desc": [
+   "Series 에서 최대값의 라벨 — 병목 조각 이름 찾기"
+  ],
+  "args": [],
+  "flow": "최대값 위치 → 라벨",
+  "ret": "라벨",
+  "hdr": "pandas Series.idxmax()"
+ },
+ "process_frame()": {
+  "role": "프레임 한 장 처리 (침입 감지)",
+  "desc": [
+   "탐지 → 발 위치 → 구역 안? → debounce → 그리기",
+   "`streak` 를 받아 새 `streak` 를 반환 (연속 프레임 수)",
+   "`infer` 만 바꾸면 ORT · TensorRT 모두 가능"
+  ],
+  "args": [
+   [
+    "frame",
+    "프레임"
+   ],
+   [
+    "infer",
+    "추론기"
+   ],
+   [
+    "streak",
+    "직전까지 구역 안 연속 프레임 수"
+   ],
+   [
+    "poly",
+    "위험구역 다각형"
+   ],
+   [
+    "n_consec",
+    "경보에 필요한 연속 프레임 수"
+   ],
+   [
+    "conf",
+    "신뢰도 문턱"
+   ],
+   [
+    "fps",
+    "화면에 그릴 FPS"
+   ]
+  ],
+  "flow": "detect → foot_points → in_zone → streak 갱신 → draw_result",
+  "ret": "(그린 프레임, info 딕셔너리, 새 streak)",
+  "hdr": "def process_frame  # 교안 정의"
+ },
+ "cv2.VideoWriter()": {
+  "role": "프레임을 영상 파일로 저장",
+  "desc": [
+   "`fourcc` 코드 · fps · 크기 `(W, H)` 를 정해 만든 뒤 `write(프레임)`",
+   "끝나면 `release()`"
+  ],
+  "args": [
+   [
+    "filename",
+    "저장 경로"
+   ],
+   [
+    "fourcc",
+    "코덱 (`mp4v`)"
+   ],
+   [
+    "fps",
+    "초당 프레임"
+   ],
+   [
+    "frameSize",
+    "(W, H)"
+   ]
+  ],
+  "flow": "열기 → write 반복 → release",
+  "ret": "VideoWriter",
+  "hdr": "import cv2"
+ },
+ "bench_fn()": {
+  "role": "함수 실행 시간을 반복 측정",
+  "desc": [
+   "warm 번 예열 후 n 번 측정",
+   "mean · p50 · p95 · fps 를 돌려줌"
+  ],
+  "args": [
+   [
+    "fn",
+    "인자 없는 함수 (lambda)"
+   ],
+   [
+    "n",
+    "측정 횟수"
+   ],
+   [
+    "warm",
+    "예열 횟수"
+   ]
+  ],
+  "flow": "예열 → n 번 시간 기록 → 통계",
+  "ret": "딕셔너리 {mean, p50, p95, fps}",
+  "hdr": "def bench_fn  # Day 3 정의"
+ }
+}
