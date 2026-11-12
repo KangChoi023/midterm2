@@ -95,7 +95,7 @@ def _clean(text):
     lines = [l for l in lines if l.strip() and l.strip() != '✅']
     # 다운로드 진행 표시 · 터미널 제어 문자 줄은 출력이 아니다 (ultralytics 가중치 받기 등)
     lines = [re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', l) for l in lines
-             if not re.search(r'Downloading |\d+%\s*[━─]|^\s*\x1b\[K', l)]
+             if not re.search(r'Downloading |^내려받기 실패|\d+%\s*[━─]|^\s*\x1b\[K', l)]
     lines = [l for l in lines if l.strip()]
     if len(lines) > 40: lines = lines[:38] + ['…', lines[-1]]
     return '\n'.join(lines)

@@ -1,6 +1,6 @@
 {
  "1-1": {
-  "text": "내려받기 실패: https://imguru-mooc.github.io/AI_CAMPUS/OT-day3/data/mnist_cnn.pt → <urlopen error Tunnel connection failed: 403 Forbidden>\nmnv3s.onnx 10.2 MB | 노드 127 | 입력 ['batch', 3, 224, 224] | PyTorch 와 같다: True\n✅ 오늘의 모델 준비 — {'Conv': 52, 'HardSwish': 19, 'Relu': 14, 'GlobalAveragePool': 10}",
+  "text": "mnv3s.onnx 10.2 MB | 노드 127 | 입력 ['batch', 3, 224, 224] | PyTorch 와 같다: True\n✅ 오늘의 모델 준비 — {'Conv': 52, 'HardSwish': 19, 'Relu': 14, 'GlobalAveragePool': 10}",
   "check": true
  },
  "1-2": {

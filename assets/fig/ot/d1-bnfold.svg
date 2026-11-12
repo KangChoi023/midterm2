@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">SafetyNet — PyTorch 의 BatchNorm 은 ONNX 에서 Conv 안으로 합쳐진다</text>
+<text x="20.0" y="60.0" font-size="13" fill="#0284c7" text-anchor="start" font-weight="700">PyTorch</text>
+<rect x="90.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="115.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Conv</text>
+<rect x="144.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.4"/>
+<text x="169.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">BN</text>
+<rect x="198.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="223.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">ReLU</text>
+<rect x="252.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="277.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Pool</text>
+<rect x="306.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="331.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Conv</text>
+<rect x="360.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.4"/>
+<text x="385.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">BN</text>
+<rect x="414.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="439.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">ReLU</text>
+<rect x="468.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="493.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Pool</text>
+<rect x="522.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="547.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">GAP</text>
+<rect x="576.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="601.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="630.0" y="44.0" width="50.0" height="26.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.4"/>
+<text x="655.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Linear</text>
+<text x="20.0" y="120.0" font-size="13" fill="#16a34a" text-anchor="start" font-weight="700">ONNX</text>
+<rect x="90.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="119.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Conv*</text>
+<rect x="154.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="183.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="218.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="247.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="282.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="311.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Conv*</text>
+<rect x="346.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="375.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="410.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="439.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="474.0" y="104.0" width="84.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="516.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">GlobalAvgPool</text>
+<rect x="564.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="593.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="628.0" y="104.0" width="58.0" height="26.0" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="657.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<text x="20.0" y="160.0" font-size="11.5" fill="#1e293b" text-anchor="start">Conv* = BN 을 접어 넣은 Conv: W′ = W · γ/√(σ²+ε), b′ = (b − μ) · γ/√(σ²+ε) + β — 실행 모드에선 BN 이 고정된 곱셈 · 덧셈</text>
+<text x="20.0" y="182.0" font-size="11.5" fill="#1e293b" text-anchor="start">노드 11 → 9 · 파라미터 1,491 (BN 48개 포함) · safety.onnx 7,502 B · 난수 10개 최대 차이 8.20e-08</text>
+<text x="20.0" y="206.0" font-size="11.5" fill="#dc2626" text-anchor="start">⚠ export 전에 safety.eval() — 학습 모드면 BN 이 배치 통계를 써서 PyTorch 기준값이 달라진다</text>
+</svg>

@@ -100,7 +100,7 @@
   "check": false
  },
  "8-5": {
-  "text": "butterfly.jpg (1, 3, 64, 64) → safe [[0.142 0.1   0.043]]\norange.jpg (1, 3, 64, 64) → safe [[0.078 0.074 0.021]]\n내려받기 실패: https://imguru-mooc.github.io/AI_CAMPUS/OT-day1/data/baboon.jpg → <urlopen error Tunnel connection failed: 403 Forbidden>\nbaboon.jpg (1, 3, 64, 64) → warning [[0.068 0.088 0.042]]\n✅ 과제 1  +20\n✅ 과제 2  +20 (노드 9개 · 파라미터 1,491)\n✅ 과제 3  +20 (최대 차이 8.2e-08)\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)",
+  "text": "butterfly.jpg (1, 3, 64, 64) → safe [[0.142 0.1   0.043]]\norange.jpg (1, 3, 64, 64) → safe [[0.078 0.074 0.021]]\nbaboon.jpg (1, 3, 64, 64) → warning [[0.068 0.088 0.042]]\n✅ 과제 1  +20\n✅ 과제 2  +20 (노드 9개 · 파라미터 1,491)\n✅ 과제 3  +20 (최대 차이 8.2e-08)\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)",
   "check": true
  }
 }
