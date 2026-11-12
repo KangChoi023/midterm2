@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">정수 행렬곱 — INT8 × INT8 → INT32 누적 → + INT32 bias → × scale 한 번</text>
+<rect x="10.0" y="50.0" width="110.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="65.0" y="70.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">x_q</text>
+<text x="65.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT8 · sx 0.1136</text>
+<rect x="10.0" y="120.0" width="110.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="65.0" y="140.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">W_q</text>
+<text x="65.0" y="158.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT8 · sw 0.00205</text>
+<rect x="150.0" y="80.0" width="172.0" height="56.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="236.0" y="105.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">acc = x_q @ W_qᵀ</text>
+<text x="236.0" y="123.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT32 · −64,612 ~ 65,677</text>
+<rect x="350.0" y="80.0" width="168.0" height="56.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="434.0" y="105.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">+ b_q</text>
+<text x="434.0" y="123.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT32 = round(b / (sx·sw))</text>
+<rect x="546.0" y="50.0" width="148.0" height="46.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="620.0" y="70.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">× sx·sw → 실수 y</text>
+<text x="620.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">차이 ≤ 0.10 · 예측 100%</text>
+<rect x="546.0" y="120.0" width="148.0" height="46.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="620.0" y="140.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">× M → INT8 y_q</text>
+<text x="620.0" y="158.0" font-size="12.5" fill="#64748b" text-anchor="middle">M = sx·sw/sy ≈ 0.00192</text>
+<line x1="120.0" y1="73.0" x2="148.0" y2="100.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="120.0" y1="143.0" x2="148.0" y2="116.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="322.0" y1="108.0" x2="348.0" y2="108.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="518.0" y1="100.0" x2="544.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="518.0" y1="116.0" x2="544.0" y2="141.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="195.0" font-size="12" fill="#dc2626" text-anchor="middle">⚠ INT16 최대 32,767 도 넘는다 → 누적은 INT32. NumPy int8 @ int8 은 int8 로 조용히 넘침</text>
+<text x="350.0" y="215.0" font-size="11.5" fill="#64748b" text-anchor="middle">대칭(zp = 0)이라 괄호 안이 전부 정수 — 비대칭이면 zp × (W 행 합) 보정 항이 더 필요</text>
+</svg>

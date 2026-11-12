@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">[−1, 3] 을 UINT8 0 ~ 255 에 겹치기 — scale = 4/255 ≈ 0.01569, zp = 64</text>
+<line x1="60.0" y1="70.0" x2="640.0" y2="70.0" stroke="#1e293b" stroke-width="1.6"/>
+<text x="30.0" y="74.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">실수 x</text>
+<line x1="60.0" y1="170.0" x2="640.0" y2="170.0" stroke="#1e293b" stroke-width="1.6"/>
+<text x="30.0" y="174.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">정수 q</text>
+<line x1="60.0" y1="74.0" x2="60.0" y2="166.0" stroke="#0284c7" stroke-width="1.6" marker-end="url(#arr)"/>
+<circle cx="60.0" cy="70.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="60.0" cy="170.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="60.0" y="60.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">-1</text>
+<text x="60.0" y="190.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<line x1="205.0" y1="74.0" x2="205.6" y2="166.0" stroke="#dc2626" stroke-width="1.6" marker-end="url(#arr)"/>
+<circle cx="205.0" cy="70.0" r="4" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<circle cx="205.6" cy="170.0" r="4" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="205.0" y="60.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0</text>
+<text x="205.6" y="190.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">64</text>
+<line x1="277.5" y1="74.0" x2="278.4" y2="166.0" stroke="#0284c7" stroke-width="1.6" marker-end="url(#arr)"/>
+<circle cx="277.5" cy="70.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="278.4" cy="170.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="277.5" y="60.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0.5</text>
+<text x="278.4" y="190.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">96</text>
+<line x1="383.9" y1="74.0" x2="385.3" y2="166.0" stroke="#0284c7" stroke-width="1.6" marker-end="url(#arr)"/>
+<circle cx="383.9" cy="70.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="385.3" cy="170.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="383.9" y="60.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">1.234</text>
+<text x="385.3" y="190.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">143</text>
+<line x1="640.0" y1="74.0" x2="640.0" y2="166.0" stroke="#0284c7" stroke-width="1.6" marker-end="url(#arr)"/>
+<circle cx="640.0" cy="70.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="640.0" cy="170.0" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="640.0" y="60.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">3</text>
+<text x="640.0" y="190.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">255</text>
+<text x="213.0" y="120.0" font-size="11.5" fill="#dc2626" text-anchor="start">0.0 → zp 칸 (정확히)</text>
+<text x="60.0" y="218.0" font-size="12" fill="#1e293b" text-anchor="start">quantize: q = clip(round(x / scale) + zp, 0, 255)</text>
+<text x="400.0" y="218.0" font-size="12" fill="#1e293b" text-anchor="start">dequantize: x̂ = (q − zp) × scale</text>
+<text x="60.0" y="238.0" font-size="12" fill="#64748b" text-anchor="start">범위 안: |오차| ≤ scale/2 = 0.00784   ·   범위 밖 4.0 → 255 → 2.996 (잘림 오차 1.004)</text>
+</svg>
