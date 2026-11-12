@@ -156,6 +156,98 @@ def d1_bnfold():
     s.save('d1-bnfold.svg')
 
 
+# ---------------- OT Day 2 ----------------
+
+def d2_graph():
+    s = Svg(700, 290)
+    s.text(350, 22, 'ONNX 파일 = 상자 안의 상자 — 화살표는 저장되지 않고 "이름이 같으면" 이어진다', 14, INK, 'middle', True)
+    s.rect(10, 38, 680, 140, LINE, '#f8fafc', 10, 1.5); s.text(22, 56, 'ModelProto — ir_version · opset_import (17) · producer', 11.5, MUTED)
+    s.rect(22, 64, 656, 106, BLUE, '#f0f9ff', 8, 1.5); s.text(34, 82, 'GraphProto (m.graph) — 목록 네 개', 11.5, BLUE, 'start', True)
+    for i, (n, c, d) in enumerate((('input', GREEN, '1개 · 사진만'), ('node', BLUE, '7개 · 연산'), ('initializer', ORANGE, '6개 · 가중치'), ('output', GREEN, '1개 · logits'))):
+        x = 36 + i * 160
+        s.rect(x, 92, 148, 62, c, None, 6, 1.5); s.text(x + 74, 116, n, 13.5, INK, 'middle', True); s.text(x + 74, 138, d, 11.5, MUTED, 'middle')
+    y = 200
+    s.text(20, y, 'node 하나 = op_type + input 이름 목록 + output 이름 목록', 12.5, INK, 'start', True)
+    _node(s, 20, y + 14, 120, 44, 'Conv', None, BLUE)
+    s.text(150, y + 30, "output: ['/conv/Conv_output_0']", 11, MUTED)
+    _node(s, 390, y + 14, 120, 44, 'Relu', None, PURPLE)
+    s.text(520, y + 30, "input: ['/conv/Conv_output_0']", 11, MUTED)
+    _arrow(s, 140, y + 44, 388, y + 44, '같은 이름 → 화살표', 16, 11.5)
+    s.text(20, y + 80, "Conv 의 input = ['input', 'conv.weight', 'conv.bias'] — 데이터 1개 + initializer 이름 2개 · 바깥에서 넣는 것은 사진뿐", 11.5, INK)
+    s.save('d2-graph.svg')
+
+
+def d2_tools():
+    s = Svg(700, 260)
+    s.text(350, 22, 'ONNX 파일을 다루는 세 도구 — 셋 다 "결과가 맞는지" 는 말해 주지 않는다', 14, INK, 'middle', True)
+    cols = [('opset', '연산 사전의 판 번호', BLUE, ['같은 GELU 도', 'opset 13 → 노드 9개', '(Erf · Div · Add · Mul …)', 'opset 20 → Gemm · Gelu 2개', '두 파일 결과 차이 0']),
+            ('checker', '규칙에 맞는지 검사', ORANGE, ['Relu 입력 이름을 "nope" 로', '→ checker 가 끊긴 화살표 지적', '→ ORT 도 세션 생성 실패', '앞 노드 output 이름으로', '되돌리면 통과']),
+            ('shape_inference', '중간 shape 채우기', GREEN, ['value_info 0 → 6개', '[1, 30, 24, 24] (Conv)', '[1, 30, 12, 12] (MaxPool)', '[1, 4320] (Flatten)', '결과는 새 모델 mi 에'])]
+    for i, (t, d, c, lines) in enumerate(cols):
+        x = 15 + i * 228
+        s.rect(x, 40, 214, 188, c, None, 8, 1.8)
+        s.text(x + 107, 64, t, 14, INK, 'middle', True); s.text(x + 107, 84, d, 11.5, MUTED, 'middle')
+        for j, l in enumerate(lines): s.text(x + 14, 112 + j * 22, l, 11.5, INK)
+    s.text(350, 250, '맞춤법 검사기 · 도면 치수처럼 "형식" 만 본다 → 결과는 늘 PyTorch 와 allclose 로 따로 확인', 11.5, RED, 'middle')
+    s.save('d2-tools.svg')
+
+
+def d2_dynamic():
+    s = Svg(700, 270)
+    s.text(350, 22, 'dynamic_axes — 축에 숫자 대신 이름을 붙여 "크기가 바뀔 수 있다" 고 약속', 14, INK, 'middle', True)
+    s.rect(15, 42, 320, 92, LINE, '#f8fafc', 8, 1.5)
+    s.text(30, 64, '고정 (Day 1)', 13, INK, 'start', True); s.text(30, 88, 'input [1, 1, 28, 28]', 12.5, INK)
+    s.text(30, 112, '배치 4 → Got: 4 Expected: 1 ✘', 12, RED)
+    s.rect(365, 42, 320, 92, GREEN, None, 8, 1.5)
+    s.text(380, 64, 'dynamic_axes={"input": {0: "batch"}, …}', 12, INK, 'start', True)
+    s.text(380, 88, "input ['batch', 1, 28, 28] → ['batch', 10]", 12.5, INK)
+    s.text(380, 112, '배치 1 · 4 · 8 · 100 모두 ✔ (100장 정확도 1.0)', 12, GREEN)
+    s.text(20, 162, '높이 · 너비까지 열면? {0: "batch", 2: "height", 3: "width"} — 약속일 뿐, 모델이 못 받는 크기는 실행 중 오류', 12.5, INK, 'start', True)
+    steps = [('32×32', LINE), ('Conv 5×5', BLUE), ('28×28', LINE), ('MaxPool', BLUE), ('14×14', LINE), ('Flatten', BLUE), ('5,880', RED), ('Gemm ✘', RED)]
+    x = 20
+    for t, c in steps:
+        w = 74
+        s.rect(x, 178, w, 30, c, None, 5, 1.4); s.text(x + w / 2, 198, t, 12, INK, 'middle', c == RED); x += w + 10
+    s.text(20, 234, 'Conv · Pool 은 어떤 크기든 되지만 fc1 은 정확히 30 × 12 × 12 = 4,320 개를 원한다 (32×32 면 30 × 14 × 14 = 5,880)', 11.5, MUTED)
+    s.text(20, 254, '오류: GEMM: Dimension mismatch, W: {100,4320} K: 5880 — 열어도 되는 축은 모델이 정말 처리할 수 있는 축뿐', 11.5, RED)
+    s.save('d2-dynamic.svg')
+
+
+def d2_traps():
+    s = Svg(700, 300)
+    s.text(350, 22, '조용히 틀리는 export 3가지 — 더미 입력으로 "실행된 길" 만 녹화된다', 14, INK, 'middle', True)
+    rows = [('① 파이썬 if', 'if x.mean() > 0: x*2 else x-1', '더미 ones → x*2 길만 녹화', '음수 입력: ONNX [−6,−4,−2] ≠ 원래 [−4,−3,−2]', 'torch.where(조건, x*2, x−1)', 'Where'),
+            ('② NumPy · float()', 'm = float(np.mean(x.numpy()))', '더미 [5,5,5] → m = 5 상수', '[1,2,3]: ONNX [−4,−3,−2] ≠ 원래 [−1,0,1]', 'x − x.mean(dim=1, keepdim=True)', 'ReduceMean'),
+            ('③ 숫자로 쓴 크기', 'x.view(1, −1)', 'dynamic 이어도 1 로 고정', '배치 4 → (1, 64) — 실행 오류', 'x.flatten(1) · view(x.size(0), −1)', 'Flatten')]
+    s.text(20, 52, '원인', 12, MUTED, 'start', True); s.text(250, 52, '증상 (에러 없음!)', 12, MUTED, 'start', True); s.text(500, 52, '고치기 → 새 노드', 12, MUTED, 'start', True)
+    for i, (t, code, why, bad, fix, node) in enumerate(rows):
+        y = 64 + i * 66
+        s.rect(15, y, 670, 58, [ORANGE, PURPLE, BLUE][i], None, 8, 1.4)
+        s.text(25, y + 20, t, 13, INK, 'start', True); s.text(25, y + 40, code, 11, MUTED)
+        s.text(250, y + 20, why, 11.5, INK); s.text(250, y + 40, bad, 11, RED)
+        s.text(500, y + 20, fix, 11, GREEN, 'start', True); s.text(500, y + 40, '→ ' + node + ' 노드', 11, MUTED)
+    s.text(20, 280, '확인법: verify() 에 더미와 "다른" 입력(음수 · 다른 사진 · 배치 4) 을 넣고, TracerWarning 한 줄을 읽는다 — 더미 하나면 늘 ✅', 11.5, INK)
+    s.save('d2-traps.svg')
+
+
+def d2_slim():
+    s = Svg(700, 250)
+    s.text(350, 22, 'onnxslim — 같은 계산을 더 적은 노드로 (ViewNet, x.view(x.size(0), −1))', 14, INK, 'middle', True)
+    rows = [('접기 끔', ['Identity', 'Identity', 'Conv', 'BN', 'Relu', 'Shape', 'Const', 'Gather', 'Const', 'Const', 'Unsq', 'Const', 'Unsq', 'Concat', 'Reshape', 'Gemm'], 16),
+            ('export 기본', ['Conv', 'Relu', 'Shape', 'Const', 'Gather', 'Const', 'Unsq', 'Const', 'Concat', 'Reshape', 'Gemm'], 11),
+            ('onnxslim 후', ['Conv', 'Relu', 'Reshape', 'Gemm'], 4)]
+    for i, (t, ops, n) in enumerate(rows):
+        y = 46 + i * 52
+        s.text(16, y + 20, t, 12, INK, 'start', True); s.text(16, y + 36, f'{n}개', 12, BLUE, 'start', True)
+        x = 100
+        for op in ops:
+            c = RED if op in ('Shape', 'Gather', 'Unsq', 'Concat', 'Const', 'Identity') else ORANGE if op == 'BN' else GREEN
+            s.rect(x, y + 6, 34, 30, c, None, 4, 1.2); s.text(x + 17, y + 25, op[:6], 8.5, INK, 'middle'); x += 36
+    s.text(20, 210, '빨강 = 배치 크기를 매번 읽어 shape 를 조립하는 노드 → 미리 계산해 접기(constant folding) · BN 은 Conv 에 합침', 11.5, INK)
+    s.text(20, 232, '단순화 전 · 후 배치 4 결과 차이 0.0 — 정확도가 오르는 게 아니라 같은 계산을 짧게 적을 뿐 · 결과는 onnx.save 로 저장', 11.5, MUTED)
+    s.save('d2-slim.svg')
+
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):

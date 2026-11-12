@@ -41,29 +41,48 @@ y_ort = sess_cnn.run(None, {"input": x0})[0]
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-Day 1 은 "내보내고 · 보고 · 실행" 까지였다. 보는 일을 Netron 그림에만 맡기면 모델이 커질 때 확인할 방법이 없다. 오늘은 파일 속을 **코드로** 읽고, 오류가 났을 때 **스스로 고치는** 법을 배운다.
+Day 1 은 "내보내고 · 보고 · 실행" 까지였다. 보는 일을 Netron 그림에만 맡기면 모델이 커질 때 확인할 방법이 없고, 어제는 배치 4 를 넣자 오류가 났다. 오늘은 파일 속을 **코드로** 읽고, export 가 실패하거나 **조용히 틀릴 때** 스스로 고치는 법을 배운다. 먼저 어제의 4단계를 혼자 다시 해 보며 오늘 확인할 숫자(노드 7 · 가중치 텐서 6)를 예측해 둔다.
 
-#### 개념 1 · 오늘의 지도
-| 어제 막힌 것 | 오늘 푸는 교시 |
-|---|---|
-| 파일 속이 어떻게 생겼나 | 2 · 3교시 (그래프 · 가중치 · 속성) |
-| 연산 사전 버전(opset) · 파일 검사 | 4교시 |
-| 배치 4를 넣으면 오류 | 5교시 (`dynamic_axes`) |
-| 오류 없이 결과가 틀림 · 미지원 연산 | 6 · 7교시 |
+#### 개념 1 · 4단계 다시
+| 단계 | mnist_cnn 에서 | 확인 |
+|---|---|---|
+| 0 실행 모드 | `cnn.eval()` | `not cnn.training` |
+| 1 내보내기 | 더미 `torch.zeros(1, 1, 28, 28)`, 이름 input / logits | `onnx_report` 입력 `[1, 1, 28, 28]` |
+| 2 열어보기 | 오늘은 **코드로** (2 · 3교시) | 노드 7 · initializer 6 |
+| 3 실행 | `sess.run(None, {"input": x0})` | 예측 7 = 정답 7 |
+| 4 확인 | `np.allclose(y_ort, y_pt, atol=1e-5)` | True |
+
+가중치 텐서 6개 = Conv · Gemm · Gemm 이 각각 weight + bias 를 하나씩 가진다 (3 × 2).
+
+#### 개념 2 · 오늘의 지도 — 어제 막혔던 것 4가지
+| 어제 막힌 것 | 오늘 푸는 교시 | 도구 |
+|---|---|---|
+| 파일 속이 어떻게 생겼나 | 2 · 3교시 | `graph.input · node · initializer · output`, `describe_onnx` |
+| 연산 사전 버전 · 고장 난 파일 | 4교시 | opset · checker · shape_inference |
+| 배치 4 를 넣으면 오류 | 5교시 | `dynamic_axes` |
+| 오류 없이 결과가 틀림 · export 실패 | 6 · 7교시 | `verify` · `torch.where` · onnxslim |
 
 #### 코드로 확인
 ```python
-same = np.allclose(y_ort, y_pt, atol=1e-5)
-print("예측", y_ort.argmax(), "| 정답", labels[0], "| PyTorch 와 같다:", same)
+cnn.eval()
+torch.onnx.export(cnn, torch.zeros(1, 1, 28, 28), "mnist_cnn.onnx",
+                  input_names=["input"], output_names=["logits"], **EXPORT_KW)
+sess_cnn = ort.InferenceSession("mnist_cnn.onnx", providers=["CPUExecutionProvider"])
+x0 = (digits[0].astype(np.float32) / 255)[None, None]
+y_ort = sess_cnn.run(None, {"input": x0})[0]
+with torch.no_grad():
+    y_pt = cnn(torch.from_numpy(x0)).numpy()
+print("예측", y_ort.argmax(), "| 정답", labels[0], "| 같다:", np.allclose(y_ort, y_pt, atol=1e-5))
 ```
-- **무엇을 하나**: ORT 와 PyTorch 결과 비교
-- **어떤 개념**: 4단계의 마지막 — `allclose`
-- **출력**: `same = True` (직접 실행)
+- **무엇을 하나**: 어제의 4단계를 한 셀에.
+- **어떤 개념**: 개념 1.
+- **출력**: `예측 7 | 정답 7 | 같다: True`, 예측한 노드 7 · 가중치 텐서 6 도 맞음 (직접 실행)
 
 #### 한 번에 정리
-- 4단계: eval → export → 열어보기 → run·allclose
-- 기억할 숫자: 노드 7 · 가중치 텐서 6
-- ⚠ 오늘 내내 쓰는 규칙 — 어떤 변경이든 **마지막은 `allclose`**
+- 4단계: eval → export(이름 · shape) → 열어보기 → run · allclose.
+- mnist_cnn.onnx = 노드 7개 · 가중치 텐서 6개 — 오늘 확인 셀의 기준 숫자.
+- 오늘은 "열어보기" 를 코드로, 그리고 export 오류 고치기.
+- ⚠ 4단계의 0번(eval)을 빼면 BN · Dropout 모델은 비교 기준부터 틀어진다.
 
 ---
 
@@ -128,45 +147,65 @@ for n in g.node: print(n.op_type, list(n.input), "→", list(n.output))
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-Netron 그림은 눈으로만 본다. 같은 정보를 코드로 꺼내면 모델이 커져도 **세고 비교하고 자동 검사**할 수 있다. 그러려면 먼저 파일이 어떤 구조인지 알아야 한다.
+Netron 의 그림은 파일 안에 어떤 모양으로 들어 있을까? `onnx.load` 로 읽은 객체를 열어 보면 **상자 안의 상자** 구조이고, 화살표는 따로 저장되어 있지 않다. 이 교시는 네 가지 목록을 꺼내고, **이름을 따라** 화살표를 직접 이어 본다.
 
-#### 개념 1 · 네 목록
-| 목록 | 개수 | 내용 |
-|---|---|---|
-| `g.input` | 1 | `input [1, 1, 28, 28]` |
-| `g.node` | 7 | 연산 (계산 순서대로) |
-| `g.initializer` | 6 | `conv.weight` · `conv.bias` · `fc1.weight` · `fc1.bias` · `fc2.weight` · `fc2.bias` |
-| `g.output` | 1 | `logits [1, 10]` |
+#### 개념 1 · 상자 안의 상자
+![ONNX 파일의 구조 — ModelProto 안의 GraphProto, 그 안의 input · node · initializer · output 네 목록, 이름이 같으면 이어지는 화살표](assets/fig/ot/d2-graph.svg)
 
-#### 개념 2 · 노드 표 (직접 실행)
-| # | op_type | input → output |
+| 상자 | 꺼내는 법 | mnist_cnn.onnx |
 |---|---|---|
-| 0 | Conv | `input`, `conv.weight`, `conv.bias` → `/conv/Conv_output_0` |
-| 1 | Relu | `/conv/Conv_output_0` → `/Relu_output_0` |
-| 2 | MaxPool | `/Relu_output_0` → `/pool/MaxPool_output_0` |
-| 3 | Flatten | → `/Flatten_output_0` |
-| 4 | Gemm | `/Flatten_output_0`, `fc1.weight`, `fc1.bias` → `/fc1/Gemm_output_0` |
-| 5 | Relu | → `/Relu_1_output_0` |
-| 6 | Gemm | `/Relu_1_output_0`, `fc2.weight`, `fc2.bias` → `logits` |
+| 모델 (ModelProto) | `m = onnx.load(path)` | `ir_version` (파일 형식 버전) · `opset_import[0].version` = 17 · `producer_name` = pytorch |
+| 그래프 (GraphProto) | `g = m.graph` | 아래 네 목록 |
+| `g.input` | 바깥에서 넣는 것 | 1개 — `input [1, 1, 28, 28]` |
+| `g.node` | 연산 | 7개 |
+| `g.initializer` | 가중치 | 6개 |
+| `g.output` | 결과 | 1개 — `logits [1, 10]` |
+
+shape 는 축마다 `dim_value` (숫자) 또는 `dim_param` (이름 — 5교시의 `'batch'`) 중 하나에 들어 있다 → `shape_of(vi)` 는 숫자가 있으면 숫자, 없으면 이름.
+
+#### 개념 2 · 화살표 = 이름 맞추기
+노드는 **op_type + input 이름 목록 + output 이름 목록**만 가진다. 앞 노드의 output 이름 = 뒤 노드의 input 이름이면 화살표다.
+
+| 노드 | 데이터 입력 | 가중치 입력 (initializer) |
+|---|---|---|
+| Conv | `input` | `conv.weight` · `conv.bias` |
+| Relu | `/conv/Conv_output_0` | — |
+| MaxPool | `/Relu_output_0` | — |
+| Flatten | `/pool/MaxPool_output_0` | — |
+| Gemm | `/Flatten_output_0` | `fc1.weight` · `fc1.bias` |
+
+모든 노드는 데이터 화살표 1개 + 가중치 0 또는 2개. 가중치는 `input` 이 아니라 `initializer` 에 있으니, **바깥에서 넣는 것은 사진뿐**이다.
 
 #### 코드로 확인
+```python
+n_in, n_out, n_node, n_init = len(g.input), len(g.output), len(g.node), len(g.initializer)
+def shape_of(vi):
+    return [d.dim_value if d.dim_value else d.dim_param for d in vi.type.tensor_type.shape.dim]
+for vi in list(g.input) + list(g.output):
+    print(vi.name, shape_of(vi))
+```
+- **무엇을 하나**: 네 목록의 길이와 입출력 shape.
+- **어떤 개념**: 개념 1.
+- **출력**: `input 1 · output 1 · node 7 · initializer 6`, `input [1, 1, 28, 28]`, `logits [1, 10]` (직접 실행)
+
 ```python
 name = g.input[0].name
 path = []
 while name != g.output[0].name:
-    node = next(n for n in g.node if name in n.input)   # 이 이름을 받아 가는 노드
+    node = next(n for n in g.node if name in n.input)       # 이 이름을 받아 가는 노드
     path.append(node.op_type)
-    name = node.output[0]                                # 다음 화살표 이름
+    name = node.output[0]                                    # 다음 화살표 이름
 print(" → ".join(path))
 ```
-- **무엇을 하나**: 이름만 따라가며 그래프를 걷는다
-- **어떤 개념**: 개념 2 — 이름이 같으면 화살표
-- **출력**: `Conv → Relu → MaxPool → Flatten → Gemm → Relu → Gemm`
+- **무엇을 하나**: 입력 이름에서 출발해 이름을 따라 출력까지 걸어간다.
+- **어떤 개념**: 개념 2.
+- **출력**: `Conv → Relu → MaxPool → Flatten → Gemm → Relu → Gemm` — 노드 순서와 같다 (직접 실행)
 
 #### 한 번에 정리
-- `onnx.load` → `model.graph` → input · node · initializer · output
-- 화살표 = 이름 일치 · 가중치는 input 이 아니라 initializer
-- ⚠ `g.nodes`(복수) 오타 · `print(m)` 로 가중치 전체 출력
+- `onnx.load(path).graph` 안에 input · node · initializer · output 네 목록.
+- 노드 = op_type + input 이름들 + output 이름들. 이름이 같으면 화살표.
+- 가중치는 initializer — 바깥에서 넣는 것은 사진뿐.
+- ⚠ `g.inputs` · `g.nodes` (복수형) 는 AttributeError, `print(m)` 은 가중치까지 찍혀 화면이 멈춘다.
 
 ---
 
@@ -244,43 +283,73 @@ def describe_onnx(path):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-2교시의 이름만으로는 "모델이 몇 개의 숫자를 갖고 어떤 설정으로 계산하는가" 를 모른다. 이 교시는 숫자와 설정을 꺼내 **PyTorch 코드와 ONNX 파일이 같은 모델인지 숫자로 대조**하는 도구를 만든다.
+2교시에서 이름까지 읽었다. 이번엔 이름 뒤의 **숫자(가중치)** 와 노드의 **설정값(속성 · attribute)** 을 꺼내고, 모든 것을 표 한 장으로 요약하는 `describe_onnx` 를 만든다. 이 표로 SafetyNet 을 보면 ONNX 의 가중치 수가 PyTorch 파라미터 수와 **다르다** — 왜일까?
 
-#### 개념 1 · 가중치 합계 대조
-| 텐서 | shape | 개수 |
+#### 개념 1 · 가중치와 속성 꺼내기
+| 꺼낼 것 | 도구 | 예 |
 |---|---|---|
-| conv.weight | (30, 1, 5, 5) | 750 |
-| conv.bias | (30,) | 30 |
-| fc1.weight | (100, 4320) | 432,000 |
-| fc1.bias | (100,) | 100 |
-| fc2.weight | (10, 100) | 1,000 |
-| fc2.bias | (10,) | 10 |
-| **합계** | | **433,890** |
+| 가중치 | `onnx.numpy_helper.to_array(initializer)` | `fc1.weight (100, 4320) float32`, 합계 433,890 |
+| 속성 | `onnx.helper.get_attribute_value(attribute)` | Conv `kernel_shape [5, 5]` · `strides [1, 1]` · `pads [0, 0, 0, 0]` |
+| | | MaxPool `kernel_shape [2, 2]` · `strides [2, 2]` |
+| | | Flatten `axis 1` |
 
-`4320 = 30 × 12 × 12` — Conv 5×5 로 28 → 24, MaxPool 2 로 24 → 12.
+PyTorch 코드 `nn.Conv2d(1, 30, 5)` · `nn.MaxPool2d(2)` 와 그대로 대응한다. 개수는 `.shape` 가 아니라 `.size` (모든 축 곱).
 
-#### 개념 2 · SafetyNet 의 "사라진 48개" (직접 실행)
-| 노드 | Conv | Conv | Gemm | 합 |
-|---|---|---|---|---|
-| ONNX params | 224 | 1,168 | 51 | **1,443** |
-| PyTorch | Conv 224 + BN 16 + Conv 1,168 + BN 32 + Linear 51 | | | **1,491** |
+#### 개념 2 · describe_onnx — 코드로 만든 Netron
+| op_type | data_in | params | attrs |
+|---|---|---|---|
+| Conv | input | 780 | kernel 5×5 |
+| Relu | … | 0 | — |
+| MaxPool | … | 0 | kernel 2×2 · stride 2 |
+| Flatten | … | 0 | axis 1 |
+| Gemm | … | 432,100 | transB 1 |
+| Relu | … | 0 | — |
+| Gemm | … | 1,010 | transB 1 |
 
-차이 1,491 − 1,443 = **48** (= BN γ · β 8 + 8 + 16 + 16).
+노드 7 · 가중치 합계 **433,890** = Day 1 의 파라미터 수. 오늘부터 모든 모델은 이 표로 먼저 본다 (8교시 · Day 3 이후).
+
+#### 개념 3 · SafetyNet 의 "사라진 48개"
+| | 개수 |
+|---|---|
+| PyTorch 파라미터 | 1,491 |
+| ONNX 가중치 합계 | 1,443 |
+| 차이 | **48** = BN 의 γ · β (8 + 8 + 16 + 16) |
+
+Day 1 에서 본 Conv-BN 합치기 때문에 BN 의 숫자가 Conv 의 weight · bias 안으로 녹아 들어가 따로 세어지지 않는다. running_mean · var 는 원래 학습 파라미터가 아니라 PyTorch 쪽에서도 세지 않는다.
 
 #### 코드로 확인
 ```python
-df = describe_onnx("mnist_cnn.onnx")
-print("노드", len(df), "| 가중치 합계", f"{df.params.sum():,}")
-print(df.params.tolist())
+W = {t.name: onnx.numpy_helper.to_array(t) for t in g.initializer}
+print(sum(a.size for a in W.values()), np.allclose(W["conv.weight"], cnn.conv.weight.detach().numpy()))
+def attrs_of(node):
+    return {a.name: onnx.helper.get_attribute_value(a) for a in node.attribute}
+for n in g.node:
+    print(n.op_type.ljust(8), attrs_of(n))
 ```
-- **무엇을 하나**: 노드 표를 만들어 합계 확인
-- **어떤 개념**: 개념 1 — 합계 대조
-- **출력**: `노드 7 | 가중치 합계 433,890` · `[780, 0, 0, 0, 432100, 0, 1010]`
+- **무엇을 하나**: 가중치 합계 · PyTorch 와 같은지, 노드마다 속성.
+- **어떤 개념**: 개념 1.
+- **출력**: `433890 True`, `Conv {'dilations': [1, 1], 'group': 1, 'kernel_shape': [5, 5], 'pads': [0, 0, 0, 0], 'strides': [1, 1]}`, `MaxPool {… 'kernel_shape': [2, 2], … 'strides': [2, 2]}`, `Flatten {'axis': 1}` (직접 실행)
+
+```python
+def describe_onnx(path):
+    gr = onnx.load(path).graph
+    W_ = {t.name: onnx.numpy_helper.to_array(t) for t in gr.initializer}
+    rows = [{"op_type": n.op_type,
+             "data_in": [x for x in n.input if x and x not in W_],
+             "out": list(n.output),
+             "params": sum(W_[x].size for x in n.input if x in W_),
+             "attrs": attrs_of(n)} for n in gr.node]
+    return pd.DataFrame(rows)
+```
+- **무엇을 하나**: 노드마다 종류 · 입출력 · 가중치 수 · 속성을 한 줄씩 표로.
+- **어떤 개념**: 개념 2.
+- **출력**: 7행, `params = [780, 0, 0, 0, 432100, 0, 1010]` (직접 실행)
 
 #### 한 번에 정리
-- 가중치 = `numpy_helper.to_array` · 속성 = `get_attribute_value` · 표 = `describe_onnx`
-- 모양이 아니라 **`.size`** 로 개수 · 합계가 파라미터 수와 같은지 확인
-- ⚠ ONNX 가중치 수 ≠ PyTorch 파라미터 수일 수 있음 (BN 융합)
+- 가중치 = `numpy_helper.to_array(initializer)`, 속성 = `helper.get_attribute_value(attribute)`.
+- `describe_onnx(path)` = Netron 을 코드로 — 노드마다 종류 · 입출력 · 가중치 수 · 속성.
+- ONNX 가중치 수 ≠ PyTorch 파라미터 수일 수 있다 (SafetyNet 1,491 vs 1,443 — Conv-BN 합치기).
+- ⚠ `a.ints` · `a.i` 를 직접 읽지 말고 도우미 함수로 — 속성 종류마다 필드가 다르다.
 
 ---
 
@@ -355,36 +424,63 @@ shapes = {vi.name: shape_of(vi) for vi in mi.graph.value_info}
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-파일이 열리고 실행된다고 올바른 파일일까? 실행기마다 아는 연산 사전이 다르고, 사람이 고친 파일은 깨질 수 있다. 세 도구가 각각 **무엇을 보장하고 무엇은 보장하지 않는지** 구분한다.
+ONNX 파일을 다룰 때 쓰는 세 가지 도구 — **opset**(연산 사전의 판 번호) · **checker**(맞춤법 검사기) · **shape_inference**(도면에 치수 적기) 를 하나씩 써 본다. 같은 GELU 도 판에 따라 노드가 9개 또는 2개가 되고, 일부러 망가뜨린 파일을 checker 가 잡아내는 것을 본다.
 
 #### 개념 1 · 세 도구 비교
-| 도구 | 하는 일 | 비유 | 보장 못 하는 것 |
+![opset · checker · shape_inference 세 도구가 하는 일과 실습 결과](assets/fig/ot/d2-tools.svg)
+
+| 도구 | 하는 일 | 비유 | 하지 않는 것 |
 |---|---|---|---|
-| opset | 연산 사전의 판 번호 | 사전 몇 판 | 실행기가 그 판을 아는지 |
-| checker | 형식 · 순서 검사 | 맞춤법 검사기 | 결과가 맞는지 |
-| shape_inference | 중간 shape 채우기 | 도면에 치수 | 결과가 맞는지 |
+| opset | 파일이 쓰는 연산 사전의 판 번호 (`opset_version=`) | 사전 몇 판으로 썼나 | — |
+| checker | 규칙에 맞게 만들어졌나 (끊긴 화살표 · 순서) | 맞춤법 검사기 | 결과가 맞는지 |
+| shape_inference | 중간 화살표마다 shape 계산해 `value_info` 에 적기 | 도면에 치수 적기 | 결과가 맞는지 |
 
 #### 개념 2 · 같은 GELU, 다른 모습
-| opset | 노드 수 | 노드 |
+| opset | 노드 | 개수 |
 |---|---|---|
-| 13 | 9 | Gemm, Constant, Div, **Erf**, Constant, Add, Mul, Constant, Mul |
-| 20 | 2 | Gemm, **Gelu** |
+| 13 | Gemm · Constant · Div · **Erf** · Constant · Add · Mul · Constant · Mul | 9 |
+| 20 | Gemm · **Gelu** | 2 |
+
+GELU(x) = 0.5 · x · (1 + erf(x / √2)) — opset 13 에는 Gelu 라는 단어가 없어 Erf 로 풀어 쓴다. 두 파일의 결과 차이는 0. 판 번호를 너무 높이면 배포할 실행기가 모르는 연산이 생긴다 (`opset … is not supported`) → 실행기가 아는 판부터 확인. 강의 기본값은 17.
+
+#### 개념 3 · checker 와 shape_inference
+- **checker**: Relu 의 입력 이름을 존재하지 않는 `"nope"` 로 바꾸면 화살표가 끊긴다 → checker 가 오류, ORT 도 세션 생성 실패. 앞 노드(Conv)의 output 이름 `/conv/Conv_output_0` 으로 되돌리면 통과 · 결과도 원래대로.
+- **shape_inference**: `value_info` 0개 → **6개**. 결과는 **새 모델**(`mi`) 에 있다.
+
+| 중간 이름 | shape |
+|---|---|
+| /conv/Conv_output_0 | [1, 30, 24, 24] |
+| /pool/MaxPool_output_0 | [1, 30, 12, 12] |
+| /Flatten_output_0 | [1, 4320] |
+| /fc1/Gemm_output_0 | [1, 100] |
 
 #### 코드로 확인
 ```python
+gelu_net = nn.Sequential(nn.Linear(4, 4), nn.GELU()).eval()
+for v in [13, 20]:
+    torch.onnx.export(gelu_net, torch.randn(1, 4), f"gelu_op{v}.onnx", opset_version=v, dynamo=False)
+    ops = [n.op_type for n in onnx.load(f"gelu_op{v}.onnx").graph.node]
+    print(f"opset {v}: {len(ops)}개", ops)
+```
+- **무엇을 하나**: 같은 모델을 opset 13 · 20 으로 내보내 노드 비교.
+- **어떤 개념**: 개념 2.
+- **출력**: `opset 13: 9개 ['Gemm', 'Constant', 'Div', 'Erf', …]`, `opset 20: 2개 ['Gemm', 'Gelu']` (직접 실행)
+
+```python
 mi = onnx.shape_inference.infer_shapes(m)
 shapes = {vi.name: shape_of(vi) for vi in mi.graph.value_info}
-print("추론 전", len(m.graph.value_info), "→ 추론 후", len(shapes))
-print(shapes["/pool/MaxPool_output_0"])
+for k, v in shapes.items():
+    print(" ", k.ljust(26), v)
 ```
-- **무엇을 하나**: 중간 화살표 shape 를 계산해 채움
-- **어떤 개념**: 개념 1 — shape_inference
-- **출력**: `추론 전 0 → 추론 후 6` · `[1, 30, 12, 12]`
+- **무엇을 하나**: 중간 shape 를 채운 새 모델에서 value_info 를 읽는다.
+- **어떤 개념**: 개념 3.
+- **출력**: 추론 전 0 → 추론 후 6, `/pool/MaxPool_output_0 [1, 30, 12, 12]`, `/Flatten_output_0 [1, 4320]` (직접 실행)
 
 #### 한 번에 정리
-- opset = 사전 판 · checker = 규칙 검사 · shape_inference = shape 채우기
-- 셋 모두 결과 정확도는 모름 → `allclose`
-- ⚠ opset 을 높게 쓰면 실행기가 못 읽음 · `infer_shapes` 결과는 새 모델
+- opset = 연산 사전 판 번호 — 같은 GELU 도 9개 vs 2개.
+- checker = 규칙 검사 (끊긴 화살표), shape_inference = 중간 shape 채우기 (24 → 12 → 4320).
+- 셋 다 "결과가 맞는지" 는 말해 주지 않는다 → allclose.
+- ⚠ `infer_shapes(m)` 의 결과는 새 모델 — `m.graph.value_info` 를 보면 여전히 0개.
 
 ---
 
@@ -452,36 +548,54 @@ pred = sess_dyn.run(None, {"input": X})[0].argmax(1)
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-현장에서는 사진이 1장씩 올 때도, 한꺼번에 100장 올 때도 있다. 고정 shape 파일은 한 가지 배치 크기만 받는다. **내보낼 때 어느 축이 바뀔 수 있는지** 알려 주는 것이 `dynamic_axes`.
+어제 5교시: 고정 shape 파일에 배치 4 를 넣으면 `Got: 4 Expected: 1`. 오늘은 "이 축은 크기가 바뀔 수 있다" 고 export 때 알려 준다. 그러면 100장을 **한 번에** 넣을 수 있다. 그런데 높이 · 너비까지 열면 어떻게 될까?
 
 #### 개념 1 · 고정 vs 동적
-| | 고정 | dynamic_axes |
-|---|---|---|
-| 입력 shape | `[1, 1, 28, 28]` | `['batch', 1, 28, 28]` |
-| 출력 shape | `[1, 10]` | `['batch', 10]` |
-| 배치 4 | 오류 `Got: 4 Expected: 1` | `(4, 10)` |
+![dynamic_axes 로 배치 축 열기, 높이 · 너비를 열었을 때 Gemm 에서 실패하는 이유](assets/fig/ot/d2-dynamic.svg)
 
-#### 개념 2 · 열어도 되는 축 / 안 되는 축
-| 축 | 이 모델에서 |
-|---|---|
-| 배치 (0) | 열어도 안전 — 모든 연산이 배치별로 독립 |
-| 높이 · 너비 (2, 3) | 실행은 시작하지만 Flatten → Gemm 에서 4320 이 안 맞아 실패 |
+| | export 인자 | 입력 shape | 배치 4 |
+|---|---|---|---|
+| 고정 | (없음) | `[1, 1, 28, 28]` | ✘ |
+| 동적 | `dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}` | `['batch', 1, 28, 28]` → `['batch', 10]` | ✔ (1 · 4 · 8 · 100) |
+
+- 키는 `input_names` · `output_names` 와 **같은 이름**이어야 적용된다.
+- `{0: "batch"}` 처럼 축 번호와 이름을 준다 (`[0]` 리스트도 되지만 이름이 자동으로 붙어 읽기 어렵다).
+- 2교시의 `shape_of` 가 `dim_param` 을 읽는 이유가 이것 — 이름 붙은 축은 `dim_value` 가 0 이다.
+
+#### 개념 2 · 1장씩 100번 vs 100장 1번
+`X = (digits / 255)[:, None]` → `(100, 1, 28, 28)` 을 `run` 한 번에 넣으면 정확도 1.0, PyTorch 예측과 100장 모두 같다. 시간도 1장씩 100번보다 짧다 — 함수 호출 · 메모리 준비 같은 고정 비용을 한 번만 내기 때문 (Day 3 6교시에서 지연 vs 처리량으로 제대로 잰다).
+
+#### 개념 3 · 열어도 되는 축 / 안 되는 축
+`{0: "batch", 2: "height", 3: "width"}` 로 높이 · 너비까지 열면 입력 shape 는 `['batch', 1, 'height', 'width']` 가 된다. 하지만 **dynamic 은 약속일 뿐**:
+
+| 단계 | 28×28 (학습 크기) | 32×32 |
+|---|---|---|
+| Conv 5×5 | 24×24 | 28×28 |
+| MaxPool 2 | 12×12 | 14×14 |
+| Flatten | 30 × 12 × 12 = **4,320** | 30 × 14 × 14 = **5,880** |
+| Gemm (fc1, 100×4320) | ✔ | ✘ `GEMM: Dimension mismatch, W: {100,4320} K: 5880` |
+
+Conv · Pool 은 어떤 크기든 처리하지만 Flatten 뒤 Gemm 은 정확히 4,320개를 원한다 → `failed_op = "Gemm"`.
 
 #### 코드로 확인
 ```python
+torch.onnx.export(cnn, torch.zeros(1, 1, 28, 28), "mnist_cnn_dyn.onnx",
+                  input_names=["input"], output_names=["logits"],
+                  dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}, **EXPORT_KW)
 sess_dyn = ort.InferenceSession("mnist_cnn_dyn.onnx", providers=["CPUExecutionProvider"])
-print("입력", sess_dyn.get_inputs()[0].shape, "| 출력", sess_dyn.get_outputs()[0].shape)
-for b in [1, 4, 8]:
-    print("배치", b, "→", sess_dyn.run(None, {"input": np.random.rand(b, 1, 28, 28).astype(np.float32)})[0].shape)
+print(sess_dyn.get_inputs()[0].shape, sess_dyn.get_outputs()[0].shape)
+X = (digits.astype(np.float32) / 255)[:, None]            # (100, 1, 28, 28)
+print((sess_dyn.run(None, {"input": X})[0].argmax(1) == labels).mean())
 ```
-- **무엇을 하나**: 열린 배치 축에 1 · 4 · 8장을 넣어 본다
-- **어떤 개념**: 개념 1 — 동적 shape
-- **출력**: `입력 ['batch', 1, 28, 28] | 출력 ['batch', 10]` · `(1, 10)` `(4, 10)` `(8, 10)`
+- **무엇을 하나**: 배치 축을 연 파일로 100장을 한 번에.
+- **어떤 개념**: 개념 1 · 2.
+- **출력**: `['batch', 1, 28, 28] ['batch', 10]`, 배치 1 · 4 · 8 → `(1, 10)` · `(4, 10)` · `(8, 10)`, 100장 정확도 `1.0` (직접 실행)
 
 #### 한 번에 정리
-- `dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}` → 첫 축이 이름 `'batch'`
-- 여러 장은 한 번에 `run` (`argmax(1)` 로 사진마다)
-- ⚠ dynamic = 약속 — 모델이 감당 못 하면 실행 중 오류 (Flatten → Gemm)
+- `dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}` → 첫 축이 이름 `'batch'`.
+- 100장을 한 번에 run — 1장씩 100번보다 빠르다.
+- dynamic 은 약속일 뿐 — 모델이 처리 못 하는 크기는 실행 중 오류 (32×32 → 5,880 ≠ 4,320).
+- ⚠ dynamic_axes 의 키 이름이 input_names 와 다르면 조용히 적용되지 않는다.
 
 ---
 
@@ -560,44 +674,63 @@ verify(gate, "gate.onnx", cases)          # ✅ 양수 / ❌ 음수 (최대 차�
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-오류가 나는 건 차라리 쉽다. 가장 위험한 건 **export 도 성공하고 더미 입력 비교도 ✅ 인데 다른 입력에서 틀리는** 파일이다. 왜 그런지, 어떻게 찾고 어떻게 고치는지.
+지금까지 export 는 늘 성공했고 결과도 맞았다. 그런데 **export 가 성공했는데 결과가 틀리는** 경우가 있다. 오류 메시지가 없어 가장 위험하다. 원인은 하나 — export 는 **더미 입력으로 실제 실행된 길만** 녹화한다 (Day 1 2교시). 세 가지 함정을 직접 만들고, 여러 입력으로 비교하는 `verify` 로 잡아낸다.
 
 #### 개념 1 · 녹화되는 길 vs 굳는 값
-| 코드 | 녹화되는 것 | 굳는 것 | 고치는 법 |
-|---|---|---|---|
-| `if x.mean() > 0` | 더미가 지난 분기 | 분기 선택 | `torch.where` |
-| `float(np.mean(…))` | (그래프 밖) | 더미 때의 평균 숫자 | `x.mean(dim=…)` |
-| `x.view(1, -1)` | `Reshape` 의 `1` | 배치 크기 | `flatten(1)` |
+![조용히 틀리는 export 세 가지 — 파이썬 if, NumPy 값, 숫자로 쓴 크기와 고치는 법](assets/fig/ot/d2-traps.svg)
 
-#### 개념 2 · 결과 표 (직접 실행)
-| 모델 | 입력 | 최대 차이 | 판정 |
+| 함정 | 원래 코드 | export 때 일어나는 일 | 다른 입력에서 |
 |---|---|---|---|
-| Gate | 양수 | 0 | ✅ |
-| Gate | 음수 | 2.00 | ❌ |
-| GateFix | 양수 · 음수 | 0 | ✅ |
-| Center | 더미 `[5,5,5]` | 0 | ✅ |
-| Center | `[1,2,3]` | 3.00 | ❌ |
-| CenterFix | 둘 다 | 0 | ✅ |
-| Hard | 배치 1 / 4 | ≈ 6e-08 / 실패 | ✅ / ❌ |
-| HardFix | 배치 1 / 4 | ≈ 6e-08 / ≈ 6e-08 | ✅ / ✅ |
+| ① 파이썬 if | `if x.mean() > 0: x*2 else x-1` | 더미 `ones` → `x*2` 길만 녹화 | 음수 `[−3,−2,−1]` → ONNX `[−6,−4,−2]`, 원래는 `[−4,−3,−2]` |
+| ② NumPy · `float()` | `m = float(np.mean(x.numpy()))` | 더미 `[5,5,5]` → `m = 5` 가 **상수** | `[1,2,3]` → ONNX `[−4,−3,−2]`, 원래는 `[−1,0,1]` |
+| ③ 숫자로 쓴 크기 | `x.view(1, -1)` | dynamic 이어도 배치 1 로 고정 | 배치 4 → `(1, 64)` 가 되어 실행 오류 |
+
+①②는 `TracerWarning` 한 줄로만 알려 준다. 환경 셀에서 경고를 숨겼기 때문에 `export_warn` 으로 이 경고만 골라 본다.
+
+#### 개념 2 · 고치는 법 = torch 연산으로
+| 함정 | 고친 코드 | 새로 생기는 노드 | verify |
+|---|---|---|---|
+| ① | `torch.where(x.mean() > 0, x * 2, x - 1)` | ReduceMean · Greater · Mul · Sub · **Where** — 두 길 모두 그래프에 | 양수 · 음수 차이 0 |
+| ② | `x - x.mean(dim=1, keepdim=True)` | **ReduceMean** · Sub — 매번 평균 계산 | 차이 0 |
+| ③ | `self.fc(x.flatten(1))` | **Flatten** · Gemm | 배치 1 · 4 차이 ≤ 1.5e-08, 배치 4 → `(4, 2)` |
+
+`if self.training:` 같은 **모델 설정**에 따른 분기는 괜찮다 — 입력 값과 상관없이 항상 같은 길이니까. 문제는 **입력 값**에 따른 분기다.
+
+#### 개념 3 · verify — 더미와 다른 입력으로
+`verify(model, path, cases)` 는 `{이름: 입력}` 마다 PyTorch 와 ORT 결과를 비교해 ✅ / ❌ 와 최대 차이를 찍는다. PyTorch 자체가 실패하는 경우(③의 배치 4)도 표시한다. **더미 하나로만** 돌리면 녹화된 길과 같은 입력이라 늘 ✅ — 일부러 다른 경우(음수 · 어두운 사진 · 배치 4)를 넣는다.
 
 #### 코드로 확인
 ```python
 class GateFix(nn.Module):
     def forward(self, x):
         return torch.where(x.mean() > 0, x * 2, x - 1)
-
-export_warn(GateFix(), torch.ones(1, 3), "gate_fix.onnx", input_names=["input"], output_names=["output"])
-ok_gate = verify(GateFix(), "gate_fix.onnx", cases_gate)
+gate_fix = GateFix()
+export_warn(gate_fix, torch.ones(1, 3), "gate_fix.onnx", input_names=["input"], output_names=["output"])
+cases_gate = {"양수 [1,2,3]": np.array([[1., 2., 3.]], np.float32),
+              "음수 [-3,-2,-1]": np.array([[-3., -2., -1.]], np.float32)}
+ok_gate = verify(gate_fix, "gate_fix.onnx", cases_gate)
 ```
-- **무엇을 하나**: `if` 를 `torch.where` 로 바꾸고 두 경우 비교
-- **어떤 개념**: 개념 1 — 두 길 모두 그래프에
-- **출력**: `['ReduceMean', 'Constant', 'Greater', 'Constant', 'Mul', 'Constant', 'Sub', 'Where']` · 양수 · 음수 모두 ✅ → `True`
+- **무엇을 하나**: if 를 `torch.where` 로 바꿔 두 길을 모두 그래프에 넣고 양수 · 음수로 검증.
+- **어떤 개념**: 개념 1 · 2 (①).
+- **출력**: `['ReduceMean', 'Constant', 'Greater', 'Constant', 'Mul', 'Constant', 'Sub', 'Where']`, ✅ 양수 차이 0, ✅ 음수 차이 0 (직접 실행)
+
+```python
+class CenterFix(nn.Module):
+    def forward(self, x):
+        return x - x.mean(dim=1, keepdim=True)
+class HardFix(Hard):
+    def forward(self, x):
+        return self.fc(x.flatten(1))                 # (N, 4, 4) → (N, 16)
+```
+- **무엇을 하나**: ② NumPy 평균 → torch 평균, ③ `view(1, -1)` → `flatten(1)`.
+- **어떤 개념**: 개념 2 (② · ③).
+- **출력**: `center_fix.onnx ['Constant', 'ReduceMean', 'Sub']` 두 경우 차이 0 · `hard_fix.onnx ['Flatten', 'Gemm']` 배치 4 차이 1.49e-08 (직접 실행)
 
 #### 한 번에 정리
-- export = 더미 입력으로 실행된 길만 녹화 → if · NumPy 값 · 숫자 크기는 굳는다
-- 고치기: `torch.where` · torch 연산(`mean` 등) · `flatten(1)` / `view(x.size(0), -1)`
-- ⚠ 더미 하나로만 `verify` 하면 늘 ✅ — 음수 · 어두운 사진 · 배치 4 를 넣어라
+- export = 더미 입력으로 실행된 길만 녹화 — if · NumPy 값 · 숫자로 쓴 크기는 그 순간의 결과로 굳는다.
+- 고치는 법: `torch.where` · torch 연산(`mean`) · `flatten(1)` / `view(x.size(0), -1)`.
+- 확인법: 여러 경우의 입력으로 `verify` + `TracerWarning` 읽기.
+- ⚠ verify 를 더미 하나로 돌리면 늘 ✅ — 일부러 다른 입력을 넣는다.
 
 ---
 
@@ -663,38 +796,62 @@ print(f"{len(before)}개 → {len(after)}개 :", after)      # 11개 → 4개
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-6교시와 달리 이번 문제는 export 가 소리 내어 실패한다. 메시지에서 **무엇이 막혔는지** 읽는 법, 막힌 연산을 **우회하는 법**, 마지막에 파일을 **가볍게 다듬는 법**.
+6교시의 문제는 "조용히" 틀렸다. 이번엔 반대로 export 가 **오류를 내며 멈추는** 경우다. 오류가 나니 오히려 쉽다 — 메시지를 읽고 지원되는 연산으로 바꾸면 된다. 그리고 export 된 그래프에 남은 군더더기를 **onnxslim** 으로 줄인다.
 
-#### 개념 1 · 오류 메시지 읽기
-| 부분 | 뜻 |
+#### 개념 1 · 미지원 연산 — 메시지 읽고 바꾸기
+`MedianAlarm` 은 센서 5개 값의 **중앙값**(튀는 값에 강함)으로 경보를 낸다. `torch.median` 을 쓰면 export 가 멈춘다:
+
+| 단계 | 내용 |
 |---|---|
-| `UnsupportedOperatorError` | 지원 안 되는 연산 |
-| `'aten::median'` | PyTorch 연산 이름 (이걸 대체해야 함) |
-| `opset version N` | 시도한 판 — 더 높은 판에 있는지 확인 |
+| 메시지 읽기 | `aten::median` — `aten` = PyTorch 내부 연산 이름, 이 opset 의 ONNX 사전에 대응이 없음 |
+| 선택지 | ① opset 올리기 (그 판에 생겼다면) ② 지원 연산의 조합으로 바꾸기 |
+| 바꾸기 | 정렬 후 가운데: `torch.sort(x, dim=1).values[:, k:k+1]`, `k = x.shape[1] // 2` → ONNX 의 **TopK** |
+| 검증 | 바꾼 모델이 아니라 **원래 모델(torch.median)** 과 verify — 배치 1 · 배치 6(튀는 값 ×50) 모두 ✅ |
 
-#### 개념 2 · onnxslim 전 / 후
-| | 노드 수 | 노드 |
+#### 개념 2 · onnxslim — 같은 계산, 더 적은 노드
+![ViewNet 의 노드 수 — 상수 접기를 끈 export 16개, 기본 export 11개, onnxslim 후 4개](assets/fig/ot/d2-slim.svg)
+
+`x.view(x.size(0), -1)` 는 배치 크기를 매번 읽어(Shape → Gather) shape 를 조립(Unsqueeze → Concat)한 뒤 Reshape 한다. onnxslim 은 이런 부분을 미리 계산해 접고(**constant folding**), 쓸모없는 노드를 지운다.
+
+| ViewNet | 노드 수 | 노드 |
 |---|---|---|
-| 전 | 11 | Conv, Relu, **Shape, Constant, Gather, Constant, Unsqueeze, Constant, Concat**, Reshape, Gemm |
-| 후 | 4 | Conv, Relu, Reshape, Gemm |
+| `do_constant_folding=False` | 16 | Identity × 2 · Conv · **BatchNormalization** · Relu · Shape · Gather · Unsqueeze · Concat · Reshape · Gemm … |
+| export 기본 (접기 켬) | 11 | Conv · Relu · Shape · Constant · Gather · Constant · Unsqueeze · Constant · Concat · Reshape · Gemm |
+| onnxslim 후 | **4** | Conv · Relu · Reshape · Gemm |
 
-배치 크기를 읽어 shape 를 만드는 7개 노드가 접혀 `Reshape` 하나가 됨.
+단순화 전 · 후 배치 4 결과 차이 **0.0** — 정확도가 오르는 게 아니라 같은 계산을 짧게 적을 뿐이다.
 
 #### 코드로 확인
 ```python
-x4 = np.random.rand(4, 1, 28, 28).astype(np.float32)
-r0 = ort.InferenceSession("viewnet.onnx", providers=["CPUExecutionProvider"]).run(None, {"input": x4})[0]
-r1 = ort.InferenceSession("viewnet_slim.onnx", providers=["CPUExecutionProvider"]).run(None, {"input": x4})[0]
-print("단순화 전 · 후 최대 차이:", np.abs(r0 - r1).max())
+class MedianAlarmFix(MedianAlarm):
+    def forward(self, x):
+        k = x.shape[1] // 2
+        med = torch.sort(x, dim=1).values[:, k:k + 1]        # (N, 1)
+        return self.fc(med)
+med_fix = MedianAlarmFix().eval()
+med_fix.load_state_dict(med_net.state_dict())
+ok_m = verify(med_net, "median_fix.onnx", cases_m)          # ← 원래 모델과 비교
 ```
-- **무엇을 하나**: 단순화 전후 결과 비교 (배치 4)
-- **어떤 개념**: 개념 2 — 결과는 그대로
-- **출력**: `0.0`
+- **무엇을 하나**: 중앙값을 정렬 + 가운데 고르기로 바꾸고, 원래 모델과 비교.
+- **어떤 개념**: 개념 1.
+- **출력**: 노드에 `TopK` 등장, ✅ 배치 1 · ✅ 배치 6 튀는 값 (직접 실행)
+
+```python
+slim_model = onnxslim.slim("viewnet.onnx")
+onnx.save(slim_model, "viewnet_slim.onnx")
+before = [n.op_type for n in onnx.load("viewnet.onnx").graph.node]
+after = [n.op_type for n in onnx.load("viewnet_slim.onnx").graph.node]
+print(f"{len(before)}개 → {len(after)}개 :", after)
+```
+- **무엇을 하나**: 단순화하고 저장, 노드 수 비교.
+- **어떤 개념**: 개념 2.
+- **출력**: `11개 → 4개 : ['Conv', 'Relu', 'Reshape', 'Gemm']`, 전 · 후 최대 차이 `0.0` (직접 실행)
 
 #### 한 번에 정리
-- 미지원 연산: 메시지의 `aten::연산` 확인 → opset 올리기 또는 지원 연산 조합 → 원래 모델과 `verify`
-- `onnxslim.slim` → `onnx.save` · 11 → 4 · 결과 동일
-- ⚠ 구조 바꾼 뒤 비교 안 하기 · slim 결과를 저장 안 하기
+- 미지원 연산: 메시지의 `aten::연산` 확인 → opset 올리기 또는 지원 연산 조합 → 원래 모델과 verify.
+- `onnxslim.slim(path)` → `onnx.save` — 상수 접기 · 불필요 노드 제거 (ViewNet 11 → 4).
+- 단순화 전후도 allclose 로 확인.
+- ⚠ slim 결과는 모델 객체 — 저장하지 않으면 원래 파일 그대로다.
 
 ---
 
@@ -785,38 +942,70 @@ onnx.save(final, "brightnet_final.onnx"); onnx.checker.check_model(onnx.load("br
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-오늘 배운 것을 한 모델에 모두 쓴다. "PyTorch 에서는 되는데 ONNX 로는 이상하다" 를 **재현 → 원인 → 수정 → 배포용 파일 → 최종 검증**의 순서로 끝까지 해 보고, 배포 담당자에게 무엇을 넘길지 정리한다.
+현장 카메라용 분류기 **BrightNet** 은 PyTorch 에서는 잘 돌지만 ONNX 로 내보내면 이상하게 동작한다. 오늘 배운 모든 도구로 고장을 찾고, 고치고, 배포용 최종 파일 `brightnet_final.onnx` 를 만든다. (가중치는 seed 로 고정한 연습용 — 정확도가 아니라 **배포 과정**이 과제.)
 
-#### 개념 1 · 고장 3곳 대응표
-| 고장 | BrightNet 원래 코드 | 증상 | 수정 |
+#### 개념 1 · BrightNet 의 의도와 고장 3곳
+의도 — 사진 한 장마다: ① 어두우면(평균 < 0.3) 2배 밝게 → ② 평균을 빼서 밝기 보정 → ③ CNN → safe · warning · danger. 입력 64×64 컬러, 0 ~ 1.
+
+| 의도 | 원래 코드 (고장) | 6교시 함정 | 고친 코드 |
 |---|---|---|---|
-| ① 입력 값 분기 | `if x.mean() < 0.3: x = x * 2` | 어두운 사진도 ×2 안 함 | `torch.where(mean < 0.3, x * 2, x)` |
-| ② NumPy 값 | `m = float(np.mean(x.detach().numpy()))` | 더미의 평균이 굳음 | `x.mean(dim=(1,2,3), keepdim=True)` |
-| ③ 고정 배치 | `x.view(1, -1)` | 배치 8 실패 | `x.flatten(1)` |
+| ① 어두우면 2배 | `if x.mean() < 0.3: x = x * 2` | 파이썬 if | `torch.where(mean < 0.3, x * 2, x)` |
+| ② 평균 빼기 | `x - float(np.mean(x.numpy()))` | NumPy 값이 상수로 | `x - x.mean(dim=(1, 2, 3), keepdim=True)` |
+| ③ 펴기 | `x.view(1, -1)` | 숫자로 쓴 크기 | `x.flatten(1)` |
 
-#### 개념 2 · 배포 파일 체크리스트
-| 단계 | 도구 | 확인 값 |
+**왜 `dim=(1, 2, 3)`?** `x.mean()` 은 배치 전체의 평균 하나다. 배치 8 에 밝은 사진과 어두운 사진이 섞여 있으면 사진마다 판단할 수 없다 → 채널 · 높이 · 너비만 줄여 사진별 평균 `(N, 1, 1, 1)`, `keepdim` 으로 브로드캐스트.
+
+#### 개념 2 · 고장 찾기 — 더미만 ✅
+| 경우 (더미 = orange.jpg, 밝기 0.459) | 결과 |
+|---|---|
+| 더미 그대로 | ✅ |
+| 다른 밝은 사진 (butterfly 0.402) | ❌ — 평균이 더미의 숫자로 굳음 |
+| 어두운 사진 (×0.25 → 0.101) | ❌ — 더미는 밝아서 "2배 안 하는 길" 만 녹화됨 |
+
+→ `failed = ["다른 밝은 사진", "어두운 사진"]`. ③ `view(1, -1)` 은 경고 없이 숨어 있다가 배치 8 에서 터진다. 채점 기준은 "원래 코드" 가 아니라 **의도** — 사진을 한 장씩 넣은 PyTorch 결과(`intended`).
+
+#### 개념 3 · 배포 파일 만들기 순서
+| 순서 | 도구 | 결과 |
 |---|---|---|
-| export | `export_warn` | TracerWarning 없음, 16 노드 |
-| 검사 | `checker` | 통과 |
-| 단순화 | `onnxslim.slim` | 16 → 14 노드 |
-| shape 채움 | `infer_shapes` | `value_info` 27개 |
-| 최종 비교 | `ort` vs `intended` | 배치 1 · 8 모두 ≈ 1e-07 |
+| 고치기 | `BrightNetFixed` + `load_state_dict` (같은 가중치) | 배치 6 vs 의도 최대 차이 1.49e-08 |
+| export | `dynamic_axes` batch · `opset_version=17` · input / logits | 노드 16, TracerWarning 없음, 19.5 KB |
+| ① checker | `onnx.checker.check_model` | 통과 |
+| ② 단순화 | `onnxslim.slim` | 노드 16 → **14** |
+| ③ shape 채우기 | `onnx.shape_inference.infer_shapes` | 중간 shape **27개** |
+| ④ 다시 checker · 저장 | `onnx.save(final, "brightnet_final.onnx")` | opset 17 |
+| 최종 비교 | 배치 1 (6장 각각) · 배치 8 (6장 + 2장 반복) vs `intended` | 둘 다 최대 차이 **9.7e-08** |
+
+인계할 때 적어 줄 정보: opset 17 · 입력 `input ['batch', 3, 64, 64]` float32 0 ~ 1 RGB · 출력 `logits` 클래스 순서 `["safe", "warning", "danger"]`.
 
 #### 코드로 확인
 ```python
-dummy_b = torch.from_numpy(photos["orange.jpg"])
-export_warn(bright, dummy_b, "brightnet_broken.onnx", input_names=["input"], output_names=["logits"],
-            dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}})
-cases_b = {"더미 그대로": photos["orange.jpg"], "다른 밝은 사진": photos["butterfly.jpg"], "어두운 사진": dark["butterfly_dark"]}
-verify(bright, "brightnet_broken.onnx", cases_b)
+class BrightNetFixed(BrightNet):
+    def forward(self, x):
+        mean = x.mean(dim=(1, 2, 3), keepdim=True)              # (N, 1, 1, 1) — 사진마다 평균
+        x = torch.where(mean < 0.3, x * 2, x)                    # ① if → 두 길을 모두
+        x = x - x.mean(dim=(1, 2, 3), keepdim=True)              # ② NumPy → torch 연산
+        x = self.features(x)
+        x = x.flatten(1)                                         # ③ 배치 축은 그대로
+        return self.fc(x)
 ```
-- **무엇을 하나**: 고장 난 모델을 세 경우로 비교
-- **어떤 개념**: 개념 1 — 더미만 ✅
-- **출력**: ✅ 더미(≈ 1.5e-08) · ❌ 다른 밝은 사진 `3.86e-03` · ❌ 어두운 사진 `6.87e-03`
+- **무엇을 하나**: 고장 3곳을 6교시 방법으로 고친 forward.
+- **어떤 개념**: 개념 1.
+- **출력**: 고친 모델 (배치 6) vs 의도 (한 장씩) 최대 차이 `1.49e-08` (직접 실행)
+
+```python
+onnx.checker.check_model(onnx.load("brightnet_fixed.onnx"))                     # ①
+slim_b = onnxslim.slim("brightnet_fixed.onnx")                                  # ②
+final = onnx.shape_inference.infer_shapes(slim_b)                               # ③
+onnx.save(final, "brightnet_final.onnx")
+onnx.checker.check_model(onnx.load("brightnet_final.onnx"))                     # ④
+```
+- **무엇을 하나**: 검사 → 단순화 → shape 채우기 → 저장 → 다시 검사.
+- **어떤 개념**: 개념 3.
+- **출력**: `노드 16 → 14 | 중간 shape 27개 | opset 17`, 최종 배치 1 · 배치 8 최대 차이 `9.7e-08`, 자동 채점 과제 1~5 만점 (직접 실행)
 
 #### 한 번에 정리
-- 고장 찾기는 여러 경우(더미 · 다른 사진 · 어두운 사진 · 배치)로 · 기준은 "원래 코드"가 아니라 **의도**(한 장씩)
-- 배포 파일: 고치기 → export(batch · opset · 이름) → checker → onnxslim → shape_inference → 최종 비교
-- 인계: `.onnx` + opset + 입력 shape + 전처리 규칙
-- ⚠ checker · slim · shape_inference 통과 ≠ 결과가 맞음
+- 고장 찾기는 여러 경우의 입력(더미 · 다른 사진 · 어두운 사진 · 배치)으로 — 더미 하나로는 늘 ✅.
+- 기준은 원래 코드가 아니라 의도(한 장씩 넣은 결과).
+- 배포 파일 = 고치기 → export(batch · opset · 이름) → checker → onnxslim → shape_inference → 최종 비교.
+- ⚠ 평균은 `dim=(1, 2, 3), keepdim=True` — 배치 전체 평균이면 섞인 배치에서 사진마다 판단이 틀린다.
+
