@@ -18,13 +18,13 @@ opencv-python-headless (VB Day 4 는 ultralytics). 자세한 PC 사용법은 .cl
 
 JSON: {"문제번호": {"text": 출력, "check": 검증 셀이 있었나, "fixed": 손으로 고친 값이면 true}}
 """
-import contextlib, glob, io, json, os, re, shutil, signal, sys, tempfile, time, types
+import contextlib, glob, io, json, linecache, os, re, shutil, signal, sys, tempfile, time, types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import nbparse
 
-FOLDER = {'nn': 'NN', 'vb': 'VB'}
+FOLDER = {'nn': 'NN', 'vb': 'VB', 'ot': 'OT'}
 
 
 class CellTimeout(Exception):
@@ -93,6 +93,10 @@ def _prep(src):
 def _clean(text):
     lines = [l.rstrip() for l in text.replace('\r', '\n').split('\n')]
     lines = [l for l in lines if l.strip() and l.strip() != '✅']
+    # 다운로드 진행 표시 · 터미널 제어 문자 줄은 출력이 아니다 (ultralytics 가중치 받기 등)
+    lines = [re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', l) for l in lines
+             if not re.search(r'Downloading |^내려받기 실패|\d+%\s*[━─]|^\s*\x1b\[K', l)]
+    lines = [l for l in lines if l.strip()]
     if len(lines) > 40: lines = lines[:38] + ['…', lines[-1]]
     return '\n'.join(lines)
 
@@ -150,6 +154,11 @@ def run(sid, day, timeout, root, force_thread=False):
     os.environ.setdefault('MPLBACKEND', 'Agg')
     _stub_ipython()
     g = {'__name__': '__main__'}
+    try:                                                                # Colab 처럼 display 를 import 없이 쓸 수 있게
+        from IPython.display import display as _disp
+        g['display'] = _disp
+    except Exception:
+        g['display'] = lambda *a, **k: None
     nb = json.load(open(nb_path, encoding='utf8'))
     deadline = Deadline(force_thread)
 
@@ -158,7 +167,10 @@ def run(sid, day, timeout, root, force_thread=False):
         deadline.start(timeout)
         try:
             with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
-                exec(compile(_prep(src), label, 'exec'), g)
+                code_src = _prep(src)
+                fname = f'<{label}>'                                   # inspect.getsource 가 셀 코드를 읽을 수 있게
+                linecache.cache[fname] = (len(code_src), None, code_src.splitlines(True), fname)
+                exec(compile(code_src, fname, 'exec'), g)
         except CellTimeout:
             err = 'timeout'
         except BaseException as e:                                     # SystemExit 포함
@@ -174,6 +186,7 @@ def run(sid, day, timeout, root, force_thread=False):
 
     res, pending, last = {}, False, None       # pending: 실행을 미룬 빈칸 셀 / last: 방금 실행한 정답 번호
     deferred = []                               # 빈칸 뒤 · 정답 앞에 온 셀 (NN: 빈칸 → 검증 → 정답 순서)
+    blank_src = ''
 
     def values(src):
         """assert 의 왼쪽 식을 실제로 계산한 값 — 검증 셀이 ✅ 만 찍을 때 보여 줄 것"""
@@ -206,6 +219,7 @@ def run(sid, day, timeout, root, force_thread=False):
         if '정답 보기' in first or ('b64decode' in src and '@title' in first):
             num, sol = nbparse._solution(nbparse._answer(src))
             if num and sol and pending:
+                sol = nbparse.fill_blanks(blank_src, sol) or sol           # 빈칸 셀의 나머지 코드(도우미 함수 등)도 실행
                 out, err = execute(sol, f'정답 {num}')
                 res[num] = {'text': out, 'err': err, 'check': False}
                 last = num
@@ -216,7 +230,7 @@ def run(sid, day, timeout, root, force_thread=False):
         if src.lstrip().startswith('#@title') and 'display(' in src:   # 그림 셀
             continue
         if '____' in src:
-            pending = True; last = None; continue
+            pending = True; last = None; blank_src = src; continue
         if pending:
             deferred.append((i, src)); continue
         if not after(last, i, src): last = None
@@ -269,7 +283,7 @@ def main():
     if not os.path.isdir(os.path.join(root, 'AI_CAMPUS')):
         sys.exit(f'AI_CAMPUS 폴더를 못 찾았습니다: {root}\n  → --root "<AI_CAMPUS 가 들어 있는 폴더>" 를 붙이세요')
     if args and args[0] == 'all':
-        jobs = [(sid, d) for sid in ('nn', 'vb') for d in _days(root, sid)]
+        jobs = [(sid, d) for sid in ('nn', 'vb', 'ot') for d in _days(root, sid)]
         if '--only' in argv and argv[argv.index('--only') + 1] == 'assert':
             jobs = _assert_days(root, jobs)
         import subprocess

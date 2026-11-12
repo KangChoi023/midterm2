@@ -100,6 +100,22 @@ def _solution(ans):
     code = re.split(r'\n\s*💡\s*해설', ans[m.end():], 1)[0].strip('\n')
     return m.group(1).strip(), code if code.strip() else ''
 
+def fill_blanks(blank, sol):
+    """빈칸(____) 셀의 빈칸 줄을 정답 코드의 같은 줄로 바꿔 끼운다 — 셀에 있던 다른 코드(도우미 함수 등)를 지키려고.
+    빈칸 줄 하나라도 정답에서 짝을 못 찾으면 None (그때는 정답 코드만 쓴다)."""
+    if '____' not in blank: return None
+    code = lambda l: re.split(r'\s+#', l, 1)[0].strip()                 # 끝 주석 · 들여쓰기 무시
+    sl = sol.split('\n'); out, j = [], 0
+    for line in blank.split('\n'):
+        if '____' not in line: out.append(line); continue
+        pat = re.compile('^' + '(.+?)'.join(re.escape(part) for part in code(line).split('____')) + '$')
+        for k in range(j, len(sl)):
+            if pat.match(code(sl[k])):
+                out.append(line[:len(line) - len(line.lstrip())] + sl[k].strip()); j = k + 1; break
+        else:
+            return None
+    return '\n'.join(out)
+
 def _block(code):
     lines = code.split('\n')
     shell = [l for l in lines if l.strip() and not l.strip().startswith('#')]
@@ -264,8 +280,11 @@ def parse_ipynb(path):
                 num, sol = _solution(ans)
                 flush()
                 if sol and st['blank'] is not None:
-                    sol = f'# ✏️ 문제 {num} — 빈칸을 정답으로 채운 코드\n' + sol if num else sol
                     where, k = st['blank']
+                    blank_src = k[0]['blocks'][k[1]]['text'] if where == 'topic' and k[0] is st['topic'] else \
+                        (st['fill']['code'][-1] if st['fill'] is not None and st['fill']['code'] else '')
+                    sol = fill_blanks(blank_src, sol) or sol                     # 빈칸 셀의 나머지 코드도 지킨다
+                    sol = f'# ✏️ 문제 {num} — 빈칸을 정답으로 채운 코드\n' + sol if num else sol
                     t, pos = None, None
                     if where == 'topic' and k[0] is st['topic']:
                         k[0]['blocks'][k[1]] = dict(_block(sol), solved=num); t, pos = k

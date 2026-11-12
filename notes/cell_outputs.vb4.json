@@ -51,8 +51,16 @@
   "text": "(array([0.9, 0.8, 0.7, 0.6]), array([1, 0, 0, 1]), 3)",
   "check": true
  },
+ "4-4": {
+  "text": "완벽한 탐지기   AP50 1.0000  mAP50-95 1.0000\n10% 밀린 탐지기 AP50 1.0000  mAP50-95 0.7000\n✅ iou_nms_map.py 저장 · 79 줄 — 왼쪽 파일 탭에서 내려받을 수 있습니다",
+  "check": true
+ },
  "5-1": {
   "text": "특징맵 34×35 = 1190 위치 × 9 = 10,710 anchor | 정답별 최고 IoU anchor: [0.54  0.553]",
+  "check": true
+ },
+ "5-3": {
+  "text": "Faster R-CNN  AP50 0.9762 | mAP50-95 0.8602 | 2945 ms/장 (cpu)\nSSDLite       AP50 0.9515 | mAP50-95 0.7404 | 2076 ms/장 (cpu)",
   "check": true
  },
  "6-1": {
@@ -60,7 +68,7 @@
   "check": true
  },
  "6-2": {
-  "text": "\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt to 'yolov8n.pt': 4% ──────────── 264.0KB/6.2MB 2.3MB/s 0.1s<2.6s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt to 'yolov8n.pt': 9% ━─────────── 632.0KB/6.2MB 3.2MB/s 0.2s<1.8s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt to 'yolov8n.pt': 48% ━━━━━╸────── 3.0/6.2MB 23.6MB/s 0.3s<0.1s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt to 'yolov8n.pt': 94% ━━━━━━━━━━━─ 5.9/6.2MB 29.1MB/s 0.4s<0.0s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt to 'yolov8n.pt': 100% ━━━━━━━━━━━━ 6.2MB 14.1MB/s 0.4s\n원본 (479, 522, 3) → letterbox (640, 640, 3) r=1.2261 pad=(0, 26) | 출력 (1, 84, 8400)",
+  "text": "원본 (479, 522, 3) → letterbox (640, 640, 3) r=1.2261 pad=(0, 26) | 출력 (1, 84, 8400)",
   "check": true
  },
  "6-3": {
@@ -68,19 +76,35 @@
   "check": true
  },
  "6-4": {
-  "text": "\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 0% ──────────── 220.6KB/21.5MB 2.0MB/s 0.1s<10.5s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 9% ━─────────── 2.0/21.5MB 17.1MB/s 0.2s<1.1s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 20% ━━╸───────── 4.5/21.5MB 23.1MB/s 0.3s<0.7s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 32% ━━━╸──────── 7.1/21.5MB 22.3MB/s 0.4s<0.6s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 44% ━━━━━─────── 9.6/21.5MB 19.2MB/s 0.6s<0.6s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 56% ━━━━━━╸───── 12.1/21.5MB 23.7MB/s 0.7s<0.4s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 68% ━━━━━━━━──── 14.7/21.5MB 13.4MB/s 0.9s<0.5s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 77% ━━━━━━━━━─── 16.7/21.5MB 12.0MB/s 1.0s<0.4s\n\u001b[KDownloading https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8s.pt to 'yolov8s.pt': 100% ━━━━━━━━━━━━ 21.5MB 19.8MB/s 1.1s\nYOLOv8n: 파라미터 3,157,200 | preprocess 70.1 ms · inference 4244.1 ms · postprocess 44.9 ms\nYOLOv8s: 파라미터 11,166,560 | preprocess 58.0 ms · inference 3155.9 ms · postprocess 52.9 ms",
+  "text": "YOLOv8n: 파라미터 3,157,200 | preprocess 1.6 ms · inference 38.1 ms · postprocess 0.9 ms\nYOLOv8s: 파라미터 11,166,560 | preprocess 1.6 ms · inference 90.8 ms · postprocess 0.9 ms",
   "check": true
  },
  "7-1": {
-  "text": "7 명 | {'preprocess': 82.4, 'inference': 1571.6, 'postprocess': 29.5}",
+  "text": "7 명 | {'preprocess': 1.7, 'inference': 64.7, 'postprocess': 1.1}",
   "check": true
  },
  "7-2": {
-  "text": "795 프레임, 166.4 초 | 인원 최대 12 · 평균 6.05\n프레임당 평균: {'read': 3.7, 'preprocess': 4.0, 'inference': 190.3, 'postprocess': 4.2, 'draw+write': 6.2} ms",
+  "text": "795 프레임, 30.8 초 | 인원 최대 12 · 평균 6.05\n프레임당 평균: {'read': 0.8, 'preprocess': 1.7, 'inference': 32.0, 'postprocess': 0.9, 'draw+write': 2.9} ms",
   "check": true
  },
  "7-3": {
-  "text": "[cpu] read 3.7 · preprocess 4.0 · inference 190.3 · postprocess 4.2 · draw+write 6.2  = 208.4 ms → 4.8 FPS  ✘ 실시간 아님 (영상 10 FPS 기준)",
+  "text": "[cpu] read 0.8 · preprocess 1.7 · inference 32.0 · postprocess 0.9 · draw+write 2.9  = 38.3 ms → 26.1 FPS  ✔ 실시간 (영상 10 FPS 기준)",
+  "check": true
+ },
+ "8-1": {
+  "text": "YOLOv8n 640 | AP50 0.9692 | mAP50-95 0.8357\nYOLOv8s 640 | AP50 0.9663 | mAP50-95 0.8498",
+  "check": false
+ },
+ "8-2": {
+  "text": "모델          입력    AP50  mAP50-95   CPU ms\nYOLOv8n    320  0.9741    0.8159     15.3\nYOLOv8n    640  0.9692    0.8357     39.9\nYOLOv8s    320  0.9674    0.8381     28.3\nYOLOv8s    640  0.9663    0.8498     93.1",
+  "check": false
+ },
+ "8-3": {
+  "text": "best conf 0.7 | P 0.8923 R 0.9598 F1 0.9248",
+  "check": false
+ },
+ "8-4": {
+  "text": "795 프레임 | 최대 8 명 · 평균 4.96 명\n<IPython.core.display.HTML object>\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20\n자동 채점 80 / 80  (과제 5 해석은 강사 채점 20점)",
   "check": true
  }
 }

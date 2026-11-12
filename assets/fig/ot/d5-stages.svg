@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">한 프레임 = 네 조각의 합 — 추론이 빨라지면 CPU 쪽이 새 병목 (설명용 숫자)</text>
+<text x="16.0" y="76.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">추론 80 ms</text>
+<rect x="110.0" y="56.0" width="42.0" height="34.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="131.0" y="78.0" font-size="11" fill="#1e293b" text-anchor="middle">10</text>
+<rect x="152.0" y="56.0" width="336.0" height="34.0" rx="0" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="320.0" y="78.0" font-size="11" fill="#1e293b" text-anchor="middle">추론 80</text>
+<rect x="488.0" y="56.0" width="21.0" height="34.0" rx="0" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="498.5" y="78.0" font-size="11" fill="#1e293b" text-anchor="middle">5</text>
+<rect x="509.0" y="56.0" width="21.0" height="34.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="519.5" y="78.0" font-size="11" fill="#1e293b" text-anchor="middle">5</text>
+<text x="538.0" y="70.0" font-size="12" fill="#1e293b" text-anchor="start" font-weight="700">합 100 ms → 10.0 FPS</text>
+<text x="538.0" y="88.0" font-size="11" fill="#dc2626" text-anchor="start">추론 비중 80%</text>
+<text x="16.0" y="146.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">추론 8 ms</text>
+<rect x="110.0" y="126.0" width="42.0" height="34.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="131.0" y="148.0" font-size="11" fill="#1e293b" text-anchor="middle">10</text>
+<rect x="152.0" y="126.0" width="33.6" height="34.0" rx="0" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="168.8" y="148.0" font-size="11" fill="#1e293b" text-anchor="middle">8</text>
+<rect x="185.6" y="126.0" width="21.0" height="34.0" rx="0" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="196.1" y="148.0" font-size="11" fill="#1e293b" text-anchor="middle">5</text>
+<rect x="206.6" y="126.0" width="21.0" height="34.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="217.1" y="148.0" font-size="11" fill="#1e293b" text-anchor="middle">5</text>
+<text x="235.6" y="140.0" font-size="12" fill="#1e293b" text-anchor="start" font-weight="700">합 28 ms → 35.7 FPS</text>
+<text x="235.6" y="158.0" font-size="11" fill="#dc2626" text-anchor="start">추론 비중 29%</text>
+<text x="20.0" y="206.0" font-size="11.5" fill="#1e293b" text-anchor="start">추론을 10배 빠르게 해도 프레임은 100 → 28 ms (3.6배) — 전처리 10 ms 가 새 1등 → 다음엔 전처리 · 그리기를 줄인다</text>
+<text x="20.0" y="228.0" font-size="11.5" fill="#64748b" text-anchor="start">time_stages: perf_counter 를 조각마다 찍어 차이 × 1000 = ms · 영상 50프레임 (앞 5장 warm-up) 평균</text>
+<text x="20.0" y="250.0" font-size="11.5" fill="#dc2626" text-anchor="start">⚠ 추론만 잰 FPS ≠ 파이프라인 FPS — 영상 읽기 · 저장(디스크)까지 들어간다 (6교시 성능표에 둘 다)</text>
+</svg>

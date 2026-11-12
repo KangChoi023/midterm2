@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">ONNX · TensorRT 5일 — 하나의 경로 PyTorch → ONNX → 엔진 → TRTInfer → 파이프라인</text>
+<rect x="10.0" y="40.0" width="128.0" height="146.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="74.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Day 1</text>
+<text x="74.0" y="78.0" font-size="11.5" fill="#1e293b" text-anchor="middle">ONNX 첫걸음</text>
+<text x="74.0" y="98.0" font-size="10.5" fill="#64748b" text-anchor="middle">export</text>
+<text x="74.0" y="112.0" font-size="10.5" fill="#64748b" text-anchor="middle">Netron</text>
+<text x="74.0" y="126.0" font-size="10.5" fill="#64748b" text-anchor="middle">ORT</text>
+<text x="74.0" y="140.0" font-size="10.5" fill="#64748b" text-anchor="middle">allclose</text>
+<rect x="147.0" y="40.0" width="128.0" height="146.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="211.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Day 2</text>
+<text x="211.0" y="78.0" font-size="11.5" fill="#1e293b" text-anchor="middle">속 들여다보기</text>
+<text x="211.0" y="98.0" font-size="10.5" fill="#64748b" text-anchor="middle">describe</text>
+<text x="211.0" y="112.0" font-size="10.5" fill="#64748b" text-anchor="middle">opset</text>
+<text x="211.0" y="126.0" font-size="10.5" fill="#64748b" text-anchor="middle">dynamic</text>
+<text x="211.0" y="140.0" font-size="10.5" fill="#64748b" text-anchor="middle">verify</text>
+<text x="211.0" y="154.0" font-size="10.5" fill="#64748b" text-anchor="middle">slim</text>
+<rect x="284.0" y="40.0" width="128.0" height="146.0" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/>
+<text x="348.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Day 3</text>
+<text x="348.0" y="78.0" font-size="11.5" fill="#1e293b" text-anchor="middle">ORT 로 빠르게</text>
+<text x="348.0" y="98.0" font-size="10.5" fill="#64748b" text-anchor="middle">bench</text>
+<text x="348.0" y="112.0" font-size="10.5" fill="#64748b" text-anchor="middle">스레드</text>
+<text x="348.0" y="126.0" font-size="10.5" fill="#64748b" text-anchor="middle">레벨</text>
+<text x="348.0" y="140.0" font-size="10.5" fill="#64748b" text-anchor="middle">CUDA</text>
+<text x="348.0" y="154.0" font-size="10.5" fill="#64748b" text-anchor="middle">배치</text>
+<text x="348.0" y="168.0" font-size="10.5" fill="#64748b" text-anchor="middle">profiling</text>
+<rect x="421.0" y="40.0" width="128.0" height="146.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="485.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Day 4</text>
+<text x="485.0" y="78.0" font-size="11.5" fill="#1e293b" text-anchor="middle">TensorRT</text>
+<text x="485.0" y="98.0" font-size="10.5" fill="#64748b" text-anchor="middle">polygraphy</text>
+<text x="485.0" y="112.0" font-size="10.5" fill="#64748b" text-anchor="middle">build_engine</text>
+<text x="485.0" y="126.0" font-size="10.5" fill="#64748b" text-anchor="middle">FP16</text>
+<text x="485.0" y="140.0" font-size="10.5" fill="#64748b" text-anchor="middle">인스펙터</text>
+<rect x="558.0" y="40.0" width="128.0" height="146.0" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/>
+<text x="622.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Day 5</text>
+<text x="622.0" y="78.0" font-size="11.5" fill="#1e293b" text-anchor="middle">탐지 · 프로젝트</text>
+<text x="622.0" y="98.0" font-size="10.5" fill="#64748b" text-anchor="middle">TRTInfer</text>
+<text x="622.0" y="112.0" font-size="10.5" fill="#64748b" text-anchor="middle">detect(infer)</text>
+<text x="622.0" y="126.0" font-size="10.5" fill="#64748b" text-anchor="middle">AP</text>
+<text x="622.0" y="140.0" font-size="10.5" fill="#64748b" text-anchor="middle">네 조각</text>
+<text x="20.0" y="206.0" font-size="11" fill="#1e293b" text-anchor="start">다음 과목 — Quantization·Pruning (11/16~): INT8 이면 성능표가? · 프로젝트 (11/25~): run_intrusion 의 source 만 카메라로</text>
+<text x="20.0" y="226.0" font-size="11" fill="#1e293b" text-anchor="start">YOLOv8 Edge (12/11~): 직접 학습한 YOLO 를 같은 경로로 · Jetson 에서는 .onnx 를 가져가 그 장치에서 다시 빌드</text>
+<text x="20.0" y="246.0" font-size="11" fill="#64748b" text-anchor="start">Drive 에 남길 것: 노트북 · ot_baseline.csv (비교 기준) · 엔진을 만든 .onnx</text>
+</svg>

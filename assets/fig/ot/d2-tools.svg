@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">ONNX 파일을 다루는 세 도구 — 셋 다 "결과가 맞는지" 는 말해 주지 않는다</text>
+<rect x="15.0" y="40.0" width="214.0" height="188.0" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8"/>
+<text x="122.0" y="64.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">opset</text>
+<text x="122.0" y="84.0" font-size="11.5" fill="#64748b" text-anchor="middle">연산 사전의 판 번호</text>
+<text x="29.0" y="112.0" font-size="11.5" fill="#1e293b" text-anchor="start">같은 GELU 도</text>
+<text x="29.0" y="134.0" font-size="11.5" fill="#1e293b" text-anchor="start">opset 13 → 노드 9개</text>
+<text x="29.0" y="156.0" font-size="11.5" fill="#1e293b" text-anchor="start">(Erf · Div · Add · Mul …)</text>
+<text x="29.0" y="178.0" font-size="11.5" fill="#1e293b" text-anchor="start">opset 20 → Gemm · Gelu 2개</text>
+<text x="29.0" y="200.0" font-size="11.5" fill="#1e293b" text-anchor="start">두 파일 결과 차이 0</text>
+<rect x="243.0" y="40.0" width="214.0" height="188.0" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.8"/>
+<text x="350.0" y="64.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">checker</text>
+<text x="350.0" y="84.0" font-size="11.5" fill="#64748b" text-anchor="middle">규칙에 맞는지 검사</text>
+<text x="257.0" y="112.0" font-size="11.5" fill="#1e293b" text-anchor="start">Relu 입력 이름을 "nope" 로</text>
+<text x="257.0" y="134.0" font-size="11.5" fill="#1e293b" text-anchor="start">→ checker 가 끊긴 화살표 지적</text>
+<text x="257.0" y="156.0" font-size="11.5" fill="#1e293b" text-anchor="start">→ ORT 도 세션 생성 실패</text>
+<text x="257.0" y="178.0" font-size="11.5" fill="#1e293b" text-anchor="start">앞 노드 output 이름으로</text>
+<text x="257.0" y="200.0" font-size="11.5" fill="#1e293b" text-anchor="start">되돌리면 통과</text>
+<rect x="471.0" y="40.0" width="214.0" height="188.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8"/>
+<text x="578.0" y="64.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">shape_inference</text>
+<text x="578.0" y="84.0" font-size="11.5" fill="#64748b" text-anchor="middle">중간 shape 채우기</text>
+<text x="485.0" y="112.0" font-size="11.5" fill="#1e293b" text-anchor="start">value_info 0 → 6개</text>
+<text x="485.0" y="134.0" font-size="11.5" fill="#1e293b" text-anchor="start">[1, 30, 24, 24] (Conv)</text>
+<text x="485.0" y="156.0" font-size="11.5" fill="#1e293b" text-anchor="start">[1, 30, 12, 12] (MaxPool)</text>
+<text x="485.0" y="178.0" font-size="11.5" fill="#1e293b" text-anchor="start">[1, 4320] (Flatten)</text>
+<text x="485.0" y="200.0" font-size="11.5" fill="#1e293b" text-anchor="start">결과는 새 모델 mi 에</text>
+<text x="350.0" y="250.0" font-size="11.5" fill="#dc2626" text-anchor="middle">맞춤법 검사기 · 도면 치수처럼 "형식" 만 본다 → 결과는 늘 PyTorch 와 allclose 로 따로 확인</text>
+</svg>

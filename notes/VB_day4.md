@@ -59,27 +59,37 @@ def parse_annotation(path):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-Day 1~3 에서 만든 분류기는 "이 사진은 고양이" 처럼 **라벨 하나**를 낸다. 그런데 공사 현장 카메라에 필요한 것은 "지금 사람이 몇 명이고 어디에 있나" 다. 이 교시는 출력 모양이 어떻게 달라지는지 정리하고, 분류기를 그대로 돌려서 해결하려는 가장 단순한 방법(sliding window)이 왜 안 되는지 숫자로 확인한다.
+Day 3 의 MobileNetV3 분류기는 사진 한 장에 **라벨 하나**를 냈다. 그런데 현장 안전에서 정말 필요한 질문은 "이 화면에 사람이 **몇 명** 있나? 각 사람이 **어디**에 있나? 위험구역 안인가?" 다. 이 교시는 이 질문이 분류로는 왜 안 풀리는지 보고, 오늘 쓸 데이터(Penn-Fudan 보행자)를 직접 열어 탐지 문제의 모양을 익힌다.
 
-#### 개념 1 · 분류와 탐지의 출력 차이
+#### 개념 1 · 분류 vs 탐지 — 출력의 모양이 다르다
+![분류 · 탐지 · 세그멘테이션의 출력 비교 — 탐지는 물체마다 (클래스, 박스, 점수) 를 내고 개수가 사진마다 다르다](assets/fig/vb/d4-task.svg)
+
 | 과제 | 입력 | 출력 |
 |---|---|---|
 | 분류 (Day 1~3) | 이미지 | 클래스 1개 (+ 확률) |
 | 탐지 (오늘) | 이미지 | 물체마다 (클래스, 박스, 점수) — **개수가 이미지마다 다르다** |
 | 세그멘테이션 · 포즈 (Day 5) | 이미지 | 픽셀마다 클래스 · 관절 좌표 |
 
-Penn-Fudan 의 정답 파일은 `Bounding box for object 1 "PASpersonWalking" (Xmin, Ymin) - (Xmax, Ymax) : (160, 182) - (302, 431)` 처럼 한 줄에 박스 하나다. 정규식으로 숫자 4개를 뽑아 `(N, 4)` 배열로 만든다.
+"개수가 다르다" 는 것이 핵심이다. 정답도 "사진 하나 = 숫자 하나" 가 아니라 **길이가 제각각인 박스 배열의 목록**이 된다.
 
-#### 개념 2 · sliding window 가 느린 이유
-창을 가로 · 세로로 옮기며 모두 분류기에 넣으면 창 수가 곧 호출 횟수다.
+#### 개념 2 · Penn-Fudan — 정답은 텍스트 파일 속 좌표
+사진마다 텍스트 파일 하나에 `(Xmin, Ymin) - (Xmax, Ymax) : (160, 182) - (302, 431)` 처럼 사람 박스가 들어 있다. 정규식으로 숫자 4개씩 뽑으면 이미지마다 `(사람 수, 4)` 배열이 된다.
 
-| 기호 | 뜻 |
+| 값 | 숫자 |
 |---|---|
-| W, H | 이미지 폭 · 높이 |
-| 창 (64, 128) | 사람처럼 세로로 긴 창 |
-| stride 16 | 창을 16 px 씩 이동 |
+| 이미지 | 170장 |
+| 사람(정답 박스) | 423명 |
+| 이미지당 최대 | 8명 |
+| 사람 수별 이미지 장수 (0명 · 1명 · … · 8명) | 0 · 58 · 40 · 35 · 17 · 12 · 5 · 2 · 1 |
 
-559×536 이미지: `nx = (559 − 64) // 16 + 1 = 31`, `ny = (536 − 128) // 16 + 1 = 26` → 31 × 26 = **806개**. 창마다 6 ms 면 806 × 6 / 1000 = **4.8초 / 장** (크기 1가지만).
+박스 크기는 대부분 큰 편(보행자가 사진의 상당 부분)이다 — 8교시에서 "320 해상도로도 충분한가" 를 판단할 때 쓰는 근거다.
+
+#### 개념 3 · sliding window — 왜 탐지기가 따로 필요한가
+분류기로 탐지를 흉내 내려면 창(예 64×128)을 stride 만큼 옮기며 **창마다** 분류기를 돌려야 한다.
+
+> 창 수 = ((W − 창폭) // stride + 1) × ((H − 창높이) // stride + 1)
+
+559×536 사진, stride 16 이면 31 × 26 = **806개** — 창마다 6 ms 분류기여도 4.8초 / 장이다. 게다가 창 크기 **한 가지**만 계산한 것이다(가까운 사람 · 먼 사람 크기가 다르다). 그래서 탐지기는 사진 전체를 **한 번에** 보고 박스를 예측하도록 만든다.
 
 #### 코드로 확인
 ```python
@@ -88,11 +98,13 @@ def parse_annotation(path):
     pairs = re.findall(r"\((\d+), (\d+)\) - \((\d+), (\d+)\)", text)
     return np.array(pairs, dtype=np.float32).reshape(-1, 4)
 
+img_paths = sorted(glob.glob(f"{PF}/PNGImages/*.png"))
 gts = [parse_annotation(ann_path(p)) for p in img_paths]
+counts = np.array([len(g) for g in gts])
 ```
-- **무엇을 하나**: 이미지마다 정답 파일을 읽어 박스 `(N, 4)` 배열을 만들고 목록 `gts` 에 모은다.
-- **어떤 개념**: 개념 1.
-- **출력**: 170장 · 첫 장 `[[160. 182. 302. 431.] ...]` (강의 예시 값)
+- **무엇을 하나**: 정답 텍스트에서 `(x1, y1) - (x2, y2)` 숫자를 뽑아 이미지마다 `(N, 4)` 배열로 만들고, 이미지마다 사람 수를 센다.
+- **어떤 개념**: 개념 2 — 정답이 "길이가 다른 배열의 목록".
+- **출력**: `170 장 | FudanPed00001.png` · 첫 이미지 박스 `[[160 182 302 431] [420 171 535 486]]` · 전체 **423명**, 최대 **8명**, 사람 수별 `[0 58 40 35 17 12 5 2 1]`
 
 ```python
 def n_windows(W, H, win=(64, 128), stride=16):
@@ -100,15 +112,15 @@ def n_windows(W, H, win=(64, 128), stride=16):
     ny = (H - win[1]) // stride + 1
     return nx * ny
 ```
-- **무엇을 하나**: 창 개수를 센다. 559×536 에서 806 → 창당 6 ms 면 4.8초.
-- **어떤 개념**: 개념 2.
-- **출력**: `806` (직접 계산)
+- **무엇을 하나**: 한 가지 창 크기로 사진을 훑을 때 창이 몇 개인지 센다.
+- **어떤 개념**: 개념 3.
+- **출력**: `559×536 이미지 → 창 806개 → 창마다 6 ms 분류기면 4.8 초 / 장 (크기 1가지만!)`
 
 #### 한 번에 정리
-- 탐지 = 물체마다 (클래스, 박스, 점수), 개수는 이미지마다 다르다.
-- Penn-Fudan: 170장 · 423명, 정답은 `xyxy` 픽셀 좌표.
-- sliding window = 창 수 × 분류기 시간 → 806개 × 6 ms = 4.8초.
-- ⚠ 창 크기를 늘리면 더 느려진다 — 그래서 탐지기는 한 번에 예측한다.
+- 탐지 = 물체마다 (클래스, 박스, 점수), 개수는 사진마다 다르다.
+- Penn-Fudan: 170장 · 423명, 정답 박스는 xyxy 픽셀 좌표.
+- sliding window 는 창 수백~수천 × 분류기 → 너무 느리다 → 탐지기는 한 번에 예측.
+- ⚠ 정답 데이터가 "한 장 = 라벨 하나" 가 아니라는 점이 이후 평가 코드를 모두 바꾼다.
 
 **연관 문제**
 <<QA 1>>
@@ -184,25 +196,34 @@ def xyxy_to_cxcywh_norm(b, W, H):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-1교시에서 정답을 `xyxy` 로 읽었다. 그런데 데이터셋마다 박스를 다른 방식으로 적는다(VOC · COCO · YOLO). 형식을 헷갈리면 학습도 평가도 틀어진다. 이 교시는 세 형식과 변환식, 그리고 데이터를 주고받는 COCO JSON 구조를 정리한다.
+박스 하나를 숫자 4개로 쓰는 방법이 여러 가지다. 데이터셋 · 라이브러리마다 형식이 달라서, 형식을 착각하면 박스가 엉뚱한 곳에 그려진다. 이 교시는 세 가지 표현과 변환, 그리고 탐지 데이터의 표준 형식인 **COCO JSON** 을 만든다. 마지막으로 탐지기가 **무엇을 학습하는지** 정리한다.
 
-#### 개념 1 · 박스 표현 세 가지
+#### 개념 1 · 같은 박스, 세 가지 표현
+이미지 좌표는 **왼쪽 위가 원점**이고 x 는 오른쪽, y 는 **아래쪽**으로 커진다.
+
+![같은 박스를 xyxy · xywh · cxcywh 정규화로 쓰기](assets/fig/vb/d4-bbox.svg)
+
 | 표현 | 값 | 쓰는 곳 |
 |---|---|---|
-| `xyxy` | (x1, y1, x2, y2) | VOC · torchvision · NMS 계산 |
-| `xywh` | (x, y, w, h) | COCO |
-| `cxcywh` 정규화 | (cx/W, cy/H, w/W, h/H) | YOLO 라벨 · 출력 (출력은 픽셀 단위) |
+| xyxy | (x1, y1, x2, y2) 왼쪽 위 · 오른쪽 아래 | Pascal VOC, torchvision, NMS 계산 |
+| xywh | (x, y, w, h) 왼쪽 위 + 너비 · 높이 | COCO 어노테이션 |
+| cxcywh 정규화 | (cx/W, cy/H, w/W, h/H) 0~1 | YOLO 라벨 파일 · YOLO 출력(픽셀 단위) |
 
-예제 박스 `(160, 182, 302, 431)`, 이미지 W=559 · H=536:
+정규화 좌표는 이미지 크기를 바꿔도 값이 그대로라서 resize 를 많이 하는 학습에 편하다. 새 데이터를 받으면 **반드시 그려서 확인**한다 — 사람이 많은 사진 4장을 그려 보면, 작게 · 가려진 사람 일부에는 정답 박스가 없다는 것도 보인다(8교시에서 Precision 이 1 이 안 되는 이유).
 
-| 변환 | 계산 | 결과 |
-|---|---|---|
-| xywh | w = 302−160 = 142, h = 431−182 = 249 | `(160, 182, 142, 249)` |
-| cx, cy | 160+142/2 = 231, 182+249/2 = 306.5 | |
-| 정규화 | 231/559, 306.5/536, 142/559, 249/536 | `(0.4132, 0.5718, 0.2540, 0.4646)` |
+#### 개념 2 · COCO JSON — id 로 연결된 세 목록
+| 키 | 내용 |
+|---|---|
+| images | `{id, file_name, width, height}` |
+| annotations | `{id, image_id, category_id, bbox, area, iscrowd}` — **bbox 는 xywh** |
+| categories | `{id, name}` — 여기선 `1 = person` |
 
-#### 개념 2 · COCO JSON — id 로 연결
-`images` 에서 `id` 를 정하고, `annotations` 의 `image_id` 가 그 id 를, `category_id` 가 `categories` 의 id 를 가리킨다. `bbox` 는 xywh, `area` 는 w × h (여기선 142 × 249 = 35,358).
+이미지 · 박스 · 클래스가 id 로 이어진다. pycocotools · torchvision · ultralytics 변환기가 모두 이 형식을 읽는다.
+
+#### 개념 3 · 탐지기가 학습하는 것
+> 탐지 손실 = 분류 손실 (이 위치에 무엇이 있나 — cross-entropy) + 박스 회귀 손실 (박스를 얼마나 옮기고 늘리나 — Smooth L1 또는 IoU 계열)
+
+Day 2 · 3 의 분류 학습에 "숫자 4개를 맞히는 회귀" 가 더해진 것이다. 오늘은 학습 대신 **사전학습 탐지기**를 쓰고, 그 결과를 후처리 · 평가하는 코드를 직접 만든다.
 
 #### 코드로 확인
 ```python
@@ -210,29 +231,36 @@ def xyxy_to_xywh(b):
     b = np.asarray(b, float)
     return np.stack([b[..., 0], b[..., 1], b[..., 2] - b[..., 0], b[..., 3] - b[..., 1]], -1)
 
-box = gts[0][0]
-print("xyxy", box, "| xywh", xyxy_to_xywh(box))
+def xyxy_to_cxcywh_norm(b, W, H):
+    b = np.asarray(b, float)
+    w, h = b[..., 2] - b[..., 0], b[..., 3] - b[..., 1]
+    cx, cy = b[..., 0] + w / 2, b[..., 1] + h / 2
+    return np.stack([cx / W, cy / H, w / W, h / H], -1)
 ```
-- **무엇을 하나**: 두 점 표현을 왼쪽 위 + 폭 · 높이로 바꾼다. `...` 인덱스라 박스 1개 · N개 모두 된다.
+- **무엇을 하나**: xyxy 를 다른 두 형식으로 바꾼다. `[..., 0]` 은 박스 하나든 여러 개든 같은 코드로 처리하려고.
 - **어떤 개념**: 개념 1.
-- **출력**: xywh `[160. 182. 142. 249.]` (직접 계산)
+- **출력**: `xyxy [160 182 302 431] | xywh [160 182 142 249] | cxcywh 정규화 [0.4132 0.5718 0.254 0.4646]`
 
 ```python
 coco = {"images": [], "annotations": [], "categories": [{"id": 1, "name": "person"}]}
-...
-coco["annotations"].append({"id": ann_id, "image_id": img_id, "category_id": 1,
-                            "bbox": [float(v) for v in b], "area": float(b[2] * b[3]), "iscrowd": 0})
-json.dump(coco, open("pennfudan_coco.json", "w"))
+ann_id = 1
+for img_id, (p, g) in enumerate(zip(img_paths, gts), start=1):
+    h, w = cv2.imread(p).shape[:2]
+    coco["images"].append({"id": img_id, "file_name": os.path.basename(p), "width": w, "height": h})
+    for b in xyxy_to_xywh(g):
+        coco["annotations"].append({"id": ann_id, "image_id": img_id, "category_id": 1,
+                                    "bbox": [float(v) for v in b], "area": float(b[2] * b[3]), "iscrowd": 0})
+        ann_id += 1
 ```
-- **무엇을 하나**: 170장 · 423개 박스를 COCO 형식으로 저장한다 (박스는 xywh 로 변환).
+- **무엇을 하나**: Penn-Fudan 정답을 COCO JSON 으로 바꾼다 (bbox 는 xywh, area = w × h).
 - **어떤 개념**: 개념 2.
-- **출력**: `170 images | 423 annotations` (강의 값)
+- **출력**: `170 images | 423 annotations` · 첫 박스 `{'bbox': [160.0, 182.0, 142.0, 249.0], 'area': 35358.0, ...}`
 
 #### 한 번에 정리
-- xyxy (VOC · torchvision) · xywh (COCO) · cxcywh 정규화 (YOLO).
+- xyxy (VOC · torchvision · NMS) · xywh (COCO) · cxcywh 정규화 (YOLO).
 - COCO JSON = images · annotations (bbox 는 xywh) · categories, id 로 연결.
 - 탐지 손실 = 분류 + 박스 회귀.
-- ⚠ 새 데이터는 반드시 그려서 확인 — 형식 착각은 박스 위치로 바로 드러난다.
+- ⚠ 형식을 착각하면 오류 없이 엉뚱한 박스 — 새 데이터는 반드시 그려서 확인.
 
 **연관 문제**
 <<QA 2>>
@@ -288,6 +316,7 @@ json.dump(coco, open("pennfudan_coco.json", "w"))
 > conf = 점수 낮은 박스를 NMS 전에 버림, IoU 기준 = 이만큼 겹치면 같은 물체로 봄
 - **conf 너무 낮으면** → 오탐(FP) 많음 / **너무 높으면** → 사람을 놓침(FN)
 - **IoU 기준 너무 낮으면** → 붙어 선 두 사람 중 하나가 지워짐 / **너무 높으면** → 한 사람에 박스가 여러 개 남음
+- **예** → 가짜 탐지기(정답 8명, 박스 130개): conf 0.5 · IoU 0.3~0.5 → **8개** / conf 0.3 → 12개 (배경 오탐) / IoU 0.7 → 26 · 30개 (중복)
 - ⚠ 두 값은 서로 다른 문제를 조절한다 — 하나만 만지면 다른 문제가 남는다
 
 ##### 자세히
@@ -314,31 +343,38 @@ def nms(boxes, scores, iou_thr=0.5):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-탐지기는 사람 한 명 주변에 비슷한 박스를 여러 개 낸다. 이걸 그대로 쓰면 "사람 5명" 이 된다. 이 교시는 박스끼리 **얼마나 겹치는지(IoU)** 를 숫자로 정의하고, 그것으로 중복을 지우는 **NMS** 를 직접 만든다. IoU 는 다음 교시의 평가에도 그대로 쓰인다.
+탐지기는 한 사람 주변에 비슷한 박스를 **여러 개** 낸다(겹치는 창이 모두 "사람" 이라고 하는 것과 같다). 결과를 쓰려면 ① 두 박스가 얼마나 겹치는지 숫자로 재고(**IoU**), ② 겹치는 박스 중 하나만 남겨야 한다(**NMS**). 둘 다 직접 만들고 torchvision 결과와 비교한다.
 
-#### 개념 1 · IoU — 겹침 정도를 숫자로
-교집합 ÷ 합집합. 두 박스 `(x1, y1, x2, y2)` 에서:
+#### 개념 1 · IoU — 겹침을 0~1 로
+> IoU = 교집합 넓이 / 합집합 넓이 = |A∩B| / (|A| + |B| − |A∩B|)
 
-| 기호 | 뜻 |
-|---|---|
-| `max(x1)`, `max(y1)` | 교집합의 왼쪽 위 |
-| `min(x2)`, `min(y2)` | 교집합의 오른쪽 아래 |
-| `clip(…, 0)` | 안 겹치면 음수 → 0 |
+교집합 박스는 왼쪽 위 `(max x1, max y1)`, 오른쪽 아래 `(min x2, min y2)`. 안 겹치면 폭이나 높이가 음수가 되므로 0 으로 자른다.
 
-![IoU — 겹침 정도 숫자로](assets/fig/vb/d4-iou.svg)
+![IoU 계산 — 같은 크기 박스가 반만 밀려도 0.33](assets/fig/vb/d4-iou.svg)
 
-`iou([50,50,150,150], [[60,60,160,160]])` — 100×100 박스가 (10, 10) 밀리면 교집합 90×90 = 8,100, 합집합 20,000 − 8,100 = 11,900 → **0.6807**.
+IoU 는 생각보다 **엄격**하다: 100×100 박스가 (10, 10) 만 밀려도 0.6807. 그리고 탐지의 거의 모든 곳에 쓰인다 — NMS(중복 제거), 평가(정답과 맞았나), 학습(anchor 매칭 · IoU 손실).
 
-#### 개념 2 · NMS — 점수 순으로 하나만
-![NMS 전 · 후](assets/fig/vb/d4-nms.svg)
+#### 개념 2 · NMS — 점수 순으로 하나씩
+1. 점수 높은 순으로 정렬
+2. 가장 높은 박스를 남기고(keep)
+3. 그 박스와 IoU > 기준인 박스를 지운다
+4. 남은 박스로 2부터 반복
 
-점수 0.95 박스를 남기고, 그와 IoU 0.80 · 0.78 인 0.90 · 0.60 박스를 지운다. 남은 0.85 · 0.40 중 0.85 를 남기고 IoU 0.75 인 0.40 을 지운다 → `[0, 2]`.
+![NMS 전 · 후 — 사람 2명에 박스 5개가 2개로](assets/fig/vb/d4-nms.svg)
 
-#### 개념 3 · conf 와 IoU 기준
-| 손잡이 | 낮추면 | 높이면 |
-|---|---|---|
-| conf | 오탐 많음 | 사람 놓침 |
-| NMS IoU 기준 | 붙은 두 사람 중 하나 삭제 | 한 사람에 박스 여러 개 |
+예: 사람 2명에 박스 5개(점수 0.95 · 0.90 · 0.85 · 0.60 · 0.40) → 0번이 1번(IoU 0.80) · 3번(0.78)을, 2번이 4번(0.75)을 지워 `keep = [0, 2]`.
+
+#### 개념 3 · 두 개의 손잡이 — conf 와 IoU 기준
+| 손잡이 | 하는 일 | 너무 낮으면 | 너무 높으면 |
+|---|---|---|---|
+| conf (점수) | 점수 낮은 박스를 NMS 전에 버림 | 오탐(FP)이 많다 | 사람을 놓친다(FN) |
+| IoU 기준 (NMS) | 이만큼 겹치면 같은 물체로 봄 | 붙어 선 두 사람 중 하나를 지움 | 한 사람에 박스가 여러 개 남음 |
+
+정답 박스 주변에 흔들린 박스 15개씩 + 배경 박스 10개를 만든 **가짜 탐지기**로 두 손잡이를 돌려 보면:
+
+![conf × IoU 기준 조합별로 남는 박스 수 — 정답은 8명](assets/fig/vb/d4-knobs.svg)
+
+conf 0.5 · IoU 0.3~0.5 에서 정확히 8개, conf 0.3 이면 배경 오탐이 남아 12개, IoU 0.7 이면 덜 지워 26~30개. 두 손잡이는 **서로 다른 문제**를 조절한다.
 
 #### 코드로 확인
 ```python
@@ -350,23 +386,31 @@ def iou(box, boxes):
     area = lambda b: (b[..., 2] - b[..., 0]) * (b[..., 3] - b[..., 1])
     return inter / (area(box) + area(boxes) - inter)
 ```
-- **무엇을 하나**: 박스 1개와 여러 개의 IoU 를 한 번에 계산한다 (벡터화).
+- **무엇을 하나**: 박스 하나와 여러 박스의 IoU 를 한 번에 계산한다 (`np.clip` 으로 안 겹치는 경우 0).
 - **어떤 개념**: 개념 1.
-- **출력**: `[0.1429 1. 0.]`, `[0.6807]` (직접 실행해 확인)
+- **출력**: `iou([0,0,10,10], …)` → `[0.1429 1. 0.]` · `iou([50,50,150,150], [[60,60,160,160]])` → `[0.6807]` · 모든 쌍 버전 `iou_matrix` (50×40) 와 `torchvision.ops.box_iou` 최대 차이 **0.0**
 
 ```python
-print("IoU(0, 1..4):", iou(toy_boxes[0], toy_boxes[1:]).round(4), "| IoU(2, 4):", iou(toy_boxes[2], toy_boxes[4:]).round(4))
-print("toy:", nms(toy_boxes, toy_scores, 0.5))
+def nms(boxes, scores, iou_thr=0.5):
+    boxes = np.asarray(boxes, float); scores = np.asarray(scores, float)
+    order = np.argsort(-scores)                 # 점수 높은 순
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+        rest = order[1:]
+        order = rest[iou(boxes[i], boxes[rest]) <= iou_thr]      # 많이 겹치는 박스는 지운다
+    return np.array(keep, dtype=int)
 ```
-- **무엇을 하나**: 사람 2명 · 박스 5개 예제의 겹침과 NMS 결과.
+- **무엇을 하나**: 가장 높은 박스를 남기고, 그와 많이 겹친 박스를 지우기를 반복한다.
 - **어떤 개념**: 개념 2.
-- **출력**: `IoU(0, 1..4): [0.8005 0. 0.7808 0.]` · `IoU(2, 4): [0.75]` · `toy: [0 2]` (직접 실행해 확인)
+- **출력**: `toy: [0 2]` · 무작위 300개 → 260개 남김 · `torchvision.ops.nms` 와 같음: `True`
 
 #### 한 번에 정리
-- IoU = 교집합 / 합집합, 10 px 밀려도 크게 떨어지는 엄격한 지표.
-- NMS = 점수 순으로 하나 남기고 많이 겹친 것 지우기 반복 → 직접 만든 코드 = `torchvision.ops.nms`.
+- IoU = 교집합 / 합집합 — 10 px 밀려도 크게 떨어지는 엄격한 지표.
+- NMS = 점수 순으로 하나 남기고 많이 겹친 것 지우기 반복 (= torchvision.ops.nms).
 - conf (오탐 ↔ 놓침) 와 IoU 기준 (중복 ↔ 붙은 물체 삭제) 은 다른 손잡이.
-- ⚠ 같은 NMS 라도 IoU 기준이 낮으면 붙어 선 사람이 지워진다.
+- ⚠ 합집합 = A + B − 교집합 — 교집합을 한 번 빼야 한다.
 
 **연관 문제**
 <<QA 3>>
@@ -447,34 +491,43 @@ def ap_from_pr(rec, prec):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-분류는 "맞았나 틀렸나" 한 숫자(정확도)로 충분했다. 탐지는 박스가 **몇 개 · 어디에** 있는지, 점수 기준(conf)에 따라 결과가 달라진다. 이 교시는 탐지 하나하나를 TP/FP 로 판정하고, conf 에 상관없는 한 숫자(AP)로 요약하는 법을 직접 구현한다. 오늘 만든 평가 코드는 어떤 탐지기에도 그대로 쓴다.
+탐지기 A 와 B 중 어느 쪽이 더 좋은가? 분류는 정확도 하나면 됐지만, 탐지는 박스마다 맞았는지 · 중복인지 · 놓친 정답은 없는지를 따져야 한다. 게다가 conf 기준을 바꿀 때마다 결과가 달라진다. 이 교시는 탐지 평가의 표준인 **AP · mAP** 를 손 계산으로 이해한 뒤 직접 만든다.
 
-#### 개념 1 · TP · FP · FN 판정
-탐지를 **점수 높은 순**으로 하나씩 본다. 가장 IoU 가 큰 정답이 있고(IoU ≥ 0.5) 아직 아무도 안 차지했으면 TP, 아니면 FP. 끝까지 차지되지 않은 정답이 FN.
+#### 개념 1 · TP · FP · FN, Precision · Recall
+탐지 하나하나를 정답과 비교해 판정한다.
 
-| 구분 | 조건 |
+| 판정 | 조건 |
 |---|---|
-| TP | 같은 클래스 정답과 IoU ≥ 0.5, 그 정답에 처음 |
-| FP | 맞는 정답 없음, 또는 중복 |
-| FN | 매칭 안 된 정답 |
+| TP (맞음) | 같은 클래스 정답과 IoU ≥ 0.5 — 단, 한 정답에는 **처음 매칭된 탐지 하나만** TP |
+| FP (오탐) | 맞는 정답이 없거나, 이미 다른 탐지가 차지한 정답에 또 매칭된 **중복** |
+| FN (놓침) | 어떤 탐지도 매칭되지 않은 정답 |
 
-#### 개념 2 · PR 곡선과 AP — 손 계산
-정답 4개, 탐지 5개 (TP, TP, FP, TP, FP):
+> Precision = TP / (TP + FP) (찾은 것 중 맞은 비율), Recall = TP / 정답 수 (정답 중 찾은 비율)
 
-![손 계산 AP](assets/fig/vb/d4-ap.svg)
+#### 개념 2 · AP — 모든 기준을 한 숫자로
+conf 기준 하나가 아니라 **모든 기준**에서의 성능을 요약한 것이 AP(PR 곡선 아래 넓이)다.
 
-| 순위 | 판정 | 누적 TP | 누적 FP | P | R |
-|---|---|---|---|---|---|
-| 1 | TP | 1 | 0 | 1.00 | 0.25 |
-| 2 | TP | 2 | 0 | 1.00 | 0.50 |
-| 3 | FP | 2 | 1 | 0.67 | 0.50 |
-| 4 | TP | 3 | 1 | 0.75 | 0.75 |
-| 5 | FP | 3 | 2 | 0.60 | 0.75 |
+**AP 계산 순서**: 모든 이미지의 탐지를 점수 높은 순으로 정렬 → 위에서부터 TP/FP 판정 → 누적 TP · FP → P · R → precision 을 **오른쪽부터 최댓값으로** 채운 envelope → 넓이.
 
-AP = 0.25 × 1 + 0.25 × 1 + 0.25 × 0.75 = **0.6875**.
+![손 계산 AP — 정답 4개, 탐지 5개 (TP, TP, FP, TP, FP)](assets/fig/vb/d4-ap.svg)
 
-#### 개념 3 · AP50 vs mAP50-95
-같은 탐지 결과를 IoU 기준 0.50, 0.55, …, 0.95 (10개) 로 각각 평가해 평균 내면 mAP50-95. 박스가 정답보다 폭의 10% 밀린 탐지기는 IoU 가 대략 0.8 이라 기준 0.5~0.75 는 통과, 0.8 이상은 탈락 → AP50 은 1.0 인데 mAP50-95 는 0.7 로 내려간다 (강의 실행 값).
+| 순위 | 점수 | 판정 | 누적 TP | 누적 FP | P | R |
+|---|---|---|---|---|---|---|
+| 1 | 0.95 | TP | 1 | 0 | 1.00 | 0.25 |
+| 2 | 0.90 | TP | 2 | 0 | 1.00 | 0.50 |
+| 3 | 0.80 | FP | 2 | 1 | 0.67 | 0.50 |
+| 4 | 0.60 | TP | 3 | 1 | 0.75 | 0.75 |
+| 5 | 0.50 | FP | 3 | 2 | 0.60 | 0.75 |
+
+envelope: recall 0~0.5 구간 P = 1, 0.5~0.75 구간 0.75, 0.75~1 구간 0 (더 못 찾음) → **AP = 0.25×1 + 0.25×1 + 0.25×0.75 = 0.6875**.
+
+#### 개념 3 · AP50 과 mAP50-95
+| 지표 | IoU 기준 | 묻는 것 |
+|---|---|---|
+| AP50 | 0.5 하나 | 찾았나? (느슨) |
+| mAP50-95 | 0.50, 0.55, …, 0.95 (10개)의 평균 | 위치까지 정확한가? |
+
+박스를 폭의 10% 만큼 밀면 AP50 은 **1.0** 그대로지만 mAP50-95 는 **0.7** 로 떨어진다. 오늘 만든 함수는 `iou_nms_map.py` 파일 하나로 저장해 Day 5 · OT 과목 · YOLOv8 Edge 과목에서 import 해서 쓴다 — 변환 · 양자화 전후의 정확도를 같은 기준으로 재는 도구다.
 
 #### 코드로 확인
 ```python
@@ -485,27 +538,41 @@ def precision_recall(tp, n_gt):
     recall = ctp / max(n_gt, 1)
     return precision, recall
 
-P_toy, R_toy = precision_recall(np.array([1, 1, 0, 1, 0]), 4)
-print("P", P_toy.round(4), "\nR", R_toy, "AP", ap_from_pr(R_toy, P_toy))
+def ap_from_pr(rec, prec):
+    mrec = np.concatenate([[0.0], rec, [1.0]]); mpre = np.concatenate([[0.0], prec, [0.0]])
+    for i in range(len(mpre) - 2, -1, -1):              # envelope: 오른쪽 최댓값으로 채우기
+        mpre[i] = max(mpre[i], mpre[i + 1])
+    idx = np.where(mrec[1:] != mrec[:-1])[0]             # recall 이 바뀌는 지점
+    return float(np.sum((mrec[idx + 1] - mrec[idx]) * mpre[idx + 1]))
 ```
-- **무엇을 하나**: 누적 TP · FP 로 순위별 P · R 을 구하고 AP 를 계산한다.
-- **어떤 개념**: 개념 2.
-- **출력**: `P [1. 1. 0.6667 0.75 0.6]` · `R [0.25 0.5 0.5 0.75 0.75]` · `AP 0.6875` (직접 실행해 확인)
+- **무엇을 하나**: 누적 합으로 P · R 을 구하고, envelope 를 만든 뒤 recall 이 바뀌는 구간의 넓이를 더한다.
+- **어떤 개념**: 개념 2 — 손 계산 표 그대로.
+- **출력**: `P [1. 1. 0.6667 0.75 0.6]` · `R [0.25 0.5 0.5 0.75 0.75]` · `AP = 0.6875`
 
 ```python
-mini_gts = [np.array([[0, 0, 10, 10], [20, 20, 30, 30]], float), np.array([[0, 0, 10, 10]], float)]
-mini_dets = [np.array([[0, 0, 10, 10, 0.9], [1, 1, 10, 10, 0.8], [50, 50, 60, 60, 0.7]]), np.array([[0, 0, 9, 10, 0.6]])]
-print(match_detections(mini_dets, mini_gts))
+def match_detections(dets, gts, iou_thr=0.5):
+    recs = [(row[4], i, row[:4]) for i, d in enumerate(dets) for row in np.asarray(d, float).reshape(-1, 5)]
+    recs.sort(key=lambda t: -t[0])                       # 모든 이미지의 탐지를 점수 순으로
+    used = [np.zeros(len(g), bool) for g in gts]
+    scores, tp = [], []
+    for s, i, b in recs:
+        ok = 0
+        if len(gts[i]):
+            o = iou(b, gts[i]); j = int(o.argmax())
+            if o[j] >= iou_thr and not used[i][j]:
+                used[i][j] = True; ok = 1
+        scores.append(s); tp.append(ok)
+    return np.array(scores), np.array(tp), sum(len(g) for g in gts)
 ```
-- **무엇을 하나**: 두 이미지의 탐지를 점수 순으로 판정한다. 0.8 박스는 정답을 이미 0.9 가 차지해서 **중복 FP**.
+- **무엇을 하나**: 탐지를 점수 순으로 보며, 가장 많이 겹친 정답이 IoU ≥ 기준이고 **아직 안 쓰였으면** TP. `used` 가 중복을 FP 로 만든다.
 - **어떤 개념**: 개념 1.
-- **출력**: 점수 `[0.9 0.8 0.7 0.6]` · tp `[1 0 0 1]` · 정답 수 `3` → AP 0.5 (직접 실행해 확인)
+- **출력**: 작은 예 → `scores [0.9 0.8 0.7 0.6]`, `tp [1 0 0 1]`, 정답 3 · `evaluate_ap` 로 완벽한 탐지기 AP50 1.0 · mAP50-95 1.0, 10% 밀린 탐지기 AP50 **1.0** · mAP50-95 **0.7**
 
 #### 한 번에 정리
-- TP = IoU ≥ 기준 + 정답에 처음 매칭, 중복은 FP, 못 찾은 정답은 FN.
+- TP = IoU ≥ 기준 + 처음 매칭, 중복은 FP, 못 찾은 정답은 FN.
 - AP = 점수 순 누적 P · R 곡선의 envelope 아래 넓이 (손 계산 0.6875).
-- AP50 = 찾았나, mAP50-95 = 위치까지 정확한가.
-- ⚠ 한 정답을 박스 여러 개가 맞히면 첫 번째만 TP.
+- AP50 = 찾았나, mAP50-95 = 위치까지 정확한가 (10% 밀린 박스: 1.0 vs 0.7).
+- ⚠ 한 사람을 박스 2개가 맞혀도 TP 는 하나 — NMS 를 안 하면 FP 가 쌓여 AP 가 떨어진다.
 
 **연관 문제**
 <<QA 4>>
@@ -583,25 +650,40 @@ def run_tv(model, img, score_thr=0.5):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-3 · 4교시에서 박스를 비교하고 평가하는 법은 만들었다. 그런데 **박스는 누가 만드나?** 좌표 4개를 처음부터 맞히기는 어렵다. 이 교시는 기준 박스(anchor)로 문제를 쉽게 만든 뒤, 그 위에 두 가지 설계(2-stage · 1-stage)가 어떻게 다른지, torchvision 사전학습 탐지기로 비교한다.
+탐지기는 박스 좌표를 맨손으로 맞히기 어렵다. 그래서 대부분의 탐지기는 "기준 박스" 를 깔아 두고 거기서 얼마나 바꿀지를 배운다(**anchor**). 이 교시는 anchor 를 직접 만들어 보고, 대표적인 두 방식 — 후보를 먼저 뽑는 **2-stage**(Faster R-CNN) 와 한 번에 예측하는 **1-stage**(SSD) — 를 같은 backbone 으로 비교한다.
 
-#### 개념 1 · Anchor — 미리 깔아 둔 기준 박스
-특징맵의 각 위치에 크기 · 비율이 다른 anchor 를 9개 깔고, 모델은 anchor 마다 "물체가 있나(분류)" 와 "얼마나 옮기고 늘리나(회귀)" 를 예측한다.
+#### 개념 1 · anchor — 미리 깔아 둔 기준 박스
+특징맵의 **모든 위치**에 크기 · 모양이 다른 기준 박스를 깔고, 모델은 anchor 마다 ① 물체가 있나?(점수, 분류) ② 얼마나 옮기고 늘리나?(dx, dy, dw, dh, 회귀) 를 예측한다. 학습할 때는 정답과 IoU 가 큰 anchor 가 그 정답을 맡는다.
 
-| 기호 | 뜻 |
+![anchor — 칸마다 크기 3 × 비율 3 = 9개, 559×536 사진이면 10,710개](assets/fig/vb/d4-anchor.svg)
+
+| 설정 | 값 |
 |---|---|
-| fh × fw | 특징맵 높이 × 폭 (stride 16 → 이미지 ÷ 16 올림) |
-| sizes (64, 128, 256) | anchor 크기(넓이 s²) |
-| ratios (0.5, 1, 2) | 높이 ÷ 폭 |
+| 크기 (넓이 유지) | 64 · 128 · 256 |
+| 비율 h/w | 0.5 · 1 · 2 → w = s/√r, h = s·√r |
+| 559×536, stride 16 | 34 × 35 = 1,190 칸 × 9 = **10,710개** |
 
-예: 559×536 → fh = 34, fw = 35 → 1,190 × 9 = **10,710 anchor**. 크기 64 · 비율 0.5 → 폭 90.5 × 높이 45.3.
+정답 두 사람의 최고 IoU anchor 는 0.54 · 0.553 — anchor 가 그대로 맞지는 않고, **회귀**로 정답에 맞춘다.
 
 #### 개념 2 · 2-stage vs 1-stage
-| | Faster R-CNN (2-stage) | SSD / SSDLite (1-stage) |
+| | Faster R-CNN (2-stage, 2015) | SSD / SSDLite (1-stage, 2016~) |
 |---|---|---|
-| 1단계 | RPN: anchor 별 물체 유무 + 보정 → 후보 | 여러 해상도 특징맵에서 클래스 + 박스 한 번에 |
-| 2단계 | RoI Align 7×7 → 재분류 + 보정 | 없음 → NMS |
+| 1단계 | RPN 이 anchor 마다 "물체 있음?" + 박스 보정 → 후보(proposal) 수백~수천 | 여러 해상도 특징맵에서 anchor 마다 클래스 + 박스를 한 번에 |
+| 2단계 | 후보 영역을 RoI Align 으로 7×7 로 잘라 다시 분류 + 박스 보정 | 없음 → NMS |
 | 장단점 | 정확, 느림 | 빠름, 작은 물체에 약함 |
+
+torchvision 의 COCO 사전학습 탐지기 (같은 MobileNetV3-Large backbone):
+
+| 모델 | 방식 | 파라미터 | GFLOPS | COCO mAP |
+|---|---|---|---|---|
+| Faster R-CNN ResNet-50 FPN (참고) | 2-stage | 41,755,286 | 134.38 | 37.0 |
+| Faster R-CNN MobileNetV3-Large FPN | 2-stage | 19,386,354 | 4.49 | 32.8 |
+| SSDLite320 MobileNetV3-Large | 1-stage | 3,440,060 | 0.58 | 21.3 |
+
+#### 개념 3 · torchvision 탐지기 사용법
+- 입력: **0~1 float 텐서의 리스트** (정규화 · 크기 조정은 모델 안에서).
+- 출력: 이미지마다 `{"boxes": (N, 4) xyxy, "labels": (N,), "scores": (N,)}`.
+- COCO 라벨 **1 = person** (0 은 background) — YOLO 는 person 이 0 이라 다르다.
 
 #### 코드로 확인
 ```python
@@ -617,24 +699,27 @@ def make_anchors(fh, fw, stride, sizes=(64, 128, 256), ratios=(0.5, 1.0, 2.0)):
     centers = np.stack([cxx, cyy, cxx, cyy], -1).reshape(-1, 1, 4)
     return (centers + base[None]).reshape(-1, 4)
 ```
-- **무엇을 하나**: 기준 박스 9개를 모든 칸의 중심에 옮겨 `(칸 수 × 9, 4)` 로 만든다.
+- **무엇을 하나**: 중심 (0, 0) 기준 anchor 9개를 만들고, 특징맵 칸 중심마다 더해 모든 anchor 를 만든다.
 - **어떤 개념**: 개념 1.
-- **출력**: 559×536 · stride 16 → 34 × 35 × 9 = `10,710` (직접 계산)
+- **출력**: `특징맵 34×35 = 1190 위치 × 9 = 10,710 anchor | 정답별 최고 IoU anchor: [0.54 0.553]`
 
 ```python
-frcnn = detection.fasterrcnn_mobilenet_v3_large_fpn(weights="DEFAULT").eval().to(device)
-ssd = detection.ssdlite320_mobilenet_v3_large(weights="DEFAULT").eval().to(device)
-bx, sc = run_tv(frcnn, img_b)          # person(label 1) 만 · score ≥ 0.5
+def run_tv(model, img, score_thr=0.5):
+    x = torch.from_numpy(img).permute(2, 0, 1).float().div(255).to(device)
+    with torch.no_grad():
+        out = model([x])[0]                                # 이미지 리스트 → 결과 dict 리스트
+    m = (out["labels"] == 1) & (out["scores"] >= score_thr)
+    return out["boxes"][m].cpu().numpy(), out["scores"][m].cpu().numpy()
 ```
-- **무엇을 하나**: 같은 backbone 의 두 탐지기를 불러와 사람 박스를 얻는다.
-- **어떤 개념**: 개념 2.
-- **출력**: 파라미터 `19,386,354` vs `3,440,060` (강의 표 값)
+- **무엇을 하나**: 이미지 한 장을 리스트로 넣고, 사람(label 1)이면서 점수가 기준 이상인 박스만 꺼낸다.
+- **어떤 개념**: 개념 3.
+- **출력**: 사람이 가장 많은 사진(정답 8명)에서 두 탐지기의 박스 수 · ms 비교 — 평가는 `evaluate_ap`(conf 0.05)로 AP50 · mAP50-95 · ms/장
 
 #### 한 번에 정리
 - anchor = 위치마다 깔아 둔 기준 박스, 모델은 점수 + 오프셋을 예측.
-- 2-stage (RPN → RoI Align → 재분류): 정확 · 느림, 1-stage (한 번에): 빠름 · 작은 물체 약함.
+- 2-stage (RPN → RoI Align → 재분류): 정확 · 느림 / 1-stage (한 번에): 빠름 · 작은 물체 약함.
 - torchvision 탐지기: 입력 0~1 텐서 리스트, 출력 dict (boxes xyxy · labels · scores), person = 1.
-- ⚠ label 0 은 background 다 — person 은 1.
+- ⚠ 같은 backbone 이어도 방식에 따라 파라미터 · 연산량 · 정확도가 크게 다르다 (19.4M · 4.49 GFLOPS vs 3.4M · 0.58).
 
 **연관 문제**
 <<QA 5>>
@@ -712,41 +797,51 @@ print(r.speed)                  # {'preprocess': ..., 'inference': ..., 'postpro
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-5교시의 anchor 방식은 anchor 설계와 후보 처리가 복잡하다. YOLO 는 한 번에 칸마다 박스와 클래스를 예측한다. 라이브러리 `predict()` 는 편하지만 안이 보이지 않는다. 이 교시는 YOLOv8 의 구조를 보고, 원시 출력 `(1, 84, 8400)` 을 직접 열어 후처리를 만들어 본다.
+오늘 이후 과목(OT · YOLOv8 Edge)의 주인공은 **YOLO** 다. 라이브러리의 `predict()` 한 줄은 전처리 · 추론 · 후처리를 모두 숨긴다. 그런데 Day 5 · OT 과목에서 쓸 ONNX · TensorRT 모델은 **후처리 없이 원시 출력만** 낸다. 이 교시는 YOLO 의 구조와 출력 텐서를 이해하고, 전처리(letterbox)와 후처리(디코드 · NMS)를 직접 해서 라이브러리 결과와 똑같이 만든다.
 
-#### 개념 1 · YOLOv8 구조 — Backbone · Neck · Head
-![YOLOv8 구조](assets/fig/vb/d4-yolo.svg)
+#### 개념 1 · YOLOv8 구조 — grid 로 한 번에
+YOLO(You Only Look Once)는 이미지를 grid 로 나누고 칸마다 박스와 클래스를 한 번에 예측하는 1-stage 탐지기다.
 
-| 부분 | 하는 일 | 구조 |
+![YOLOv8 구조 — stride 8 · 16 · 32 세 크기의 칸에서 예측, 640 입력이면 8,400칸](assets/fig/vb/d4-yolo.svg)
+
+| 부분 | 하는 일 | YOLOv8 |
 |---|---|---|
-| Backbone | 특징 추출 (Day 2 · 3 의 CNN 역할) | CSP Conv 블록 |
-| Neck | 깊은 층(의미)과 얕은 층(위치) 섞기 | FPN(위→아래) + PAN(아래→위) |
-| Head | stride 8 · 16 · 32 에서 박스 / 클래스 분리 예측 | decoupled · anchor-free |
+| Backbone | 특징 추출 (Day 2 · 3 의 CNN 역할) | CSP 구조 Conv 블록 |
+| Neck | 깊은 층(의미)과 얕은 층(위치) 정보 섞기 | FPN (위→아래) + PAN (아래→위) |
+| Head | stride 8 · 16 · 32 세 크기에서 예측 | 박스 / 클래스 분리(decoupled), **anchor-free** |
 
-각 칸은 "칸 중심에서 박스 네 변까지 거리" 와 "80 클래스 점수" 를 낸다.
+YOLOv8 의 각 칸은 "칸 중심에서 박스 네 변까지 거리" 와 "80 클래스 점수(sigmoid)" 를 낸다 — objectness 점수가 따로 없고 클래스 점수 최댓값이 곧 conf 다. 버전 흐름: v1 (2016, grid) → v2 · v3 (anchor · 다중 스케일) → v4 · v5 (CSP · 증강) → v8 (2023, anchor-free). 커스텀 학습은 YOLOv8 Edge 과목에서 한다.
 
-#### 개념 2 · letterbox 와 디코드
-입력은 정사각형(640×640)이어야 하므로 비율을 유지한 채 줄이고 회색으로 채운다. 출력 `(1, 84, 8400)` 에서 `[:4]` 는 박스, `[4:]` 는 클래스 점수. 디코드 후에는 원본 좌표 = `(letterbox 좌표 − (padl, padt)) / r`.
+| 입력 | 칸 수 | 출력 |
+|---|---|---|
+| 640 | 80² + 40² + 20² = 8,400 | (1, 84, 8400) — 박스 4 + 클래스 80 |
+| 320 | 2,100 | 예측 · 연산 약 1/4 (MAC ∝ 해상도²) |
 
-| 단계 | 하는 일 |
-|---|---|
-| 1 | letterbox → RGB · 0~1 → `(1, 3, 640, 640)` |
-| 2 | 모델 통과 → `(1, 84, 8400)` |
-| 3 | 전치 `(8400, 84)`, 클래스 최댓값 = conf, `conf > 0.25` · person |
-| 4 | cxcywh → xyxy |
-| 5 | NMS (iou 0.7) |
-| 6 | 패딩 빼고 ÷ r → 원본 좌표 |
+#### 개념 2 · letterbox — 비율을 지켜 640×640 으로
+![letterbox — 559×536 을 r = 1.1449 로 키워 640×614, 위 · 아래 13 px 회색 패딩](assets/fig/vb/d4-letterbox.svg)
+
+> r = min(640 / h, 640 / w), 새 크기 (round(w·r), round(h·r)), 남는 곳은 회색(114)으로
+
+그다음 BGR→RGB, 0~1, `(1, 3, 640, 640)`. 결과 박스는 letterbox 좌표라서 원본으로 돌릴 때 **패딩을 빼고 r 로 나눈다**.
+
+#### 개념 3 · 원시 출력 디코드
+`(1, 84, 8400)` → 전치 `(8400, 84)` → 앞 4 = 박스(cx, cy, w, h, 픽셀), 뒤 80 = 클래스 점수 → 클래스별 최댓값 = conf → conf 필터 + 사람(클래스 0)만 → cxcywh → xyxy → NMS(IoU 0.7) → 패딩 빼고 ÷ r.
 
 #### 코드로 확인
 ```python
-def n_preds(imgsz, strides=(8, 16, 32)):
-    return sum((imgsz // s) ** 2 for s in strides)
-
-print("640 →", n_preds(640), "| 320 →", n_preds(320))
+def letterbox(img, size=640, color=114):
+    h, w = img.shape[:2]
+    r = min(size / h, size / w)
+    nw, nh = round(w * r), round(h * r)
+    resized = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)     # cv2 는 (폭, 높이)
+    top, left = (size - nh) // 2, (size - nw) // 2
+    out = np.full((size, size, 3), color, dtype=np.uint8)
+    out[top:top + nh, left:left + nw] = resized
+    return out, r, (left, top)
 ```
-- **무엇을 하나**: 입력 크기별 예측 칸 수를 센다.
-- **어떤 개념**: 개념 1.
-- **출력**: `640 → 8400 | 320 → 2100` (직접 실행해 확인)
+- **무엇을 하나**: 비율을 유지해 줄인(키운) 사진을 회색 640×640 가운데에 붙이고, 되돌릴 때 쓸 r 과 패딩을 함께 돌려준다.
+- **어떤 개념**: 개념 2.
+- **출력**: 559×536 → `r=1.1449 pad=(0, 13)` · 원시 출력 shape `(1, 84, 8400)`
 
 ```python
 def decode_yolo(out, conf_thr=0.25, iou_thr=0.7, cls=0):
@@ -759,15 +854,15 @@ def decode_yolo(out, conf_thr=0.25, iou_thr=0.7, cls=0):
     keep = nms(boxes, conf[m], iou_thr)
     return boxes[keep], conf[m][keep]
 ```
-- **무엇을 하나**: 원시 출력에서 사람 박스만 골라 NMS 까지 마친다 (직접 만든 `nms` 재사용).
-- **어떤 개념**: 개념 2.
-- **출력**: ultralytics 결과와 같은 사람 수 · 짝 IoU 최소값 거의 1 (강의 실행 결과 — 직접 실행 필요)
+- **무엇을 하나**: 원시 출력을 전치해 클래스 최댓값으로 conf 를 구하고, 사람만 남겨 xyxy 로 바꾼 뒤 3교시의 `nms` 를 적용한다.
+- **어떤 개념**: 개념 3.
+- **출력**: `직접 디코드 8명 | ultralytics 8명 | 짝 IoU 최소 1.0000` — 라이브러리 결과와 똑같다
 
 #### 한 번에 정리
-- YOLOv8 = Backbone (CSP) → Neck (FPN+PAN) → Head (stride 8 · 16 · 32, anchor-free).
-- 640 입력 → 8,400 칸, 출력 `(1, 84, 8400)` = 박스 4 + 클래스 80.
-- 디코드: letterbox → 추론 → 전치 · 최댓값 · conf 필터 → xyxy → NMS → 패딩 빼고 ÷ r.
-- ⚠ 원시 출력의 박스는 letterbox 좌표 — 원본으로 되돌리는 것을 잊지 않는다.
+- YOLOv8 = Backbone (CSP) → Neck (FPN + PAN) → Head (stride 8 · 16 · 32, anchor-free).
+- 640 입력 → 8,400칸, 출력 (1, 84, 8400) = 박스 4 + 클래스 80.
+- letterbox → 추론 → 전치 · 최댓값 · conf 필터 → xyxy → NMS → 패딩 빼고 ÷ r.
+- ⚠ YOLO 의 person 은 0, torchvision COCO 의 person 은 1.
 
 **연관 문제**
 <<QA 6>>
@@ -816,6 +911,7 @@ def decode_yolo(out, conf_thr=0.25, iou_thr=0.7, cls=0):
 - **예** → 10 FPS = 100 ms, 30 FPS = 33.3 ms
 - **판정** → 단계별 ms 합 ≤ 1000 / FPS → 실시간, 아니면 프레임을 놓친다
 - **병목** → 단계별 시간을 재서 가장 큰 것(보통 추론)부터 줄인다 — 작은 모델 · 작은 입력 해상도
+- **CPU 실측** → YOLOv8n 640: 읽기 3.7 · 전처리 4.0 · 추론 **190.3** · 후처리 4.2 · 그리기 6.2 = 208.4 ms → **4.8 FPS** (10 FPS 영상에 못 미침, 강의 실행 예)
 - ⚠ 추론만 빨라도 읽기 · 그리기 · 저장이 느리면 합계가 예산을 넘는다
 
 **기본 사용형태**
@@ -836,23 +932,30 @@ writer = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-6교시까지는 사진 한 장이었다. 현장에서는 영상이 들어온다. 이 교시는 Day 1 의 영상 파이프라인에 탐지를 끼워 프레임별 인원 수를 세고, 단계별 시간을 재서 **실시간이 되는지** 확인한다.
+사진 한 장 탐지를 영상으로 넓힌다. Day 1 의 영상 루프(읽기 → 처리 → 쓰기)에 탐지를 끼우면 된다. 질문은 두 가지 — 장치로 옮길 때 코드를 거의 안 고치려면 어떻게 짜야 하나? 그리고 이 파이프라인은 **실시간**인가, 아니면 어디가 느린가?
 
-#### 개념 1 · 영상 파이프라인 — 한 곳에서 열고 한 프레임씩
-```
-VideoCapture(source) → 프레임 → letterbox → 추론 → NMS → 박스 · 인원 수 그리기 → VideoWriter
-```
-`source` 는 함수 인자로 받는다 — 파일 `people.mp4` 든 카메라 주소든 같은 코드가 돈다.
+#### 개념 1 · 영상 탐지 파이프라인
+> VideoCapture(source) → 프레임 → 전처리(letterbox) → 추론 → 후처리(NMS) → 오버레이(박스 · 인원 수) → VideoWriter
 
-#### 개념 2 · 실시간 예산과 병목
-| FPS | 프레임당 예산 |
-|---|---|
-| 10 | 100 ms |
-| 30 | 33.3 ms |
+**규칙**: 영상은 `cv2.VideoCapture(source)` **한 곳에서만** 열고 source 를 인자로 받는다. 나중에 파일 경로를 카메라 주소(GStreamer 문자열)로 바꾸기만 하면 Jetson · 라즈베리파이에서 그대로 돈다. ultralytics 는 `r.speed` 에 전처리 · 추론 · 후처리 ms 를 주고, 읽기 · 그리기 + 저장은 직접 잰다.
 
-단계별 시간(읽기 · 전처리 · 추론 · 후처리 · 그리기 + 쓰기)의 **합** 이 예산 이하여야 한다. 가장 큰 단계가 병목.
+#### 개념 2 · 실시간 예산
+> 영상이 N FPS 면 프레임당 1000 / N ms 안에 모든 단계가 끝나야 실시간 — 10 FPS = 100 ms, 30 FPS = 33 ms
+
+![프레임 하나의 단계별 시간 — 추론이 91% 를 차지해 4.8 FPS](assets/fig/vb/d4-pipeline.svg)
+
+강의 실행 예 (YOLOv8n · 640 · CPU, 795 프레임 영상): 프레임당 읽기 3.7 · 전처리 4.0 · **추론 190.3** · 후처리 4.2 · 그리기 + 저장 6.2 = 208.4 ms → 4.8 FPS, 10 FPS 영상의 실시간이 아니다. 인원은 최대 12 · 평균 6.05명. 병목은 거의 언제나 **추론**이다 → 작은 입력(320) · 작은 모델 · GPU · TensorRT 로 줄인다. 브라우저에서 결과 영상을 보려면 ffmpeg 로 H.264 로 바꾼다.
 
 #### 코드로 확인
+```python
+def detect_people(frame, model, imgsz=640, conf=0.25):
+    r = model.predict(frame, imgsz=imgsz, conf=conf, classes=[0], verbose=False)[0]
+    return r.boxes.xyxy.cpu().numpy(), r.boxes.conf.cpu().numpy(), r.speed
+```
+- **무엇을 하나**: 프레임 한 장에서 사람 박스 · 점수와 단계별 시간(ms)을 꺼낸다.
+- **어떤 개념**: 개념 1.
+- **출력**: 200번째 프레임 → **7명** · `{'preprocess': …, 'inference': …, 'postprocess': …}` (첫 호출은 준비 시간이 섞여 느리다)
+
 ```python
 def realtime_report(times, label, video_fps=V_FPS):
     total = sum(times.values())
@@ -860,25 +963,15 @@ def realtime_report(times, label, video_fps=V_FPS):
           + ("  ✔ 실시간" if total <= 1000 / video_fps else "  ✘ 실시간 아님") + f" (영상 {video_fps:.0f} FPS 기준)")
     return 1000 / total
 ```
-- **무엇을 하나**: 단계별 평균 ms 를 합쳐 FPS 를 계산하고 영상 FPS 예산과 비교한다.
+- **무엇을 하나**: `process_video` 가 모은 단계별 평균 ms 를 더해 FPS 로 바꾸고, 영상 FPS 예산과 비교한다.
 - **어떤 개념**: 개념 2.
-- **출력**: 합계 100 ms → `10.0 FPS`, 33.3 ms 예산이면 ✘ (식으로 확인, 실제 ms 는 장치마다 다름)
-
-```python
-cap = cv2.VideoCapture(source)
-fps = cap.get(cv2.CAP_PROP_FPS)
-W, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-writer = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
-```
-- **무엇을 하나**: 영상을 열어 FPS · 크기를 읽고 같은 크기 · FPS 로 결과 영상을 저장할 준비를 한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `(W, H)` 는 `(폭, 높이)` 순서 — `cv2.VideoWriter` 도 `cv2.resize` 처럼 (폭, 높이)
+- **출력**: `[cpu] read 3.7 · preprocess 4.0 · inference 190.3 · postprocess 4.2 · draw+write 6.2 = 208.4 ms → 4.8 FPS ✘ 실시간 아님 (영상 10 FPS 기준)` (강의 실행 예)
 
 #### 한 번에 정리
-- 파이프라인: `VideoCapture(source)` → 전처리 → 추론 → 후처리 → 오버레이 → `VideoWriter`, `source` 는 인자 하나로.
-- 실시간 예산 = 1000 / FPS ms, 단계별 시간 합이 예산 이하여야 한다.
-- 병목(보통 추론)을 찾아 작은 모델 · 해상도로 줄인다.
-- ⚠ 브라우저 재생은 H.264 — `mp4v` 결과는 ffmpeg 으로 변환해야 보인다.
+- VideoCapture(source) → 전처리 → 추론 → 후처리 → 오버레이 → VideoWriter, source 는 인자 하나로.
+- 실시간 예산 = 1000 / FPS ms.
+- 단계별 시간을 재서 병목(보통 추론)부터 줄인다.
+- ⚠ 추론만 빨라도 읽기 · 그리기 · 저장이 예산을 넘을 수 있다 — 합계로 판단.
 
 **연관 문제**
 <<QA 7>>
@@ -953,50 +1046,67 @@ best_conf = float(CONFS[np.argmax(F1_c)])
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-오늘 배운 것을 하나로 묶는다. "정확도가 높은 탐지기" 와 "현장에 넣을 탐지기" 는 다르다. 이 교시는 직접 만든 평가 코드로 탐지기 2종 · 해상도 2종을 같은 기준으로 비교하고, 현장용 conf 하나를 고르고, 영상에 적용해 결과를 CSV 로 남긴다.
+현장에 넣을 "사람 세기" 탐지기를 고른다. 오늘 만든 평가 코드로 정확도(AP)를 재고, 속도는 CPU 에서 재고, 운영할 conf 기준 **하나**를 정한 뒤 영상에 적용한다. 정확도 · 속도 · threshold 를 숫자로 근거를 대는 것이 목표다.
 
-#### 개념 1 · 평가 — 모든 conf 에서의 성능 = AP
-`predict_dataset` 가 conf 0.001 로 낮게 모든 후보를 남기면, `evaluate_ap` 가 PR 곡선 전체를 쓴다.
+#### 개념 1 · 직접 만든 평가 코드로 비교
+`predict_dataset(model, imgsz)` 가 170장을 예측해 이미지마다 `(K, 5)` [x1, y1, x2, y2, score] 배열을 모으면, 4교시의 `evaluate_ap` · `map_50_95` 를 그대로 쓴다. **AP 를 잴 때는 conf 를 아주 낮게(0.001)** 해서 PR 곡선 전체를 얻는다 — 높게 두면 곡선의 오른쪽(낮은 점수 구간)이 잘려 AP 가 작게 나온다.
 
-| 조합 | 보는 지표 |
-|---|---|
-| YOLOv8n · 640 / 320 | AP50 · mAP50-95 · CPU ms |
-| YOLOv8s · 640 / 320 | 같음 |
+| 과제 | 내용 | 배점 |
+|---|---|---|
+| 1 | YOLOv8n · YOLOv8s 를 640 · conf 0.001 로 평가 | 20 |
+| 2 | 해상도 320 / 640 × 모델 2종 → AP50 · mAP50-95 · CPU ms 표 | 20 |
+| 3 | conf 0.10~0.90 의 P · R · F1 → 운영 threshold | 20 |
+| 4 | 고른 threshold 로 영상 인원 카운트 + 프레임별 CSV | 20 |
+| 5 | 결과 해석 (강사) | 20 |
 
-#### 개념 2 · 운영 conf — F1 로 고르기
-AP 는 요약이고, 현장은 conf 하나다. conf 가 높아지면 FP 가 줄어 Precision ↑, 놓치는 사람이 늘어 Recall ↓. F1 이 두 값의 균형점.
+강사 사전 실행 예 (CPU): YOLOv8n 640 → AP50 **0.9692** · mAP50-95 **0.8357**.
 
-| 목적 | 방향 |
-|---|---|
-| 출입 인원 세기 | F1 최대 근처 |
-| 위험구역 침입 감지 | 놓치면 안 됨 → conf 낮춤 (오경보 감수) |
+#### 개념 2 · 운영 threshold — F1 이 가장 큰 conf
+AP 는 모든 threshold 의 요약이지만, 현장은 **threshold 하나**로 돈다. conf 마다 그 이상인 탐지만 남겨 P · R 을 구하고
+
+> F1 = 2PR / (P + R) — P 와 R 의 조화평균, 한쪽이 낮으면 크게 떨어진다 (P 0.9 · R 0.8 → 0.8471)
+
+F1 이 가장 큰 conf 를 기본값으로 고른 뒤 **목적**에 맞게 조정한다: 출입 인원 세기는 F1 근처, 위험구역 침입 감지는 놓치면 안 되므로 conf 를 **낮춘다**(오경보를 감수).
+
+#### 개념 3 · 해석할 때 볼 것
+- **해상도**: Penn-Fudan 은 사람이 크게 찍혀 있다(1교시) → 320 에서도 AP50 이 크게 안 떨어질 수 있다. 위치 정밀도는 mAP50-95 차이에서 더 크게 드러난다.
+- **Precision 이 1 이 아닌 이유**: 작거나 가려진 사람 일부는 정답 박스가 없다(2교시) → 모델이 그들을 찾으면 FP 로 센다.
+- **도구의 의미**: ultralytics 의 `model.val` 도 평가를 하지만 COCO 형식 데이터 · YAML 이 필요하고 계산이 안 보인다. 오늘 만든 `iou_nms_map.py` 는 torchvision · YOLO · ONNX · TensorRT 어떤 결과에도 쓸 수 있어, 다음 과목에서 변환 · 양자화 전후로 정확도가 떨어졌는지 재는 도구가 된다.
 
 #### 코드로 확인
 ```python
+def predict_dataset(model, imgsz=640, conf=0.001):
+    dets = []
+    for p in img_paths:
+        r = model.predict(p, imgsz=imgsz, conf=conf, classes=[0], verbose=False)[0]
+        dets.append(np.concatenate([r.boxes.xyxy.cpu().numpy(), r.boxes.conf.cpu().numpy()[:, None]], 1))
+    return dets
+
 for name, m in yolos.items():
     dets = predict_dataset(m, 640)
     res[(name, 640)] = {"dets": dets, "AP50": evaluate_ap(dets, gts, 0.5), "mAP": map_50_95(dets, gts)}
 ```
-- **무엇을 하나**: 모델마다 170장을 예측하고 직접 만든 함수로 AP50 · mAP50-95 를 구한다.
+- **무엇을 하나**: 두 모델로 170장을 conf 0.001 에서 예측하고, 직접 만든 평가 함수로 AP50 · mAP50-95 를 구한다.
 - **어떤 개념**: 개념 1.
-- **출력**: YOLOv8n 640 AP50 `0.9692` · mAP50-95 `0.8357` (강사 사전 실행 예)
+- **출력**: YOLOv8n 640 AP50 **0.9692** · mAP50-95 **0.8357** (강사 사전 실행 예)
 
 ```python
-counts_p, times_p = process_video(VIDEO, "count_result.mp4", yolo_n, imgsz=640, conf=best_conf)
-with open("people_count.csv", "w") as f:
-    f.write("frame,time_s,count\n")
-    for i, c in enumerate(counts_p):
-        f.write(f"{i},{i / V_FPS:.1f},{c}\n")
+for c in CONFS:                                          # 0.10, 0.15, …, 0.90
+    kept = [d[d[:, 4] >= c] for d in dets_n]
+    _, tp, n_gt = match_detections(kept, gts, 0.5)
+    P = tp.sum() / max(len(tp), 1); Rc = tp.sum() / n_gt
+    P_c.append(P); R_c.append(Rc); F1_c.append(2 * P * Rc / max(P + Rc, 1e-12))
+best_conf = float(CONFS[np.argmax(F1_c)])
 ```
-- **무엇을 하나**: 고른 `best_conf` 로 영상 전체의 인원을 세고 프레임별 CSV 를 쓴다 (열: `frame, time_s, count`).
-- **어떤 개념**: 개념 2.
-- **출력**: CSV 줄 수 = 프레임 수 + 1 (머리글)
+- **무엇을 하나**: conf 기준마다 남은 탐지로 P · R · F1 을 구해 F1 이 가장 큰 conf 를 고른다.
+- **어떤 개념**: 개념 2 — conf 가 높아질수록 R 은 줄고 P 는 대체로 는다.
+- **출력**: conf 별 P · R · F1 곡선과 `best_conf` — 이 값으로 영상을 처리해 `count_result.mp4` · `people_count.csv` (frame, time_s, count) 저장
 
 #### 한 번에 정리
-- 평가 코드를 직접 가지면 어떤 탐지기든 같은 기준으로 비교.
-- AP50 이 같아도 mAP50-95 · 속도가 다르다. 데이터의 물체 크기에 맞는 해상도를 고른다.
-- 운영 threshold 는 F1 과 현장 목적(놓침 vs 오경보)으로 정한다.
-- ⚠ 평가용 conf(0.001)와 운영용 conf 를 섞지 않는다.
+- 평가는 conf 0.001 로 PR 곡선 전체 → evaluate_ap · map_50_95.
+- 비교표 = 모델 2 × 해상도 2 의 AP50 · mAP50-95 · CPU ms.
+- 운영 threshold 는 F1 최대에서 출발해 목적(놓치면 안 되나?)에 맞게 조정.
+- ⚠ 장치에 올릴 조합은 그 장치에서 직접 재서 고른다.
 
 **연관 문제**
 <<QA 8>>

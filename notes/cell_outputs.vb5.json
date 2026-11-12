@@ -1,0 +1,82 @@
+{
+ "1-1": {
+  "text": "픽셀값: [0 1 2] | 사람 2 명 | 픽셀 수 [11241, 17721]\n마스크 박스 [array([159., 181., 301., 430.]), array([419., 170., 534., 485.])]\n어노테이션 [[160. 182. 302. 431.]\n [420. 171. 535. 486.]]",
+  "check": true
+ },
+ "1-2": {
+  "text": "423명 | 박스 중 사람 픽셀 비율 평균 0.5036 (최소 0.27, 최대 0.78)",
+  "check": true
+ },
+ "1-3": {
+  "text": "서 있음 h/w 평균 2.77 (최소 1.59) | 90° 회전 h/w 평균 0.38\nh/w < 1 인 '서 있는' 사람: 0 명",
+  "check": true
+ },
+ "2-1": {
+  "text": "k=4 s=2 p=1: 공식 16 | 실제 (16, 16)\nk=2 s=2 p=0: 공식 16 | 실제 (16, 16)\nk=3 s=2 p=1: 공식 15 | 실제 (15, 15)\nk=3 s=1 p=1: 공식 8 | 실제 (8, 8)\nbilinear ×2: (16, 16)",
+  "check": true
+ },
+ "2-2": {
+  "text": "(array([0.5   , 0.6667]), 0.5833333333333333)",
+  "check": true
+ },
+ "2-3": {
+  "text": "인스턴스 2개 | 배경 IoU 0.9869 · 사람 IoU 0.8896 · mIoU 0.9383",
+  "check": true
+ },
+ "2-4": {
+  "text": "배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 58 ms/장 (cpu)",
+  "check": true
+ },
+ "3-1": {
+  "text": "사진: (2, 17, 2) | 영상 프레임 200: (0, 17, 2)\n첫 사람 어깨 (5, 6): [     252.92       230.6] [     240.69      229.67] | conf [          1        0.95]",
+  "check": true
+ },
+ "3-2": {
+  "text": "90.0 179.99743765473747\n첫 사람 왼쪽 무릎 각도 179.7° · 오른쪽 177.1°",
+  "check": true
+ },
+ "3-3": {
+  "text": "원본: 기울기 3.3° → 쓰러짐 False\n90° 회전: 기울기 84.2° → 쓰러짐 True",
+  "check": true
+ },
+ "4-1": {
+  "text": "detect   원시 출력 (1, 84, 8400) | 공식 84\nsegment  원시 출력 (1, 116, 8400) | 공식 116\npose     원시 출력 (1, 56, 8400) | 공식 56",
+  "check": true
+ },
+ "4-2": {
+  "text": "cls      ← 제품 사진 한 장의 양품 / 불량 판정\ndet      ← 작업장 출입 인원 세기\ndet      ← 지게차와 사람 사이 거리 경고\nseg      ← 바닥 기름 유출 영역의 넓이 재기\npose     ← 작업자 쓰러짐 감지\ndet+roi  ← 크레인 아래 위험구역에 발을 들였나",
+  "check": true
+ },
+ "5-2": {
+  "text": "입력 [('input', ['batch', 3, 224, 224])] | 출력 (4, 1000) | 최대 차이 1.48e-05",
+  "check": true
+ },
+ "5-3": {
+  "text": "[('images', [1, 3, 640, 640])] [('output0', [1, 84, 8400])]\nONNX 7명 · PyTorch 7명 | 짝 IoU 최소 1.0000",
+  "check": true
+ },
+ "6-1": {
+  "text": "{'mean': 10.126789700007066, 'p50': 10.126492500035056, 'p95': 10.15472484999691, 'fps': 98.74797735745437}",
+  "check": true
+ },
+ "6-2": {
+  "text": "MobileNetV3-S  PyTorch       스레드 1 | 평균     6.5 ms · p95     8.2 ·  154.8 FPS\nMobileNetV3-S  ONNX Runtime  스레드 1 | 평균     2.1 ms · p95     2.2 ·  468.0 FPS\nYOLOv8n        PyTorch       스레드 1 | 평균   119.1 ms · p95   120.9 ·    8.4 FPS\nYOLOv8n        ONNX Runtime  스레드 1 | 평균    81.7 ms · p95    89.9 ·   12.2 FPS\nMobileNetV3-S  PyTorch       스레드 2 | 평균     7.0 ms · p95    10.2 ·  142.2 FPS\nMobileNetV3-S  ONNX Runtime  스레드 2 | 평균     2.0 ms · p95     2.2 ·  500.7 FPS\nYOLOv8n        PyTorch       스레드 2 | 평균    72.5 ms · p95    93.1 ·   13.8 FPS\nYOLOv8n        ONNX Runtime  스레드 2 | 평균    52.1 ms · p95    66.0 ·   19.2 FPS\nMobileNetV3-S  PyTorch       스레드 4 | 평균     6.3 ms · p95     7.9 ·  158.2 FPS\nMobileNetV3-S  ONNX Runtime  스레드 4 | 평균     1.8 ms · p95     2.4 ·  545.5 FPS\nYOLOv8n        PyTorch       스레드 4 | 평균    51.1 ms · p95    84.0 ·   19.6 FPS\nYOLOv8n        ONNX Runtime  스레드 4 | 평균    33.9 ms · p95    40.5 ·   29.5 FPS",
+  "check": true
+ },
+ "6-3": {
+  "text": "model,framework,input,threads,mean,p50,p95,fps,file_MB\nMobileNetV3-S,PyTorch,224,1,6.46,5.92,8.24,154.79,10.29\nMobileNetV3-S,ONNX Runtime,224,1,2.14,2.14,2.21,468.03,10.18\nYOLOv8n,PyTorch,640,1,119.09,117.89,120.91,8.4,6.55\nYOLOv8n,ONNX Runtime,640,1,81.67,80.06,89.89,12.24,12.85\nMobileNetV3-S,PyTorch,224,2,7.03,6.58,10.18,142.19,10.29\nMobileNetV3-S,ONNX Runtime,224,2,2.0,1.94,2.21,500.72,10.18\nYOLOv8n,PyTorch,640,2,72.48,69.59,93.13,13.8,6.55\nYOLOv8n,ONNX Runtime,640,2,52.12,49.33,65.98,19.19,12.85\nMobileNetV3-S,PyTorch,224,4,6.32,6.11,7.94,158.23,10.29\nMobileNetV3-S,ONNX Runtime,224,4,1.83,1.7,2.38,545.54,10.18\nYOLOv8n,PyTorch,640,4,51.06,42.2,84.0,19.58,6.55\nYOLOv8n,ONNX Runtime,640,4,33.86,32.66,40.53,29.53,12.85",
+  "check": true
+ },
+ "7-1": {
+  "text": "(100, 400) 안\n(600, 200) 밖\n(300, 340) 안\n(300, 320) 밖",
+  "check": false
+ },
+ "7-2": {
+  "text": "7 명 | 발 위치 [[        633         368]\n [        502         221]\n [        235         267]] ...",
+  "check": false
+ },
+ "7-4": {
+  "text": "✅ 과제 1  +20\n✅ 과제 2  +20\n❌ 과제 3 FileNotFoundError(2, 'No such file or directory')\n❌ 과제 4 NameError(\"name 'alarm' is not defined\")\n자동 채점 40 / 80  (과제 5 발표 · 해석은 강사 채점 20점)",
+  "check": true
+ }
+}

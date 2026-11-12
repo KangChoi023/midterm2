@@ -1,0 +1,102 @@
+{
+ "1-1": {
+  "text": "예측 7 | 정답 7 | PyTorch 와 같다: True\n✅ 4단계 완료 — ['Conv', 'Flatten', 'Gemm', 'MaxPool', 'Relu']",
+  "check": true
+ },
+ "1-2": {
+  "text": "✅ 노드 7 개 · 가중치 텐서 6 개",
+  "check": true
+ },
+ "2-1": {
+  "text": "input 1 · output 1 · node 7 · initializer 6\n✅ 1교시 예측과 같다",
+  "check": true
+ },
+ "2-2": {
+  "text": "input [1, 1, 28, 28]\nlogits [1, 10]\n✅ input [1, 1, 28, 28] → logits [1, 10]",
+  "check": true
+ },
+ "2-3": {
+  "text": "Conv     데이터: ['input'] | 가중치: ['conv.weight', 'conv.bias']\nRelu     데이터: ['/conv/Conv_output_0'] | 가중치: []\nMaxPool  데이터: ['/Relu_output_0'] | 가중치: []\nFlatten  데이터: ['/pool/MaxPool_output_0'] | 가중치: []\nGemm     데이터: ['/Flatten_output_0'] | 가중치: ['fc1.weight', 'fc1.bias']\nRelu     데이터: ['/fc1/Gemm_output_0'] | 가중치: []\nGemm     데이터: ['/Relu_1_output_0'] | 가중치: ['fc2.weight', 'fc2.bias']\n✅ 모든 노드는 데이터 화살표 1개 + 가중치 0 또는 2개",
+  "check": true
+ },
+ "2-4": {
+  "text": "Conv → Relu → MaxPool → Flatten → Gemm → Relu → Gemm\n✅ 화살표를 따라가도 노드 순서와 같다 — 7 개",
+  "check": true
+ },
+ "3-1": {
+  "text": "conv.weight  (30, 1, 5, 5) float32\nconv.bias    (30,) float32\nfc1.weight   (100, 4320) float32\nfc1.bias     (100,) float32\nfc2.weight   (10, 100) float32\nfc2.bias     (10,) float32\n합계 433,890 | conv.weight 같은가: True\n✅ 433,890 개 = Day 1 의 파라미터 수",
+  "check": true
+ },
+ "3-2": {
+  "text": "Conv     {'dilations': [1, 1], 'group': 1, 'kernel_shape': [5, 5], 'pads': [0, 0, 0, 0], 'strides': [1, 1]}\nRelu     {}\nMaxPool  {'ceil_mode': 0, 'dilations': [1, 1], 'kernel_shape': [2, 2], 'pads': [0, 0, 0, 0], 'strides': [2, 2]}\nFlatten  {'axis': 1}\nGemm     {'alpha': 1.0, 'beta': 1.0, 'transB': 1}\nRelu     {}\nGemm     {'alpha': 1.0, 'beta': 1.0, 'transB': 1}\n✅ Conv 5×5 · MaxPool 2×2 stride 2 — PyTorch 코드 nn.Conv2d(1, 30, 5) · nn.MaxPool2d(2) 와 같다",
+  "check": true
+ },
+ "3-3": {
+  "text": "   op_type  ...                                                        attrs\n0     Conv  ...  {'dilations': [1, 1], 'group': 1, 'kernel_shape': [5, 5]...\n1     Relu  ...                                                           {}\n2  MaxPool  ...  {'ceil_mode': 0, 'dilations': [1, 1], 'kernel_shape': [2...\n3  Flatten  ...                                                  {'axis': 1}\n4     Gemm  ...                     {'alpha': 1.0, 'beta': 1.0, 'transB': 1}\n5     Relu  ...                                                           {}\n6     Gemm  ...                     {'alpha': 1.0, 'beta': 1.0, 'transB': 1}\n[7 rows x 5 columns]\n노드 7 | 가중치 합계 433,890\n✅ describe_onnx 완성 — 8교시와 Day 3 이후에 계속 씁니다",
+  "check": true
+ },
+ "4-1": {
+  "text": "opset 13: 9개 ['Gemm', 'Constant', 'Div', 'Erf', 'Constant', 'Add', 'Mul', 'Constant', 'Mul']\nopset 20: 2개 ['Gemm', 'Gelu']\n✅ 같은 계산 — opset 13 은 Erf 로 풀어 쓰고, opset 20 은 Gelu 한 단어",
+  "check": true
+ },
+ "4-2": {
+  "text": "고친 이름: /conv/Conv_output_0\n✅ checker 통과 · 결과도 원래대로",
+  "check": true
+ },
+ "4-3": {
+  "text": "추론 전 value_info: 0\n추론 후 value_info: 6\n  /conv/Conv_output_0        [1, 30, 24, 24]\n  /Relu_output_0             [1, 30, 24, 24]\n  /pool/MaxPool_output_0     [1, 30, 12, 12]\n  /Flatten_output_0          [1, 4320]\n  /fc1/Gemm_output_0         [1, 100]\n  /Relu_1_output_0           [1, 100]\n✅ Day 1 6교시 그림의 shape (24 → 12 → 4320) 를 코드로 얻었다",
+  "check": true
+ },
+ "5-1": {
+  "text": "입력 ['batch', 1, 28, 28] | 출력 ['batch', 10]\n배치 1 → (1, 10)\n배치 4 → (4, 10)\n배치 8 → (8, 10)\n✅ 첫 축이 숫자 1 대신 이름 'batch' — 2-2 의 dim_param",
+  "check": true
+ },
+ "5-2": {
+  "text": "(100, 1, 28, 28) → 정확도 1.0\n✅ 한 번에 100장 — PyTorch 예측과 100장 모두 같다",
+  "check": true
+ },
+ "5-3": {
+  "text": "입력 shape: ['batch', 1, 'height', 'width']\n[ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Non-zero status code returned while running FusedGemm node. Name:'fused /fc1/Gemm' Status Message: GEMM: Dimension mismatch, W: {100,4320} K: 5880 N:100\n✅ Conv · Pool 은 어떤 크기든 되지만, Flatten 뒤 Gemm 은 정확히 4320 개를 원한다",
+  "check": true
+ },
+ "6-1": {
+  "text": "export 완료 → gate_fix.onnx ['ReduceMean', 'Constant', 'Greater', 'Constant', 'Mul', 'Constant', 'Sub', 'Where']\n✅ 양수 [1,2,3]     최대 차이 0.00e+00\n✅ 음수 [-3,-2,-1]  최대 차이 0.00e+00\n✅ 두 길이 모두 그래프에 — Where 노드",
+  "check": true
+ },
+ "6-2": {
+  "text": "export 완료 → center_fix.onnx ['Constant', 'ReduceMean', 'Sub']\n✅ [5,5,5] (더미)   최대 차이 0.00e+00\n✅ [1,2,3]        최대 차이 0.00e+00\n✅ 평균을 매번 계산하는 ReduceMean 노드",
+  "check": true
+ },
+ "6-3": {
+  "text": "export 완료 → hard_fix.onnx ['Flatten', 'Gemm']\n✅ 배치 1           최대 차이 0.00e+00\n✅ 배치 4           최대 차이 1.49e-08\n✅ 배치 4 → logits (4, 2)",
+  "check": true
+ },
+ "7-1": {
+  "text": "✅ aten::median — aten = PyTorch 내부 연산 이름",
+  "check": true
+ },
+ "7-2": {
+  "text": "export 완료 → median_fix.onnx ['Shape', 'Constant', 'Gather', 'Constant', 'Div', 'Cast', 'Cast', 'Shape', 'Constant', 'Gather', 'TopK', 'Constant', 'Add', 'Constant', 'Constant', 'Unsqueeze', 'Constant', 'Unsqueeze', 'Constant', 'Slice', 'Gemm']\n✅ 배치 1           최대 차이 0.00e+00\n✅ 배치 6 · 튀는 값    최대 차이 2.98e-08\n✅ torch.median 모델과 같은 결과 — TopK 로 정렬",
+  "check": true
+ },
+ "7-3": {
+  "text": "11개 → 4개 : ['Conv', 'Relu', 'Reshape', 'Gemm']\n단순화 전 · 후 최대 차이: 0.0\n✅ 배치 크기 계산 노드가 사라지고 결과는 그대로",
+  "check": true
+ },
+ "8-2": {
+  "text": "고친 모델 (배치 6) vs 의도 (한 장씩) 최대 차이: 1.4901161e-08",
+  "check": false
+ },
+ "8-3": {
+  "text": "export 완료 → brightnet_fixed.onnx ['ReduceMean', 'Constant', 'Less', 'Constant', 'Mul', 'Where', 'ReduceMean', 'Sub', 'Conv', 'Relu', 'MaxPool', 'Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm']\n{'size_kb': 19.5, 'n_nodes': 16, 'ops': ['Constant', 'Conv', 'Flatten', 'Gemm', 'Less', 'MaxPool', 'Mul', 'ReduceMean', 'Relu', 'Sub', 'Where'], 'inputs': [('input', ['batch', 3, 64, 64])], 'outputs': [('logits', ['batch', 3])]}",
+  "check": false
+ },
+ "8-4": {
+  "text": "노드 16 → 14 | 중간 shape 27개 | opset 17\n                 0    1     2      3   ...    10       11       12    13\nop_type  ReduceMean  Mul  Less  Where  ...  Relu  MaxPool  Flatten  Gemm\nparams            0    1     1      0  ...     0        0        0  3075\n[2 rows x 14 columns]",
+  "check": false
+ },
+ "8-5": {
+  "text": "배치 1 최대 차이 9.7e-08 | 배치 8 최대 차이 9.7e-08\n{'butterfly.jpg': 'safe', 'orange.jpg': 'danger', 'baboon.jpg': 'danger', 'butterfly_dark': 'safe', 'orange_dark': 'danger', 'baboon_dark': 'danger'}\n✅ 과제 1  +10\n✅ 과제 2  +30\n✅ 과제 3  +20\n✅ 과제 4  +20 (노드 14개 · 중간 shape 27개)\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)",
+  "check": true
+ }
+}

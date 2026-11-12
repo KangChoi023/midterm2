@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">mIoU 손 계산 — 4×4, 정답 사람 = 왼쪽 2열, 예측 사람 = 왼쪽 3열</text>
+<rect x="30.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="58.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="86.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="114.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="30.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="58.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="86.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="114.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="30.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="58.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="86.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="114.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="30.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="58.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#bfdbfe" stroke="#94a3b8" stroke-width="1"/>
+<rect x="86.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="114.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<text x="86.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">정답 (gt)</text>
+<rect x="180.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="208.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="236.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="264.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="180.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="208.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="236.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="264.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="180.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="208.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="236.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="264.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<rect x="180.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="208.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="236.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#fed7aa" stroke="#94a3b8" stroke-width="1"/>
+<rect x="264.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<text x="236.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">예측 (pred)</text>
+<rect x="330.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="358.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="386.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#fca5a5" stroke="#94a3b8" stroke-width="1"/>
+<rect x="414.0" y="60.0" width="28.0" height="28.0" rx="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+<rect x="330.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="358.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="386.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#fca5a5" stroke="#94a3b8" stroke-width="1"/>
+<rect x="414.0" y="88.0" width="28.0" height="28.0" rx="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+<rect x="330.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="358.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="386.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#fca5a5" stroke="#94a3b8" stroke-width="1"/>
+<rect x="414.0" y="116.0" width="28.0" height="28.0" rx="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+<rect x="330.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="358.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#86efac" stroke="#94a3b8" stroke-width="1"/>
+<rect x="386.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#fca5a5" stroke="#94a3b8" stroke-width="1"/>
+<rect x="414.0" y="144.0" width="28.0" height="28.0" rx="0" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+<text x="386.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">겹쳐 보기</text>
+<text x="30.0" y="200.0" font-size="11.5" fill="#64748b" text-anchor="start">초록 = 둘 다 사람(8) · 빨강 = 예측만 사람(4) · 회색 = 둘 다 배경(4)</text>
+<text x="480.0" y="70.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">사람 IoU = 8 / 12</text>
+<text x="610.0" y="70.0" font-size="13" fill="#0284c7" text-anchor="start" font-weight="700">= 0.6667</text>
+<text x="480.0" y="96.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">배경 IoU = 4 / 8</text>
+<text x="610.0" y="96.0" font-size="13" fill="#0284c7" text-anchor="start" font-weight="700">= 0.5</text>
+<text x="480.0" y="126.0" font-size="14" fill="#dc2626" text-anchor="start" font-weight="700">mIoU = 평균 = 0.5833</text>
+<text x="480.0" y="154.0" font-size="11.5" fill="#64748b" text-anchor="start">교집합 = 둘 다 그 클래스</text>
+<text x="480.0" y="172.0" font-size="11.5" fill="#64748b" text-anchor="start">합집합 = 하나라도 그 클래스</text>
+<text x="350.0" y="232.0" font-size="12" fill="#1e293b" text-anchor="middle">데이터 전체는 장마다 IoU 를 평균하지 말고, 클래스별 교집합 · 합집합 픽셀 수를 누적한 뒤 나눈다</text>
+</svg>

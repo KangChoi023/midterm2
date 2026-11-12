@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">SimpleConvNet 의 ONNX 그래프 — 노드 7개, 가중치 있는 노드 3개 (파라미터 433,890)</text>
+<text x="20.0" y="70.0" font-size="12" fill="#1e293b" text-anchor="start" font-weight="700">input</text>
+<text x="20.0" y="86.0" font-size="10.5" fill="#64748b" text-anchor="start">(1,1,28,28)</text>
+<rect x="92.0" y="52.0" width="76.0" height="50.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="130.0" y="75.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Conv</text>
+<text x="130.0" y="91.0" font-size="10.5" fill="#64748b" text-anchor="middle">30×1×5×5</text>
+<text x="130.0" y="122.0" font-size="10.5" fill="#64748b" text-anchor="middle">(1,30,24,24)</text>
+<line x1="168.0" y1="77.0" x2="176.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="177.0" y="52.0" width="76.0" height="44.0" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="215.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Relu</text>
+<line x1="253.0" y1="77.0" x2="261.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="262.0" y="52.0" width="76.0" height="50.0" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="300.0" y="75.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">MaxPool</text>
+<text x="300.0" y="91.0" font-size="10.5" fill="#64748b" text-anchor="middle">2×2</text>
+<text x="300.0" y="122.0" font-size="10.5" fill="#64748b" text-anchor="middle">(1,30,12,12)</text>
+<line x1="338.0" y1="77.0" x2="346.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="347.0" y="52.0" width="76.0" height="44.0" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="385.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Flatten</text>
+<text x="385.0" y="122.0" font-size="10.5" fill="#64748b" text-anchor="middle">(1,4320)</text>
+<line x1="423.0" y1="77.0" x2="431.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="432.0" y="52.0" width="76.0" height="50.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="470.0" y="75.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Gemm</text>
+<text x="470.0" y="91.0" font-size="10.5" fill="#64748b" text-anchor="middle">100×4320</text>
+<text x="470.0" y="122.0" font-size="10.5" fill="#64748b" text-anchor="middle">(1,100)</text>
+<line x1="508.0" y1="77.0" x2="516.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="517.0" y="52.0" width="76.0" height="44.0" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="555.0" y="79.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Relu</text>
+<line x1="593.0" y1="77.0" x2="601.0" y2="77.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="602.0" y="52.0" width="76.0" height="50.0" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="640.0" y="75.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Gemm</text>
+<text x="640.0" y="91.0" font-size="10.5" fill="#64748b" text-anchor="middle">10×100</text>
+<text x="640.0" y="122.0" font-size="10.5" fill="#64748b" text-anchor="middle">(1,10)</text>
+<text x="20.0" y="158.0" font-size="12" fill="#1e293b" text-anchor="start">파라미터 = Conv 30×25 + 30 = 780 · Gemm 4320×100 + 100 = 432,100 · Gemm 100×10 + 10 = 1,010 → 433,890</text>
+<text x="20.0" y="180.0" font-size="12" fill="#1e293b" text-anchor="start">파일 ≈ 433,890 × 4 B = 1.74 MB — 가중치의 99.6% 가 fc1 (Flatten 뒤 첫 Gemm)</text>
+<text x="20.0" y="206.0" font-size="12" fill="#16a34a" text-anchor="start">전처리: (img.astype(float32) / 255)[None, None] → ORT 와 PyTorch 일치율 1.000 · 정확도 1.000 (100장)</text>
+<text x="20.0" y="228.0" font-size="12" fill="#dc2626" text-anchor="start">/255 를 빼면? 오류 없이 정확도만 조용히 떨어진다 (1.00 → 0.92) — 가장 찾기 어려운 버그</text>
+</svg>

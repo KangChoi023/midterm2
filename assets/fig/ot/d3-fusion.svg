@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 276" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="276" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">최적화 레벨마다 ORT 가 고친 그래프 — mnist_cnn_dyn.onnx (optimized_model_filepath 로 저장)</text>
+<text x="16.0" y="66.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">DISABLE</text>
+<text x="16.0" y="81.0" font-size="11" fill="#0284c7" text-anchor="start">7개</text>
+<rect x="100.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="130.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Conv</text>
+<rect x="165.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="195.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="230.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="260.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="295.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="325.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="360.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="390.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<rect x="425.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="455.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="490.0" y="50.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="520.0" y="70.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<text x="561.0" y="70.0" font-size="10.5" fill="#64748b" text-anchor="start">그대로</text>
+<text x="16.0" y="112.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">BASIC</text>
+<text x="16.0" y="127.0" font-size="11" fill="#0284c7" text-anchor="start">7개</text>
+<rect x="100.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="130.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Conv</text>
+<rect x="165.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="195.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="230.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="260.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="295.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="325.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="360.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="390.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<rect x="425.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="455.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Relu</text>
+<rect x="490.0" y="96.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="520.0" y="116.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<text x="561.0" y="116.0" font-size="10.5" fill="#64748b" text-anchor="start">상수 접기</text>
+<text x="16.0" y="158.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">EXTENDED</text>
+<text x="16.0" y="173.0" font-size="11" fill="#0284c7" text-anchor="start">5개</text>
+<rect x="100.0" y="142.0" width="78.0" height="30.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.3"/>
+<text x="139.0" y="162.0" font-size="10.5" fill="#1e293b" text-anchor="middle" font-weight="700">FusedConv</text>
+<rect x="183.0" y="142.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="213.0" y="162.0" font-size="10.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="248.0" y="142.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="278.0" y="162.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="313.0" y="142.0" width="78.0" height="30.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.3"/>
+<text x="352.0" y="162.0" font-size="10.5" fill="#1e293b" text-anchor="middle" font-weight="700">FusedGemm</text>
+<rect x="396.0" y="142.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="426.0" y="162.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<text x="467.0" y="162.0" font-size="10.5" fill="#64748b" text-anchor="start">노드 합치기</text>
+<text x="16.0" y="204.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">ALL</text>
+<text x="16.0" y="219.0" font-size="11" fill="#0284c7" text-anchor="start">6개</text>
+<rect x="100.0" y="188.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="130.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Conv</text>
+<rect x="165.0" y="188.0" width="78.0" height="30.0" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.3"/>
+<text x="204.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle" font-weight="700">ReorderOutput</text>
+<rect x="248.0" y="188.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="278.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle">MaxPool</text>
+<rect x="313.0" y="188.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="343.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Flatten</text>
+<rect x="378.0" y="188.0" width="78.0" height="30.0" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.3"/>
+<text x="417.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle" font-weight="700">FusedGemm</text>
+<rect x="461.0" y="188.0" width="60.0" height="30.0" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="491.0" y="208.0" font-size="10.5" fill="#1e293b" text-anchor="middle">Gemm</text>
+<text x="532.0" y="208.0" font-size="10.5" fill="#64748b" text-anchor="start">레이아웃</text>
+<text x="20.0" y="244.0" font-size="11" fill="#1e293b" text-anchor="start">합치기 = 중간 결과를 메모리에 썼다 다시 읽는 왕복이 줄어든다 · 레이아웃 = CPU 명령에 맞는 데이터 배치</text>
+<text x="20.0" y="264.0" font-size="11" fill="#dc2626" text-anchor="start">Fused* · Reorder* 는 com.microsoft 도메인 = ORT 전용 연산 — 저장한 최적화 그래프는 TensorRT · 다른 CPU 에 쓰지 않는다</text>
+</svg>

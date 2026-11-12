@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="280" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">설계도 · 기계 · 완성품 — ONNX Runtime 은 읽어서 바로, TensorRT 는 이 GPU 전용으로 미리 만든다</text>
+<rect x="20.0" y="100.0" width="140.0" height="60.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="90.0" y="127.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">.onnx</text>
+<text x="90.0" y="145.0" font-size="12.5" fill="#64748b" text-anchor="middle">설계도 · 배포할 것</text>
+<rect x="230.0" y="44.0" width="200.0" height="66.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8"/>
+<text x="330.0" y="70.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">ONNX Runtime (Day 3)</text>
+<text x="330.0" y="92.0" font-size="11" fill="#64748b" text-anchor="middle">세션 만들 때 최적화 → 바로 실행</text>
+<rect x="230.0" y="150.0" width="200.0" height="66.0" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="1.8"/>
+<text x="330.0" y="176.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">TensorRT Builder (오늘)</text>
+<text x="330.0" y="198.0" font-size="11" fill="#64748b" text-anchor="middle">빌드 수십 초 — 커널을 재 보고 고름</text>
+<rect x="500.0" y="150.0" width="180.0" height="66.0" rx="8" fill="#fecaca" stroke="#dc2626" stroke-width="2"/>
+<text x="590.0" y="176.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">.engine</text>
+<text x="590.0" y="198.0" font-size="11" fill="#64748b" text-anchor="middle">이 GPU · 이 버전 전용 완성품</text>
+<line x1="160.0" y1="120.0" x2="228.0" y2="80.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="160.0" y1="140.0" x2="228.0" y2="182.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="430.0" y1="183.0" x2="498.0" y2="183.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="464.0" y="175.0" font-size="12" fill="#64748b" text-anchor="middle">저장</text>
+<text x="500.0" y="80.0" font-size="11.5" fill="#16a34a" text-anchor="start">같은 파일을 어디서나</text>
+<text x="500.0" y="98.0" font-size="11.5" fill="#16a34a" text-anchor="start">(CPU · GPU · 다른 OS)</text>
+<text x="20.0" y="244.0" font-size="11.5" fill="#1e293b" text-anchor="start">엔진은 GPU 세대(compute capability, T4 = sm_75) · TensorRT 버전(10.x)이 바뀌면 다시 빌드 → .onnx 를 들고 가서 빌드</text>
+<text x="20.0" y="266.0" font-size="11.5" fill="#64748b" text-anchor="start">오늘은 배치 1 고정 ONNX (mnv3s_b1 · mnist_cnn_b1) — 배치 자유 ONNX 는 optimization profile 이 따로 필요</text>
+</svg>

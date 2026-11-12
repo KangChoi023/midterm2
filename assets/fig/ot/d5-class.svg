@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">함수 → 클래스 TRTInfer — 준비는 한 번 (__init__), 실행은 여러 번 (__call__)</text>
+<rect x="15.0" y="42.0" width="330.0" height="150.0" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="180.0" y="66.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">__init__(engine_path) — 한 번</text>
+<text x="30.0" y="92.0" font-size="11.5" fill="#1e293b" text-anchor="start">· 엔진 읽기 (deserialize_cuda_engine)</text>
+<text x="30.0" y="112.0" font-size="11.5" fill="#1e293b" text-anchor="start">· Context 만들기</text>
+<text x="30.0" y="132.0" font-size="11.5" fill="#1e293b" text-anchor="start">· 입력 · 출력 이름 나누기 (TensorIOMode)</text>
+<text x="30.0" y="152.0" font-size="11.5" fill="#1e293b" text-anchor="start">· GPU 버퍼 self.buf[이름] = torch.empty(…, "cuda")</text>
+<text x="30.0" y="172.0" font-size="11.5" fill="#1e293b" text-anchor="start">· 주소 알려 주기 (set_tensor_address)</text>
+<rect x="370.0" y="42.0" width="315.0" height="150.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8"/>
+<text x="527.0" y="66.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">__call__(x) — 프레임마다</text>
+<text x="385.0" y="92.0" font-size="11.5" fill="#1e293b" text-anchor="start">· 입력 버퍼에 copy_ (CPU → GPU)</text>
+<text x="385.0" y="112.0" font-size="11.5" fill="#1e293b" text-anchor="start">· execute_async_v3</text>
+<text x="385.0" y="132.0" font-size="11.5" fill="#1e293b" text-anchor="start">· synchronize (기다리기)</text>
+<text x="385.0" y="152.0" font-size="11.5" fill="#1e293b" text-anchor="start">· 출력 버퍼 → .cpu().numpy()</text>
+<text x="385.0" y="172.0" font-size="11.5" fill="#16a34a" text-anchor="start" font-weight="700">· → infer(x) 처럼 함수로 부른다</text>
+<text x="20.0" y="218.0" font-size="11.5" fill="#1e293b" text-anchor="start">build_once(onnx, engine, fp16) — 엔진 파일이 있으면 다시 빌드하지 않는다 (빌드는 수십 초 ~ 몇 분)</text>
+<text x="20.0" y="240.0" font-size="11.5" fill="#64748b" text-anchor="start">Day 4 trt_runner 의 run 에 붙잡아 두던 엔진 · 버퍼가 self 로 — mnv3s 결과는 ORT CPU 와 같다 (≈ 1e-3 이내)</text>
+</svg>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 282" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="282" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">FP32 vs FP16 — 절반 크기, 절반 정밀도 (np.float16 으로 직접 확인)</text>
+<text x="20.0" y="68.0" font-size="14" fill="#0284c7" text-anchor="start" font-weight="700">FP32</text>
+<rect x="80.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#fee2e2" stroke="#dc2626" stroke-width="0.8"/>
+<rect x="90.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="100.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="110.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="120.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="130.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="140.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="150.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="160.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="170.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="180.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="190.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="200.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="210.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="220.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="230.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="240.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="250.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="260.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="270.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="280.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="290.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="300.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="310.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="320.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="330.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="340.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="350.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="360.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="370.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="380.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<rect x="390.0" y="52.0" width="10.0" height="22.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="0.8"/>
+<text x="410.0" y="62.0" font-size="11.5" fill="#1e293b" text-anchor="start">최대 3.4 × 10³⁸</text>
+<text x="410.0" y="80.0" font-size="11.5" fill="#64748b" text-anchor="start">eps 1.19e-07 (유효숫자 약 7자리)</text>
+<text x="20.0" y="122.0" font-size="14" fill="#d97706" text-anchor="start" font-weight="700">FP16</text>
+<rect x="80.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fee2e2" stroke="#dc2626" stroke-width="0.8"/>
+<rect x="100.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="120.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="140.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="160.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="180.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="0.8"/>
+<rect x="200.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="220.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="240.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="260.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="280.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="300.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="320.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="340.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="360.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<rect x="380.0" y="106.0" width="20.0" height="22.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="0.8"/>
+<text x="410.0" y="116.0" font-size="11.5" fill="#1e293b" text-anchor="start">최대 65,504</text>
+<text x="410.0" y="134.0" font-size="11.5" fill="#64748b" text-anchor="start">eps 0.000977 (유효숫자 약 3자리)</text>
+<text x="80.0" y="152.0" font-size="11" fill="#64748b" text-anchor="start">빨강 부호 1 · 초록 지수 (8 / 5) · 나머지 가수 (23 / 10) 비트</text>
+<text x="20.0" y="180.0" font-size="12" fill="#1e293b" text-anchor="start" font-weight="700">값 → FP16 으로 저장하면</text>
+<rect x="20.0" y="190.0" width="160.0" height="40.0" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="100.0" y="206.0" font-size="11.5" fill="#1e293b" text-anchor="middle">0.1</text>
+<text x="100.0" y="222.0" font-size="11.5" fill="#0284c7" text-anchor="middle" font-weight="700">→ 0.0999755859375</text>
+<rect x="190.0" y="190.0" width="160.0" height="40.0" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="270.0" y="206.0" font-size="11.5" fill="#1e293b" text-anchor="middle">3.14159265</text>
+<text x="270.0" y="222.0" font-size="11.5" fill="#0284c7" text-anchor="middle" font-weight="700">→ 3.140625</text>
+<rect x="360.0" y="190.0" width="160.0" height="40.0" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="440.0" y="206.0" font-size="11.5" fill="#1e293b" text-anchor="middle">1000.3</text>
+<text x="440.0" y="222.0" font-size="11.5" fill="#0284c7" text-anchor="middle" font-weight="700">→ 1000.5</text>
+<rect x="530.0" y="190.0" width="160.0" height="40.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.3"/>
+<text x="610.0" y="206.0" font-size="11.5" fill="#1e293b" text-anchor="middle">70000.0</text>
+<text x="610.0" y="222.0" font-size="11.5" fill="#dc2626" text-anchor="middle" font-weight="700">→ inf (65,504 초과)</text>
+<text x="20.0" y="252.0" font-size="11" fill="#1e293b" text-anchor="start">신경망은 값이 작고 결과를 argmax 로 보므로 끝자리 오차에 강하다 — T4 Tensor Core 가 FP16 을 훨씬 빨리 계산</text>
+<text x="20.0" y="270.0" font-size="11" fill="#64748b" text-anchor="start">엔진의 입출력은 FP32 그대로 (안쪽 계산만 FP16) — 입력을 float16 으로 바꿔 넣지 않는다</text>
+</svg>

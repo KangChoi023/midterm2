@@ -1,0 +1,6 @@
+{
+ "1-1": {
+  "text": "TRTInfer 정의 완료 — 메서드: ['__init__', '__call__', '__repr__']\n✅ TRTInfer 정의 — 아래 1-2 에서 진짜 엔진으로 확인",
+  "check": true
+ }
+}

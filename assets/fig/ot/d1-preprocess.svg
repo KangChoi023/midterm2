@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 270" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="270" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">사진 한 장 → 모델 입력 (1, 3, 224, 224) — 전처리 6단계는 ONNX 밖의 코드</text>
+<rect x="12.0" y="44.0" width="212.0" height="76.0" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="118.0" y="68.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">① imread</text>
+<text x="118.0" y="89.0" font-size="12" fill="#1e293b" text-anchor="middle">(H, W, 3) uint8</text>
+<text x="118.0" y="108.0" font-size="11" fill="#64748b" text-anchor="middle">BGR 순서</text>
+<line x1="224.0" y1="82.0" x2="238.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="240.0" y="44.0" width="212.0" height="76.0" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="346.0" y="68.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">② RGB · resize</text>
+<text x="346.0" y="89.0" font-size="12" fill="#1e293b" text-anchor="middle">(224, 224, 3)</text>
+<text x="346.0" y="108.0" font-size="11" fill="#64748b" text-anchor="middle">resize 는 (W, H)</text>
+<line x1="452.0" y1="82.0" x2="466.0" y2="82.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="468.0" y="44.0" width="212.0" height="76.0" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/>
+<text x="574.0" y="68.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">③ /255 · 정규화</text>
+<text x="574.0" y="89.0" font-size="12" fill="#1e293b" text-anchor="middle">(x − MEAN) / STD</text>
+<text x="574.0" y="108.0" font-size="11" fill="#64748b" text-anchor="middle">범위 −2.12 ~ 2.62</text>
+<rect x="12.0" y="136.0" width="212.0" height="76.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/>
+<text x="118.0" y="160.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">④ transpose</text>
+<text x="118.0" y="181.0" font-size="12" fill="#1e293b" text-anchor="middle">(3, 224, 224)</text>
+<text x="118.0" y="200.0" font-size="11" fill="#64748b" text-anchor="middle">HWC → CHW</text>
+<line x1="224.0" y1="174.0" x2="238.0" y2="174.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="240.0" y="136.0" width="212.0" height="76.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/>
+<text x="346.0" y="160.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">⑤ 배치 축</text>
+<text x="346.0" y="181.0" font-size="12" fill="#1e293b" text-anchor="middle">(1, 3, 224, 224)</text>
+<text x="346.0" y="200.0" font-size="11" fill="#64748b" text-anchor="middle">x[None] float32</text>
+<line x1="452.0" y1="174.0" x2="466.0" y2="174.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="468.0" y="136.0" width="212.0" height="76.0" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="574.0" y="160.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">⑥ run · softmax</text>
+<text x="574.0" y="181.0" font-size="12" fill="#1e293b" text-anchor="middle">(1000,) → top-5</text>
+<text x="574.0" y="200.0" font-size="11" fill="#64748b" text-anchor="middle">exp(l − max) / 합</text>
+<text x="20.0" y="238.0" font-size="11.5" fill="#1e293b" text-anchor="start">MEAN = [0.485, 0.456, 0.406] · STD = [0.229, 0.224, 0.225] (ImageNet 학습 때 값) — np.float32 로 만들어야 결과도 float32</text>
+<text x="20.0" y="258.0" font-size="11.5" fill="#dc2626" text-anchor="start">⚠ reshape(3, 224, 224) 는 모양만 바꿈 — 축 순서는 transpose(2, 0, 1) · BGR 그대로 · 정규화 누락은 오류 없이 다른 답</text>
+</svg>

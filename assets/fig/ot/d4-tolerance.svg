@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">"같다" 의 판정 — |a − b| ≤ atol + rtol · |b| (polygraphy run --onnxrt --trt)</text>
+<rect x="15.0" y="46.0" width="670.0" height="42.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="30.0" y="72.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">FP32 엔진</text>
+<text x="140.0" y="72.0" font-size="12" fill="#1e293b" text-anchor="start">atol · rtol 1e-3</text>
+<text x="345.0" y="72.0" font-size="14" fill="#16a34a" text-anchor="start" font-weight="700">PASSED</text>
+<text x="440.0" y="72.0" font-size="11.5" fill="#64748b" text-anchor="start">계산 순서만 달라 끝자리 차이</text>
+<rect x="15.0" y="96.0" width="670.0" height="42.0" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="1.4"/>
+<text x="30.0" y="122.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">FP16 엔진</text>
+<text x="140.0" y="122.0" font-size="12" fill="#1e293b" text-anchor="start">atol · rtol 1e-3 (엄격)</text>
+<text x="345.0" y="122.0" font-size="14" fill="#dc2626" text-anchor="start" font-weight="700">FAILED</text>
+<text x="440.0" y="122.0" font-size="11.5" fill="#64748b" text-anchor="start">유효숫자 약 3자리 — 기준이 너무 엄격</text>
+<rect x="15.0" y="146.0" width="670.0" height="42.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.4"/>
+<text x="30.0" y="172.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">FP16 엔진</text>
+<text x="140.0" y="172.0" font-size="12" fill="#1e293b" text-anchor="start">atol · rtol 5e-2 (느슨)</text>
+<text x="345.0" y="172.0" font-size="14" fill="#16a34a" text-anchor="start" font-weight="700">PASSED</text>
+<text x="440.0" y="172.0" font-size="11.5" fill="#64748b" text-anchor="start">정밀도에 맞는 기준 + 실제 정확도로 판단</text>
+<text x="20.0" y="216.0" font-size="11.5" fill="#1e293b" text-anchor="start">예: b = 10, atol = rtol = 1e-3 → 허용 1e-3 + 1e-3 × 10 = 0.011 — 큰 값일수록 허용 오차도 커진다 (rtol)</text>
+<text x="20.0" y="238.0" font-size="11.5" fill="#dc2626" text-anchor="start">⚠ 무작위 입력 한 번의 PASSED 로 "완벽" 결론 금지 — MNIST 100장 같은 실제 데이터의 정확도로 확인 (6교시)</text>
+</svg>
