@@ -47,6 +47,9 @@ SUBJECTS = [
          lecture='VB-day{d}/VB_Day{d}_lecture.ipynb', ws='VB-day{d}/worksheet.html', note='VB_day{d}.md', anim='VB-day{d}/animation.html'),
     dict(id='ot', name='ONNX · TensorRT', short='OT', days=5, flow='학습한 모델을 내보내 빠르게 실행',
          lecture='OT-day{d}/OT_Day{d}_lecture.ipynb', ws='OT-day{d}/worksheet.html', note='OT_day{d}.md', anim='OT-day{d}/animation.html'),
+    dict(id='qp', name='양자화 · 가지치기', short='QP', days=6, flow='모델을 작게 · 빠르게 (INT8 · Pruning)',
+         lecture='QP-day{d}/QP_Day{d}_lecture.ipynb', ws=['QP-day{d}/worksheet.html', 'QP-day{d}/review_quiz.html'],
+         note='QP_day{d}.md', anim='QP-day{d}/animation.html'),
 ]
 
 def campus_path(pat, d):
