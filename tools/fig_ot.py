@@ -248,6 +248,130 @@ def d2_slim():
     s.save('d2-slim.svg')
 
 
+# ---------------- OT Day 3 ----------------
+
+def d3_knobs():
+    s = Svg(700, 270)
+    s.text(350, 22, 'ONNX 파일은 그대로, 실행하는 쪽 손잡이만 바꾼다 — 한 번에 하나씩', 14, INK, 'middle', True)
+    s.rect(270, 44, 160, 64, ORANGE, None, 8, 2); s.text(350, 72, 'mnv3s.onnx', 14, INK, 'middle', True); s.text(350, 92, '그대로', 11.5, MUTED, 'middle')
+    knobs = [('스레드', 'intra_op_num_threads', '3교시', BLUE, 20, 44), ('최적화 레벨', 'graph_optimization_level', '4교시', GREEN, 20, 120),
+             ('장치', 'providers = [CUDA, CPU]', '5교시', RED, 480, 44), ('배치', '입력 (b, 3, 224, 224)', '6교시', PURPLE, 480, 120)]
+    for t, a, c, col, x, y in knobs:
+        s.rect(x, y, 200, 58, col, None, 8, 1.6); s.text(x + 100, y + 22, f'{t} ({c})', 13, INK, 'middle', True); s.text(x + 100, y + 42, a, 11, MUTED, 'middle')
+        _arrow(s, x + 200 if x < 300 else x, y + 29, 270 if x < 300 else 430, 76 if y < 100 else 100)
+    s.text(20, 206, '원칙 ① 한 번에 하나만 바꾼다  ② 조건을 표의 열로 적는다 (모델 · 실행기 · 스레드 · 레벨 · 배치 · 장치)', 11.5, INK)
+    s.text(20, 228, '        ③ 바꾼 뒤에도 결과는 같아야 한다 (allclose) — 빨라졌는데 답이 달라지면 소용없다', 11.5, INK)
+    s.text(20, 254, 'providers 는 희망 목록 — 설치됨 [Azure, CPU] · 실제 사용 [CPU] → GPU 가 없으면 조용히 CPU 로, get_providers() 로 확인', 11.5, MUTED)
+    s.save('d3-knobs.svg')
+
+
+def d3_threads():
+    s = Svg(700, 270)
+    s.text(350, 22, '스레드 · 최적화 레벨을 하나씩 바꿔 잰 결과 (mnv3s.onnx, 배치 1, CPU 4코어)', 14, INK, 'middle', True)
+    p = Plot(s, 60, 50, 240, 160, (0, 3.2), (0, 3.0))
+    th = [(1, 2.16, 2.44), (2, 1.83, 2.02), (4, 1.87, 2.01)]
+    s.line(60, 210, 300, 210, INK, 1.3)
+    for v in (0, 1, 2, 3): s.text(54, p.Y(v) + 4, str(v), 11, MUTED, 'end')
+    for i, (t, m, p95) in enumerate(th):
+        x = 80 + i * 75
+        s.rect(x, p.Y(m), 28, p.Y(0) - p.Y(m), BLUE, None, 0, 1.2); s.rect(x + 30, p.Y(p95), 28, p.Y(0) - p.Y(p95), ORANGE, None, 0, 1.2)
+        s.text(x + 14, p.Y(m) - 4, f'{m}', 10.5, INK, 'middle'); s.text(x + 44, p.Y(p95) - 4, f'{p95}', 10.5, INK, 'middle')
+        s.text(x + 29, 226, f'스레드 {t}', 11.5, INK, 'middle')
+    s.text(180, 246, '평균(파랑) · p95(주황) ms — 1→2 는 빨라지고 2→4 는 그대로', 11, MUTED, 'middle')
+    q = Plot(s, 400, 50, 280, 160, (0, 4), (0, 4))
+    s.line(400, 210, 680, 210, INK, 1.3)
+    for v in (0, 1, 2, 3, 4): s.text(394, q.Y(v) + 4, str(v), 11, MUTED, 'end')
+    lv = [('DISABLE', 3.38, '1.00'), ('BASIC', 2.99, '1.13'), ('EXTENDED', 2.79, '1.21'), ('ALL', 1.58, '2.14')]
+    for i, (n, m, sp) in enumerate(lv):
+        x = 412 + i * 68
+        s.rect(x, q.Y(m), 44, q.Y(0) - q.Y(m), GREEN if n == 'ALL' else LINE, None, 0, 1.2)
+        s.text(x + 22, q.Y(m) - 18, f'{m}', 11, INK, 'middle'); s.text(x + 22, q.Y(m) - 5, f'×{sp}', 10.5, RED if n == 'ALL' else MUTED, 'middle', n == 'ALL')
+        s.text(x + 22, 226, n, 10.5, INK, 'middle')
+    s.text(540, 246, '평균 ms · speedup = DISABLE ÷ 그 레벨 (ALL 이 기본값)', 11, MUTED, 'middle')
+    s.text(350, 264, '코어 수 = 보통 상한 · 스레드를 늘려도 작은 모델은 나누는 비용 때문에 거의 그대로 — 결과(출력)는 레벨과 무관하게 같다', 11, INK, 'middle')
+    s.save('d3-threads.svg')
+
+
+def d3_fusion():
+    s = Svg(700, 276)
+    s.text(350, 22, '최적화 레벨마다 ORT 가 고친 그래프 — mnist_cnn_dyn.onnx (optimized_model_filepath 로 저장)', 14, INK, 'middle', True)
+    rows = [('DISABLE', ['Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm', 'Relu', 'Gemm'], '그대로'),
+            ('BASIC', ['Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm', 'Relu', 'Gemm'], '상수 접기'),
+            ('EXTENDED', ['FusedConv', 'MaxPool', 'Flatten', 'FusedGemm', 'Gemm'], '노드 합치기'),
+            ('ALL', ['Conv', 'ReorderOutput', 'MaxPool', 'Flatten', 'FusedGemm', 'Gemm'], '레이아웃')]
+    for i, (n, ops, d) in enumerate(rows):
+        y = 44 + i * 46
+        s.text(16, y + 22, n, 12.5, INK, 'start', True); s.text(16, y + 37, f'{len(ops)}개', 11, BLUE)
+        x = 100
+        for op in ops:
+            w = 78 if len(op) > 7 else 60
+            c = RED if op.startswith('Fused') else ORANGE if op.startswith('Reorder') else BLUE
+            s.rect(x, y + 6, w, 30, c, None, 4, 1.3); s.text(x + w / 2, y + 26, op, 10.5, INK, 'middle', c != BLUE); x += w + 5
+        s.text(x + 6, y + 26, d, 10.5, MUTED)
+    s.text(20, 244, '합치기 = 중간 결과를 메모리에 썼다 다시 읽는 왕복이 줄어든다 · 레이아웃 = CPU 명령에 맞는 데이터 배치', 11, INK)
+    s.text(20, 264, 'Fused* · Reorder* 는 com.microsoft 도메인 = ORT 전용 연산 — 저장한 최적화 그래프는 TensorRT · 다른 CPU 에 쓰지 않는다', 11, RED)
+    s.save('d3-fusion.svg')
+
+
+def d3_gpu():
+    s = Svg(700, 210)
+    s.text(350, 22, 'GPU 실행 = 복사 → 계산 → 복사 — 계산이 빨라도 나르는 시간이 생긴다', 14, INK, 'middle', True)
+    s.rect(20, 50, 180, 70, BLUE, None, 8, 1.8); s.text(110, 78, 'CPU 메모리', 13.5, INK, 'middle', True); s.text(110, 100, 'NumPy 입력 · 출력', 11.5, MUTED, 'middle')
+    s.rect(500, 50, 180, 70, RED, None, 8, 1.8); s.text(590, 78, 'GPU (CUDA EP)', 13.5, INK, 'middle', True); s.text(590, 100, '계산은 빠름', 11.5, MUTED, 'middle')
+    _arrow(s, 200, 70, 498, 70, '① 입력 복사 (Host → Device)', -8)
+    s.line(498, 104, 200, 104, MUTED, 2, True); s.text(350, 122, '③ 결과 복사 (Device → Host)', 12, MUTED, 'middle')
+    s.text(590, 140, '② 계산', 12, RED, 'middle', True)
+    s.text(20, 166, '배치 1: 계산이 작아 복사 · 첫 실행 준비(수백 ms) 비중이 크다 → 이득 작음 · 배치가 크면 계산이 커져 GPU 가 크게 유리', 11.5, INK)
+    s.text(20, 188, '이 환경(CPU 4코어): 배치 1 = 1.66 ms · 배치 32 = 20.33 ms (장당 0.64 ms) — GPU 결과는 CPU 와 차이 < 1e-3 이어야', 11.5, MUTED)
+    s.save('d3-gpu.svg')
+
+
+def d3_batch():
+    s = Svg(700, 270)
+    s.text(350, 22, '배치를 키우면 — 지연은 늘고, 처리량은 어느 지점에서 멈춘다 (mnv3s · CPU)', 14, INK, 'middle', True)
+    data = [(1, 1.64, 611), (4, 3.67, 1090), (16, 9.21, 1737), (64, 43.89, 1458)]
+    X = lambda i: 90 + i * 130
+    p = Plot(s, 70, 50, 420, 170, (0, 3), (0, 50))
+    s.line(70, 220, 500, 220, INK, 1.3); s.line(70, 50, 70, 220, RED, 1.3); s.line(500, 50, 500, 220, GREEN, 1.3)
+    for v in (0, 10, 20, 30, 40, 50): s.text(64, p.Y(v) + 4, str(v), 10.5, RED, 'end')
+    for v in (0, 500, 1000, 1500, 2000): s.text(506, 220 - v / 2000 * 170 + 4, str(v), 10.5, GREEN)
+    s.text(70, 44, '지연 ms', 11.5, RED, 'middle', True); s.text(500, 44, '처리량 장/초', 11.5, GREEN, 'middle', True)
+    s.line(70, p.Y(33.3), 500, p.Y(33.3), RED, 1, dash='4,4'); s.text(76, p.Y(33.3) - 4, '30 FPS 예산 33.3 ms', 10.5, RED)
+    s.poly([(X(i), p.Y(l)) for i, (b, l, t) in enumerate(data)], RED, 2.5)
+    s.poly([(X(i), 220 - t / 2000 * 170) for i, (b, l, t) in enumerate(data)], GREEN, 2.5)
+    for i, (b, l, t) in enumerate(data):
+        s.circle(X(i), p.Y(l), 4, RED, RED); s.circle(X(i), 220 - t / 2000 * 170, 4, GREEN, GREEN)
+        s.text(X(i), 236, f'배치 {b}', 11.5, INK, 'middle')
+        s.text(X(i) + 8, p.Y(l) - 7, f'{l}', 10.5, RED); s.text(X(i), 220 - t / 2000 * 170 - 8, f'{t}', 10.5, GREEN, 'middle')
+    x0 = 545
+    s.text(x0, 70, '처리량 = 배치 × 1000 ÷ 지연', 11.5, INK, 'start', True)
+    s.text(x0, 92, '장당 = 지연 ÷ 배치', 11.5, INK)
+    s.text(x0, 114, '1.64 → 0.58 ms/장 (배치 16)', 11, MUTED)
+    s.text(x0, 142, '카메라 수 = 처리량 ÷ 30', 11.5, INK, 'start', True)
+    s.text(x0, 164, '배치 1: 20대', 11, MUTED); s.text(x0, 184, '배치 16: 57대 (지연 9 ms)', 11, MUTED)
+    s.text(350, 262, '실시간 카메라 → 배치 1 · p95 / 녹화 영상 · 여러 카메라 → 처리량이 가장 큰 배치 (여기선 16, 64 는 오히려 감소)', 11.5, INK, 'middle')
+    s.save('d3-batch.svg')
+
+
+def d3_profile():
+    s = Svg(700, 250)
+    s.text(350, 22, 'profiling — 노드별 시간 비율 (20번 실행의 dur 합, 단위 µs)', 14, INK, 'middle', True)
+    mn = [('Conv', 42.4), ('Mul', 18.7), ('HardSigmoid', 14.8), ('ReorderOutput', 9.5), ('ReorderInput', 5.7), ('GlobalAvgPool', 5.1)]
+    cn = [('FusedGemm', 30.4), ('Conv', 20.0), ('ReorderOutput', 16.2)]
+    s.text(20, 52, 'MobileNetV3-S (노드 142개)', 12.5, BLUE, 'start', True)
+    for i, (n, v) in enumerate(mn):
+        y = 62 + i * 22
+        s.text(140, y + 14, n, 11, INK, 'end'); s.rect(146, y + 2, v * 4.2, 16, BLUE if i == 0 else LINE, None, 0, 1); s.text(150 + v * 4.2, y + 14, f'{v}%', 10.5, INK)
+    s.text(420, 52, 'SimpleConvNet', 12.5, GREEN, 'start', True)
+    for i, (n, v) in enumerate(cn):
+        y = 62 + i * 22
+        s.text(530, y + 14, n, 11, INK, 'end'); s.rect(536, y + 2, v * 3.6, 16, GREEN if i == 0 else LINE, None, 0, 1); s.text(540 + v * 3.6, y + 14, f'{v}%', 10.5, INK)
+    s.text(420, 150, 'fc1 (100 × 4320) 이 가중치의 99.6%', 11, MUTED)
+    s.text(20, 212, 'Mul · HardSigmoid = HardSwish · SE 블록 조각 · Reorder* = 4교시 ALL 의 레이아웃 바꾸기 비용', 11, MUTED)
+    s.text(20, 234, '병목은 모델마다 다르다 → 손댈 곳이 정해진다 (Conv 를 빠르게: TensorRT · INT8 양자화 — Day 4 · 다음 과목)', 11.5, INK)
+    s.save('d3-profile.svg')
+
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">profiling — 노드별 시간 비율 (20번 실행의 dur 합, 단위 µs)</text>
+<text x="20.0" y="52.0" font-size="12.5" fill="#0284c7" text-anchor="start" font-weight="700">MobileNetV3-S (노드 142개)</text>
+<text x="140.0" y="76.0" font-size="11" fill="#1e293b" text-anchor="end">Conv</text>
+<rect x="146.0" y="64.0" width="178.1" height="16.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1"/>
+<text x="328.1" y="76.0" font-size="10.5" fill="#1e293b" text-anchor="start">42.4%</text>
+<text x="140.0" y="98.0" font-size="11" fill="#1e293b" text-anchor="end">Mul</text>
+<rect x="146.0" y="86.0" width="78.5" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="228.5" y="98.0" font-size="10.5" fill="#1e293b" text-anchor="start">18.7%</text>
+<text x="140.0" y="120.0" font-size="11" fill="#1e293b" text-anchor="end">HardSigmoid</text>
+<rect x="146.0" y="108.0" width="62.2" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="212.2" y="120.0" font-size="10.5" fill="#1e293b" text-anchor="start">14.8%</text>
+<text x="140.0" y="142.0" font-size="11" fill="#1e293b" text-anchor="end">ReorderOutput</text>
+<rect x="146.0" y="130.0" width="39.9" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="189.9" y="142.0" font-size="10.5" fill="#1e293b" text-anchor="start">9.5%</text>
+<text x="140.0" y="164.0" font-size="11" fill="#1e293b" text-anchor="end">ReorderInput</text>
+<rect x="146.0" y="152.0" width="23.9" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="173.9" y="164.0" font-size="10.5" fill="#1e293b" text-anchor="start">5.7%</text>
+<text x="140.0" y="186.0" font-size="11" fill="#1e293b" text-anchor="end">GlobalAvgPool</text>
+<rect x="146.0" y="174.0" width="21.4" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="171.4" y="186.0" font-size="10.5" fill="#1e293b" text-anchor="start">5.1%</text>
+<text x="420.0" y="52.0" font-size="12.5" fill="#16a34a" text-anchor="start" font-weight="700">SimpleConvNet</text>
+<text x="530.0" y="76.0" font-size="11" fill="#1e293b" text-anchor="end">FusedGemm</text>
+<rect x="536.0" y="64.0" width="109.4" height="16.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="649.4" y="76.0" font-size="10.5" fill="#1e293b" text-anchor="start">30.4%</text>
+<text x="530.0" y="98.0" font-size="11" fill="#1e293b" text-anchor="end">Conv</text>
+<rect x="536.0" y="86.0" width="72.0" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="612.0" y="98.0" font-size="10.5" fill="#1e293b" text-anchor="start">20.0%</text>
+<text x="530.0" y="120.0" font-size="11" fill="#1e293b" text-anchor="end">ReorderOutput</text>
+<rect x="536.0" y="108.0" width="58.3" height="16.0" rx="0" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+<text x="598.3" y="120.0" font-size="10.5" fill="#1e293b" text-anchor="start">16.2%</text>
+<text x="420.0" y="150.0" font-size="11" fill="#64748b" text-anchor="start">fc1 (100 × 4320) 이 가중치의 99.6%</text>
+<text x="20.0" y="212.0" font-size="11" fill="#64748b" text-anchor="start">Mul · HardSigmoid = HardSwish · SE 블록 조각 · Reorder* = 4교시 ALL 의 레이아웃 바꾸기 비용</text>
+<text x="20.0" y="234.0" font-size="11.5" fill="#1e293b" text-anchor="start">병목은 모델마다 다르다 → 손댈 곳이 정해진다 (Conv 를 빠르게: TensorRT · INT8 양자화 — Day 4 · 다음 과목)</text>
+</svg>
