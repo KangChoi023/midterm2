@@ -24,7 +24,7 @@
   "check": true
  },
  "2-4": {
-  "text": "배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 274 ms/장 (cpu)",
+  "text": "배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 58 ms/장 (cpu)",
   "check": true
  },
  "3-1": {
@@ -56,15 +56,15 @@
   "check": true
  },
  "6-1": {
-  "text": "{'mean': 10.223393199997588, 'p50': 10.104983499999776, 'p95': 10.332226050005035, 'fps': 97.81488204916504}",
+  "text": "{'mean': 10.126789700007066, 'p50': 10.126492500035056, 'p95': 10.15472484999691, 'fps': 98.74797735745437}",
   "check": true
  },
  "6-2": {
-  "text": "MobileNetV3-S  PyTorch       스레드 1 | 평균     5.5 ms · p95     5.7 ·  182.1 FPS\nMobileNetV3-S  ONNX Runtime  스레드 1 | 평균     2.6 ms · p95     2.9 ·  383.7 FPS\nYOLOv8n        PyTorch       스레드 1 | 평균   117.5 ms · p95   168.2 ·    8.5 FPS\nYOLOv8n        ONNX Runtime  스레드 1 | 평균    90.8 ms · p95   128.4 ·   11.0 FPS\nMobileNetV3-S  PyTorch       스레드 2 | 평균    13.9 ms · p95    19.8 ·   71.9 FPS\nMobileNetV3-S  ONNX Runtime  스레드 2 | 평균     2.7 ms · p95     6.0 ·  364.3 FPS\nYOLOv8n        PyTorch       스레드 2 | 평균   140.9 ms · p95   279.0 ·    7.1 FPS\nYOLOv8n        ONNX Runtime  스레드 2 | 평균    86.6 ms · p95   119.0 ·   11.6 FPS\nMobileNetV3-S  PyTorch       스레드 4 | 평균   204.0 ms · p95  1284.0 ·    4.9 FPS\nMobileNetV3-S  ONNX Runtime  스레드 4 | 평균     5.1 ms · p95    10.2 ·  197.5 FPS\nYOLOv8n        PyTorch       스레드 4 | 평균  3547.2 ms · p95  4687.9 ·    0.3 FPS\nYOLOv8n        ONNX Runtime  스레드 4 | 평균   133.5 ms · p95   173.2 ·    7.5 FPS",
+  "text": "MobileNetV3-S  PyTorch       스레드 1 | 평균     6.5 ms · p95     8.2 ·  154.8 FPS\nMobileNetV3-S  ONNX Runtime  스레드 1 | 평균     2.1 ms · p95     2.2 ·  468.0 FPS\nYOLOv8n        PyTorch       스레드 1 | 평균   119.1 ms · p95   120.9 ·    8.4 FPS\nYOLOv8n        ONNX Runtime  스레드 1 | 평균    81.7 ms · p95    89.9 ·   12.2 FPS\nMobileNetV3-S  PyTorch       스레드 2 | 평균     7.0 ms · p95    10.2 ·  142.2 FPS\nMobileNetV3-S  ONNX Runtime  스레드 2 | 평균     2.0 ms · p95     2.2 ·  500.7 FPS\nYOLOv8n        PyTorch       스레드 2 | 평균    72.5 ms · p95    93.1 ·   13.8 FPS\nYOLOv8n        ONNX Runtime  스레드 2 | 평균    52.1 ms · p95    66.0 ·   19.2 FPS\nMobileNetV3-S  PyTorch       스레드 4 | 평균     6.3 ms · p95     7.9 ·  158.2 FPS\nMobileNetV3-S  ONNX Runtime  스레드 4 | 평균     1.8 ms · p95     2.4 ·  545.5 FPS\nYOLOv8n        PyTorch       스레드 4 | 평균    51.1 ms · p95    84.0 ·   19.6 FPS\nYOLOv8n        ONNX Runtime  스레드 4 | 평균    33.9 ms · p95    40.5 ·   29.5 FPS",
   "check": true
  },
  "6-3": {
-  "text": "model,framework,input,threads,mean,p50,p95,fps,file_MB\nMobileNetV3-S,PyTorch,224,1,5.49,5.36,5.69,182.09,10.29\nMobileNetV3-S,ONNX Runtime,224,1,2.61,2.39,2.85,383.69,10.18\nYOLOv8n,PyTorch,640,1,117.45,110.25,168.18,8.51,6.55\nYOLOv8n,ONNX Runtime,640,1,90.84,80.25,128.36,11.01,12.85\nMobileNetV3-S,PyTorch,224,2,13.91,7.14,19.8,71.9,10.29\nMobileNetV3-S,ONNX Runtime,224,2,2.74,2.05,6.03,364.31,10.18\nYOLOv8n,PyTorch,640,2,140.9,124.13,278.99,7.1,6.55\nYOLOv8n,ONNX Runtime,640,2,86.57,89.3,119.03,11.55,12.85\nMobileNetV3-S,PyTorch,224,4,204.04,24.15,1283.99,4.9,10.29\nMobileNetV3-S,ONNX Runtime,224,4,5.06,4.02,10.21,197.54,10.18\nYOLOv8n,PyTorch,640,4,3547.2,3462.87,4687.9,0.28,6.55\nYOLOv8n,ONNX Runtime,640,4,133.52,139.59,173.15,7.49,12.85",
+  "text": "model,framework,input,threads,mean,p50,p95,fps,file_MB\nMobileNetV3-S,PyTorch,224,1,6.46,5.92,8.24,154.79,10.29\nMobileNetV3-S,ONNX Runtime,224,1,2.14,2.14,2.21,468.03,10.18\nYOLOv8n,PyTorch,640,1,119.09,117.89,120.91,8.4,6.55\nYOLOv8n,ONNX Runtime,640,1,81.67,80.06,89.89,12.24,12.85\nMobileNetV3-S,PyTorch,224,2,7.03,6.58,10.18,142.19,10.29\nMobileNetV3-S,ONNX Runtime,224,2,2.0,1.94,2.21,500.72,10.18\nYOLOv8n,PyTorch,640,2,72.48,69.59,93.13,13.8,6.55\nYOLOv8n,ONNX Runtime,640,2,52.12,49.33,65.98,19.19,12.85\nMobileNetV3-S,PyTorch,224,4,6.32,6.11,7.94,158.23,10.29\nMobileNetV3-S,ONNX Runtime,224,4,1.83,1.7,2.38,545.54,10.18\nYOLOv8n,PyTorch,640,4,51.06,42.2,84.0,19.58,6.55\nYOLOv8n,ONNX Runtime,640,4,33.86,32.66,40.53,29.53,12.85",
   "check": true
  },
  "7-1": {

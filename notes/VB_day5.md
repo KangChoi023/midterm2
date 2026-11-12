@@ -244,7 +244,7 @@ n = 8 에서: (k4, s2, p1) → 7×2 − 2 + 4 = **16**, (k2, s2, p0) → 16, (k3
 | 실험 (Penn-Fudan) | 배경 IoU | 사람 IoU | mIoU |
 |---|---|---|---|
 | 첫 사진 (인스턴스 2개) | 0.9869 | 0.8896 | 0.9383 |
-| 170장 누적 | 0.9425 | 0.7682 | **0.8553** (CPU 274 ms/장) |
+| 170장 누적 | 0.9425 | 0.7682 | **0.8553** (CPU 58 ms/장) |
 
 선택 실습 DeepLabV3-MobileNetV3 는 semantic 모델로, 픽셀마다 **21 클래스**(VOC) 점수를 내고 `argmax == 15` 가 사람이다.
 
@@ -288,7 +288,7 @@ seg_ious = inter_sum / union_sum
 ```
 - **무엇을 하나**: 170장의 교집합 · 합집합을 누적해 데이터 전체 IoU.
 - **어떤 개념**: 개념 3.
-- **출력**: `배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 274 ms/장 (cpu)` (직접 실행)
+- **출력**: `배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 58 ms/장 (cpu)` (직접 실행)
 
 #### 한 번에 정리
 - semantic = 픽셀마다 클래스, instance = 물체마다 마스크.
@@ -758,7 +758,7 @@ print([(i.name, i.shape) for i in sess.get_inputs()], onx.shape, float(np.abs(on
 #### 공정한 비교 — 같은 조건
 > CPU · 배치 1 · 스레드 수 · 입력 크기를 맞춰야 PyTorch vs ONNX Runtime 비교가 의미 있다
 - **스레드** → 1 · 2 · 전체 코어 — 늘려도 그만큼 빨라지지 않는다
-- **예** → CPU · 스레드 1: MobileNetV3-S PyTorch 5.5 ms vs ONNX Runtime 2.6 ms, YOLOv8n 117.5 vs 90.8 ms
+- **예** → CPU · 스레드 1: MobileNetV3-S PyTorch 6.5 ms vs ONNX Runtime 2.1 ms, YOLOv8n 119.1 vs 81.7 ms
 - **파일 크기** → 장치 저장 공간 · 로딩 시간 — YOLOv8n `.pt` 6.55 MB(float16) vs `.onnx` 12.85 MB(float32)
 - **baseline.csv** → `model, framework, input, threads, mean, p50, p95, fps, file_MB`
 - ⚠ 같은 모델이라도 입력(224 vs 640) · 스레드가 다르면 다른 실험이다
@@ -809,14 +809,22 @@ def benchmark(fn, warmup=5, reps=50):
 #### 개념 3 · 실제 측정 (이 사이트의 실행, CPU · 스레드 1)
 | 모델 | 프레임워크 | 입력 | 평균 ms | p95 ms | FPS | 파일 MB |
 |---|---|---|---|---|---|---|
-| MobileNetV3-S | PyTorch | 224 | 5.49 | 5.69 | 182 | 10.29 (.pt) |
-| MobileNetV3-S | ONNX Runtime | 224 | 2.61 | 2.85 | 384 | 10.18 |
-| YOLOv8n | PyTorch | 640 | 117.5 | 168.2 | 8.5 | 6.55 (.pt) |
-| YOLOv8n | ONNX Runtime | 640 | 90.8 | 128.4 | 11.0 | 12.85 |
+| MobileNetV3-S | PyTorch | 224 | 6.46 | 8.24 | 155 | 10.29 (.pt) |
+| MobileNetV3-S | ONNX Runtime | 224 | 2.14 | 2.21 | 468 | 10.18 |
+| YOLOv8n | PyTorch | 640 | 119.1 | 120.9 | 8.4 | 6.55 (.pt) |
+| YOLOv8n | ONNX Runtime | 640 | 81.7 | 89.9 | 12.2 | 12.85 |
 
-- 같은 조건에서 ONNX Runtime 이 MobileNetV3-S 는 약 2.1배, YOLOv8n 은 약 1.3배 빠르다.
+- 같은 조건에서 ONNX Runtime 이 MobileNetV3-S 는 약 3.0배, YOLOv8n 은 약 1.5배 빠르다.
 - YOLOv8n 의 `.pt` 가 `.onnx` 의 절반인 이유: ultralytics `.pt` 는 가중치를 **float16** 으로 저장 (3,157,200 × 2 B ≈ 6.3 MB), ONNX 는 float32 (× 4 B ≈ 12.6 MB).
-- 스레드를 늘려도 그만큼 빨라지지 않는다 — 작은 모델일수록 스레드 나누는 비용이 커지고, 다른 작업과 CPU 를 나누면 p95 가 크게 튄다.
+- 스레드를 늘려도 그만큼 빨라지지 않는다 (ONNX Runtime 평균 ms):
+
+| 스레드 | MobileNetV3-S | YOLOv8n |
+|---|---|---|
+| 1 | 2.14 | 81.7 |
+| 2 | 2.00 | 52.1 |
+| 4 (전체) | 1.83 | 33.9 (1스레드의 2.4배 빠름, 4배가 아님) |
+
+작은 모델은 나눌 일이 적어 거의 그대로다. 다른 작업과 CPU 를 나누면 p95 가 크게 튄다 (이 사이트의 첫 측정은 다른 실행과 겹쳐 4스레드 숫자가 수십 배 흔들렸다).
 
 #### 코드로 확인
 ```python
@@ -833,7 +841,7 @@ print(benchmark(lambda: time.sleep(0.01), warmup=1, reps=20))
 ```
 - **무엇을 하나**: 10 ms 짜리 가짜 작업으로 측정 함수를 시험.
 - **어떤 개념**: 개념 1 · 2.
-- **출력**: `mean 10.22, p50 10.10, p95 10.33, fps 97.8` (직접 실행 — sleep 자체의 오차로 10 ms 보다 조금 길다)
+- **출력**: `mean 10.13, p50 10.13, p95 10.15, fps 98.7` (직접 실행 — sleep 자체의 오차로 10 ms 보다 조금 길다)
 
 ```python
 def ort_session(path, n):
@@ -851,7 +859,7 @@ for n in sorted({1, 2, os.cpu_count()}):
 
 #### 한 번에 정리
 - warm-up 버리고 → 평균 · p50 · p95 · FPS. 실시간 판단은 p95.
-- 같은 조건(CPU · 배치 1 · 입력 · 스레드)에서 PyTorch vs ONNX Runtime — MobileNetV3-S 2.6 vs 5.5 ms.
+- 같은 조건(CPU · 배치 1 · 입력 · 스레드)에서 PyTorch vs ONNX Runtime — MobileNetV3-S 2.1 vs 6.5 ms.
 - `baseline.csv` 열: `model, framework, input, threads, mean, p50, p95, fps, file_MB` — 조건을 열로 남긴다.
 - ⚠ 측정 중 다른 프로그램이 CPU 를 쓰면 숫자가 크게 흔들린다 — 같은 상태에서 여러 번 재고 p95 를 함께 본다.
 
