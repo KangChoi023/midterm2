@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">weight fake quant 6가지 — 정확도 (MNIST 100장, FP32 = 1.00)</text>
+<line x1="70.0" y1="195.0" x2="670.0" y2="195.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64.0" y="199.0" font-size="12" fill="#64748b" text-anchor="end">0</text>
+<line x1="70.0" y1="157.5" x2="670.0" y2="157.5" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64.0" y="161.5" font-size="12" fill="#64748b" text-anchor="end">0.25</text>
+<line x1="70.0" y1="120.0" x2="670.0" y2="120.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64.0" y="124.0" font-size="12" fill="#64748b" text-anchor="end">0.5</text>
+<line x1="70.0" y1="82.5" x2="670.0" y2="82.5" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64.0" y="86.5" font-size="12" fill="#64748b" text-anchor="end">0.75</text>
+<line x1="70.0" y1="45.0" x2="670.0" y2="45.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64.0" y="49.0" font-size="12" fill="#64748b" text-anchor="end">1</text>
+<line x1="70.0" y1="195.0" x2="670.0" y2="195.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="70.0" y1="45.0" x2="70.0" y2="195.0" stroke="#1e293b" stroke-width="1.3"/>
+<rect x="90.0" y="45.0" width="60.0" height="150.0" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="120.0" y="39.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">1.00</text>
+<text x="120.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">8bit 텐서</text>
+<text x="120.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 0.07</text>
+<rect x="190.0" y="45.0" width="60.0" height="150.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.3"/>
+<text x="220.0" y="39.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">1.00</text>
+<text x="220.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">8bit 채널</text>
+<text x="220.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 0.07</text>
+<rect x="290.0" y="45.0" width="60.0" height="150.0" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="320.0" y="39.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">1.00</text>
+<text x="320.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">4bit 텐서</text>
+<text x="320.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 1.59</text>
+<rect x="390.0" y="46.5" width="60.0" height="148.5" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.3"/>
+<text x="420.0" y="40.5" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0.99</text>
+<text x="420.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">4bit 채널</text>
+<text x="420.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 1.32</text>
+<rect x="490.0" y="157.5" width="60.0" height="37.5" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.3"/>
+<text x="520.0" y="151.5" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0.25</text>
+<text x="520.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">2bit 텐서</text>
+<text x="520.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 15.61</text>
+<rect x="590.0" y="117.0" width="60.0" height="78.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.3"/>
+<text x="620.0" y="111.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">0.52</text>
+<text x="620.0" y="214.0" font-size="11.5" fill="#1e293b" text-anchor="middle">2bit 채널</text>
+<text x="620.0" y="230.0" font-size="10.5" fill="#64748b" text-anchor="middle">max_diff 13.39</text>
+<text x="350.0" y="252.0" font-size="11.5" fill="#64748b" text-anchor="middle">8bit 는 손실 0 · 4bit 는 정확도 그대로지만 logits 가 1.3 ~ 1.6 흔들림 · 2bit 는 무너짐 (per-channel 이 덜)</text>
+</svg>
