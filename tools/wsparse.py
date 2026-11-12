@@ -124,9 +124,25 @@ def load(path):
     else:
         s,i=extract(path)
         out=_unesc(P(s,i).val())
+    out=_split_by_lesson(out)
     for les in out:
         les['qs']=[x for x in (_norm(q,k) for k,q in enumerate(les.get('qs',[]))) if x]
     return out
+
+LES_TAG=re.compile(r'^\s*(?:<span[^>]*>)?\s*\[(\d)교시\]\s*(?:</span>)?\s*')
+
+def _split_by_lesson(out):
+    """하루치 복습 퀴즈가 한 묶음(QP Day 1 의 review_quiz.html)이고 문항 앞에 '[N교시]' 가 붙어 있으면 교시별 8묶음으로 나눈다."""
+    if len(out)!=1: return out
+    qs=out[0].get('qs',[])
+    tags=[LES_TAG.match(q.get('p','')) for q in qs]
+    if not qs or not all(tags): return out
+    secs=[{'t':f'{n}교시','qs':[]} for n in range(1,9)]
+    for q,m in zip(qs,tags):
+        n=int(m.group(1))
+        if 1<=n<=8: secs[n-1]['qs'].append(dict(q,p=q['p'][m.end():]))
+    while secs and not secs[-1]['qs']: secs.pop()
+    return secs
 
 CIRC='①②③④⑤⑥⑦⑧'
 
