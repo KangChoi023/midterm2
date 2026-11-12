@@ -696,6 +696,248 @@ def d4_pipeline():
     s.save('d4-pipeline.svg')
 
 
+# ---------------- VB Day 5 ----------------
+
+def _person(s, cx, top, h, color=INK, fill='#cbd5e1'):
+    """서 있는 사람 실루엣 (머리 원 + 몸 다각형) — 높이 h"""
+    r = h * 0.09
+    s.circle(cx, top + r, r, color, fill, 1.5)
+    w = h * 0.16
+    s.poly([(cx - w, top + 2.3 * r), (cx + w, top + 2.3 * r), (cx + w * 0.8, top + h * 0.55),
+            (cx + w * 0.55, top + h), (cx + w * 0.1, top + h), (cx, top + h * 0.62),
+            (cx - w * 0.1, top + h), (cx - w * 0.55, top + h), (cx - w * 0.8, top + h * 0.55)],
+           color, 1.5, fill, close=True)
+
+
+def d5_outputs():
+    s = Svg(700, 300)
+    s.text(350, 22, '같은 사람, 세 가지 출력 — 박스 · 마스크 · 관절', 14, INK, 'middle', True)
+    titles = [('탐지 (박스)', '어디에 · 몇 명', ORANGE), ('세그멘테이션 (마스크)', '모양 · 넓이 · 경계', GREEN),
+              ('포즈 (관절 17개)', '어떤 자세', PURPLE)]
+    for i, (t, q, c) in enumerate(titles):
+        x = 20 + i * 228; cx = x + 105
+        s.rect(x, 40, 210, 200, c, None, 8, 2)
+        s.text(cx, 62, t, 13.5, INK, 'middle', True)
+        if i == 0:
+            _person(s, cx, 78, 128)
+            s.rect(cx - 28, 76, 56, 132, ORANGE, 'none', 0, 2.5)
+        elif i == 1:
+            _person(s, cx, 78, 128, GREEN, '#86efac')
+        else:
+            _person(s, cx, 78, 128, LINE, '#f1f5f9')
+            P = {0: (cx, 89), 5: (cx - 17, 104), 6: (cx + 17, 104), 7: (cx - 21, 128), 8: (cx + 21, 128),
+                 9: (cx - 19, 149), 10: (cx + 19, 149), 11: (cx - 10, 151), 12: (cx + 10, 151),
+                 13: (cx - 10, 178), 14: (cx + 10, 178), 15: (cx - 6, 204), 16: (cx + 6, 204)}
+            for a, b in ((5, 6), (5, 7), (7, 9), (6, 8), (8, 10), (5, 11), (6, 12), (11, 12),
+                         (11, 13), (13, 15), (12, 14), (14, 16)):
+                s.line(*P[a], *P[b], PURPLE, 2)
+            for k, (px, py) in P.items(): s.circle(px, py, 3.2, PURPLE, PURPLE, 1)
+        s.text(cx, 228, q, 12.5, c, 'middle', True)
+    s.text(20, 266, '박스 한계 ①  박스 안 사람 픽셀 비율 — Penn-Fudan 423명 평균 0.50 (0.27 ~ 0.78): 박스의 절반은 배경', 12, INK)
+    s.text(20, 288, '박스 한계 ②  서 있는 사람 h/w 평균 2.77 → 사진을 90° 돌리면 0.38 — 박스 비율은 촬영 방향에 따라 뒤집힌다', 12, INK)
+    s.save('d5-outputs.svg')
+
+
+def d5_encdec():
+    s = Svg(700, 300)
+    s.text(350, 22, 'Encoder-Decoder (U-Net) — 줄이며 "무엇", 키우며 "어디"', 14, INK, 'middle', True)
+    sizes = [(256, 'H'), (128, 'H/2'), (64, 'H/4'), (32, 'H/8')]
+    xs_e = [40, 110, 170, 222]; xs_d = [478, 418, 358, 300]
+    ys = [50, 85, 115, 140]
+    hs = [180, 110, 60, 30]
+    for i in range(4):
+        s.rect(xs_e[i], ys[i], 34, hs[i], BLUE, None, 3, 1.5)
+        s.text(xs_e[i] + 17, ys[i] + hs[i] + 16, sizes[i][1], 11.5, MUTED, 'middle')
+        if i < 3:
+            s.rect(xs_d[i], ys[i], 34, hs[i], GREEN, None, 3, 1.5)
+            s.text(xs_d[i] + 17, ys[i] + hs[i] + 16, sizes[i][1], 11.5, MUTED, 'middle')
+            s.line(xs_e[i] + 34, ys[i] + 12, xs_d[i], ys[i] + 12, ORANGE, 2, True, '6,4')
+    s.rect(xs_d[3] - 20, ys[3], 34, hs[3], PURPLE, None, 3, 1.5)
+    for i in range(3):
+        _arrow(s, xs_e[i] + 34, ys[i] + hs[i] / 2 + 10, xs_e[i + 1], ys[i + 1] + hs[i + 1] / 2)
+        s.line(xs_d[i + 1] + 34 - (20 if i == 2 else 0), ys[i + 1] + hs[i + 1] / 2, xs_d[i], ys[i] + hs[i] / 2 + 10, GREEN, 2, True)
+    s.text(110, 262, '인코더 (Day 2~3 CNN)', 12.5, BLUE, 'middle', True)
+    s.text(440, 262, '디코더 (업샘플)', 12.5, GREEN, 'middle', True)
+    s.text(300, 79, 'skip connection — 같은 해상도 특징을 이어 붙여 경계 복원', 11.5, ORANGE, 'middle')
+    s.text(500, 280, '출력 = 입력과 같은 크기의 라벨 지도', 11.5, MUTED, 'middle')
+    x0 = 540
+    s.text(x0, 110, '업샘플 두 가지', 13, INK, 'start', True)
+    s.text(x0, 132, 'bilinear: 학습 X', 12, INK)
+    s.text(x0, 152, 'Transposed Conv: 학습 O', 12, INK)
+    s.text(x0, 180, '출력 = (n−1)·s − 2p + k', 12.5, RED, 'start', True)
+    for j, (k, st, p, o) in enumerate(((4, 2, 1, 16), (2, 2, 0, 16), (3, 2, 1, 15), (3, 1, 1, 8))):
+        s.text(x0, 202 + j * 18, f'n=8, k{k} s{st} p{p} → {o}', 11.5, RED if o == 15 else MUTED)
+    s.save('d5-encdec.svg')
+
+
+def d5_miou():
+    s = Svg(700, 250)
+    s.text(350, 22, 'mIoU 손 계산 — 4×4, 정답 사람 = 왼쪽 2열, 예측 사람 = 왼쪽 3열', 14, INK, 'middle', True)
+    c = 28
+
+    def grid(x, y, ncol, title, col):
+        for r in range(4):
+            for q in range(4):
+                s.rect(x + q * c, y + r * c, c, c, LINE, col if q < ncol else '#ffffff', 0, 1)
+        s.text(x + 2 * c, y - 8, title, 12.5, INK, 'middle', True)
+    grid(30, 60, 2, '정답 (gt)', '#bfdbfe')
+    grid(180, 60, 3, '예측 (pred)', '#fed7aa')
+    x = 330; y = 60
+    for r in range(4):
+        for q in range(4):
+            col = '#86efac' if q < 2 else '#fca5a5' if q == 2 else '#e2e8f0'
+            s.rect(x + q * c, y + r * c, c, c, LINE, col, 0, 1)
+    s.text(x + 2 * c, y - 8, '겹쳐 보기', 12.5, INK, 'middle', True)
+    s.text(30, 200, '초록 = 둘 다 사람(8) · 빨강 = 예측만 사람(4) · 회색 = 둘 다 배경(4)', 11.5, MUTED)
+    x0 = 480
+    s.text(x0, 70, '사람 IoU = 8 / 12', 13, INK, 'start', True); s.text(x0 + 130, 70, '= 0.6667', 13, BLUE, 'start', True)
+    s.text(x0, 96, '배경 IoU = 4 / 8', 13, INK, 'start', True); s.text(x0 + 130, 96, '= 0.5', 13, BLUE, 'start', True)
+    s.text(x0, 126, 'mIoU = 평균 = 0.5833', 14, RED, 'start', True)
+    s.text(x0, 154, '교집합 = 둘 다 그 클래스', 11.5, MUTED)
+    s.text(x0, 172, '합집합 = 하나라도 그 클래스', 11.5, MUTED)
+    s.text(350, 232, '데이터 전체는 장마다 IoU 를 평균하지 말고, 클래스별 교집합 · 합집합 픽셀 수를 누적한 뒤 나눈다', 12, INK, 'middle')
+    s.save('d5-miou.svg')
+
+
+def d5_pose():
+    s = Svg(700, 310)
+    s.text(350, 22, 'COCO 17 관절과 몸통 기울기 규칙 — 기울기 > 60° 이면 쓰러짐', 14, INK, 'middle', True)
+    cx, top = 120, 48
+    P = {0: (0, 0), 1: (-8, -7), 2: (8, -7), 3: (-17, -2), 4: (17, -2), 5: (-30, 30), 6: (30, 30),
+         7: (-40, 72), 8: (40, 72), 9: (-46, 112), 10: (46, 112), 11: (-20, 108), 12: (20, 108),
+         13: (-22, 155), 14: (22, 155), 15: (-22, 200), 16: (22, 200)}
+    P = {k: (cx + x, top + 15 + y) for k, (x, y) in P.items()}
+    for a, b in ((5, 6), (5, 7), (7, 9), (6, 8), (8, 10), (5, 11), (6, 12), (11, 12),
+                 (11, 13), (13, 15), (12, 14), (14, 16), (0, 1), (0, 2), (1, 3), (2, 4)):
+        s.line(*P[a], *P[b], LINE, 2)
+    for k, (x, y) in P.items():
+        hl = k in (5, 6, 11, 12)
+        s.circle(x, y, 4.5 if hl else 3.5, RED if hl else PURPLE, RED if hl else PURPLE, 1)
+        if k >= 5: s.text(x + (10 if k % 2 == 0 else -10), y + 4, str(k), 11, RED if hl else MUTED, 'start' if k % 2 == 0 else 'end', hl)
+    s.text(cx, 302, '홀수 = 왼쪽 · 짝수 = 오른쪽 (사진 속 사람 기준)', 11, MUTED, 'middle')
+    s.text(250, 70, '0 코 · 1–2 눈 · 3–4 귀', 12, INK)
+    s.text(250, 90, '5–6 어깨 · 7–8 팔꿈치 · 9–10 손목', 12, INK)
+    s.text(250, 110, '11–12 엉덩이 · 13–14 무릎 · 15–16 발목', 12, INK)
+    s.text(250, 140, '출력: r.keypoints.xy (사람, 17, 2) · .conf (사람, 17)', 12, BLUE)
+    hx, hy = 310, 255
+    s.line(hx, hy, hx, hy - 80, MUTED, 1.5, dash='4,4'); s.text(hx, hy - 86, '위쪽 수직 [0, −1]', 11, MUTED, 'middle')
+    ang = math.radians(84.2)
+    sx, sy = hx + 75 * math.sin(ang), hy - 75 * math.cos(ang)
+    s.line(hx, hy, sx, sy, RED, 3); s.circle(hx, hy, 5, RED, RED); s.circle(sx, sy, 5, RED, RED)
+    s.text(hx - 8, hy + 16, '엉덩이 중점', 11, INK, 'middle'); s.text(sx + 4, sy + 18, '어깨 중점', 11, INK, 'middle')
+    s.poly([(hx, hy - 28)] + [(hx + 28 * math.sin(t), hy - 28 * math.cos(t)) for t in np.linspace(0, ang, 12)], ORANGE, 2)
+    s.text(hx + 30, hy - 30, '84.2°', 12.5, ORANGE, 'start', True)
+    x0 = 470
+    s.text(x0, 180, '각도 = arccos( BA·BC / |BA||BC| )', 12.5, INK, 'start', True)
+    s.text(x0, 204, '원본 사진: 기울기 3.3° → 정상', 12, GREEN)
+    s.text(x0, 224, '90° 회전: 기울기 84.2° → 쓰러짐', 12, RED)
+    s.text(x0, 250, '어깨 · 엉덩이(5, 6, 11, 12) conf 중', 11.5, MUTED)
+    s.text(x0, 268, '하나라도 < 0.5 → None (판정 보류)', 11.5, MUTED)
+    s.save('d5-pose.svg')
+
+
+def d5_heads():
+    s = Svg(700, 260)
+    s.text(350, 22, '같은 backbone · neck, 다른 head — 8,400 칸마다 내는 숫자', 14, INK, 'middle', True)
+    rows = [('yolov8n (탐지)', [(4, '4', BLUE), (80, '클래스 80', ORANGE)], 84, '3,157,200'),
+            ('yolov8n-seg', [(4, '4', BLUE), (80, '클래스 80', ORANGE), (32, '마스크 계수 32', GREEN)], 116, '3,409,968'),
+            ('yolov8n-pose', [(4, '4', BLUE), (1, '', RED), (51, '관절 17 × (x, y, conf) = 51', PURPLE)], 56, '3,295,470')]
+    x0, sc = 150, 3.4
+    for i, (n, parts, tot, prm) in enumerate(rows):
+        y = 50 + i * 52
+        s.text(x0 - 10, y + 22, n, 13, INK, 'end', True)
+        x = x0
+        for v, lab, c in parts:
+            s.rect(x, y, v * sc, 34, c, None, 0, 1.2)
+            if lab: s.text(x + v * sc / 2, y + 22, lab, 11.5, INK, 'middle')
+            x += v * sc
+        s.text(x + 8, y + 22, f'= {tot}', 14, INK, 'start', True)
+        s.text(690, y + 22, f'{prm}', 11.5, MUTED, 'end')
+    s.text(690, 44, '파라미터', 11, MUTED, 'end'); s.text(x0, 44, '박스 4 (cx, cy, w, h)', 11, BLUE)
+    s.text(x0 + 4 * sc + 2, 50 + 2 * 52 + 50, '↑ 사람 점수 1 (클래스 대신)', 11, RED)
+    s.text(350, 226, '칸 수 8,400 = 80×80 + 40×40 + 20×20 (stride 8 · 16 · 32) — 원시 출력 (1, 채널, 8400)', 12, INK, 'middle')
+    s.text(350, 248, 'seg 는 따로 이미지마다 prototype 32 × 160 × 160 을 내고, 계수 32개로 섞어 물체 마스크를 만든다', 11.5, MUTED, 'middle')
+    s.save('d5-heads.svg')
+
+
+def d5_onnx():
+    s = Svg(700, 250)
+    s.text(350, 22, 'PyTorch → ONNX → 다른 엔진 — 변환 후 반드시 같은 입력으로 비교', 14, INK, 'middle', True)
+    s.box(10, 60, 120, 60, 'PyTorch 모델', BLUE, '.eval() · .cpu()', 14)
+    s.box(268, 50, 152, 80, 'model.onnx', ORANGE, '계산 그래프 + 가중치', 15)
+    _arrow(s, 132, 90, 266, 90, 'torch.onnx.export', -10)
+    s.text(199, 112, '예시 입력으로 tracing', 11, MUTED, 'middle')
+    for j, (n, c) in enumerate((('ONNX Runtime (CPU · 오늘)', GREEN), ('TensorRT (Jetson · OT 과목)', RED), ('OpenVINO (인텔)', PURPLE))):
+        y = 44 + j * 34
+        s.rect(500, y, 185, 28, c, None, 6, 1.5); s.text(592, y + 19, n, 12, INK, 'middle')
+        _arrow(s, 420, 90, 498, y + 14)
+    s.text(20, 160, 'export 인자', 12.5, INK, 'start', True)
+    s.text(20, 180, '예시 입력 (1, 3, 224, 224) · input_names=["input"] · output_names=["logits"]', 11.5, INK)
+    s.text(20, 198, 'dynamic_axes={"input": {0: "batch"}} — 빼면 배치 1 로 굳음 · opset_version=17', 11.5, INK)
+    s.text(20, 224, 'MobileNetV3-S: 노드 159개 (HardSwish 포함) · 파일 10.18 MB ≈ 파라미터 2,542,856 × 4 B', 11.5, MUTED)
+    s.text(20, 242, '배치 4 비교: 출력 (4, 1000), PyTorch 와 최대 차이 1.48e-05 < 1e-4 ✔ · YOLOv8n ONNX: 7명 = 7명, 짝 IoU 1.0', 11.5, GREEN)
+    s.save('d5-onnx.svg')
+
+
+def d5_latency():
+    s = Svg(700, 270)
+    s.text(350, 22, '평균만 보면 꼬리를 놓친다 — 100번 중 80번 10 ms, 20번 40 ms', 14, INK, 'middle', True)
+    p = Plot(s, 60, 50, 380, 160, (0, 50), (0, 90))
+    p.axes(xt=(0, 10, 20, 30, 40, 50), yt=(0, 20, 40, 60, 80), xl='', yl='횟수')
+    s.text(250, 262, '한 번 실행 시간 (ms)', 12, MUTED, 'middle')
+    for v, n, c in ((10, 80, BLUE), (40, 20, RED)):
+        s.rect(p.X(v - 2), p.Y(n), p.X(v + 2) - p.X(v - 2), p.Y(0) - p.Y(n), c, None, 0, 1.2)
+    for v, lab, c, dy in ((10, 'p50 10', GREEN, 0), (16, '평균 16', ORANGE, 14), (40, 'p95 40', RED, 0)):
+        s.line(p.X(v), p.Y(90), p.X(v), p.Y(0), c, 2, dash='5,4')
+        s.text(p.X(v) + 4, p.Y(86) + dy, lab, 12, c, 'start', True)
+    x0 = 470
+    s.text(x0, 70, 'benchmark(fn, warmup=5, reps=50)', 12.5, INK, 'start', True)
+    s.text(x0, 94, '① warm-up 5번 버림 (첫 실행은 느림)', 12, INK)
+    s.text(x0, 114, '② perf_counter 로 50번 잼', 12, INK)
+    s.text(x0, 134, '③ 평균 · p50 · p95 · FPS', 12, INK)
+    s.text(x0, 164, 'FPS = 1000 / 평균 ms', 12.5, BLUE, 'start', True)
+    s.text(x0, 184, '   = 1000 / 16 = 62.5', 12, BLUE)
+    s.text(x0, 212, '실시간 판단은 p95 —', 12.5, RED, 'start', True)
+    s.text(x0, 232, '10 FPS 면 p95 < 100 ms', 12, RED)
+    s.save('d5-latency.svg')
+
+
+def d5_intrusion():
+    s = Svg(700, 330)
+    s.text(350, 22, '위험구역 침입 — 발 위치가 다각형 안에 3프레임 연속이면 경보', 14, INK, 'middle', True)
+    k = 0.3; ox, oy = 20, 40
+    s.rect(ox, oy, 768 * k, 576 * k, LINE, '#f8fafc', 0, 1.5)
+    s.text(ox + 768 * k, oy + 576 * k + 14, '768 × 576', 11, MUTED, 'end')
+    G = [(0, 270), (180, 300), (380, 350), (520, 470), (560, 575), (0, 575)]
+    s.poly([(ox + x * k, oy + y * k) for x, y in G], RED, 2, '#fecaca', close=True)
+    s.text(ox + 120 * k, oy + 450 * k, 'GRASS', 12, RED, 'middle', True)
+    for (x1, y1, x2, y2), inside in (((120, 250, 200, 420), True), ((520, 170, 600, 340), False)):
+        c = RED if inside else GREEN
+        s.rect(ox + x1 * k, oy + y1 * k, (x2 - x1) * k, (y2 - y1) * k, c, 'none', 0, 2)
+        fx, fy = (x1 + x2) / 2, y2
+        s.circle(ox + fx * k, oy + fy * k, 4, c, c)
+    s.text(330, 66, '발 위치 = ((x1 + x2) / 2, y2)', 13, INK, 'start', True)
+    s.text(330, 86, '박스 아래 중앙 — 바닥에 닿은 점 (몸통 · 배경 X)', 11.5, MUTED)
+    s.text(330, 114, 'cv2.pointPolygonTest(poly, pt, False) ≥ 0', 12.5, BLUE, 'start', True)
+    s.text(330, 134, '+1 안 · 0 선 위 · −1 밖 → 선 위도 안으로', 11.5, MUTED)
+    s.text(330, 160, '시험: (100, 400) 안 · (600, 200) 밖 · (300, 340) 안 · (300, 320) 밖', 11.5, INK)
+    s.text(330, 186, '강사 실행: 795 프레임 중 경보 224 (28.2%), 이벤트 5번', 11.5, INK)
+    y0 = 262; cw = 40; x0 = 150
+    ins = [0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1]
+    st, alarm = 0, []
+    for v in ins:
+        st = st + 1 if v else 0; alarm.append(int(st >= 3))
+    s.text(x0 - 10, y0 + 18, '구역 안 사람', 12, INK, 'end')
+    s.text(x0 - 10, y0 + 48, '경보 (n=3)', 12, INK, 'end')
+    for i, (v, a) in enumerate(zip(ins, alarm)):
+        s.rect(x0 + i * cw, y0, cw - 3, 26, LINE, '#fecaca' if v else '#ffffff', 3, 1)
+        s.text(x0 + i * cw + cw / 2 - 1, y0 + 18, str(v), 12, INK, 'middle')
+        s.rect(x0 + i * cw, y0 + 30, cw - 3, 26, LINE, RED if a else '#ffffff', 3, 1)
+        s.text(x0 + i * cw + cw / 2 - 1, y0 + 48, str(a), 12, '#ffffff' if a else MUTED, 'middle', bool(a))
+    s.text(x0, y0 - 8, 'streak = streak + 1 if 안 else 0 · alarm = streak ≥ 3 → 짧은 침입 · 한 프레임 깜빡임은 무시', 11.5, MUTED)
+    s.save('d5-intrusion.svg')
+
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):

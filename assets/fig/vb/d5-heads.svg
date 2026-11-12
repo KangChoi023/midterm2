@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">같은 backbone · neck, 다른 head — 8,400 칸마다 내는 숫자</text>
+<text x="140.0" y="72.0" font-size="13" fill="#1e293b" text-anchor="end" font-weight="700">yolov8n (탐지)</text>
+<rect x="150.0" y="50.0" width="13.6" height="34.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="156.8" y="72.0" font-size="11.5" fill="#1e293b" text-anchor="middle">4</text>
+<rect x="163.6" y="50.0" width="272.0" height="34.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="299.6" y="72.0" font-size="11.5" fill="#1e293b" text-anchor="middle">클래스 80</text>
+<text x="443.6" y="72.0" font-size="14" fill="#1e293b" text-anchor="start" font-weight="700">= 84</text>
+<text x="690.0" y="72.0" font-size="11.5" fill="#64748b" text-anchor="end">3,157,200</text>
+<text x="140.0" y="124.0" font-size="13" fill="#1e293b" text-anchor="end" font-weight="700">yolov8n-seg</text>
+<rect x="150.0" y="102.0" width="13.6" height="34.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="156.8" y="124.0" font-size="11.5" fill="#1e293b" text-anchor="middle">4</text>
+<rect x="163.6" y="102.0" width="272.0" height="34.0" rx="0" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="299.6" y="124.0" font-size="11.5" fill="#1e293b" text-anchor="middle">클래스 80</text>
+<rect x="435.6" y="102.0" width="108.8" height="34.0" rx="0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="490.0" y="124.0" font-size="11.5" fill="#1e293b" text-anchor="middle">마스크 계수 32</text>
+<text x="552.4" y="124.0" font-size="14" fill="#1e293b" text-anchor="start" font-weight="700">= 116</text>
+<text x="690.0" y="124.0" font-size="11.5" fill="#64748b" text-anchor="end">3,409,968</text>
+<text x="140.0" y="176.0" font-size="13" fill="#1e293b" text-anchor="end" font-weight="700">yolov8n-pose</text>
+<rect x="150.0" y="154.0" width="13.6" height="34.0" rx="0" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="156.8" y="176.0" font-size="11.5" fill="#1e293b" text-anchor="middle">4</text>
+<rect x="163.6" y="154.0" width="3.4" height="34.0" rx="0" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<rect x="167.0" y="154.0" width="173.4" height="34.0" rx="0" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="253.7" y="176.0" font-size="11.5" fill="#1e293b" text-anchor="middle">관절 17 × (x, y, conf) = 51</text>
+<text x="348.4" y="176.0" font-size="14" fill="#1e293b" text-anchor="start" font-weight="700">= 56</text>
+<text x="690.0" y="176.0" font-size="11.5" fill="#64748b" text-anchor="end">3,295,470</text>
+<text x="690.0" y="44.0" font-size="11" fill="#64748b" text-anchor="end">파라미터</text>
+<text x="150.0" y="44.0" font-size="11" fill="#0284c7" text-anchor="start">박스 4 (cx, cy, w, h)</text>
+<text x="165.6" y="204.0" font-size="11" fill="#dc2626" text-anchor="start">↑ 사람 점수 1 (클래스 대신)</text>
+<text x="350.0" y="226.0" font-size="12" fill="#1e293b" text-anchor="middle">칸 수 8,400 = 80×80 + 40×40 + 20×20 (stride 8 · 16 · 32) — 원시 출력 (1, 채널, 8400)</text>
+<text x="350.0" y="248.0" font-size="11.5" fill="#64748b" text-anchor="middle">seg 는 따로 이미지마다 prototype 32 × 160 × 160 을 내고, 계수 32개로 섞어 물체 마스크를 만든다</text>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">같은 사람, 세 가지 출력 — 박스 · 마스크 · 관절</text>
+<rect x="20.0" y="40.0" width="210.0" height="200.0" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="125.0" y="62.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">탐지 (박스)</text>
+<circle cx="125.0" cy="89.5" r="11.52" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.5"/>
+<polygon points="104.5,104.5 145.5,104.5 141.4,148.4 136.3,206.0 127.0,206.0 125.0,157.4 123.0,206.0 113.7,206.0 108.6,148.4" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="97.0" y="76.0" width="56.0" height="132.0" rx="0" fill="none" stroke="#d97706" stroke-width="2.5"/>
+<text x="125.0" y="228.0" font-size="12.5" fill="#d97706" text-anchor="middle" font-weight="700">어디에 · 몇 명</text>
+<rect x="248.0" y="40.0" width="210.0" height="200.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="353.0" y="62.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">세그멘테이션 (마스크)</text>
+<circle cx="353.0" cy="89.5" r="11.52" fill="#86efac" stroke="#16a34a" stroke-width="1.5"/>
+<polygon points="332.5,104.5 373.5,104.5 369.4,148.4 364.3,206.0 355.0,206.0 353.0,157.4 351.0,206.0 341.7,206.0 336.6,148.4" fill="#86efac" stroke="#16a34a" stroke-width="1.5" stroke-linejoin="round"/>
+<text x="353.0" y="228.0" font-size="12.5" fill="#16a34a" text-anchor="middle" font-weight="700">모양 · 넓이 · 경계</text>
+<rect x="476.0" y="40.0" width="210.0" height="200.0" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="581.0" y="62.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">포즈 (관절 17개)</text>
+<circle cx="581.0" cy="89.5" r="11.52" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+<polygon points="560.5,104.5 601.5,104.5 597.4,148.4 592.3,206.0 583.0,206.0 581.0,157.4 579.0,206.0 569.7,206.0 564.6,148.4" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/>
+<line x1="564.0" y1="104.0" x2="598.0" y2="104.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="564.0" y1="104.0" x2="560.0" y2="128.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="560.0" y1="128.0" x2="562.0" y2="149.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="598.0" y1="104.0" x2="602.0" y2="128.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="602.0" y1="128.0" x2="600.0" y2="149.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="564.0" y1="104.0" x2="571.0" y2="151.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="598.0" y1="104.0" x2="591.0" y2="151.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="571.0" y1="151.0" x2="591.0" y2="151.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="571.0" y1="151.0" x2="571.0" y2="178.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="571.0" y1="178.0" x2="575.0" y2="204.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="591.0" y1="151.0" x2="591.0" y2="178.0" stroke="#7c3aed" stroke-width="2"/>
+<line x1="591.0" y1="178.0" x2="587.0" y2="204.0" stroke="#7c3aed" stroke-width="2"/>
+<circle cx="581.0" cy="89.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="564.0" cy="104.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="598.0" cy="104.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="560.0" cy="128.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="602.0" cy="128.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="562.0" cy="149.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="600.0" cy="149.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="571.0" cy="151.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="591.0" cy="151.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="571.0" cy="178.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="591.0" cy="178.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="575.0" cy="204.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<circle cx="587.0" cy="204.0" r="3.2" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"/>
+<text x="581.0" y="228.0" font-size="12.5" fill="#7c3aed" text-anchor="middle" font-weight="700">어떤 자세</text>
+<text x="20.0" y="266.0" font-size="12" fill="#1e293b" text-anchor="start">박스 한계 ①  박스 안 사람 픽셀 비율 — Penn-Fudan 423명 평균 0.50 (0.27 ~ 0.78): 박스의 절반은 배경</text>
+<text x="20.0" y="288.0" font-size="12" fill="#1e293b" text-anchor="start">박스 한계 ②  서 있는 사람 h/w 평균 2.77 → 사진을 90° 돌리면 0.38 — 박스 비율은 촬영 방향에 따라 뒤집힌다</text>
+</svg>

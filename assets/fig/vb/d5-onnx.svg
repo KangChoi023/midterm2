@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">PyTorch → ONNX → 다른 엔진 — 변환 후 반드시 같은 입력으로 비교</text>
+<rect x="10.0" y="60.0" width="120.0" height="60.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="70.0" y="87.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">PyTorch 모델</text>
+<text x="70.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">.eval() · .cpu()</text>
+<rect x="268.0" y="50.0" width="152.0" height="80.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="344.0" y="87.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">model.onnx</text>
+<text x="344.0" y="105.0" font-size="12.5" fill="#64748b" text-anchor="middle">계산 그래프 + 가중치</text>
+<line x1="132.0" y1="90.0" x2="266.0" y2="90.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="199.0" y="80.0" font-size="12" fill="#64748b" text-anchor="middle">torch.onnx.export</text>
+<text x="199.0" y="112.0" font-size="11" fill="#64748b" text-anchor="middle">예시 입력으로 tracing</text>
+<rect x="500.0" y="44.0" width="185.0" height="28.0" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<text x="592.0" y="63.0" font-size="12" fill="#1e293b" text-anchor="middle">ONNX Runtime (CPU · 오늘)</text>
+<line x1="420.0" y1="90.0" x2="498.0" y2="58.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="500.0" y="78.0" width="185.0" height="28.0" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+<text x="592.0" y="97.0" font-size="12" fill="#1e293b" text-anchor="middle">TensorRT (Jetson · OT 과목)</text>
+<line x1="420.0" y1="90.0" x2="498.0" y2="92.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="500.0" y="112.0" width="185.0" height="28.0" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="592.0" y="131.0" font-size="12" fill="#1e293b" text-anchor="middle">OpenVINO (인텔)</text>
+<line x1="420.0" y1="90.0" x2="498.0" y2="126.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="20.0" y="160.0" font-size="12.5" fill="#1e293b" text-anchor="start" font-weight="700">export 인자</text>
+<text x="20.0" y="180.0" font-size="11.5" fill="#1e293b" text-anchor="start">예시 입력 (1, 3, 224, 224) · input_names=["input"] · output_names=["logits"]</text>
+<text x="20.0" y="198.0" font-size="11.5" fill="#1e293b" text-anchor="start">dynamic_axes={"input": {0: "batch"}} — 빼면 배치 1 로 굳음 · opset_version=17</text>
+<text x="20.0" y="224.0" font-size="11.5" fill="#64748b" text-anchor="start">MobileNetV3-S: 노드 159개 (HardSwish 포함) · 파일 10.18 MB ≈ 파라미터 2,542,856 × 4 B</text>
+<text x="20.0" y="242.0" font-size="11.5" fill="#16a34a" text-anchor="start">배치 4 비교: 출력 (4, 1000), PyTorch 와 최대 차이 1.48e-05 &lt; 1e-4 ✔ · YOLOv8n ONNX: 7명 = 7명, 짝 IoU 1.0</text>
+</svg>

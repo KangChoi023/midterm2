@@ -1,0 +1,94 @@
+{
+ "1-1": {
+  "text": "내려받기 실패: https://imguru-mooc.github.io/AI_CAMPUS/OT-day3/data/mnist_cnn.pt → <urlopen error Tunnel connection failed: 403 Forbidden>\nmnv3s.onnx 10.2 MB | 노드 127 | 입력 ['batch', 3, 224, 224] | PyTorch 와 같다: True\n✅ 오늘의 모델 준비 — {'Conv': 52, 'HardSwish': 19, 'Relu': 14, 'GlobalAveragePool': 10}",
+  "check": true
+ },
+ "1-2": {
+  "text": "설치됨: ['AzureExecutionProvider', 'CPUExecutionProvider']\n실제 사용: ['CPUExecutionProvider'] → GPU 없음 — 런타임 유형이 T4 GPU 인지 확인 (5교시만 영향)\n✅ 확인 완료 — 5교시는 설명 · 강사 화면으로 진행합니다",
+  "check": true
+ },
+ "2-1": {
+  "text": "5번의 시간 (ms): [38.24, 2.1, 14.11, 2.19, 14.17]\n첫 실행은 나머지 평균의 4.7배\n✅ 같은 일을 했는데 시간이 매번 다르다 — 첫 번째가 가장 느린 경우가 많다 (Colab 에서 더 뚜렷)",
+  "check": true
+ },
+ "2-2": {
+  "text": "평균 8.13 ms | p50 7.05 | p95 15.69 | 최대 29.79 | 123 FPS\n✅ p95 ≥ p50: True — 꼬리가 평균을 얼마나 넘는지 보세요",
+  "check": true
+ },
+ "2-3": {
+  "text": "MobileNetV3   {'mean': np.float64(12.1), 'p50': np.float64(17.27), 'p95': np.float64(22.82), 'fps': np.float64(82.67)}\nSimpleConvNet {'mean': np.float64(0.478), 'p50': np.float64(0.075), 'p95': np.float64(0.119), 'fps': np.float64(2091.248)}\n✅ bench 완성 — MobileNetV3 가 SimpleConvNet 보다 25배 오래 걸린다",
+  "check": true
+ },
+ "3-1": {
+  "text": "이 런타임의 CPU 코어 수: 4\n   threads  mean   p50    p95     fps\n0        1  4.24  6.04   6.21  235.72\n1        2  4.86  2.30  10.26  205.90\n2        4  5.80  5.99  13.86  172.31\n✅ 스레드별 표 — 가장 빠른 평균: 1 스레드",
+  "check": true
+ },
+ "3-2": {
+  "text": "p95 기준 최선: 1 스레드\n✅ 실시간이면 p95 로 고른다 — 1 스레드",
+  "check": true
+ },
+ "4-1": {
+  "text": "DISABLE   7 개: ['Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm', 'Relu', 'Gemm']\nBASIC     7 개: ['Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm', 'Relu', 'Gemm']\nEXTENDED  5 개: ['FusedConv', 'MaxPool', 'Flatten', 'FusedGemm', 'Gemm']\nALL       6 개: ['Conv', 'ReorderOutput', 'MaxPool', 'Flatten', 'FusedGemm', 'Gemm']\n✅ EXTENDED 에서 Conv+Relu → FusedConv, Gemm+Relu → FusedGemm",
+  "check": true
+ },
+ "4-2": {
+  "text": "      level   mean    p50    p95     fps  speedup\n0   DISABLE  18.68  15.27  33.55   53.54     1.00\n1     BASIC  19.66  22.19  29.98   50.87     0.95\n2  EXTENDED  19.63  22.34  22.99   50.94     0.95\n3       ALL   6.38   6.20  11.08  156.84     2.93\n✅ ALL 은 DISABLE 보다 2.9배",
+  "check": true
+ },
+ "5-1": {
+  "text": "GPU 없음 — 건너뜀\n✅ GPU 없음 — 설명으로 진행",
+  "check": true
+ },
+ "5-2": {
+  "text": "  device  batch    mean     p50     p95     fps\n0    CPU      1    6.67    8.56   11.52  149.82\n1    CPU     32  181.34  183.28  241.24  176.46\n✅ CPU 두 줄 — GPU 줄은 강사 화면으로",
+  "check": true
+ },
+ "5-3": {
+  "text": "GPU 없음 — 건너뜀\n✅ 장치가 달라도 같은 모델",
+  "check": true
+ },
+ "6-1": {
+  "text": "   batch  latency_ms  imgs_per_s  ms_per_img\n0      1        7.09      141.02        7.09\n1      4       23.47      170.45        5.87\n2     16      112.66      142.02        7.04\n3     64      310.36      206.21        4.85\n✅ 지연은 배치와 함께 늘고, 장당 시간 · 처리량은 어느 지점에서 멈춘다",
+  "check": true
+ },
+ "6-2": {
+  "text": "처리량 최대 배치: 64 → 206 장/초\n✅ 64",
+  "check": true
+ },
+ "6-3": {
+  "text": "배치 1: 4대 | 배치 64: 6대 (지연 310 ms)\n✅ 처리량 ÷ 30 = 감당 가능한 카메라 수",
+  "check": true
+ },
+ "7-1": {
+  "text": "onnxruntime_profile__2026-11-12_02-24-38_543.json | 전체 기록 2882 | 노드 기록 2840\n예: Conv 234 µs [{'float': [1, 16, 112, 112]}]\n✅ 노드 기록 = 142 개 노드 × 20번",
+  "check": true
+ },
+ "7-2": {
+  "text": "              op  ms_per_run  share_%\n0           Conv        4.59    46.20\n1            Mul        1.78    17.94\n2    HardSigmoid        1.01    10.18\n3           Gemm        0.86     8.65\n4   ReorderInput        0.77     7.72\n5  ReorderOutput        0.54     5.47\n✅ 1위: Conv 46%",
+  "check": true
+ },
+ "7-3": {
+  "text": "MobileNetV3  : [['Mul', 30.1], ['Conv', 30.0], ['HardSigmoid', 20.3]]\nSimpleConvNet: [['FusedGemm', 35.0], ['Conv', 22.3], ['ReorderOutput', 15.2]]\n✅ 1위 — MobileNetV3: Mul | SimpleConvNet: FusedGemm → 모델마다 병목이 다르다",
+  "check": true
+ },
+ "8-1": {
+  "text": "{'model': 'mnv3s.onnx', 'provider': 'CPUExecutionProvider', 'threads': 1, 'level': 'DISABLE', 'batch': 1, 'mean': np.float64(12.843269599998166), 'p50': np.float64(14.25875900000051), 'p95': np.float64(14.726908699995533), 'fps': np.float64(77.86179307488358)}",
+  "check": false
+ },
+ "8-2": {
+  "text": "   threads    level   mean    p50    p95     fps\n0        1  DISABLE  12.98  14.31  14.66   77.04\n1        1      ALL   4.20   5.98   6.21  237.84\n2        2  DISABLE  12.26  12.62  19.48   81.54\n3        2      ALL   4.53   2.00  10.19  220.54\n최선: 1 스레드 · ALL · p95 6.21 ms",
+  "check": false
+ },
+ "8-3": {
+  "text": "   batch   mean    p95     fps\n0      1   5.49  10.15  182.12\n1      4  16.19  20.97  246.99\n2      8  37.00  45.59  216.21\n카메라 4대 감당 · 지연 최소 배치: 1",
+  "check": false
+ },
+ "8-4": {
+  "text": "Top 3: ['Conv', 'Mul', 'ReorderOutput'] ['57%', '11%', '11%']",
+  "check": false
+ },
+ "8-5": {
+  "text": "        model              provider  threads  ...    p50    p95     fps\n0  mnv3s.onnx  CPUExecutionProvider        1  ...  14.31  14.66   77.04\n1  mnv3s.onnx  CPUExecutionProvider        1  ...   5.98   6.21  237.84\n2  mnv3s.onnx  CPUExecutionProvider        2  ...  12.62  19.48   81.54\n3  mnv3s.onnx  CPUExecutionProvider        2  ...   2.00  10.19  220.54\n4  mnv3s.onnx  CPUExecutionProvider        1  ...   6.13  10.15  182.12\n5  mnv3s.onnx  CPUExecutionProvider        1  ...  15.87  20.97  246.99\n6  mnv3s.onnx  CPUExecutionProvider        1  ...  37.17  45.59  216.21\n[7 rows x 9 columns]\n✅ 과제 1  +20\n✅ 과제 2  +20 (최선 1 스레드 · ALL)\n✅ 과제 3  +20 (선택 배치 1)\n✅ 과제 4  +20 ['Conv', 'Mul', 'ReorderOutput']\n✅ 과제 5  +10 (7줄)\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)",
+  "check": true
+ }
+}

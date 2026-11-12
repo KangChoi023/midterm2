@@ -1,0 +1,106 @@
+{
+ "1-1": {
+  "text": "weight (2, 3)\nbias (2,)\n✅ ['weight', 'bias']",
+  "check": true
+ },
+ "1-2": {
+  "text": "✅ 추론 = [0, 1, 5]",
+  "check": true
+ },
+ "2-1": {
+  "text": "torch.Size([1, 3]) torch.float32\n✅ (1, 3)",
+  "check": true
+ },
+ "2-2": {
+  "text": "저장: tiny.onnx\n✅ tiny.onnx — ['Gemm']",
+  "check": true
+ },
+ "2-3": {
+  "text": "파라미터 8 개 × 4 B = 32 B  |  tiny.onnx 249 B\n✅ 나머지 217 B 는 그래프 · 이름 · 버전 정보",
+  "check": true
+ },
+ "3-1": {
+  "text": "['Gemm']\n✅ ['Gemm']",
+  "check": true
+ },
+ "3-2": {
+  "text": "PyTorch weight (2, 3) | ONNX B (2, 3)\n[[ 1.  2.  3.]\n [ 0. -1.  1.]]\n✅ 같은 숫자, 같은 모양",
+  "check": true
+ },
+ "3-3": {
+  "text": "✅ 예측 성공: ['Gemm', 'Relu', 'Gemm']",
+  "check": true
+ },
+ "4-1": {
+  "text": "['CPUExecutionProvider']",
+  "check": true
+ },
+ "4-2": {
+  "text": "이름: onnx::Gemm_0 | shape: [1, 3] | type: tensor(float)\n✅ onnx::Gemm_0",
+  "check": true
+ },
+ "4-3": {
+  "text": "<class 'list'> 1\nONNX Runtime: [[ 6.5 -0.5]]\n✅ 손계산 [6.5, -0.5] 과 같다",
+  "check": true
+ },
+ "4-4": {
+  "text": "최대 차이 4.77e-07 | 모두 같다: True\n✅ PyTorch 와 ONNX Runtime 결과가 같다",
+  "check": true
+ },
+ "5-1": {
+  "text": "입력: ['input'] | 출력: ['output']\n[[ 6.5 -0.5]]\n✅ 이제 {'input': x} 로 부를 수 있다",
+  "check": true
+ },
+ "5-2": {
+  "text": "✅ (1, 1, 28, 28) (1, 3, 224, 224) (8, 3, 224, 224)",
+  "check": true
+ },
+ "5-3": {
+  "text": "[ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Got invalid dimensions for input: input for the following indices\n index: 0 Got: 4 Expected: 1\n Please fix either the inputs/outputs or the model.\n✅ 이 파일은 배치 1 만 받는다",
+  "check": true
+ },
+ "6-1": {
+  "text": "mnist_cnn.onnx 1.74 MB\n✅ 433,890 × 4 B = 1.74 MB ≈ 파일 크기",
+  "check": true
+ },
+ "6-2": {
+  "text": "['Conv', 'Relu', 'MaxPool', 'Flatten', 'Gemm', 'Relu', 'Gemm'] | 가중치 노드: 3\n✅ initializer: [('conv.weight', (30, 1, 5, 5)), ('conv.bias', (30,)), ('fc1.weight', (100, 4320)), ('fc1.bias', (100,)), ('fc2.weight', (10, 100)), ('fc2.bias', (10,))]",
+  "check": true
+ },
+ "6-3": {
+  "text": "ORT–PyTorch 일치율 1.000 | 정확도 1.000\n✅ 100장 모두 같은 답",
+  "check": true
+ },
+ "7-1": {
+  "text": "② (224, 224, 3) uint8",
+  "check": true
+ },
+ "7-2": {
+  "text": "③ (224, 224, 3) float32 범위 -2.12 ~ 2.62",
+  "check": true
+ },
+ "7-3": {
+  "text": "④ (3, 224, 224) ⑤ (1, 3, 224, 224) float32",
+  "check": true
+ },
+ "8-1": {
+  "text": "safety.onnx 7,502 B",
+  "check": false
+ },
+ "8-2": {
+  "text": "['Conv', 'Relu', 'MaxPool', 'Conv', 'Relu', 'MaxPool', 'GlobalAveragePool', 'Flatten', 'Gemm']\n가중치 노드: 3 | 파라미터: 1491",
+  "check": false
+ },
+ "8-3": {
+  "text": "최대 차이 8.20e-08 | allclose: True",
+  "check": false
+ },
+ "8-4": {
+  "text": "tiny_named.onnx {'size_kb': 0.2, 'n_nodes': 1, 'ops': ['Gemm'], 'inputs': [('input', [1, 3])], 'outputs': [('output', [1, 2])]}\nmnist_cnn.onnx {'size_kb': 1695.9, 'n_nodes': 7, 'ops': ['Conv', 'Flatten', 'Gemm', 'MaxPool', 'Relu'], 'inputs': [('input', [1, 1, 28, 28])], 'outputs': [('logits', [1, 10])]}\nsafety.onnx {'size_kb': 7.3, 'n_nodes': 9, 'ops': ['Conv', 'Flatten', 'Gemm', 'GlobalAveragePool', 'MaxPool', 'Relu'], 'inputs': [('input', [1, 3, 64, 64])], 'outputs': [('logits', [1, 3])]}",
+  "check": false
+ },
+ "8-5": {
+  "text": "butterfly.jpg (1, 3, 64, 64) → safe [[0.142 0.1   0.043]]\norange.jpg (1, 3, 64, 64) → safe [[0.078 0.074 0.021]]\n내려받기 실패: https://imguru-mooc.github.io/AI_CAMPUS/OT-day1/data/baboon.jpg → <urlopen error Tunnel connection failed: 403 Forbidden>\nbaboon.jpg (1, 3, 64, 64) → warning [[0.068 0.088 0.042]]\n✅ 과제 1  +20\n✅ 과제 2  +20 (노드 9개 · 파라미터 1,491)\n✅ 과제 3  +20 (최대 차이 8.2e-08)\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)",
+  "check": true
+ }
+}
