@@ -51,28 +51,51 @@ y = mnv3(x1)                                # 실행 (여러 번) → NumPy (1, 
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-Day 4 의 `trt_runner()` 는 동작하지만 엔진 · 버퍼가 안쪽 함수에 숨어 있어 확인하기 어렵다. 프로젝트에서는 같은 추론기를 프레임마다 수천 번 부른다 → 준비를 한 번만 하고 `infer(x)` 로 쓰는 모양이 필요하다.
+어제 `trt_runner()` 는 안쪽 함수 `run` 에 엔진 · 버퍼를 붙잡아 두는 방식이었다. 오늘은 이것을 **클래스**로 바꾼다. "준비물(엔진 · Context · 버퍼)" 이 `self` 에 들어가 읽기 쉽고, 오늘 프로젝트와 이후 과목에서 그대로 가져다 쓴다. 엔진은 오래 걸리니 이미 있으면 다시 만들지 않는 `build_once` 도 준비한다.
 
 #### 개념 1 · 준비 단계와 실행 단계
-| 구분 | 어디서 | 무엇을 | 몇 번 |
-|---|---|---|---|
-| 준비 | `__init__` | 엔진 · Context · 이름 · 버퍼 · 주소 | 1번 |
-| 실행 | `__call__` | 복사 → 실행 → 대기 → NumPy | 프레임마다 |
+![TRTInfer 클래스 — __init__ 은 한 번(엔진 · Context · 이름 · 버퍼 · 주소), __call__ 은 프레임마다(복사 → 실행 → 기다리기 → NumPy)](assets/fig/ot/d5-class.svg)
+
+| 메서드 | 언제 | 하는 일 |
+|---|---|---|
+| `__init__(engine_path)` | 한 번 | 엔진 읽기 → Context → 입력 · 출력 이름 나누기 → GPU 버퍼 `self.buf[이름]` → 주소 알려 주기, `self.input_shape` 기록 |
+| `__call__(x)` | 프레임마다 | 입력 버퍼에 `copy_` → `execute_async_v3` → `synchronize` → 출력 `.cpu().numpy()` |
+| `__repr__` | 출력할 때 | `TRTInfer(in=['input'] (1, 3, 224, 224), out=['logits'])` |
+
+`__call__` 이 있으니 객체를 **함수처럼** 부른다: `mnv3(x1)`. 그래서 ORT 세션을 감싼 `lambda x: sess.run(…)[0]` 과 같은 자리에 넣을 수 있다 (2교시).
+
+#### 개념 2 · build_once
+`build_once(onnx_path, engine_path, fp16=False)` — 엔진 파일이 이미 있으면 건너뛰고, 없으면 Day 4 의 `build_engine` 으로 만든다. YOLOv8n 엔진 빌드는 몇 분 걸릴 수 있어 노트북을 다시 실행할 때 시간을 아낀다. 단, GPU · TensorRT 버전이 바뀐 장치에서는 파일을 지우고 다시 빌드해야 한다.
 
 #### 코드로 확인
 ```python
-mnv3 = TRTInfer("mnv3s_fp32.engine")
-ref = ort.InferenceSession("mnv3s_b1.onnx", providers=CPU).run(None, {"input": x1})[0]
-print(mnv3, "| 최대 차이", f"{np.abs(mnv3(x1) - ref).max():.1e}")
+class TRTInfer:
+    def __init__(self, engine_path):
+        self.engine = RUNTIME.deserialize_cuda_engine(open(engine_path, "rb").read())
+        self.context = self.engine.create_execution_context()
+        names = [self.engine.get_tensor_name(i) for i in range(self.engine.num_io_tensors)]
+        self.inputs = [n for n in names if self.engine.get_tensor_mode(n) == trt.TensorIOMode.INPUT]
+        self.outputs = [n for n in names if self.engine.get_tensor_mode(n) == trt.TensorIOMode.OUTPUT]
+        self.buf = {n: torch.empty(tuple(self.engine.get_tensor_shape(n)), dtype=torch.float32,
+                                   device="cuda") for n in names}
+        for n in names:
+            self.context.set_tensor_address(n, self.buf[n].data_ptr())
+        self.input_shape = tuple(self.engine.get_tensor_shape(self.inputs[0]))
+    def __call__(self, x):
+        self.buf[self.inputs[0]].copy_(torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32)))
+        self.context.execute_async_v3(torch.cuda.current_stream().cuda_stream)
+        torch.cuda.synchronize()
+        return self.buf[self.outputs[0]].cpu().numpy()
 ```
-- **무엇을 하나**: TensorRT 결과와 ORT 결과가 같은지 최대 차이로 확인
-- **어떤 개념**: 개념 1 — 같은 추론기 모양으로 두 실행기를 바꿔 끼움
-- **출력**: 교안 기대값 — `TRTInfer(in=['input'] (1, 3, 224, 224), out=['logits'])` · 출력 shape `(1, 1000)` (GPU 가 있는 Colab 에서 확인)
+- **무엇을 하나**: Day 4 의 `trt_runner` 를 클래스로 — 준비는 `__init__`, 실행은 `__call__`.
+- **어떤 개념**: 개념 1.
+- **출력**: 메서드 `['__init__', '__call__', '__repr__']` (직접 실행), mnv3s 엔진으로 `input_shape (1, 3, 224, 224)` · 출력 `(1, 1000)` · ORT CPU 와 같은 답 (교안 기대값)
 
 #### 한 번에 정리
-- `TRTInfer` = 준비(`__init__`) 한 번 + 실행(`__call__`) 여러 번 → `infer(x)` 로 사용
-- `build_once` = 엔진은 오래 걸리니 있으면 재사용
-- ⚠ 엔진은 GPU · TensorRT 버전에 묶임 — 다른 장치에서는 `.onnx` 로 다시 빌드
+- `TRTInfer(engine)` — `__init__`: 엔진 · Context · 이름 · GPU 버퍼 · 주소 (한 번), `__call__(x)`: 복사 → 실행 → 기다리기 → NumPy.
+- 객체를 함수처럼 부를 수 있어 ORT 세션과 바꿔 끼울 수 있다.
+- `build_once` — 엔진이 있으면 다시 만들지 않는다.
+- ⚠ 장치가 바뀌면 엔진 파일을 지우고 다시 빌드 (build_once 가 옛 엔진을 그대로 쓰지 않게).
 
 ---
 
@@ -131,29 +154,51 @@ b_trt, s_trt = detect(frame200, yolo16)                      # 엔진만 다름
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-Day 4 에서는 분류 모델(출력 `(1, 1000)`)로 엔진을 만들었다. 탐지 모델은 출력이 `(1, 84, 8400)` 이고 앞(letterbox) · 뒤(decode · NMS) 코드가 필요하다. 이미 VB 에서 만든 앞뒤 코드를 그대로 두고 **가운데 추론기만** TensorRT 로 바꾸려면 어떻게 하나?
+VB Day 5 에서 export 한 것과 같은 `yolov8n.onnx` (입력 `images (1, 3, 640, 640)`, 출력 `output0 (1, 84, 8400)`) 를 **FP16 엔진**으로 바꾼다. 앞의 letterbox 와 뒤의 `decode_yolo` (NMS 포함) 는 VB 함수를 그대로 쓰고, 가운데 **추론기만** 바꿔 끼우는 `detect(frame, infer)` 를 만든다.
 
 #### 개념 1 · 앞 · 가운데 · 뒤
-| 구간 | 코드 | 바뀌나? |
+![detect(frame, infer) — letterbox → infer(ORT · TRT FP32 · TRT FP16) → decode_yolo → 원래 좌표](assets/fig/ot/d5-detect.svg)
+
+| 부분 | 코드 | 출처 |
 |---|---|---|
-| 앞 | `letterbox` · `/255` · CHW | 안 바뀜 (VB) |
-| 가운데 | `infer(x)` | **ORT ↔ TensorRT** |
-| 뒤 | `decode_yolo` · 좌표 되돌리기 | 안 바뀜 (VB) |
+| 앞 | `letterbox(frame)` → BGR→RGB · CHW · `/255` · float32 · 배치 축 | VB Day 4 |
+| 가운데 | `out = infer(x)` — (1, 84, 8400) | **바꿔 끼우는 곳** |
+| 뒤 | `decode_yolo(out, conf, iou_thr)` (전치 · conf 필터 · xywh→xyxy · NMS) → `(boxes − 패딩) / r` → clip | VB Day 4 · 5 |
+
+#### 개념 2 · 같은 모양의 함수
+| infer | 만드는 법 |
+|---|---|
+| ORT CPU | `ort_infer = lambda x: sess_cpu.run(None, {"images": x})[0]` |
+| TRT FP32 | `yolo32 = TRTInfer("yolov8n_fp32.engine")` |
+| TRT FP16 | `yolo16 = TRTInfer("yolov8n_fp16.engine")` |
+
+셋 다 `x → (1, 84, 8400)` 이므로 `detect(frame, 아무거나)` 로 부를 수 있다. 실행기 비교가 **추론기만 바꾼 비교**가 되어 전처리 · 후처리 차이가 섞이지 않는다.
+
+확인: 프레임 200 에서 ORT CPU 와 TRT FP16 의 사람 수 차이 ≤ 1, 짝 IoU 중앙값 > 0.9 (초록 굵은 박스와 빨강 얇은 박스가 겹쳐 보이면 같은 결과).
 
 #### 코드로 확인
 ```python
-build_once(YOLO_ONNX, "yolov8n_fp16.engine", fp16=True)
-yolo16 = TRTInfer("yolov8n_fp16.engine")
-print(yolo16, "| 출력", tuple(yolo16.buf[yolo16.outputs[0]].shape))
+def detect(frame, infer, conf=0.25, iou_thr=0.7):
+    lb, r, (pl, pt) = letterbox(frame)
+    x = (lb[..., ::-1].transpose(2, 0, 1)[None] / 255.0).astype(np.float32)     # BGR→RGB · CHW · 0~1
+    out = infer(x)
+    boxes, scores = decode_yolo(out, conf, iou_thr)
+    boxes = (boxes - [pl, pt, pl, pt]) / r                                      # letterbox 되돌리기
+    H, W = frame.shape[:2]
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, W); boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, H)
+    return boxes, scores
+b_ort, _ = detect(frame200, ort_infer)
+b_trt, _ = detect(frame200, yolo16)
 ```
-- **무엇을 하나**: FP16 엔진을 만들고 출력 모양을 확인
-- **어떤 개념**: 개념 1 — 가운데 구간만 엔진으로 교체
-- **출력**: 교안 기대값 — 입력 `images (1, 3, 640, 640)` · 출력 `(1, 84, 8400)` (파일 크기 MB 는 GPU 에서 확인)
+- **무엇을 하나**: 같은 detect 에 추론기만 바꿔 넣어 ORT CPU 와 TensorRT FP16 결과를 비교.
+- **어떤 개념**: 개념 1 · 2.
+- **출력**: `yolo16.inputs = ['images']`, 입력 `(1, 3, 640, 640)` → 출력 `(1, 84, 8400)`, 두 실행기의 사람 수 차이 ≤ 1 · 짝 IoU 중앙값 > 0.9 (교안 기대값)
 
 #### 한 번에 정리
-- 엔진 입출력은 ONNX 와 같다 — `(1, 3, 640, 640)` → `(1, 84, 8400)`
-- `detect(frame, infer)` = 앞뒤는 VB 그대로, `infer` 만 교체
-- ⚠ 사진 한 장이 같아 보여도 전체 성능은 같은지 다음 교시에서 숫자로 확인
+- `build_once(YOLO_ONNX, "yolov8n_fp16.engine", fp16=True)` → `TRTInfer` — 출력 (1, 84, 8400) 그대로.
+- `detect(frame, infer)` — letterbox → infer → decode_yolo → 원래 좌표.
+- infer 만 바꿔 끼운다 — 앞뒤는 VB 그대로.
+- ⚠ 엔진마다 전처리를 다르게 하면 실행기 비교가 아니라 전처리 비교가 된다.
 
 ---
 
@@ -209,31 +254,54 @@ for name, f in INFERS.items():
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-2교시에서 사진 한 장은 거의 같은 박스가 나왔다. 하지만 한 장이 같다고 170장 전체가 같다는 보장은 없다. FP16 은 숫자를 절반 크기로 쓰므로 정확도가 떨어졌는지 같은 평가 함수로 확인한다.
+사진 한 장이 같아 보여도 **전체 성능**이 같은지는 숫자로 봐야 한다. VB Day 4 의 Penn-Fudan 170장 · 정답 박스와 `evaluate_ap` 로 ORT CPU · TRT FP32 · TRT FP16 의 AP50 · mAP50-95 를 비교하고, 박스 하나하나도 FP32 와 FP16 이 같은지 본다.
 
 #### 개념 1 · 두 가지 눈금
-| 눈금 | 무엇을 보나 | 도구 |
+| 눈금 | 무엇을 보나 | 기준 (교안) |
 |---|---|---|
-| 전체 | 모든 사진 · 모든 박스의 성능 | AP50 · mAP50-95 |
-| 박스 단위 | 같은 사람의 박스가 얼마나 겹치나 | 짝 IoU |
+| 전체 지표 — AP50 · mAP50-95 | 170장 전체의 찾기 · 위치 정확도 | ORT CPU AP50 > 0.5, AP50 차이 FP32 < 0.01 · FP16 < 0.03 |
+| 박스 단위 — 짝 IoU | 20장에서 FP16 박스마다 FP32 박스와의 최대 IoU | 중앙값 > 0.95 |
+
+참고로 VB Day 4 에서 YOLOv8n 640 의 Penn-Fudan AP50 은 0.9692, mAP50-95 는 0.8357 (ORT · PyTorch CPU). FP32 엔진은 이와 같고, FP16 은 거의 그대로여야 한다.
+
+#### 개념 2 · 비교 규칙
+- **같은 사진 · 같은 detect · 같은 evaluate_ap** — 바뀌는 건 infer 하나.
+- AP 는 **낮은 conf (0.01)** 로 잰다. conf 0.25 로 자르면 낮은 점수 박스가 빠져 recall 곡선이 짧아지고 AP 가 낮게 나온다 (VB Day 4: 평가용 conf vs 운영 conf).
+- FP32 엔진과 ORT 의 AP 가 다르면 대개 입력 dtype · 채널 순서(BGR/RGB) 실수 — 같은 사진으로 출력을 먼저 비교한다.
 
 #### 코드로 확인
+```python
+INFERS = {"ORT CPU": ort_infer, "TRT FP32": yolo32, "TRT FP16": yolo16}
+ap_rows = []
+for name, f in INFERS.items():
+    dets = []
+    for im in imgs:
+        b, s = detect(im, f, conf=0.01)                     # AP 는 낮은 conf 로
+        dets.append(np.concatenate([b, s[:, None]], 1))
+    ap_rows.append({"runtime": name, "AP50": evaluate_ap(dets, gts), "mAP50-95": map_50_95(dets, gts)})
+df_ap = pd.DataFrame(ap_rows)
+```
+- **무엇을 하나**: 세 실행기로 170장을 탐지해 AP50 · mAP50-95 를 같은 함수로.
+- **어떤 개념**: 개념 1 · 2.
+- **출력**: 세 줄 표 — FP32 = ORT (차이 < 0.01), FP16 ≈ ORT (차이 < 0.03) (교안 기대값)
+
 ```python
 pair_iou = []
 for im in imgs[:20]:
     b32, _ = detect(im, yolo32); b16, _ = detect(im, yolo16)
     if len(b32) and len(b16):
         pair_iou += list(iou_matrix(b16, b32).max(1))
-print(np.median(pair_iou), np.mean(np.array(pair_iou) >= 0.95))
+pair_iou = np.array(pair_iou)
 ```
-- **무엇을 하나**: FP16 박스마다 가장 많이 겹치는 FP32 박스의 IoU 를 모음
-- **어떤 개념**: 개념 1 — 박스 단위 눈금
-- **출력**: 교안 기대값 — 짝 IoU 중앙값 > 0.95 (실제 숫자는 GPU 에서 확인)
+- **무엇을 하나**: FP16 박스마다 FP32 박스와의 최대 IoU.
+- **어떤 개념**: 개념 1.
+- **출력**: 박스 10개 이상, 짝 IoU 중앙값 > 0.95 — 박스 단위로도 거의 같다 (교안 기대값)
 
 #### 한 번에 정리
-- 같은 데이터 · 같은 함수로 세 실행기를 비교 → FP32 = ORT, FP16 ≈ ORT
-- 정확도는 AP(전체) + 짝 IoU(박스별) 두 눈금으로
-- ⚠ AP 는 `conf=0.01` — `0.25` 로 재면 낮게 나옴
+- 같은 사진 · 같은 detect · 같은 evaluate_ap 로 세 실행기 비교 → FP32 = ORT, FP16 ≈ ORT.
+- 정확도는 전체 지표(AP) + 박스 단위(짝 IoU) 두 가지로.
+- FP16 의 최대 차이가 커도 AP · 박스가 같으면 쓸 수 있다.
+- ⚠ AP 는 conf 0.01 로 — 0.25 로 재면 AP 가 낮게 나온다.
 
 ---
 
@@ -295,30 +363,59 @@ ms_infer = (t2 - t1) * 1000               # 구간 차이 × 1000 = ms
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-추론이 몇 배 빨라졌다는 사실이 영상 처리 전체가 몇 배 빨라진다는 뜻은 아니다. 실제 시간이 어디에 쓰이는지 조각으로 나눠서 봐야 다음에 무엇을 고칠지 알 수 있다.
+엔진은 빨라졌다. 그런데 영상 **한 프레임**을 처리하는 시간도 그만큼 빨라졌을까? 한 프레임을 네 조각(전처리 · 추론 · 후처리 · 그리기)으로 나눠 ORT CPU 와 TensorRT FP16 을 비교하면, 추론이 빨라질수록 **다른 조각이 새 병목**이 되는 것이 보인다.
 
 #### 개념 1 · 전체 속도는 느린 조각이 정한다
-예 (설명용 숫자): 네 조각이 10 + 80 + 5 + 5 = 100 ms 라면 추론이 80 ms 로 가장 크다. 추론을 8 ms 로 줄이면 합은 10 + 8 + 5 + 5 = 28 ms — 추론은 10배 빨라졌지만 **전체는 100 ÷ 28 ≈ 3.6 배**.
+![한 프레임 = 전처리 + 추론 + 후처리 + 그리기 — 추론을 80 ms 에서 8 ms 로 줄여도 프레임은 100 ms 에서 28 ms](assets/fig/ot/d5-stages.svg)
 
-| 상황 | 합 | FPS (1000 ÷ 합) |
+| 조각 | 구간 | 어디서 |
 |---|---|---|
-| 추론 80 ms | 100 ms | 10 |
-| 추론 8 ms | 28 ms | 약 35.7 |
+| pre | letterbox · 색 · 축 · /255 | CPU |
+| infer | `infer(x)` | ORT: CPU / TRT: GPU (복사 포함) |
+| post | decode_yolo · 좌표 되돌리기 · 발 위치 · 구역 판정 | CPU |
+| draw | `draw_result` — 구역 · 박스 · 문구 | CPU |
+
+프레임 시간 = 네 조각의 합, **FPS = 1000 ÷ 합**.
+
+| 설명용 숫자 | 합 | FPS | 추론 비중 |
+|---|---|---|---|
+| 10 + **80** + 5 + 5 | 100 ms | 10 | 80% |
+| 10 + **8** + 5 + 5 | 28 ms | 35.7 | 29% |
+
+추론을 10배 빠르게 해도 프레임은 3.6배만 빨라진다 — 이제 전처리 10 ms 가 1등. 다음엔 CPU 쪽(전처리 · 그리기)을 줄인다.
+
+#### 개념 2 · time_stages 로 재기
+- 조각 경계마다 `time.perf_counter()` 를 찍어 차이 × 1000 = ms.
+- 영상 50프레임을 앞 5장 warm-up 하고 평균 → `df_st` (조각별 ms · total · fps).
+- `share = 조각 ÷ total × 100` → `bottleneck = share.idxmax()` — ORT CPU 는 infer, TRT FP16 은 다른 조각이 1등이 되는지 본다.
 
 #### 코드로 확인
 ```python
-share = df_st[parts].div(df_st["total"], axis=0) * 100
-bottleneck = {rt: share.loc[rt].idxmax() for rt in share.index}
-print("가장 오래 걸린 조각:", bottleneck)
+def time_stages(frame, infer, conf=0.25):
+    t0 = time.perf_counter()
+    lb, r, (pl, pt) = letterbox(frame)
+    x = (lb[..., ::-1].transpose(2, 0, 1)[None] / 255.0).astype(np.float32)
+    t1 = time.perf_counter()
+    out = infer(x)
+    t2 = time.perf_counter()
+    boxes, scores = decode_yolo(out, conf, 0.7)
+    boxes = (boxes - [pl, pt, pl, pt]) / r
+    inside = [in_zone(p) for p in foot_points(boxes)]
+    t3 = time.perf_counter()
+    draw_result(frame, boxes, inside, alarm=any(inside))
+    t4 = time.perf_counter()
+    return dict(zip(["pre", "infer", "post", "draw"],
+                    [(b - a) * 1000 for a, b in [(t0, t1), (t1, t2), (t2, t3), (t3, t4)]]))
 ```
-- **무엇을 하나**: 조각별 시간을 전체로 나눠 비중(%)으로 바꾸고 가장 큰 조각을 찾음
-- **어떤 개념**: 개념 1 — 병목 찾기
-- **출력**: 교안 기대값 — 실행기마다 `idxmax` 조각 이름 (GPU 에서 확인)
+- **무엇을 하나**: 한 프레임을 네 조각 ms 로.
+- **어떤 개념**: 개념 2.
+- **출력**: ORT CPU 와 TRT FP16 의 조각별 ms · total · fps 표, 네 조각 합 = total, 가장 오래 걸린 조각이 실행기마다 다름 (교안 기대값 — 숫자는 GPU 마다 다름)
 
 #### 한 번에 정리
-- 프레임 시간 = 네 조각의 합, FPS = 1000 ÷ 합
-- 추론이 빨라지면 CPU 쪽(전처리 · 후처리 · 그리기)이 새 병목
-- ⚠ 설명 예의 숫자는 가정 — 실제 값은 `df_st` 로 측정
+- 프레임 시간 = 전처리 + 추론 + 후처리 + 그리기, FPS = 1000 ÷ 합.
+- 추론이 빨라지면 CPU 쪽(전처리 · 후처리 · 그리기)이 새 병목.
+- warm-up 후 50프레임 평균, 비율로 병목 찾기.
+- ⚠ 추론 시간만 보고 "FPS 가 이만큼" 이라 발표하지 않는다 — 영상 읽기 · 저장까지 합친 파이프라인 FPS 는 6교시.
 
 ---
 
@@ -378,28 +475,76 @@ log_trt = run_intrusion(VIDEO, "intrusion_trt.mp4", yolo16)   # 추론기만 yol
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-2 · 3교시에서 `detect` 가 어떤 `infer` 든 받는다는 것을 확인했다. 그렇다면 VB 의 전체 침입 감지기에서도 `infer` 만 `yolo16` 으로 바꾸면 나머지 코드를 건드리지 않고 TensorRT 로 옮길 수 있다.
+VB Day 5 의 위험구역 침입 감지기를 TensorRT 로 옮긴다. 바꾸는 곳은 탐지에 넘기는 **infer 하나** — 발 위치 · 구역 판정 · 3프레임 연속 경보(debounce) · 그리기는 VB 그대로다. 프레임 한 장을 처리하는 `process_frame` 과 영상 전체를 도는 `run_intrusion` 으로 나눈다.
 
 #### 개념 1 · 바뀌는 것 한 곳
-| 부분 | VB (ONNX Runtime) | OT (TensorRT) |
+![침입 감지 파이프라인 — detect(infer=yolo16) · 발 위치 · 구역 · debounce · 그리기, 그리고 결과 파일 네 개](assets/fig/ot/d5-project.svg)
+
+| 단계 | 코드 | VB 와 비교 |
 |---|---|---|
-| 탐지기 | `detect_onnx` | `detect(frame, yolo16)` |
-| 발 위치 · 구역 · debounce · 그리기 | 그대로 | 그대로 |
-| 결과 | 영상 · 로그 | 영상 · 로그 (같은 형식) |
+| ① 탐지 | `detect(frame, infer)` | **infer = yolo16** (VB 는 ONNX Runtime) |
+| ② 발 위치 | `foot_points(boxes)` → `((x1+x2)/2, y2)` | 같음 |
+| ③ 구역 | `in_zone(p, GRASS)` → `pointPolygonTest ≥ 0` | 같음 |
+| ④ debounce | `streak = streak + 1 if inside.any() else 0`, `alarm = int(streak >= n_consec)` | 같음 (n_consec = 3) |
+| ⑤ 그리기 | `draw_result(frame, boxes, inside, alarm, poly, fps)` | + 최근 30프레임 평균 FPS |
+
+#### 개념 2 · process_frame 과 run_intrusion
+| 함수 | 받는 것 | 돌려주는 것 |
+|---|---|---|
+| `process_frame(frame, infer, streak, …)` | 프레임 한 장 + 직전까지의 연속 수 | (그린 프레임, `{n_people, n_inside, alarm}`, 새 streak) |
+| `run_intrusion(source, out_path, infer, …, max_frames=None)` | 영상 경로(나중에 카메라 번호) | 프레임 로그 목록 + 결과 영상 + `…_log.csv` |
+
+- 영상을 여는 곳은 `cv2.VideoCapture(source)` **한 곳** — 프로젝트에서 source 만 카메라로 바꾼다.
+- 로그 한 줄: `frame · time_s · n_people · n_inside · alarm · ms` (ms = 프레임 처리 시간, 6교시 성능표의 재료).
+- 화면 오른쪽 위 FPS = 1000 ÷ 최근 30프레임 평균 ms.
+- `max_frames` 를 주면 그 프레임까지만 — 6교시 ORT CPU 비교용 (느려서 200프레임만).
 
 #### 코드로 확인
 ```python
-streak = streak + 1 if inside.any() else 0
-alarm = int(streak >= n_consec)
+def process_frame(frame, infer, streak, poly=GRASS, n_consec=3, conf=0.25, fps=None):
+    boxes, scores = detect(frame, infer, conf=conf)
+    feet = foot_points(boxes)
+    inside = np.array([in_zone(p, poly) for p in feet], bool)
+    streak = streak + 1 if inside.any() else 0
+    alarm = int(streak >= n_consec)
+    vis = draw_result(frame, boxes, inside, alarm, poly, fps)
+    info = {"n_people": len(boxes), "n_inside": int(inside.sum()), "alarm": alarm}
+    return vis, info, streak
 ```
-- **무엇을 하나**: 구역 안 프레임이 연속될 때만 경보 켬
-- **어떤 개념**: process_frame — debounce
-- **출력**: 직접 계산 — `streak=2` 에서 안에 사람 있음 → streak 3 → `n_consec=3` 이면 alarm 1, 사람 없음 → streak 0 → alarm 0
+- **무엇을 하나**: 과제 1 — 프레임 한 장의 다섯 단계.
+- **어떤 개념**: 개념 1 · 2.
+- **출력**: `process_frame(frame530, yolo16, streak=2)` → 구역 안 사람이 있으면 streak 3 → 경보 1 (교안 기대값)
+
+```python
+def run_intrusion(source, out_path, infer, poly=GRASS, n_consec=3, conf=0.25, max_frames=None):
+    cap = cv2.VideoCapture(source)                         # 영상을 여는 곳은 여기 한 곳
+    fps_v = cap.get(cv2.CAP_PROP_FPS)
+    W, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    writer = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*"mp4v"), fps_v, (W, H))
+    log, ms, streak, i = [], [], 0, 0
+    while max_frames is None or i < max_frames:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        t0 = time.perf_counter()
+        vis, info, streak = process_frame(frame, infer, streak, poly, n_consec, conf,
+                                          1000 / np.mean(ms[-30:]) if ms else None)
+        writer.write(vis)
+        ms.append((time.perf_counter() - t0) * 1000)
+        log.append({"frame": i, "time_s": round(i / fps_v, 1), **info, "ms": round(ms[-1], 2)})
+        i += 1
+    cap.release(); writer.release()
+    return log                                             # + _log.csv 저장 (강의 코드)
+```
+- **무엇을 하나**: 과제 2 — 영상 루프 · 저장 · 로그.
+- **어떤 개념**: 개념 2.
+- **출력**: `intrusion_trt.mp4` + `intrusion_trt_log.csv`, 전체 프레임 처리 (교안 기대값)
 
 #### 한 번에 정리
-- 바뀐 것은 `infer` 하나 — `yolo16` 을 넘겼을 뿐
-- `process_frame` = 5단계 · `streak` 를 반환해 이어 받음, `run_intrusion` = 영상 루프 + 저장 + 로그
-- ⚠ debounce 의 streak 는 호출 사이에 유지해야 함
+- `process_frame` = 탐지(infer) → 발 위치 → 구역 → debounce → 그리기.
+- `run_intrusion` = 영상 루프 + 저장 + 로그 CSV.
+- 바뀐 것은 infer 하나 — `yolo16` 을 넘겼을 뿐 나머지는 VB 그대로.
+- ⚠ streak 를 프레임마다 돌려받아 다음 프레임에 넘겨야 debounce 가 이어진다.
 
 ---
 
@@ -460,29 +605,60 @@ pd.concat([old, final], ignore_index=True).to_csv("ot_baseline.csv", index=False
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-5교시에서 만든 영상 · 로그를 사람이 읽는 결과(경보가 몇 번 · 언제 · 얼마나)와 성능 숫자(추론만 · 파이프라인)로 정리한다. 이 두 가지가 7교시 발표의 근거가 된다.
+파이프라인이 돌았으니 결과물을 만든다 — **결과 영상 · 이벤트 요약 · 최종 성능표**. 특히 성능표에는 "추론만" 과 "파이프라인 전체" 를 둘 다 넣고, 두 배수가 왜 다른지 4교시의 병목으로 설명한다.
 
 #### 개념 1 · 이벤트 = 켜진 구간
-프레임 로그의 `alarm` 열(0/1)을 구간으로 묶으면 "몇 번 · 언제 · 얼마나" 가 된다.
+`find_events(alarm, fps)` 는 VB Day 5 와 같다 — alarm 이 0 → 1 이 되는 프레임이 시작, 1 → 0 직전 프레임이 끝, 영상 끝까지 켜져 있으면 마지막 프레임이 끝.
 
-| alarm (fps = 10) | 이벤트 |
+| 열 | 식 |
 |---|---|
-| 0 1 1 1 0 0 1 | (0.1 s, 0.3 s) · (0.6 s, 0.6 s) |
+| start_s | 시작 프레임 ÷ fps |
+| end_s | 끝 프레임 ÷ fps (경보가 켜져 있던 **마지막** 프레임) |
+| duration_s | end − start + 1 ÷ fps (끝 프레임도 경보이므로 한 프레임 시간을 더함) |
+
+예: `alarm = [0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1]`, fps = 10 → `[(0.2, 0.4), (0.7, 0.8), (1.0, 1.0)]`, 길이 0.3 · 0.2 · 0.1 초. 결과는 `intrusion_events.csv` (`event · start_s · end_s · duration_s`).
+
+#### 개념 2 · 추론만 vs 파이프라인 전체
+| 줄 | 무엇을 잼 | 실행기 |
+|---|---|---|
+| yolov8n (추론만) | letterbox 된 입력 한 장의 `infer(x)` — `bench_fn` | ORT CPU · TRT FP32 · TRT FP16 |
+| intrusion pipeline | `run_intrusion` 의 (전체 시간 ÷ 프레임 수) — 읽기 · 저장 포함, p50 · p95 는 로그의 ms | ORT CPU (200프레임) · TRT FP16 (전체) |
+
+다섯 줄을 `ot_baseline.csv` 에 이어 붙인다 (Day 4 파일이 있으면 그 아래, precision 없는 옛 줄은 FP32). 추론만의 배수(TRT FP16 ÷ ORT CPU)가 파이프라인의 배수보다 크다 — 파이프라인에는 빨라지지 않은 CPU 조각과 영상 읽기 · 저장이 남아 있기 때문 (4교시).
+
+결과 영상은 브라우저에서 재생되도록 `ffmpeg … -c:v libx264 -pix_fmt yuv420p` 로 H.264 변환(`intrusion_trt_h264.mp4`)하고, 구역 안 사람 수와 경보 구간을 시간축 그래프로 겹쳐 본다.
 
 #### 코드로 확인
 ```python
 events = find_events(alarm, V_FPS)
-for k, (a, b) in enumerate(events):
-    print(k + 1, round(a, 1), round(b, 1), round(b - a + 1 / V_FPS, 1))
+with open("intrusion_events.csv", "w", newline="") as f:
+    w = csv.writer(f); w.writerow(["event", "start_s", "end_s", "duration_s"])
+    for k, (a, b) in enumerate(events):
+        w.writerow([k + 1, round(a, 1), round(b, 1), round(b - a + 1 / V_FPS, 1)])
 ```
-- **무엇을 하나**: 경보 구간마다 시작 · 끝 · 길이(초) 출력
-- **어떤 개념**: 개념 1 — 이벤트 요약
-- **출력**: 교안 기대값 — `intrusion_events.csv` 표 (영상에 따라 달라짐, GPU · 영상으로 확인)
+- **무엇을 하나**: 과제 3 — 경보 배열을 이벤트 표로.
+- **어떤 개념**: 개념 1.
+- **출력**: 이벤트마다 한 줄 — VB Day 5 강사 실행은 795프레임 중 경보 224프레임 · 이벤트 5번 (교안 기대값)
+
+```python
+lb, _, _ = letterbox(frame200)
+x640 = (lb[..., ::-1].transpose(2, 0, 1)[None] / 255.0).astype(np.float32)
+rows = []
+for name, f, prec in [("ORT CPU", ort_infer, "FP32"), ("TRT FP32", yolo32, "FP32"), ("TRT FP16", yolo16, "FP16")]:
+    r = bench_fn(lambda: f(x640), n=30 if name == "ORT CPU" else 100, warm=5)
+    rows.append({"model": "yolov8n (추론만)", "provider": name, "precision": prec,
+                 "threads": 0, "level": "ALL", "batch": 1, **r})
+log_ort = run_intrusion(VIDEO, "intrusion_ort200.mp4", ort_infer, max_frames=200)
+```
+- **무엇을 하나**: 과제 4 — 추론만 3줄 + 파이프라인 2줄을 같은 열로.
+- **어떤 개념**: 개념 2.
+- **출력**: `파이프라인: ORT CPU ○ FPS → TensorRT FP16 ○ FPS (○배)` — 추론만의 배수보다 작다 (교안 기대값 — 숫자는 GPU 마다 다름)
 
 #### 한 번에 정리
-- 프레임 로그 → `find_events` → 이벤트 CSV
-- 성능표에는 추론만과 파이프라인 전체를 모두 — 배수 차이의 원인 = 다음 병목
-- ⚠ 이벤트의 끝은 마지막으로 켜진 프레임, 길이는 `+ 1/fps`
+- 프레임 로그 → `find_events` → 이벤트 CSV — 경보가 몇 번 · 언제 · 얼마나.
+- 추론만 vs 파이프라인 전체 — 같은 성능표에 둘 다.
+- 배수가 다른 이유 = 4교시의 다음 병목 (CPU 조각 · 읽기 · 저장).
+- ⚠ duration 은 끝 − 시작에 한 프레임 시간을 더한다 — 경보 한 프레임짜리 이벤트도 0초가 아니다.
 
 ---
 
@@ -516,19 +692,30 @@ for k, (a, b) in enumerate(events):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-앞 6교시의 결과를 3분 안에 다른 사람이 이해하게 말해야 한다. 자기가 만든 숫자를 **조건과 함께** 말하고 **다음에 무엇을 고칠지** 제안하는 것이 이 교시의 목표다.
+5일 동안 만든 것을 팀별 3분에 보여 준다. 무엇을 어떤 순서로 말해야 숫자가 설득력을 가질까? 세 장면과 채점 기준을 정리한다.
 
-#### 개념 1 · 발표 메모 틀
-| 칸 | 내용 |
+#### 개념 1 · 발표 3분 = 세 장면
+| 장면 | 보여 줄 것 | 노트북에서 |
+|---|---|---|
+| 1 · 결과 영상 (1분) | 경보가 울린 장면 하나 — 누가 · 언제 · 왜 경보인지 | 6교시 영상 · `intrusion_events.csv` |
+| 2 · 최종 성능표 (1분) | ORT CPU vs TRT FP16 — 추론만 · 파이프라인 FPS, FP16 의 AP | 과제 4 표 · 3-1 표 |
+| 3 · 가장 오래 걸린 단계 (1분) | 네 조각 중 가장 큰 것과 이유, 다음에 고칠 것 | 4-2 그래프 |
+
+#### 개념 2 · 채점 기준 (20점)
+| 기준 | 점수 |
 |---|---|
-| 경보 장면 | 누가 · 언제 · 왜 경보인지 |
-| 성능표 핵심 숫자 | 조건 포함 |
-| 가장 오래 걸린 단계 | 이유 · 다음 개선 |
+| 숫자를 **조건과 함께** 말했는가 — "FPS 가 몇" 이 아니라 "ORT CPU · 파이프라인 전체 · 배치 1 에서 몇 FPS" | 5 |
+| FP16 정확도 판단 근거 (AP 차이 · 짝 IoU) | 5 |
+| 병목과 다음 개선안 | 5 |
+| 질문 · 답변 | 5 |
+
+발표 메모 틀: ① 무엇을 만들었나 (한 문장) ② 결과 영상의 경보 한 장면 ③ 성능표 두 줄 (추론만 · 파이프라인) + FP16 AP ④ 병목 조각과 다음 개선 (전처리 GPU 로 옮기기 · INT8 · 입력 크기 줄이기 등).
 
 #### 한 번에 정리
-- 결과 영상 · 성능표 · 병목, 세 장면을 각각 1분
-- 숫자는 조건과 함께, FP16 은 AP · 짝 IoU 로 근거 제시
-- ⚠ 질문에도 답해야 한다 (5점)
+- 세 장면: 결과 영상 → 성능표 → 병목.
+- 숫자는 조건과 함께 (실행기 · 추론만/파이프라인 · 배치).
+- FP16 은 "빨라졌다" 와 "정확도가 그대로다" 를 함께 말한다.
+- ⚠ 추론만 FPS 를 파이프라인 FPS 처럼 말하지 않는다.
 
 ---
 
@@ -569,17 +756,35 @@ for k, (a, b) in enumerate(events):
 **상세 학습**
 
 #### 이 교시에서 답하는 질문
-5일 동안 쌓은 도구가 한 경로로 이어진다 — PyTorch → ONNX → 엔진 → `TRTInfer` → 프로젝트. 이 경로를 한 번에 떠올리고, 다음 과목에서 같은 `ot_baseline.csv` 와 비교하는 것이 이 교시의 목표다.
+5일 종합 퀴즈와 제출로 마무리하면서, 5일 동안 쌓은 도구가 **하나의 경로**로 이어진다는 것을 정리한다. 그리고 그 경로가 다음 과목에서 어떻게 그대로 쓰이는지 본다.
 
 #### 개념 1 · 하나의 경로
-| 단계 | 어디서 배웠나 |
+![ONNX · TensorRT 5일 — Day 별 도구와 다음 과목 연결](assets/fig/ot/d5-map.svg)
+
+PyTorch 모델 → `torch.onnx.export` (Day 1) → 검사 · 고치기 · 배치 자유 (Day 2) → ONNX Runtime 측정 · 손잡이 (Day 3) → TensorRT 엔진 · FP16 (Day 4) → `TRTInfer` 로 파이프라인에 끼우기 (Day 5).
+
+| 일차 | 쌓인 도구 |
 |---|---|
-| PyTorch → ONNX | Day 1 · 2 |
-| ONNX Runtime 으로 측정 | Day 3 |
-| ONNX → 엔진 → 실행 | Day 4 |
-| 엔진 → 탐지 프로젝트 | Day 5 |
+| Day 1 | `torch.onnx.export` · Netron · `InferenceSession` · `allclose` |
+| Day 2 | `describe_onnx` · opset · `dynamic_axes` · `verify` · `onnxslim` |
+| Day 3 | `bench` · 스레드 · 최적화 레벨 · CUDA EP · 배치 · profiling |
+| Day 4 | `polygraphy` · `build_engine` · `trt_runner` · FP16 · 엔진 인스펙터 |
+| Day 5 | `TRTInfer` · `detect(frame, infer)` · AP 비교 · 네 조각 시간 · 침입 감지 |
+
+#### 개념 2 · 제출과 셀프 체크
+- 제출: `trt_이름.zip` = `ot_baseline.csv` · `intrusion_events.csv` · `intrusion_trt_log.csv` · `intrusion_trt_h264.mp4` (+ 노트북 `.ipynb` 는 따로 다운로드).
+- 셀프 체크: ① 엔진 준비(한 번)와 실행(여러 번)을 클래스로 나눈다 ② YOLOv8n 엔진 입출력 (1, 3, 640, 640) → (1, 84, 8400) ③ infer 를 인자로 받아 ORT · TensorRT 를 바꿔 끼운다 ④ 같은 데이터 · 함수로 FP32 · FP16 AP 비교 ⑤ 네 조각으로 병목 찾기 ⑥ 추론기만 바꿔 결과 영상 · 이벤트 · 성능표.
+
+#### 개념 3 · 다음 과목으로
+| 과목 | 이어받는 것 |
+|---|---|
+| Quantization · Pruning (11/16~) | INT8 이면 성능표가 어떻게 바뀔까? — `ot_baseline.csv` 가 비교 기준 |
+| 프로젝트 · 현장 안전 모니터링 (11/25~) | `run_intrusion` 의 source 만 카메라로 · Jetson 에서는 `.onnx` 를 가져가 다시 빌드 |
+| YOLOv8 Edge (12/11~) | 직접 학습한 YOLO 를 같은 경로 (ONNX → 엔진 → TRTInfer) 로 |
 
 #### 한 번에 정리
-- 제출: `trt_이름.zip` + 노트북, 비교 기준은 `ot_baseline.csv`
-- 다음: INT8 · 카메라 입력 · 직접 학습한 YOLO — 모두 같은 경로를 재사용
-- ⚠ 엔진 파일은 장치에 묶임 — Jetson 에서는 `.onnx` 로 다시 빌드
+- 5일 = 하나의 경로: export → 검사 · 고치기 → ORT 측정 → TensorRT 엔진 → TRTInfer 파이프라인.
+- 성능표 `ot_baseline.csv` 가 다음 과목의 비교 기준.
+- Drive 에 남길 것: 노트북 · `ot_baseline.csv` · 엔진을 만든 `.onnx`.
+- ⚠ 엔진 파일이 아니라 `.onnx` 를 보관한다 — 엔진은 장치마다 다시 빌드.
+

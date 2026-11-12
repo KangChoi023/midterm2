@@ -474,6 +474,99 @@ def d4_fusion():
     s.save('d4-fusion.svg')
 
 
+# ---------------- OT Day 5 ----------------
+
+def d5_class():
+    s = Svg(700, 250)
+    s.text(350, 22, '함수 → 클래스 TRTInfer — 준비는 한 번 (__init__), 실행은 여러 번 (__call__)', 14, INK, 'middle', True)
+    s.rect(15, 42, 330, 150, PURPLE, None, 8, 1.8); s.text(180, 66, '__init__(engine_path) — 한 번', 13.5, INK, 'middle', True)
+    for i, t in enumerate(['엔진 읽기 (deserialize_cuda_engine)', 'Context 만들기', '입력 · 출력 이름 나누기 (TensorIOMode)', 'GPU 버퍼 self.buf[이름] = torch.empty(…, "cuda")', '주소 알려 주기 (set_tensor_address)']):
+        s.text(30, 92 + i * 20, '· ' + t, 11.5, INK)
+    s.rect(370, 42, 315, 150, GREEN, None, 8, 1.8); s.text(527, 66, '__call__(x) — 프레임마다', 13.5, INK, 'middle', True)
+    for i, t in enumerate(['입력 버퍼에 copy_ (CPU → GPU)', 'execute_async_v3', 'synchronize (기다리기)', '출력 버퍼 → .cpu().numpy()', '→ infer(x) 처럼 함수로 부른다']):
+        s.text(385, 92 + i * 20, '· ' + t, 11.5, INK if i < 4 else GREEN, 'start', i == 4)
+    s.text(20, 218, 'build_once(onnx, engine, fp16) — 엔진 파일이 있으면 다시 빌드하지 않는다 (빌드는 수십 초 ~ 몇 분)', 11.5, INK)
+    s.text(20, 240, 'Day 4 trt_runner 의 run 에 붙잡아 두던 엔진 · 버퍼가 self 로 — mnv3s 결과는 ORT CPU 와 같다 (≈ 1e-3 이내)', 11.5, MUTED)
+    s.save('d5-class.svg')
+
+
+def d5_detect():
+    s = Svg(700, 250)
+    s.text(350, 22, 'detect(frame, infer) — 앞뒤는 VB 그대로, 가운데 추론기만 바꿔 끼운다', 14, INK, 'middle', True)
+    s.box(15, 60, 130, 60, 'letterbox', BLUE, '640 · CHW · 0~1', 13)
+    s.rect(200, 44, 200, 92, ORANGE, None, 8, 2); s.text(300, 64, 'infer(x)', 14, INK, 'middle', True)
+    for i, (t, c) in enumerate((('ORT CPU (sess.run)', GREEN), ('TRTInfer FP32', RED), ('TRTInfer FP16', RED))):
+        s.text(300, 86 + i * 18, t, 11.5, c, 'middle')
+    s.box(455, 60, 130, 60, 'decode_yolo', PURPLE, '전치 · conf · NMS', 13)
+    s.box(605, 60, 85, 60, '원래 좌표', GREEN, '− 패딩 ÷ r', 12)
+    _arrow(s, 145, 90, 198, 90); _arrow(s, 400, 90, 453, 90); _arrow(s, 585, 90, 603, 90)
+    s.text(300, 156, 'images (1, 3, 640, 640) → output0 (1, 84, 8400) — VB Day 5 와 같은 모양', 12, INK, 'middle', True)
+    s.text(20, 190, '"같은 모양의 함수" 로 맞추면 실행기 비교 = infer 만 바꾼 비교 — 전처리 · 후처리 차이가 섞이지 않는다', 11.5, INK)
+    s.text(20, 212, '확인: 프레임 200 에서 ORT CPU 와 TensorRT FP16 의 사람 수 차이 ≤ 1, 짝 IoU 중앙값 > 0.9 (교안 기준)', 11.5, MUTED)
+    s.text(20, 234, '정확도: Penn-Fudan 170장 · 같은 detect(conf=0.01) · 같은 evaluate_ap → AP50 차이 FP32 < 0.01, FP16 < 0.03', 11.5, MUTED)
+    s.save('d5-detect.svg')
+
+
+def d5_stages():
+    s = Svg(700, 260)
+    s.text(350, 22, '한 프레임 = 네 조각의 합 — 추론이 빨라지면 CPU 쪽이 새 병목 (설명용 숫자)', 14, INK, 'middle', True)
+    rows = [('추론 80 ms', [('전처리', 10, BLUE), ('추론', 80, RED), ('후처리', 5, PURPLE), ('그리기', 5, GREEN)]),
+            ('추론 8 ms', [('전처리', 10, BLUE), ('추론', 8, RED), ('후처리', 5, PURPLE), ('그리기', 5, GREEN)])]
+    sc = 4.2
+    for i, (n, parts) in enumerate(rows):
+        y = 52 + i * 70
+        s.text(16, y + 24, n, 12.5, INK, 'start', True)
+        x = 110; tot = sum(p[1] for p in parts)
+        for lab, v, c in parts:
+            s.rect(x, y + 4, v * sc, 34, c, None, 0, 1.2)
+            s.text(x + v * sc / 2, y + 26, f'{lab} {v}' if v * sc > 70 else str(v), 11, INK, 'middle')
+            x += v * sc
+        share = parts[1][1] / tot * 100
+        s.text(x + 8, y + 18, f'합 {tot} ms → {1000 / tot:.1f} FPS', 12, INK, 'start', True)
+        s.text(x + 8, y + 36, f'추론 비중 {share:.0f}%', 11, RED)
+    s.text(20, 206, '추론을 10배 빠르게 해도 프레임은 100 → 28 ms (3.6배) — 전처리 10 ms 가 새 1등 → 다음엔 전처리 · 그리기를 줄인다', 11.5, INK)
+    s.text(20, 228, 'time_stages: perf_counter 를 조각마다 찍어 차이 × 1000 = ms · 영상 50프레임 (앞 5장 warm-up) 평균', 11.5, MUTED)
+    s.text(20, 250, '⚠ 추론만 잰 FPS ≠ 파이프라인 FPS — 영상 읽기 · 저장(디스크)까지 들어간다 (6교시 성능표에 둘 다)', 11.5, RED)
+    s.save('d5-stages.svg')
+
+
+def d5_project():
+    s = Svg(700, 270)
+    s.text(350, 22, 'VB 침입 감지기를 TensorRT 로 — 바뀌는 곳은 infer 한 곳', 14, INK, 'middle', True)
+    st = [('detect', 'infer = yolo16', RED), ('발 위치', '((x1+x2)/2, y2)', BLUE), ('구역', 'pointPolygonTest ≥ 0', BLUE),
+          ('debounce', 'streak ≥ 3 → 경보', ORANGE), ('그리기', '구역 · 박스 · FPS', GREEN)]
+    for i, (t, d, c) in enumerate(st):
+        x = 12 + i * 137
+        s.rect(x, 46, 126, 56, c, None, 6, 1.6 if i else 2.5); s.text(x + 63, 68, t, 13, INK, 'middle', True); s.text(x + 63, 88, d, 10.5, MUTED, 'middle')
+        if i < 4: _arrow(s, x + 126, 74, x + 136, 74)
+    s.text(20, 124, 'process_frame(frame, infer, streak) → (그린 프레임, {n_people, n_inside, alarm}, 새 streak)', 11.5, INK, 'start', True)
+    s.text(20, 146, 'run_intrusion(source, out_path, infer) = 영상 루프 + VideoWriter + 프레임 로그 CSV (frame · time_s · n_people · n_inside · alarm · ms)', 11, INK)
+    outs = [('intrusion_trt_h264.mp4', '결과 영상'), ('intrusion_trt_log.csv', '프레임 로그'), ('intrusion_events.csv', '이벤트 = 경보가 켜진 구간'), ('ot_baseline.csv', '추론만 3줄 + 파이프라인 2줄')]
+    for i, (f, d) in enumerate(outs):
+        x = 12 + i * 172
+        s.rect(x, 170, 162, 50, PURPLE, None, 6, 1.4); s.text(x + 81, 191, f, 10.5, INK, 'middle', True); s.text(x + 81, 209, d, 10.5, MUTED, 'middle')
+    s.text(20, 246, '이벤트 길이 = 끝 − 시작 + 1 프레임 시간 (끝 프레임도 경보) · 추론만 vs 파이프라인의 배수가 다른 이유 = 4교시의 다음 병목', 11, INK)
+    s.save('d5-project.svg')
+
+
+def d5_map():
+    s = Svg(700, 250)
+    s.text(350, 22, 'ONNX · TensorRT 5일 — 하나의 경로 PyTorch → ONNX → 엔진 → TRTInfer → 파이프라인', 14, INK, 'middle', True)
+    days = [('Day 1', 'ONNX 첫걸음', 'export · Netron · ORT · allclose', BLUE), ('Day 2', '속 들여다보기', 'describe · opset · dynamic · verify · slim', BLUE),
+            ('Day 3', 'ORT 로 빠르게', 'bench · 스레드 · 레벨 · CUDA · 배치 · profiling', GREEN), ('Day 4', 'TensorRT', 'polygraphy · build_engine · FP16 · 인스펙터', RED),
+            ('Day 5', '탐지 · 프로젝트', 'TRTInfer · detect(infer) · AP · 네 조각', ORANGE)]
+    for i, (d, t, tools, c) in enumerate(days):
+        x = 10 + i * 137
+        s.rect(x, 40, 128, 146, c, None, 6, 1.6)
+        s.text(x + 64, 60, d, 13, INK, 'middle', True); s.text(x + 64, 78, t, 11.5, INK, 'middle')
+        for j, w in enumerate(tools.split(' · ')):
+            s.text(x + 64, 98 + j * 14, w, 10.5, MUTED, 'middle')
+    s.text(20, 206, '다음 과목 — Quantization·Pruning (11/16~): INT8 이면 성능표가? · 프로젝트 (11/25~): run_intrusion 의 source 만 카메라로', 11, INK)
+    s.text(20, 226, 'YOLOv8 Edge (12/11~): 직접 학습한 YOLO 를 같은 경로로 · Jetson 에서는 .onnx 를 가져가 그 장치에서 다시 빌드', 11, INK)
+    s.text(20, 246, 'Drive 에 남길 것: 노트북 · ot_baseline.csv (비교 기준) · 엔진을 만든 .onnx', 11, MUTED)
+    s.save('d5-map.svg')
+
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):
