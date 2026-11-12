@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import nbparse
 
-FOLDER = {'nn': 'NN', 'vb': 'VB', 'ot': 'OT'}
+FOLDER = {'nn': 'NN', 'vb': 'VB', 'ot': 'OT', 'qp': 'QP'}
 
 
 class CellTimeout(Exception):
@@ -283,7 +283,7 @@ def main():
     if not os.path.isdir(os.path.join(root, 'AI_CAMPUS')):
         sys.exit(f'AI_CAMPUS 폴더를 못 찾았습니다: {root}\n  → --root "<AI_CAMPUS 가 들어 있는 폴더>" 를 붙이세요')
     if args and args[0] == 'all':
-        jobs = [(sid, d) for sid in ('nn', 'vb', 'ot') for d in _days(root, sid)]
+        jobs = [(sid, d) for sid in ('nn', 'vb', 'ot', 'qp') for d in _days(root, sid)]
         if '--only' in argv and argv[argv.index('--only') + 1] == 'assert':
             jobs = _assert_days(root, jobs)
         import subprocess
