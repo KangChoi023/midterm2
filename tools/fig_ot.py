@@ -372,6 +372,108 @@ def d3_profile():
     s.save('d3-profile.svg')
 
 
+# ---------------- OT Day 4 ----------------
+
+def d4_blueprint():
+    s = Svg(700, 280)
+    s.text(350, 22, '설계도 · 기계 · 완성품 — ONNX Runtime 은 읽어서 바로, TensorRT 는 이 GPU 전용으로 미리 만든다', 14, INK, 'middle', True)
+    s.box(20, 100, 140, 60, '.onnx', ORANGE, '설계도 · 배포할 것', 15)
+    s.rect(230, 44, 200, 66, GREEN, None, 8, 1.8); s.text(330, 70, 'ONNX Runtime (Day 3)', 13, INK, 'middle', True); s.text(330, 92, '세션 만들 때 최적화 → 바로 실행', 11, MUTED, 'middle')
+    s.rect(230, 150, 200, 66, RED, None, 8, 1.8); s.text(330, 176, 'TensorRT Builder (오늘)', 13, INK, 'middle', True); s.text(330, 198, '빌드 수십 초 — 커널을 재 보고 고름', 11, MUTED, 'middle')
+    s.rect(500, 150, 180, 66, RED, '#fecaca', 8, 2); s.text(590, 176, '.engine', 14, INK, 'middle', True); s.text(590, 198, '이 GPU · 이 버전 전용 완성품', 11, MUTED, 'middle')
+    _arrow(s, 160, 120, 228, 80); _arrow(s, 160, 140, 228, 182); _arrow(s, 430, 183, 498, 183, '저장', -8)
+    s.text(500, 80, '같은 파일을 어디서나', 11.5, GREEN); s.text(500, 98, '(CPU · GPU · 다른 OS)', 11.5, GREEN)
+    s.text(20, 244, '엔진은 GPU 세대(compute capability, T4 = sm_75) · TensorRT 버전(10.x)이 바뀌면 다시 빌드 → .onnx 를 들고 가서 빌드', 11.5, INK)
+    s.text(20, 266, '오늘은 배치 1 고정 ONNX (mnv3s_b1 · mnist_cnn_b1) — 배치 자유 ONNX 는 optimization profile 이 따로 필요', 11.5, MUTED)
+    s.save('d4-blueprint.svg')
+
+
+def d4_build():
+    s = Svg(700, 250)
+    s.text(350, 22, '엔진 빌드 여섯 단계 = polygraphy convert 가 안에서 하는 일', 14, INK, 'middle', True)
+    st = [('① Logger', 'WARNING 이상만'), ('② Builder', '엔진 공장'), ('③ Network', '빈 설계판 create_network(0)'),
+          ('④ OnnxParser', 'parse_from_file → 확인!'), ('⑤ Config', 'WORKSPACE 1 GB · DETAILED · FP16'), ('⑥ build_serialized', '수십 초 → 파일로 저장')]
+    for i, (t, d) in enumerate(st):
+        x = 12 + (i % 3) * 228; y = 44 + (i // 3) * 76
+        s.rect(x, y, 212, 60, [LINE, BLUE, BLUE, ORANGE, GREEN, RED][i] if i else PURPLE, None, 8, 1.6)
+        s.text(x + 106, y + 25, t, 13, INK, 'middle', True); s.text(x + 106, y + 45, d, 11, MUTED, 'middle')
+        if i % 3 < 2: _arrow(s, x + 212, y + 30, x + 226, y + 30)
+    s.text(20, 216, '명령 한 줄: polygraphy convert mnv3s_b1.onnx -o mnv3s_fp32.engine (+ --fp16) · 종료 코드 0 = 성공, [E] 만 오류', 11.5, INK)
+    s.text(20, 238, '⚠ 파싱 결과를 확인 안 하면 빈 설계판을 빌드해 None · Builder · Network 는 빌드마다 새로 (전역 재사용 X)', 11.5, RED)
+    s.save('d4-build.svg')
+
+
+def d4_tolerance():
+    s = Svg(700, 250)
+    s.text(350, 22, '"같다" 의 판정 — |a − b| ≤ atol + rtol · |b| (polygraphy run --onnxrt --trt)', 14, INK, 'middle', True)
+    rows = [('FP32 엔진', 'atol · rtol 1e-3', 'PASSED', GREEN, '계산 순서만 달라 끝자리 차이'),
+            ('FP16 엔진', 'atol · rtol 1e-3 (엄격)', 'FAILED', RED, '유효숫자 약 3자리 — 기준이 너무 엄격'),
+            ('FP16 엔진', 'atol · rtol 5e-2 (느슨)', 'PASSED', GREEN, '정밀도에 맞는 기준 + 실제 정확도로 판단')]
+    for i, (a, b, r, c, d) in enumerate(rows):
+        y = 46 + i * 50
+        s.rect(15, y, 670, 42, c, None, 8, 1.4)
+        s.text(30, y + 26, a, 13, INK, 'start', True); s.text(140, y + 26, b, 12, INK)
+        s.text(345, y + 26, r, 14, c, 'start', True); s.text(440, y + 26, d, 11.5, MUTED)
+    s.text(20, 216, '예: b = 10, atol = rtol = 1e-3 → 허용 1e-3 + 1e-3 × 10 = 0.011 — 큰 값일수록 허용 오차도 커진다 (rtol)', 11.5, INK)
+    s.text(20, 238, '⚠ 무작위 입력 한 번의 PASSED 로 "완벽" 결론 금지 — MNIST 100장 같은 실제 데이터의 정확도로 확인 (6교시)', 11.5, RED)
+    s.save('d4-tolerance.svg')
+
+
+def d4_run():
+    s = Svg(700, 260)
+    s.text(350, 22, 'TensorRT 실행 = GPU 메모리 주소를 알려 주고 실행 → 기다리기 → 꺼내기', 14, INK, 'middle', True)
+    st = [('① Runtime', 'deserialize_cuda_engine'), ('② Context', 'create_execution_context'), ('③ 이름 · shape', 'get_tensor_name · mode'),
+          ('④ GPU 버퍼', 'torch.empty(…, device="cuda")'), ('⑤ 주소 · 실행', 'set_tensor_address · execute_async_v3'), ('⑥ 기다리기 · 꺼내기', 'synchronize → .cpu().numpy()')]
+    for i, (t, d) in enumerate(st):
+        x = 12 + (i % 3) * 228; y = 44 + (i // 3) * 76
+        s.rect(x, y, 212, 60, [PURPLE, PURPLE, BLUE, ORANGE, RED, GREEN][i], None, 8, 1.6)
+        s.text(x + 106, y + 25, t, 13, INK, 'middle', True); s.text(x + 106, y + 45, d, 10.5, MUTED, 'middle')
+        if i % 3 < 2: _arrow(s, x + 212, y + 30, x + 226, y + 30)
+    s.text(20, 216, 'ORT 는 NumPy 를 받았지만 TensorRT 는 GPU 주소(data_ptr) 만 받는다 · trt_runner: 버퍼 · 주소는 한 번만', 11.5, INK)
+    s.text(20, 238, '⚠ execute_async_v3 는 비동기 — synchronize 없이 재면 끝나기 전 시간이라 엄청 빠르게 보인다 · 입력은 float32', 11.5, RED)
+    s.save('d4-run.svg')
+
+
+def d4_fp16():
+    s = Svg(700, 282)
+    s.text(350, 22, 'FP32 vs FP16 — 절반 크기, 절반 정밀도 (np.float16 으로 직접 확인)', 14, INK, 'middle', True)
+    for i, (n, bits, c, mx, eps) in enumerate((('FP32', 32, BLUE, '3.4 × 10³⁸', '1.19e-07 (유효숫자 약 7자리)'), ('FP16', 16, ORANGE, '65,504', '0.000977 (유효숫자 약 3자리)'))):
+        y = 46 + i * 54
+        s.text(20, y + 22, n, 14, c, 'start', True)
+        for b in range(bits):
+            col = RED if b == 0 else GREEN if b < (9 if bits == 32 else 6) else c
+            s.rect(80 + b * (10 if bits == 32 else 20), y + 6, 10 if bits == 32 else 20, 22, col, None, 0, 0.8)
+        s.text(410, y + 16, f'최대 {mx}', 11.5, INK); s.text(410, y + 34, f'eps {eps}', 11.5, MUTED)
+    s.text(80, 152, '빨강 부호 1 · 초록 지수 (8 / 5) · 나머지 가수 (23 / 10) 비트', 11, MUTED)
+    rows = [('0.1', '0.0999755859375'), ('3.14159265', '3.140625'), ('1000.3', '1000.5'), ('70000.0', 'inf (65,504 초과)')]
+    s.text(20, 180, '값 → FP16 으로 저장하면', 12, INK, 'start', True)
+    for i, (a, b) in enumerate(rows):
+        x = 20 + i * 170
+        s.rect(x, 190, 160, 40, RED if 'inf' in b else LINE, None, 6, 1.3); s.text(x + 80, 206, a, 11.5, INK, 'middle'); s.text(x + 80, 222, '→ ' + b, 11.5, RED if 'inf' in b else BLUE, 'middle', True)
+    s.text(20, 252, '신경망은 값이 작고 결과를 argmax 로 보므로 끝자리 오차에 강하다 — T4 Tensor Core 가 FP16 을 훨씬 빨리 계산', 11, INK)
+    s.text(20, 270, '엔진의 입출력은 FP32 그대로 (안쪽 계산만 FP16) — 입력을 float16 으로 바꿔 넣지 않는다', 11, MUTED)
+    s.save('d4-fp16.svg')
+
+
+def d4_fusion():
+    s = Svg(700, 230)
+    s.text(350, 22, '왜 빨라졌나 — 엔진 인스펙터로 본 레이어 합치기 (DETAILED 로 빌드해야 보인다)', 14, INK, 'middle', True)
+    s.text(20, 56, 'ONNX 노드', 12.5, BLUE, 'start', True)
+    x = 110
+    for op in ('Conv', 'HardSigmoid', 'Mul', 'Conv', 'Relu', 'Add'):
+        w = 86 if op == 'HardSigmoid' else 56
+        s.rect(x, 40, w, 28, BLUE, None, 4, 1.3); s.text(x + w / 2, 59, op, 11.5, INK, 'middle'); x += w + 6
+    s.text(20, 116, '엔진 레이어', 12.5, RED, 'start', True)
+    s.rect(110, 98, 220, 32, RED, None, 4, 1.5); s.text(220, 119, 'Conv + HardSigmoid + Mul', 11.5, INK, 'middle', True)
+    s.rect(336, 98, 140, 32, RED, None, 4, 1.5); s.text(406, 119, 'Conv + Relu + Add', 11.5, INK, 'middle', True)
+    s.rect(482, 98, 100, 32, ORANGE, None, 4, 1.5); s.text(532, 119, 'Reformat', 11.5, INK, 'middle')
+    _arrow(s, 230, 70, 220, 96); _arrow(s, 430, 70, 406, 96)
+    s.text(20, 160, '레이어 이름의 " + " = 여러 ONNX 노드를 한 커널로 · Reformat = 데이터 배치(정밀도 · 레이아웃) 변환', 11.5, INK)
+    s.text(20, 182, '빨라진 이유 ① 합치기 — 중간 결과의 메모리 왕복 ↓  ② 이 GPU 에서 재 보고 고른 커널  ③ FP16 (Tensor Core)', 11.5, INK)
+    s.text(20, 206, '⚠ 레이어 수가 적다고 무조건 빠른 건 아니다 — 세 가지가 함께 작용하므로 결국 bench 로 확인 (그림의 묶음은 예시)', 11.5, RED)
+    s.save('d4-fusion.svg')
+
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):

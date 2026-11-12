@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">엔진 빌드 여섯 단계 = polygraphy convert 가 안에서 하는 일</text>
+<rect x="12.0" y="44.0" width="212.0" height="60.0" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="118.0" y="69.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">① Logger</text>
+<text x="118.0" y="89.0" font-size="11" fill="#64748b" text-anchor="middle">WARNING 이상만</text>
+<line x1="224.0" y1="74.0" x2="238.0" y2="74.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="240.0" y="44.0" width="212.0" height="60.0" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="346.0" y="69.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">② Builder</text>
+<text x="346.0" y="89.0" font-size="11" fill="#64748b" text-anchor="middle">엔진 공장</text>
+<line x1="452.0" y1="74.0" x2="466.0" y2="74.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="468.0" y="44.0" width="212.0" height="60.0" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="574.0" y="69.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">③ Network</text>
+<text x="574.0" y="89.0" font-size="11" fill="#64748b" text-anchor="middle">빈 설계판 create_network(0)</text>
+<rect x="12.0" y="120.0" width="212.0" height="60.0" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/>
+<text x="118.0" y="145.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">④ OnnxParser</text>
+<text x="118.0" y="165.0" font-size="11" fill="#64748b" text-anchor="middle">parse_from_file → 확인!</text>
+<line x1="224.0" y1="150.0" x2="238.0" y2="150.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="240.0" y="120.0" width="212.0" height="60.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/>
+<text x="346.0" y="145.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">⑤ Config</text>
+<text x="346.0" y="165.0" font-size="11" fill="#64748b" text-anchor="middle">WORKSPACE 1 GB · DETAILED · FP16</text>
+<line x1="452.0" y1="150.0" x2="466.0" y2="150.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="468.0" y="120.0" width="212.0" height="60.0" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="1.6"/>
+<text x="574.0" y="145.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">⑥ build_serialized</text>
+<text x="574.0" y="165.0" font-size="11" fill="#64748b" text-anchor="middle">수십 초 → 파일로 저장</text>
+<text x="20.0" y="216.0" font-size="11.5" fill="#1e293b" text-anchor="start">명령 한 줄: polygraphy convert mnv3s_b1.onnx -o mnv3s_fp32.engine (+ --fp16) · 종료 코드 0 = 성공, [E] 만 오류</text>
+<text x="20.0" y="238.0" font-size="11.5" fill="#dc2626" text-anchor="start">⚠ 파싱 결과를 확인 안 하면 빈 설계판을 빌드해 None · Builder · Network 는 빌드마다 새로 (전역 재사용 X)</text>
+</svg>
