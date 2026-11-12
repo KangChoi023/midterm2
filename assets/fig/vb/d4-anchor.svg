@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">anchor — 특징맵 칸마다 크기 3 × 비율 3 = 9개의 기준 박스</text>
+<rect x="155.1" y="132.5" width="29.9" height="14.9" rx="0" fill="none" stroke="#0284c7" stroke-width="1.6"/>
+<rect x="159.4" y="129.4" width="21.1" height="21.1" rx="0" fill="none" stroke="#0284c7" stroke-width="1.6"/>
+<rect x="162.5" y="125.1" width="14.9" height="29.9" rx="0" fill="none" stroke="#0284c7" stroke-width="1.6"/>
+<rect x="140.1" y="125.1" width="59.7" height="29.9" rx="0" fill="none" stroke="#d97706" stroke-width="1.6"/>
+<rect x="148.9" y="118.9" width="42.2" height="42.2" rx="0" fill="none" stroke="#d97706" stroke-width="1.6"/>
+<rect x="155.1" y="110.1" width="29.9" height="59.7" rx="0" fill="none" stroke="#d97706" stroke-width="1.6"/>
+<rect x="110.3" y="110.1" width="119.5" height="59.7" rx="0" fill="none" stroke="#7c3aed" stroke-width="1.6"/>
+<rect x="127.8" y="97.8" width="84.5" height="84.5" rx="0" fill="none" stroke="#7c3aed" stroke-width="1.6"/>
+<rect x="140.1" y="80.3" width="59.7" height="119.5" rx="0" fill="none" stroke="#7c3aed" stroke-width="1.6"/>
+<circle cx="170.0" cy="140.0" r="4" fill="#dc2626" stroke="#dc2626" stroke-width="2"/>
+<text x="170.0" y="245.0" font-size="11.5" fill="#64748b" text-anchor="middle">크기 64 · 128 · 256 (넓이 유지) × 비율 h/w 0.5 · 1 · 2</text>
+<text x="360.0" y="60.0" font-size="13.5" fill="#1e293b" text-anchor="start" font-weight="700">모델이 anchor 마다 예측하는 것</text>
+<text x="360.0" y="84.0" font-size="12.5" fill="#1e293b" text-anchor="start">① 물체가 있나? (점수) — 분류</text>
+<text x="360.0" y="106.0" font-size="12.5" fill="#1e293b" text-anchor="start">② 얼마나 옮기고 늘리나? (dx, dy, dw, dh) — 회귀</text>
+<text x="360.0" y="140.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">559×536 사진, stride 16</text>
+<text x="360.0" y="162.0" font-size="12.5" fill="#0284c7" text-anchor="start">특징맵 34 × 35 = 1,190 칸 × 9 = 10,710 anchor</text>
+<text x="360.0" y="184.0" font-size="12.5" fill="#1e293b" text-anchor="start">정답 사람 2명의 최고 IoU anchor: 0.54 · 0.553</text>
+<text x="360.0" y="206.0" font-size="12.5" fill="#64748b" text-anchor="start">→ 그 anchor 를 정답 쪽으로 회귀해 박스를 맞춘다</text>
+</svg>

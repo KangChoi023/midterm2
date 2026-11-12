@@ -565,7 +565,138 @@ def d4_yolo():
 
 
 
+def d4_task():
+    s = Svg(700, 250)
+    s.text(350, 22, '분류 · 탐지 · 세그멘테이션 — 같은 사진, 다른 출력', 14, INK, 'middle', True)
+    cols = [('분류 (Day 1~3)', '라벨 1개 + 확률', '"person 0.98"', BLUE),
+            ('탐지 (오늘)', '물체마다 (클래스, 박스, 점수)', '개수가 사진마다 다름', ORANGE),
+            ('세그 · 포즈 (Day 5)', '픽셀마다 클래스 · 관절 좌표', '모양 · 자세까지', GREEN)]
+    for i, (t, a, b, c) in enumerate(cols):
+        x = 20 + i * 228
+        s.rect(x, 40, 210, 120, c, None, 8, 2)
+        s.text(x + 105, 66, t, 14, INK, 'middle', True)
+        if i == 0:
+            s.rect(x + 70, 80, 70, 60, LINE, '#f1f5f9', 4, 1.2); s.text(x + 105, 115, '🧍', 22, INK, 'middle')
+        elif i == 1:
+            for k, dx in enumerate((50, 120)):
+                s.rect(x + dx, 90, 40, 56, RED, 'none', 2, 2)
+                s.text(x + dx + 20, 86, f'0.9{k + 1}', 11, RED, 'middle')
+        else:
+            s.poly([(x + 80, 140), (x + 85, 95), (x + 105, 82), (x + 125, 95), (x + 130, 140)], GREEN, 2, '#bbf7d0', close=True)
+        s.text(x + 105, 182, a, 12.5, INK, 'middle'); s.text(x + 105, 202, b, 12, MUTED, 'middle')
+    s.text(350, 236, 'sliding window 로 분류기를 창마다 돌리면 559×536 사진 하나에 창 806개 × 6 ms = 4.8 초 → 탐지기는 한 번에 예측', 11.5, RED, 'middle')
+    s.save('d4-task.svg')
+
+
+def d4_bbox():
+    s = Svg(700, 290)
+    s.text(350, 22, '같은 박스의 세 가지 표현 — 이미지 559 × 536, 박스 (160, 182) ~ (302, 431)', 14, INK, 'middle', True)
+    k = 0.38; ox, oy = 30, 42
+    s.rect(ox, oy, 559 * k, 536 * k, LINE, '#f8fafc', 0, 1.5)
+    s.text(ox - 4, oy - 4, '(0, 0)', 11, MUTED, 'start')
+    s.text(ox + 559 * k + 6, oy + 12, 'x →', 11, MUTED); s.text(ox + 4, oy + 536 * k + 14, 'y ↓', 11, MUTED)
+    x1, y1, x2, y2 = 160, 182, 302, 431
+    s.rect(ox + x1 * k, oy + y1 * k, (x2 - x1) * k, (y2 - y1) * k, ORANGE, '#fff7ed', 0, 2.5)
+    s.circle(ox + x1 * k, oy + y1 * k, 4, BLUE, BLUE); s.circle(ox + x2 * k, oy + y2 * k, 4, BLUE, BLUE)
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    s.circle(ox + cx * k, oy + cy * k, 4, GREEN, GREEN)
+    rows = [('xyxy', '(160, 182, 302, 431)', '왼쪽 위 · 오른쪽 아래 점', 'VOC · torchvision · NMS', BLUE),
+            ('xywh', '(160, 182, 142, 249)', '왼쪽 위 점 + 너비 · 높이', 'COCO 어노테이션', ORANGE),
+            ('cxcywh 정규화', '(0.4132, 0.5718, 0.254, 0.4646)', '중심 + 크기 ÷ 이미지 크기 (0~1)', 'YOLO 라벨 · 출력', GREEN)]
+    for i, (n, v, d, u, c) in enumerate(rows):
+        y = 56 + i * 62
+        s.text(280, y, n, 14, c, 'start', True); s.text(400, y, v, 13, INK)
+        s.text(280, y + 20, d, 12, MUTED); s.text(470, y + 20, u, 12, MUTED)
+    s.text(350, 272, 'w = 302 − 160 = 142, h = 431 − 182 = 249, cx = 160 + 71 = 231 → 231 / 559 = 0.4132 · 정규화 좌표는 resize 해도 그대로', 11.5, INK, 'middle')
+    s.save('d4-bbox.svg')
+
+
+def d4_knobs():
+    s = Svg(700, 275)
+    s.text(350, 22, '두 개의 손잡이 — conf 기준 × NMS IoU 기준 (가짜 탐지기, 정답 8명, 박스 130개)', 14, INK, 'middle', True)
+    data = {(0.3, 0.3): 12, (0.3, 0.5): 12, (0.3, 0.7): 30, (0.5, 0.3): 8, (0.5, 0.5): 8, (0.5, 0.7): 26}
+    x0, y0, H = 90, 40, 160
+    Y = lambda v: y0 + H - v / 32 * H
+    s.line(x0, y0 + H, 660, y0 + H, INK, 1.3)
+    s.line(x0 - 5, Y(8), 660, Y(8), GREEN, 1.5, dash='5,4'); s.text(664, Y(8) + 4, '정답 8', 12, GREEN)
+    for v in (0, 10, 20, 30): s.text(x0 - 8, Y(v) + 4, str(v), 11, MUTED, 'end')
+    i = 0
+    for conf in (0.3, 0.5):
+        for iou in (0.3, 0.5, 0.7):
+            n = data[(conf, iou)]; x = x0 + 20 + i * 92 + (20 if conf == 0.5 else 0)
+            c = GREEN if n == 8 else ORANGE if n < 20 else RED
+            s.rect(x, Y(n), 56, y0 + H - Y(n), c, None, 3, 1.5)
+            s.text(x + 28, Y(n) - 6, str(n), 13, INK, 'middle', True)
+            s.text(x + 28, y0 + H + 16, f'IoU {iou}', 11.5, MUTED, 'middle')
+            i += 1
+    s.text(x0 + 140, y0 + H + 36, 'conf ≥ 0.3 → 배경 오탐까지 남음', 12, INK, 'middle')
+    s.text(x0 + 440, y0 + H + 36, 'conf ≥ 0.5 → 0.3 · 0.5 에서 정확히 8개', 12, INK, 'middle')
+    s.text(350, y0 + H + 56, 'IoU 기준 0.7 → 덜 지워서 한 사람에 박스가 여러 개 (26 · 30개)', 12, RED, 'middle')
+    s.save('d4-knobs.svg')
+
+
+def d4_anchor():
+    s = Svg(700, 260)
+    s.text(350, 22, 'anchor — 특징맵 칸마다 크기 3 × 비율 3 = 9개의 기준 박스', 14, INK, 'middle', True)
+    cx, cy, k = 170, 140, 0.33
+    for si, sz in enumerate((64, 128, 256)):
+        for r in (0.5, 1.0, 2.0):
+            w, h = sz / r ** 0.5, sz * r ** 0.5
+            s.rect(cx - w * k / 2, cy - h * k / 2, w * k, h * k, [BLUE, ORANGE, PURPLE][si], 'none', 0, 1.6)
+    s.circle(cx, cy, 4, RED, RED)
+    s.text(cx, 245, '크기 64 · 128 · 256 (넓이 유지) × 비율 h/w 0.5 · 1 · 2', 11.5, MUTED, 'middle')
+    s.text(360, 60, '모델이 anchor 마다 예측하는 것', 13.5, INK, 'start', True)
+    s.text(360, 84, '① 물체가 있나? (점수) — 분류', 12.5, INK)
+    s.text(360, 106, '② 얼마나 옮기고 늘리나? (dx, dy, dw, dh) — 회귀', 12.5, INK)
+    s.text(360, 140, '559×536 사진, stride 16', 13, INK, 'start', True)
+    s.text(360, 162, '특징맵 34 × 35 = 1,190 칸 × 9 = 10,710 anchor', 12.5, BLUE)
+    s.text(360, 184, '정답 사람 2명의 최고 IoU anchor: 0.54 · 0.553', 12.5, INK)
+    s.text(360, 206, '→ 그 anchor 를 정답 쪽으로 회귀해 박스를 맞춘다', 12.5, MUTED)
+    s.save('d4-anchor.svg')
+
+
+def d4_letterbox():
+    s = Svg(700, 270)
+    s.text(350, 22, 'letterbox — 비율을 지켜 긴 변을 640 으로, 남는 곳은 회색(114)', 14, INK, 'middle', True)
+    k = 0.28
+    s.rect(40, 50, 559 * k, 536 * k, BLUE, '#e0f2fe', 0, 2); s.text(40 + 559 * k / 2, 50 + 536 * k / 2, '559 × 536', 13, INK, 'middle', True)
+    s.text(40 + 559 * k / 2, 50 + 536 * k + 18, '원본', 12, MUTED, 'middle')
+    _arrow(s, 210, 125, 260, 125, 'r = 1.1449', -8)
+    ox = 280
+    s.rect(ox, 40, 640 * k, 640 * k, LINE, '#cbd5e1', 0, 1.5)
+    s.rect(ox, 40 + 13 * k, 640 * k, 614 * k, BLUE, '#e0f2fe', 0, 2)
+    s.text(ox + 320 * k, 40 + 320 * k, '640 × 614', 13, INK, 'middle', True)
+    s.text(ox + 640 * k + 8, 46, '위 패딩 13', 11.5, MUTED); s.text(ox + 640 * k + 8, 40 + 640 * k, '아래 패딩 13', 11.5, MUTED)
+    s.text(ox + 320 * k, 40 + 640 * k + 18, '640 × 640 (회색 114)', 12, MUTED, 'middle')
+    s.text(530, 90, 'r = min(640/536, 640/559)', 12.5, INK)
+    s.text(530, 112, '   = 1.1449', 12.5, BLUE)
+    s.text(530, 140, '되돌리기 (박스 → 원본)', 12.5, INK, 'start', True)
+    s.text(530, 162, '(박스 − 패딩) ÷ r', 13, RED, 'start', True)
+    s.text(350, 260, '이어서 BGR→RGB · 0~1 · (1, 3, 640, 640) — 출력 (1, 84, 8400) 을 전치 · 필터 · NMS 한 뒤 원본 좌표로', 11.5, MUTED, 'middle')
+    s.save('d4-letterbox.svg')
+
+
+def d4_pipeline():
+    s = Svg(700, 230)
+    s.text(350, 22, '프레임 하나의 시간 (YOLOv8n · 640 · CPU, 강의 실행 예) — 10 FPS 예산 100 ms', 14, INK, 'middle', True)
+    parts = [('읽기', 3.7, LINE), ('전처리', 4.0, BLUE), ('추론', 190.3, RED), ('후처리', 4.2, ORANGE), ('그리기+저장', 6.2, GREEN)]
+    x0, y0, W = 40, 60, 620
+    tot = sum(p[1] for p in parts); sc = W / 220
+    x = x0
+    for n, v, c in parts:
+        w = v * sc
+        s.rect(x, y0, w, 40, c, None, 0, 1.2)
+        if w > 50: s.text(x + w / 2, y0 + 25, f'{n} {v}', 13, INK, 'middle', True)
+        x += w
+    s.text(x0 + 2, y0 + 62, '읽기 3.7 · 전처리 4.0', 11.5, MUTED); s.text(x - 2, y0 + 62, '후처리 4.2 · 그리기 6.2', 11.5, MUTED, 'end')
+    s.line(x0 + 100 * sc, y0 - 12, x0 + 100 * sc, y0 + 52, GREEN, 2, dash='5,4'); s.text(x0 + 100 * sc, y0 - 16, '100 ms (10 FPS)', 11.5, GREEN, 'middle', True)
+    s.text(350, 160, f'합계 {tot:.1f} ms → {1000 / tot:.1f} FPS ✘ 실시간 아님 — 병목은 추론 (91%)', 13.5, RED, 'middle', True)
+    s.text(350, 186, '줄이는 법: 작은 입력(320 → 예측 칸 1/4) · 작은 모델 · GPU · TensorRT (OT 과목)', 12, INK, 'middle')
+    s.text(350, 210, 'VideoCapture(source) → 전처리 → 추론 → 후처리 → 오버레이 → VideoWriter — source 만 바꾸면 카메라에서도', 11.5, MUTED, 'middle')
+    s.save('d4-pipeline.svg')
+
+
 if __name__ == '__main__':
-    prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_')
+    prefixes = tuple(sys.argv[1:]) or ('d1_', 'd2_', 'd3_', 'd4_', 'd5_')
     for name, fn in list(globals().items()):
         if callable(fn) and name.startswith(prefixes): fn()
