@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 270" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="270" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">같은 static INT8 을 그래프에 담는 두 방식</text>
+<text x="20.0" y="52.0" font-size="13.5" fill="#0284c7" text-anchor="start" font-weight="700">QDQ — 원래 Conv 앞뒤에 Q · DQ 를 끼운다</text>
+<rect x="20.0" y="62.0" width="90.0" height="32.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="65.0" y="83.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Q</text>
+<rect x="140.0" y="62.0" width="90.0" height="32.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="185.0" y="83.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">DQ</text>
+<rect x="300.0" y="62.0" width="140.0" height="32.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="370.0" y="83.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Conv</text>
+<rect x="470.0" y="62.0" width="90.0" height="32.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="515.0" y="83.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Q</text>
+<rect x="140.0" y="108.0" width="130.0" height="32.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="205.0" y="129.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">INT8 W → DQ</text>
+<line x1="110.0" y1="78.0" x2="138.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="230.0" y1="78.0" x2="298.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="440.0" y1="78.0" x2="468.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="270.0" y1="120.0" x2="330.0" y2="96.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="580.0" y="74.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">노드 145개</text>
+<text x="580.0" y="92.0" font-size="11.5" fill="#64748b" text-anchor="start">DQ 78 · Q 34</text>
+<text x="580.0" y="108.0" font-size="11.5" fill="#64748b" text-anchor="start">Conv 21 · Add 9</text>
+<text x="20.0" y="172.0" font-size="13.5" fill="#16a34a" text-anchor="start" font-weight="700">QOperator — Conv 자체를 정수 연산자로</text>
+<rect x="20.0" y="182.0" width="110.0" height="34.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="75.0" y="204.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">Q (입력 1번)</text>
+<rect x="160.0" y="182.0" width="170.0" height="34.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="245.0" y="204.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">QLinearConv</text>
+<rect x="360.0" y="182.0" width="150.0" height="34.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="435.0" y="204.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">QLinearAdd</text>
+<line x1="130.0" y1="199.0" x2="158.0" y2="199.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="330.0" y1="199.0" x2="358.0" y2="199.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="580.0" y="194.0" font-size="13" fill="#1e293b" text-anchor="start" font-weight="700">노드 35개</text>
+<text x="580.0" y="212.0" font-size="11.5" fill="#64748b" text-anchor="start">QLinearConv 21</text>
+<text x="580.0" y="228.0" font-size="11.5" fill="#64748b" text-anchor="start">QLinearAdd 9</text>
+<text x="350.0" y="252.0" font-size="12" fill="#64748b" text-anchor="middle">정확도는 둘 다 0.845 · QDQ = TensorRT 등의 표준 입력 · QOperator = ORT CPU 가 그대로 실행</text>
+</svg>

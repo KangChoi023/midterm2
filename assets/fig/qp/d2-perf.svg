@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 270" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="270" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">5개 모델 성능표 — CPU · 스레드 1 (지연 시간은 컴퓨터마다 다름)</text>
+<text x="230.0" y="50.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">크기 KB</text>
+<text x="140.0" y="80.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">FP32</text>
+<rect x="150.0" y="66.0" width="111.9" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="266.9" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">1070.8</text>
+<text x="140.0" y="118.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">dynamic</text>
+<rect x="150.0" y="104.0" width="32.4" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="187.4" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">310.2</text>
+<text x="140.0" y="156.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">QDQ U8/S8</text>
+<rect x="150.0" y="142.0" width="33.6" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="188.6" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">321.8</text>
+<text x="140.0" y="194.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">QDQ S8/S8</text>
+<rect x="150.0" y="180.0" width="33.7" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="188.7" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">322.1</text>
+<text x="140.0" y="232.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">QOperator U8/S8</text>
+<rect x="150.0" y="218.0" width="31.0" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="186.0" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">296.9</text>
+<text x="415.0" y="50.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">배치 1 지연 ms</text>
+<rect x="335.0" y="66.0" width="12.4" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="352.4" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.701</text>
+<rect x="335.0" y="104.0" width="109.4" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="449.4" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">6.183</text>
+<rect x="335.0" y="142.0" width="8.5" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="348.5" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.48</text>
+<rect x="335.0" y="180.0" width="19.7" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="359.7" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">1.113</text>
+<rect x="335.0" y="218.0" width="6.1" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="346.1" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.342</text>
+<text x="600.0" y="50.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">배치 32 장/초</text>
+<rect x="520.0" y="66.0" width="44.7" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="569.7" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">1244.7</text>
+<rect x="520.0" y="104.0" width="6.1" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="531.1" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">170.3</text>
+<rect x="520.0" y="142.0" width="99.1" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="624.1" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">2757.9</text>
+<rect x="520.0" y="180.0" width="35.5" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="560.5" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">986.9</text>
+<rect x="520.0" y="218.0" width="108.4" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="633.4" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">3016.6</text>
+<text x="350.0" y="262.0" font-size="12" fill="#64748b" text-anchor="middle">정확도: FP32 0.846 · dynamic 0.8445 · 나머지 셋 0.845 — 차이는 2,000장 중 1 ~ 3장</text>
+</svg>

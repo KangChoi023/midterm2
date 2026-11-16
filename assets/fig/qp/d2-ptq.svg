@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">PTQ 두 갈래 — 활성값의 scale 을 언제 정하나</text>
+<text x="20.0" y="58.0" font-size="14" fill="#0284c7" text-anchor="start" font-weight="700">Dynamic</text>
+<rect x="20.0" y="68.0" width="150.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="95.0" y="90.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">rn20.onnx</text>
+<text x="95.0" y="108.0" font-size="12.5" fill="#64748b" text-anchor="middle">FP32 1,071 KB</text>
+<rect x="205.0" y="68.0" width="200.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="305.0" y="90.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">quantize_dynamic</text>
+<text x="305.0" y="108.0" font-size="12.5" fill="#64748b" text-anchor="middle">weight 만 미리 INT8</text>
+<rect x="440.0" y="68.0" width="240.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="560.0" y="90.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">실행할 때마다 입력 min · max</text>
+<text x="560.0" y="108.0" font-size="12.5" fill="#64748b" text-anchor="middle">→ 그때 scale 계산 (보정 X)</text>
+<line x1="170.0" y1="93.0" x2="203.0" y2="93.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="405.0" y1="93.0" x2="438.0" y2="93.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="20.0" y="152.0" font-size="14" fill="#d97706" text-anchor="start" font-weight="700">Static</text>
+<rect x="20.0" y="162.0" width="150.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="95.0" y="184.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">rn20_pre.onnx</text>
+<text x="95.0" y="202.0" font-size="12.5" fill="#64748b" text-anchor="middle">+ 보정 500장</text>
+<rect x="205.0" y="162.0" width="200.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="305.0" y="184.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">quantize_static</text>
+<text x="305.0" y="202.0" font-size="12.5" fill="#64748b" text-anchor="middle">CalibrationDataReader</text>
+<rect x="440.0" y="162.0" width="240.0" height="50.0" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="560.0" y="184.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">활성값 scale · zp 를 파일에</text>
+<text x="560.0" y="202.0" font-size="12.5" fill="#64748b" text-anchor="middle">실행 중에는 계산 없음</text>
+<line x1="170.0" y1="187.0" x2="203.0" y2="187.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="405.0" y1="187.0" x2="438.0" y2="187.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="238.0" font-size="12" fill="#64748b" text-anchor="middle">dynamic = MatMul · Linear 위주(LSTM · Transformer)   ·   static = Conv 위주(CNN) 의 표준</text>
+</svg>

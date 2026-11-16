@@ -1,0 +1,619 @@
+{
+ "torch.onnx.export()": {
+  "role": "PyTorch 모델 → ONNX 파일 (오늘은 ResNet-20)",
+  "desc": [
+   "`dynamic_axes` 로 배치(0번 축)를 가변 — 배치 250 평가 · 배치 32 처리량 측정에 필요",
+   "eval 모드에서 내보내면 BN 이 Conv 에 자동으로 접힌다 (BatchNormalization 0개)",
+   "rn20.onnx 1,071 KB · PyTorch 출력과 최대 차이 3.1e-06"
+  ],
+  "args": [
+   [
+    "model",
+    "내보낼 모델 (eval 모드)"
+   ],
+   [
+    "args",
+    "예시 입력 torch.zeros(1, 3, 32, 32)"
+   ],
+   [
+    "f",
+    "파일 이름"
+   ],
+   [
+    "input_names / output_names",
+    "입력 · 출력 이름 ['input'] · ['logits']"
+   ],
+   [
+    "dynamic_axes",
+    "가변 축 {'input': {0: 'N'}, …}"
+   ],
+   [
+    "opset_version",
+    "17"
+   ]
+  ],
+  "flow": "예시 입력으로 한 번 실행 → 연산 기록 → ONNX 그래프 저장",
+  "ret": "None (파일 생성)",
+  "hdr": "import torch"
+ },
+ "ort_acc()": {
+  "role": "ONNX 파일 정확도 (0 ~ 1)",
+  "desc": [
+   "세션을 한 번 만들고 bs 장씩 잘라 실행 → argmax 를 이어 붙여 정답과 비교",
+   "X · y 를 생략하면 평가용 2,000장 (X_ev · y_ev)",
+   "오늘 모든 INT8 모델을 같은 조건으로 재는 도구 — FP32 0.846"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일 경로"
+   ],
+   [
+    "X, y",
+    "입력 · 정답 (None 이면 X_ev · y_ev)"
+   ],
+   [
+    "bs",
+    "배치 크기 (기본 250)"
+   ]
+  ],
+  "flow": "InferenceSession → 배치마다 run → argmax → np.concatenate → (pred == y).mean()",
+  "ret": "float",
+  "hdr": "import onnxruntime as ort"
+ },
+ "size_kb()": {
+  "role": "파일 크기 (KB)",
+  "desc": [
+   "환경 셀 제공 — os.path.getsize / 1024",
+   "FP32 1,071 · dynamic 310 · QDQ INT8 322 · QOperator 297 KB"
+  ],
+  "args": [
+   [
+    "path",
+    "파일 경로"
+   ]
+  ],
+  "flow": "파일 byte 수 / 1024",
+  "ret": "float",
+  "hdr": "import os"
+ },
+ "quantize_dynamic()": {
+  "role": "dynamic 양자화 — weight 만 미리 INT8",
+  "desc": [
+   "활성값은 실행할 때마다 입력 min · max 로 양자화 → 보정 데이터 불필요",
+   "CNN 에서는 Conv 하나가 5단계(DynamicQuantizeLinear · ConvInteger · Cast · Mul …)가 되어 노드 52 → 181, 약 9배 느림",
+   "LSTM · Transformer 의 Linear 에 알맞다"
+  ],
+  "args": [
+   [
+    "model_input",
+    "입력 ONNX 경로"
+   ],
+   [
+    "model_output",
+    "출력 ONNX 경로"
+   ],
+   [
+    "weight_type",
+    "QuantType.QInt8 (S8)"
+   ]
+  ],
+  "flow": "weight → INT8 initializer, Conv → ConvInteger + 실행 중 양자화 노드",
+  "ret": "None (파일 생성)",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "QuantType": {
+  "role": "양자화 자료형 상수",
+  "desc": [
+   "`QuantType.QInt8` = 부호 있는 8비트(S8, −128 ~ 127) · `QuantType.QUInt8` = 부호 없는(U8, 0 ~ 255)",
+   "x86 CPU 는 활성값 U8 × weight S8 이 빠른 경로 — 활성값까지 S8 이면 3.4배 느려짐"
+  ],
+  "args": [],
+  "flow": "activation_type · weight_type 인자에 넘긴다",
+  "ret": "enum",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "bench()": {
+  "role": "지연 시간 측정 — warm-up 후 n 번",
+  "desc": [
+   "warm 번은 재지 않고 실행만 (첫 실행 준비 시간 제외)",
+   "n 번 time.perf_counter() 차이 × 1000 → ms 목록 → 평균 · p95",
+   "fps = 1000 / 평균 ms × 배치 크기"
+  ],
+  "args": [
+   [
+    "sess",
+    "InferenceSession"
+   ],
+   [
+    "x",
+    "입력 배열 (배치 1 이면 X_ev[:1])"
+   ],
+   [
+    "n",
+    "잴 횟수 (기본 100)"
+   ],
+   [
+    "warm",
+    "버릴 횟수 (기본 10)"
+   ]
+  ],
+  "flow": "warm 번 실행 → n 번 시간 기록 → 요약",
+  "ret": "dict {'mean', 'p95', 'fps'}",
+  "hdr": "import time, numpy as np"
+ },
+ "make_session()": {
+  "role": "스레드 수를 고정한 ORT 세션",
+  "desc": [
+   "`SessionOptions.intra_op_num_threads = threads` (기본 1) — 모델끼리 공정하게 비교하려고",
+   "제공 코드"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 경로"
+   ],
+   [
+    "threads",
+    "스레드 수 (기본 1)"
+   ]
+  ],
+  "flow": "SessionOptions → InferenceSession(path, so, providers=CPU)",
+  "ret": "InferenceSession",
+  "hdr": "import onnxruntime as ort"
+ },
+ "op_count()": {
+  "role": "ONNX 노드 종류별 개수",
+  "desc": [
+   "`Counter(n.op_type for n in onnx.load(path).graph.node)`",
+   "FP32 52개 · dynamic 181개 · QDQ 145개 · QOperator 35개"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 경로"
+   ]
+  ],
+  "flow": "그래프 노드 → op_type 세기",
+  "ret": "collections.Counter",
+  "hdr": "from collections import Counter"
+ },
+ "fold_bn()": {
+  "role": "BatchNorm 을 앞 Conv 에 접기",
+  "desc": [
+   "k = γ / √(σ² + ε) (채널마다) → W' = W × k[:, None, None, None] · b' = β − μ × k",
+   "conv 에 bias 가 있으면 b × k 를 더한다 (ResNet-20 은 없음)",
+   "stem 으로 확인: Conv+BN 과 최대 차이 9.5e-07"
+  ],
+  "args": [
+   [
+    "conv",
+    "nn.Conv2d"
+   ],
+   [
+    "bn",
+    "nn.BatchNorm2d (eval 의 running 값)"
+   ]
+  ],
+  "flow": "bn.weight · running_var · eps → k → W', b'",
+  "ret": "(W', b') numpy float32",
+  "hdr": "import torch, numpy as np"
+ },
+ "quant_pre_process()": {
+  "role": "양자화 전처리 — 모양 추론 · 그래프 정리",
+  "desc": [
+   "중간 텐서 모양 정보(value_info)를 채운다 — rn20: 0 → 52",
+   "양자화 입력은 항상 이 결과(*_pre.onnx)",
+   "정확도는 그대로 0.846"
+  ],
+  "args": [
+   [
+    "input_model",
+    "입력 ONNX 경로"
+   ],
+   [
+    "output_model_path",
+    "출력 경로"
+   ]
+  ],
+  "flow": "shape inference + 단순화 → 저장",
+  "ret": "None (파일 생성)",
+  "hdr": "from onnxruntime.quantization.shape_inference import quant_pre_process"
+ },
+ "graph.value_info": {
+  "role": "ONNX 중간 텐서의 모양 · 자료형 정보 목록",
+  "desc": [
+   "내보낸 직후 rn20.onnx 는 0개 → quant_pre_process 후 52개",
+   "입력 · 출력 · initializer 는 들어 있지 않다"
+  ],
+  "args": [],
+  "flow": "onnx.load(path).graph.value_info",
+  "ret": "repeated ValueInfoProto",
+  "hdr": "import onnx"
+ },
+ "F.conv2d()": {
+  "role": "함수형 2D 합성곱",
+  "desc": [
+   "모듈 없이 weight · bias 를 직접 넘겨 Conv — folding 결과 검증에 사용"
+  ],
+  "args": [
+   [
+    "input",
+    "(N, C, H, W) 텐서"
+   ],
+   [
+    "weight",
+    "(out, in, kH, kW)"
+   ],
+   [
+    "bias",
+    "(out,)"
+   ],
+   [
+    "padding",
+    "가장자리 0 채우기 (stem 은 1)"
+   ]
+  ],
+  "flow": "입력 × 필터 → 출력 채널마다 합 + bias",
+  "ret": "Tensor (N, out, H', W')",
+  "hdr": "import torch.nn.functional as F"
+ },
+ "CalibrationDataReader": {
+  "role": "ORT 에 보정 데이터를 건네는 틀 (상속해 쓴다)",
+  "desc": [
+   "`get_next()` → {'입력 이름': 배치} 를 하나씩, 다 쓰면 None",
+   "`rewind()` → 처음으로 되감기",
+   "quantize_static 이 None 이 나올 때까지 get_next 를 부른다"
+  ],
+  "args": [],
+  "flow": "상속 → get_next · rewind 구현",
+  "ret": "클래스",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "CifarReader()": {
+  "role": "보정 이미지를 bs 장씩 건네는 reader",
+  "desc": [
+   "`__init__`: X · bs · self.i = 0 / `get_next`: X[i:i+bs] 를 {'input': …} 로 · i += bs / `rewind`: i = 0",
+   "보정 500장 ÷ 50 = 10 배치",
+   "한 번 쓰면 끝까지 읽힌 상태 — quantize_static 마다 새로 만든다"
+  ],
+  "args": [
+   [
+    "X",
+    "전처리한 보정 이미지 (N, 3, 32, 32)"
+   ],
+   [
+    "bs",
+    "배치 크기 (기본 50)"
+   ]
+  ],
+  "flow": "위치 i 에서 bs 장 잘라 사전으로 → 끝나면 None",
+  "ret": "CalibrationDataReader",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "quantize_static()": {
+  "role": "static 양자화 — 보정 데이터로 활성값 scale 고정",
+  "desc": [
+   "reader 로 보정 데이터를 흘려 활성값 텐서마다 범위 → scale · zp 를 파일에",
+   "QDQ · U8/S8 · per-channel: 0.846 → 0.845, 1,071 → 322 KB",
+   "보정 데이터 분포가 틀리면(어둡게) 0.684 로 무너짐"
+  ],
+  "args": [
+   [
+    "model_input",
+    "입력 (rn20_pre.onnx)"
+   ],
+   [
+    "model_output",
+    "출력 경로"
+   ],
+   [
+    "calibration_data_reader",
+    "새 CifarReader(X_cal)"
+   ],
+   [
+    "quant_format",
+    "QuantFormat.QDQ / QOperator"
+   ],
+   [
+    "activation_type · weight_type",
+    "QUInt8 · QInt8"
+   ],
+   [
+    "per_channel",
+    "weight scale 을 채널마다"
+   ],
+   [
+    "calibrate_method",
+    "CalibrationMethod.MinMax(기본) · Entropy · Percentile"
+   ]
+  ],
+  "flow": "보정 실행 → 범위 → scale · zp → Q · DQ (또는 QLinear*) 노드 삽입",
+  "ret": "None (파일 생성)",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "QuantFormat": {
+  "role": "양자화 결과를 그래프에 담는 방식",
+  "desc": [
+   "`QuantFormat.QDQ` → 원래 Conv 앞뒤에 Q · DQ (TensorRT 등의 표준 입력)",
+   "`QuantFormat.QOperator` → QLinearConv 같은 정수 연산자 (ORT CPU)"
+  ],
+  "args": [],
+  "flow": "quant_format 인자에 넘긴다",
+  "ret": "enum",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "my_quant.calc_scale_zp()": {
+  "role": "Day 1 에 만든 scale · zero-point 계산",
+  "desc": [
+   "scale = (max − min) / (qmax − qmin), zp = round(qmin − min / scale)",
+   "보정 범위 −1.9895 ~ 2.1265 → scale 0.016141 · zp 123 = ORT 와 같은 답"
+  ],
+  "args": [
+   [
+    "xmin, xmax",
+    "실수 범위"
+   ],
+   [
+    "qmin, qmax",
+    "정수 범위 (U8 이면 0, 255)"
+   ]
+  ],
+  "flow": "범위 → scale · zp",
+  "ret": "(float, int)",
+  "hdr": "import my_quant"
+ },
+ "QuantFormat.QOperator": {
+  "role": "정수 연산자 형식 (QLinearConv · QLinearAdd)",
+  "desc": [
+   "rn20: 노드 145 → 35 · 정확도는 QDQ 와 같은 0.845",
+   "ORT CPU 에서 그대로 실행"
+  ],
+  "args": [],
+  "flow": "quant_format=QuantFormat.QOperator",
+  "ret": "enum 값",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "QuantType.QInt8": {
+  "role": "부호 있는 8비트 (S8)",
+  "desc": [
+   "weight 의 기본 (대칭 · zp 0)",
+   "activation_type 에 넣으면 S8/S8 모델 — 이 CPU 에서 U8/S8 보다 3.4배 느림"
+  ],
+  "args": [],
+  "flow": "activation_type · weight_type 에",
+  "ret": "enum 값",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "Counter.most_common()": {
+  "role": "많은 것부터 n 개",
+  "desc": [
+   "`c_qdq.most_common(5)` → [('DequantizeLinear', 78), ('QuantizeLinear', 34), …]"
+  ],
+  "args": [
+   [
+    "n",
+    "몇 개 (생략하면 전부)"
+   ]
+  ],
+  "flow": "개수 내림차순 정렬",
+  "ret": "list[(키, 개수)]",
+  "hdr": "from collections import Counter"
+ },
+ "CalibrationMethod": {
+  "role": "활성값 범위를 정하는 보정 방법",
+  "desc": [
+   "`MinMax` 본 값 전부 · `Percentile` 드문 큰 값 잘라냄 (기본 99.999%) · `Entropy` KL 차이 최소",
+   "rn20 6개 모델 정확도 차이 0.30%p · Percentile scale 은 MinMax 의 평균 0.819배"
+  ],
+  "args": [],
+  "flow": "calibrate_method 인자에 넘긴다 (`meth.name` 으로 이름)",
+  "ret": "enum",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "act_scales()": {
+  "role": "모델의 활성값 scale 사전",
+  "desc": [
+   "QuantizeLinear 마다 `{n.input[0]: float(initializer[n.input[1]])}`",
+   "rn20: 34개 — 보정 방법끼리 텐서 이름으로 맞춰 비율 비교"
+  ],
+  "args": [
+   [
+    "path",
+    "QDQ ONNX 경로"
+   ]
+  ],
+  "flow": "initializer 사전 → Q 노드마다 (입력 이름, scale)",
+  "ret": "dict {텐서 이름: scale}",
+  "hdr": "import onnx; from onnx import numpy_helper"
+ },
+ "pd.DataFrame()": {
+  "role": "사전 목록 → 표",
+  "desc": [
+   "행마다 사전 하나 `{'method': …, 'per_channel': …, 'acc': …}` → 열 이름 = 키"
+  ],
+  "args": [
+   [
+    "data",
+    "사전의 리스트"
+   ]
+  ],
+  "flow": "키 → 열, 사전 → 행",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.insert()": {
+  "role": "원하는 위치에 열 추가 (제자리에서)",
+  "desc": [
+   "`out.insert(0, 'day', 'Day2')` → 맨 앞에 day 열, 모든 행 'Day2'",
+   "돌려주는 값이 없다 — 원본이 바뀐다"
+  ],
+  "args": [
+   [
+    "loc",
+    "위치 (0 = 맨 앞)"
+   ],
+   [
+    "column",
+    "열 이름"
+   ],
+   [
+    "value",
+    "값 (하나면 전체 행에)"
+   ]
+  ],
+  "flow": "열 끼워 넣기",
+  "ret": "None",
+  "hdr": "import pandas as pd"
+ },
+ "pd.concat()": {
+  "role": "표를 위아래로 이어 붙이기",
+  "desc": [
+   "기존 qp_baseline.csv 아래에 오늘 행을 붙인다",
+   "이어서 drop_duplicates 로 같은 (day, model) 은 마지막만"
+  ],
+  "args": [
+   [
+    "objs",
+    "DataFrame 리스트"
+   ]
+  ],
+  "flow": "행 방향으로 이어 붙임",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.drop_duplicates()": {
+  "role": "중복 행 지우기",
+  "desc": [
+   "`subset=['day', 'model']` 이 같으면 중복으로 본다",
+   "`keep='last'` → 새로 넣은 행을 남긴다 — 셀을 다시 실행해도 표가 불어나지 않음"
+  ],
+  "args": [
+   [
+    "subset",
+    "비교할 열"
+   ],
+   [
+    "keep",
+    "'first' · 'last' · False"
+   ]
+  ],
+  "flow": "중복 판정 → 남길 것만",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.to_csv()": {
+  "role": "표를 CSV 파일로 저장",
+  "desc": [
+   "`index=False` → 행 번호를 저장하지 않음 (빼면 다음에 'Unnamed: 0' 열이 생김)"
+  ],
+  "args": [
+   [
+    "path",
+    "파일 이름"
+   ],
+   [
+    "index",
+    "행 번호 저장 여부"
+   ]
+  ],
+  "flow": "표 → 쉼표 구분 글",
+  "ret": "None",
+  "hdr": "import pandas as pd"
+ },
+ "make_ptq()": {
+  "role": "설정 문자열 4개로 static INT8 모델 만들기 (과제 1)",
+  "desc": [
+   "문자열 → ORT 상수 사전 3개 (형식 · 활성값 · 방법), weight 는 항상 QInt8",
+   "파일 이름 pj_{fmt}_{act}_{method}_{pc|pt}.onnx, 입력 rn20_pre.onnx, reader 는 매번 새로"
+  ],
+  "args": [
+   [
+    "fmt",
+    "'QDQ' · 'QOperator'"
+   ],
+   [
+    "act",
+    "'U8' · 'S8'"
+   ],
+   [
+    "method",
+    "'MinMax' · 'Percentile'"
+   ],
+   [
+    "pc",
+    "per-channel True / False"
+   ]
+  ],
+  "flow": "사전으로 상수 변환 → quantize_static → 경로",
+  "ret": "str (파일 경로)",
+  "hdr": "from onnxruntime.quantization import …"
+ },
+ "evaluate(path)": {
+  "role": "PTQ 모델 하나 평가 (과제 2)",
+  "desc": [
+   "ort_acc · size_kb · bench(make_session(path), X_ev[:1], n=100, warm=10) 를 묶는다",
+   "Day 1 의 evaluate(bits, per_channel) 와 다른 함수"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 경로"
+   ]
+  ],
+  "flow": "정확도 → 크기 → 배치 1 지연 시간",
+  "ret": "dict {'acc', 'size_kb', 'mean_ms', 'p95_ms'}",
+  "hdr": "import onnxruntime as ort"
+ },
+ "itertools.product()": {
+  "role": "여러 목록의 모든 조합",
+  "desc": [
+   "2 × 2 × 2 × 2 = 16가지 PTQ 설정을 튜플로 차례로"
+  ],
+  "args": [
+   [
+    "*iterables",
+    "조합할 목록들"
+   ]
+  ],
+  "flow": "중첩 for 와 같은 순서로 튜플 생성",
+  "ret": "iterator",
+  "hdr": "import itertools"
+ },
+ "shutil.copy()": {
+  "role": "파일 복사",
+  "desc": [
+   "고른 pj_…onnx 를 rn20_best.onnx 로 복사"
+  ],
+  "args": [
+   [
+    "src",
+    "원본 경로"
+   ],
+   [
+    "dst",
+    "새 경로"
+   ]
+  ],
+  "flow": "내용 복사",
+  "ret": "str (새 경로)",
+  "hdr": "import shutil"
+ },
+ "class_acc()": {
+  "role": "클래스별 정확도 (과제 5)",
+  "desc": [
+   "예측을 모은 뒤 클래스 k 마다 `(pred[y_ev == k] == k).mean()` → 길이 10",
+   "클래스당 200장 → 1장 = 0.5%p",
+   "FP32 cat 0.695 (최저) · automobile 0.945 (최고)"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 경로"
+   ]
+  ],
+  "flow": "배치 실행 → argmax → 클래스마다 맞힌 비율",
+  "ret": "numpy 배열 (10,)",
+  "hdr": "import numpy as np"
+ }
+}

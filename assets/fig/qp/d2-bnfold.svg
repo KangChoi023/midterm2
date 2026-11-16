@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 230" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="230" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">BatchNorm folding — Conv → BN 두 단계를 Conv 하나로</text>
+<rect x="20.0" y="50.0" width="110.0" height="50.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="75.0" y="80.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">x</text>
+<rect x="160.0" y="50.0" width="130.0" height="50.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="225.0" y="72.0" font-size="15" fill="#1e293b" text-anchor="middle" font-weight="700">Conv (W)</text>
+<text x="225.0" y="90.0" font-size="12.5" fill="#64748b" text-anchor="middle">bias 없음</text>
+<rect x="320.0" y="50.0" width="150.0" height="50.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="395.0" y="72.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">BN (γ, β, μ, σ²)</text>
+<text x="395.0" y="90.0" font-size="12.5" fill="#64748b" text-anchor="middle">채널마다 곱 · 덧셈</text>
+<line x1="130.0" y1="75.0" x2="158.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="290.0" y1="75.0" x2="318.0" y2="75.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="520.0" y="50.0" width="160.0" height="50.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="600.0" y="72.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Conv (W', b')</text>
+<text x="600.0" y="90.0" font-size="12.5" fill="#64748b" text-anchor="middle">같은 출력 · 차이 9.5e-07</text>
+<line x1="470.0" y1="75.0" x2="518.0" y2="75.0" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arr)"/>
+<text x="350.0" y="135.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">k = γ / √(σ² + ε)   (채널마다 하나)</text>
+<text x="350.0" y="160.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">W' = W × k (채널 축)   ·   b' = β − μ × k</text>
+<text x="350.0" y="192.0" font-size="12" fill="#64748b" text-anchor="middle">PyTorch BN 모듈 21개 → ONNX BatchNormalization 노드 0개 (eval 모드 export 가 이미 합침)</text>
+<text x="350.0" y="212.0" font-size="12" fill="#64748b" text-anchor="middle">ONNX 첫 Conv weight 와 직접 만든 W' 의 최대 차이 0.0</text>
+</svg>
