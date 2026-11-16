@@ -100,10 +100,10 @@
       S.days.forEach(D => {
         const isCurD = isCur && cur.d === D.n;
         const done = D.lessons.filter(l => l.status === 'done').length;
-        h += `<details class="day" ${isCurD || openS[S.id + D.n] ? 'open' : ''} data-k="${S.id}${D.n}"><summary>Day ${D.n} <span class="hit-loc">${esc(D.title)} · ${done}/${D.lessons.length}</span></summary>`;
+        h += `<details class="day" ${isCurD || openS[S.id + D.n] ? 'open' : ''} data-k="${S.id}${D.n}"><summary><span class="tw">└</span>Day ${D.n} <span class="hit-loc">${esc(D.title)} · ${done}/${D.lessons.length}</span></summary>`;
         D.lessons.forEach(L => {
           const on = isCurD && cur.n === L.n;
-          h += `<a class="les${on ? ' on' : ''}" href="${href(S.id, D.n, L.n)}"><span class="dot ${L.status}"></span><span>${L.n}. ${esc(L.title)}</span></a>`;
+          h += `<a class="les${on ? ' on' : ''}" href="${href(S.id, D.n, L.n)}"><span class="tw">└</span><span class="dot ${L.status}"></span><span>${L.n}. ${esc(L.title)}</span></a>`;
         });
         h += '</details>';
       });
@@ -276,11 +276,11 @@
         h += `<details class="ctree s" data-k="${S.id}" ${sOpen ? 'open' : ''}><summary>${esc(S.name)}</summary>`;
         S.days.forEach(D => {
           const dOpen = cur ? cur.s === S.id && cur.d === D.n : openK[S.id + D.n];
-          h += `<details class="ctree d" data-k="${S.id}${D.n}" ${dOpen ? 'open' : ''}><summary>Day ${D.n} <small>${esc(D.title)}</small></summary>`;
+          h += `<details class="ctree d" data-k="${S.id}${D.n}" ${dOpen ? 'open' : ''}><summary><span class="tw">└</span>Day ${D.n} <small>${esc(D.title)}</small></summary>`;
           D.lessons.forEach(L => {
             const rows = CODE_BY[S.id + '|' + D.n + '|' + L.n] || []; if (!rows.length) return;
             const isCur = cur && cur.s === S.id && cur.d === D.n && cur.n === L.n;
-            h += `<details class="ctree l" data-k="${S.id}${D.n}-${L.n}" ${isCur || openK[S.id + D.n + '-' + L.n] ? 'open' : ''}><summary>${L.n}. ${esc(L.title)} <small>${rows.length}</small></summary>${rows.map(r => codeItem(r, false)).join('')}</details>`;
+            h += `<details class="ctree l" data-k="${S.id}${D.n}-${L.n}" ${isCur || openK[S.id + D.n + '-' + L.n] ? 'open' : ''}><summary><span class="tw">└</span>${L.n}. ${esc(L.title)} <small>${rows.length}</small></summary>${rows.map(r => codeItem(r, false)).join('')}</details>`;
           });
           h += '</details>';
         });
