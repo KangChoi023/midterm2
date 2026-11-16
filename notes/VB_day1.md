@@ -106,32 +106,8 @@ NN Day 5 에서 만든 구조를 그대로 늘어놓는다.
 
 `nn.CrossEntropyLoss` 안에 softmax 가 들어 있으므로 모델 끝은 softmax 전 점수(**logits**) 그대로 둔다.
 
-#### 코드로 확인
-```python
-net = nn.Sequential(
-    nn.Conv2d(1, 30, 5),          # (N, 1, 28, 28) → (N, 30, 24, 24)
-    nn.ReLU(),
-    nn.MaxPool2d(2),              # → (N, 30, 12, 12)
-    nn.Flatten(),                 # → (N, 4320)
-    nn.Linear(4320, 100),
-    nn.ReLU(),
-    nn.Linear(100, 10),
-)
-n_params = sum(p.numel() for p in net.parameters())
-```
-- **무엇을 하나**: SimpleConvNet 을 계층 리스트로 만들고 파라미터 원소 수를 모두 더한다.
-- **어떤 개념**: 개념 1 · 2 — `parameters()` 가 모든 W · b 를 모아 준다.
-- **출력**: `433890`
-
-```python
-x = torch.zeros(2, 1, 28, 28)
-for layer in net:
-    x = layer(x)
-    print(f"{layer.__class__.__name__:10s} → {tuple(x.shape)}")
-```
-- **무엇을 하나**: 가짜 입력 2장을 계층마다 통과시키며 shape 를 찍는다.
-- **어떤 개념**: 개념 2 — 표의 shape 흐름.
-- **출력**: Conv2d (2, 30, 24, 24) → ReLU 같음 → MaxPool2d (2, 30, 12, 12) → Flatten (2, 4320) → Linear (2, 100) → ReLU → Linear **(2, 10)**
+<<CODE 1-1 | SimpleConvNet 을 nn.Sequential 로 — 파라미터 수 확인>>
+<<CODE 1-2 | 계층을 하나씩 통과시키며 shape 추적>>
 
 #### 한 번에 정리
 - NumPy 로 만든 부품 = PyTorch 부품 한 줄 (Linear · Conv2d · MaxPool2d · CrossEntropyLoss · optim · DataLoader).
@@ -236,6 +212,9 @@ PyTorch 의 기본 자료형은 Tensor 다. ndarray 와 무엇이 같고 무엇�
 
 함수 이름은 거의 같아서(`np.exp` → `torch.exp`) NN Day 2 의 softmax 를 이름만 바꿔 옮길 수 있다. `max(dim=…)` 는 (값, 인덱스) 두 개를 돌려주므로 `.values` 가 필요하다.
 
+<<CODE 2-1 | dtype 함정 — float64 를 float32 로>>
+<<CODE 2-3 | NumPy 순전파를 PyTorch 로 옮겨 결과 비교>>
+
 #### 개념 2 · from_numpy 는 공유, torch.tensor 는 복사
 ![from_numpy 는 같은 메모리를 보고, torch.tensor 는 복사본을 만든다](assets/fig/vb/d1-share.svg)
 
@@ -246,6 +225,9 @@ PyTorch 의 기본 자료형은 Tensor 다. ndarray 와 무엇이 같고 무엇�
 
 공유는 복사가 없어 빠르다 (큰 이미지 배치). NN Day 1 "b = a 는 복사가 아니다" 와 같은 이야기다.
 
+<<CODE 2-c1 | 같은 숫자를 ndarray 와 Tensor 로 — dtype · shape · device>>
+<<CODE 2-2 | from_numpy(공유) vs torch.tensor(복사) 예측하기>>
+
 #### 개념 3 · shape 바꾸기
 | 함수 | 하는 일 | 쓰는 곳 |
 |---|---|---|
@@ -253,42 +235,12 @@ PyTorch 의 기본 자료형은 Tensor 다. ndarray 와 무엇이 같고 무엇�
 | `permute(2, 0, 1)` | 축 순서 변경 (원소 배치가 달라짐) | 이미지 HWC → CHW (6교시) |
 | `unsqueeze(0)` / `squeeze(0)` | 크기 1 축 넣기 / 빼기 | 이미지 1장 → 배치 (1, C, H, W) |
 
+<<CODE 2-4 | (2, 3, 4) 텐서 모양 바꾸기 — reshape · permute>>
+
 #### 개념 4 · GPU — 같은 device 에
 GPU 는 수천 개 코어로 행렬곱을 한꺼번에 계산한다. 2048 × 2048 행렬곱은 2 · 2048³ ≈ 17.2 GFLOP. 단, 모델과 데이터가 **같은 device** 에 있어야 하고(`.to(device)`), GPU 는 명령만 받고 바로 돌아오는 **비동기 실행**이라 시간을 재려면 `torch.cuda.synchronize()` 로 기다려야 한다.
 
-#### 코드로 확인
-```python
-a = np.zeros(3)
-b = torch.from_numpy(a)       # 공유
-c = torch.tensor(a)           # 복사
-b[0] = 7.0
-c[1] = 9.0
-print(a, c)
-```
-- **무엇을 하나**: 같은 ndarray 에서 공유 텐서와 복사 텐서를 만들고 각각 한 칸씩 바꾼다.
-- **어떤 개념**: 개념 2.
-- **출력**: a = `[7. 0. 0.]` (b 의 변경이 보임) · c = `[0., 9., 0.]`
-
-```python
-def forward_torch(X, W, b):
-    Y = X @ W + b
-    Y = Y - Y.max(dim=1, keepdim=True).values
-    e = torch.exp(Y)
-    return e / e.sum(dim=1, keepdim=True)
-```
-- **무엇을 하나**: NN Day 2 의 Affine + softmax 를 PyTorch 로 옮긴다.
-- **어떤 개념**: 개념 1 — `axis → dim`, `keepdims → keepdim`, `.values`.
-- **출력**: 같은 입력의 NumPy 판과 값이 같고, 행마다 합 1
-
-```python
-x = torch.arange(24).reshape(2, 3, 4)
-p = x.permute(0, 2, 1)        # (2, 4, 3)
-u = x.unsqueeze(0)            # (1, 2, 3, 4)
-f = x.reshape(2, -1)          # (2, 12)
-```
-- **무엇을 하나**: 같은 텐서를 세 방법으로 바꾼다.
-- **어떤 개념**: 개념 3.
-- **출력**: shape (2, 4, 3) · (1, 2, 3, 4) · (2, 12) — `p[1, 3, 2]` = `x[1, 2, 3]` = **23**
+<<CODE 2-c2 | CPU vs GPU 행렬곱 속도 재기>>
 
 #### 한 번에 정리
 - Tensor = ndarray + device + requires_grad, 기본 float32, 축 인자는 dim.
@@ -377,6 +329,8 @@ NN Day 3 에서는 계층마다 backward 를 손으로 짜고 gradient check 로
 
 ![f = x² + 3y² 의 계산 그래프 — 순전파 값과 역전파 기울기](assets/fig/vb/d1-graph.svg)
 
+<<CODE 3-1 | f(x, y) = x² + 3y² 를 autograd 로 미분>>
+
 #### 개념 2 · 기울기는 더해진다
 `backward()` 는 `.grad` 를 **덮어쓰지 않고 더한다**. 큰 배치를 여러 번 나눠 기울기를 모을 때 쓰는 기능이다. 그래서 학습 루프는 매 step 기울기를 직접 비운다.
 
@@ -386,6 +340,8 @@ NN Day 3 에서는 계층마다 backward 를 손으로 짜고 gradient check 로
 | 비우지 않고 2번째 | **4** |
 | `x.grad.zero_()` 후 3번째 | 2 |
 
+<<CODE 3-2 | backward 를 두 번 — 기울기가 누적된다>>
+
 #### 개념 3 · 손으로 유도한 것과 같다
 Affine + softmax + CE 의 dW 는 NN Day 3 에서 Xᵀ(Y − T)/N 으로 유도했다. autograd 의 `W.grad` 와 비교하면 같다. 그리고 학습 한 step 은 세 줄이다.
 
@@ -394,41 +350,9 @@ Affine + softmax + CE 의 dW 는 NN Day 3 에서 Xᵀ(Y − T)/N 으로 유도�
 | `with torch.no_grad(): p -= lr * p.grad` | `opt.step()` |
 | `p.grad.zero_()` | `opt.zero_grad()` |
 
-#### 코드로 확인
-```python
-x = torch.tensor(1.0, requires_grad=True)
-y = torch.tensor(2.0, requires_grad=True)
-f = x ** 2 + 3 * y ** 2
-f.backward()
-print(f.item(), x.grad.item(), y.grad.item())
-```
-- **무엇을 하나**: 미분할 텐서 두 개로 f 를 계산하고 역전파한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `13.0 2.0 12.0` — df/dx = 2x, df/dy = 6y
-
-```python
-logits = X @ W + b                       # Y = XW + b
-loss = F.cross_entropy(logits, t)        # softmax + cross-entropy + 평균
-loss.backward()
-Y = torch.softmax(logits, dim=1).detach()
-dW_manual = X.T @ (Y - T) / N            # T = F.one_hot(t, K).float()
-```
-- **무엇을 하나**: autograd 로 구한 `W.grad` 와 손으로 유도한 식을 계산한다.
-- **어떤 개념**: 개념 3 — `detach()` 로 그래프에서 뗀 값으로 계산.
-- **출력**: `torch.allclose(W.grad, dW_manual)` → `True`
-
-```python
-q = torch.tensor([-4.0, 2.0], requires_grad=True)
-opt = torch.optim.SGD([q], lr=0.1)
-for step in range(100):
-    loss = q[0] ** 2 + 3 * q[1] ** 2
-    opt.zero_grad()
-    loss.backward()
-    opt.step()
-```
-- **무엇을 하나**: f = q₀² + 3q₁² 를 옵티마이저로 100 step 내려간다.
-- **어떤 개념**: 개념 3 — zero_grad → backward → step.
-- **출력**: 매 step q₀ × (1 − 0.1·2) = **0.8**, q₁ × (1 − 0.1·6) = **0.4** → 끝 위치 ≈ (0, 0), 직접 갱신 루프와 같은 값
+<<CODE 3-3 | 손으로 유도한 dW · db 와 autograd 비교>>
+<<CODE 3-4 | autograd 로 경사하강법 직접 돌리기>>
+<<CODE 3-5 | 같은 일을 torch.optim.SGD 로>>
 
 #### 한 번에 정리
 - requires_grad=True → 연산 기록 → backward() → 잎 텐서의 .grad.
@@ -526,6 +450,8 @@ xb, yb = next(iter(train_loader))     # (100, 1, 28, 28), (100,)
 
 MLP 784-100-10 의 파라미터는 784·100 + 100 + 100·10 + 10 = **79,510**. forward 첫 줄 `x.flatten(1)` 은 (N, 1, 28, 28) → (N, 784) 로, 배치 축(0번)은 남긴다.
 
+<<CODE 4-1 | 784-100-10 MLP 를 nn.Module 로 만들기>>
+
 #### 개념 2 · Dataset → DataLoader
 ![Dataset 은 한 장씩, DataLoader 는 섞어서 배치로](assets/fig/vb/d1-dataloader.svg)
 
@@ -537,50 +463,16 @@ MLP 784-100-10 의 파라미터는 784·100 + 100 + 100·10 + 10 = **79,510**. f
 
 Dataset 은 `__len__`(전체 개수) 과 `__getitem__`(i 번째 한 쌍) 만 있으면 된다. `transforms.ToTensor()` 는 uint8 (28, 28) 0 ~ 255 를 float (1, 28, 28) 0 ~ 1 로 바꾼다.
 
+<<CODE 4-c1 | torchvision MNIST 불러오기 — ToTensor>>
+<<CODE 4-2 | NumPy 배열로 Dataset 직접 만들기>>
+<<CODE 4-3 | 학습용 · 평가용 DataLoader 만들기>>
+
 #### 개념 3 · CrossEntropyLoss 를 풀어 쓰면
 > loss = −(1/N) Σᵢ log softmax(logitsᵢ)[정답ᵢ]
 
 `log_softmax` 로 log 확률을 구하고, 팬시 인덱싱으로 행마다 정답 칸만 골라 평균한다 — NN Day 3 의 `y[np.arange(N), t]` 와 같다.
 
-#### 코드로 확인
-```python
-class MLP(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(784, 100)
-        self.fc2 = nn.Linear(100, 10)
-    def forward(self, x):
-        x = x.flatten(1)               # 배치 축은 남긴다
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)             # logits
-```
-- **무엇을 하나**: 2층 MLP 를 클래스로 정의한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `sum(p.numel() for p in MLP().parameters())` = **79510**
-
-```python
-class NumpyDigits(Dataset):
-    def __init__(self, X, y): self.X, self.y = X, y
-    def __len__(self): return len(self.X)
-    def __getitem__(self, i):
-        x = torch.from_numpy(self.X[i]).float() / 255
-        return x.unsqueeze(0), int(self.y[i])
-
-train_loader = DataLoader(train_set, batch_size=100, shuffle=True)
-xb, yb = next(iter(train_loader))
-```
-- **무엇을 하나**: ndarray 를 감싼 Dataset 을 직접 만들고, MNIST 로더에서 배치 하나를 꺼낸다.
-- **어떤 개념**: 개념 2 — unsqueeze(0) 으로 채널 축.
-- **출력**: `small[0]` 의 이미지 (1, 28, 28) float32 · 배치 xb (100, 1, 28, 28), yb (100,) int64 · `len(train_loader)` = **600**
-
-```python
-loss_auto = nn.CrossEntropyLoss()(logits, yb)
-logp = F.log_softmax(logits, dim=1)                # (100, 10)
-loss_manual = -logp[torch.arange(len(yb)), yb].mean()
-```
-- **무엇을 하나**: CE 를 한 줄 함수와 풀어 쓴 식으로 각각 계산한다.
-- **어떤 개념**: 개념 3.
-- **출력**: 두 값이 같다 (학습 전이면 약 log 10 = 2.30 근처)
+<<CODE 4-4 | CrossEntropyLoss = log_softmax + NLL 확인>>
 
 #### 한 번에 정리
 - nn.Module: __init__ 에서 self. 에 부품, forward 에서 연결, parameters() 자동 수집.
@@ -691,6 +583,10 @@ def evaluate(model, loader):
 | 역전파 | `loss.backward()` | `net.gradient(x, t)` |
 | 갱신 | `opt.step()` | `optimizer.update(params, grads)` |
 
+<<CODE 5-1 | train_one_epoch — 한 epoch 학습 루프>>
+<<CODE 5-3 | MLP 를 Adam 으로 3 epoch 학습>>
+<<CODE 5-c1 | 손실 · 정확도 곡선 그리기>>
+
 #### 개념 2 · 평가 — eval() 과 no_grad() 는 다른 일
 | 호출 | 하는 일 |
 |---|---|
@@ -699,51 +595,12 @@ def evaluate(model, loader):
 
 예측은 `model(xb).argmax(dim=1)` — softmax 는 순서를 바꾸지 않으므로 생략한다. 정확도 = 맞은 수 / 전체.
 
+<<CODE 5-2 | evaluate — eval() + no_grad() 로 정확도>>
+
 #### 개념 3 · 저장과 불러오기 — state_dict
 모델 객체 대신 **state_dict**(계층 이름 → 파라미터 텐서 딕셔너리)만 저장한다. 불러올 때는 같은 클래스로 새 모델을 만든 뒤 `load_state_dict` 로 채운다. GPU 에서 저장한 파일을 CPU 에서 열려면 `map_location`.
 
-#### 코드로 확인
-```python
-def train_one_epoch(model, loader, loss_fn, opt):
-    model.train()                       # Dropout · BatchNorm 을 학습 모드로
-    total, n = 0.0, 0
-    for xb, yb in loader:
-        xb, yb = xb.to(device), yb.to(device)
-        loss = loss_fn(model(xb), yb)
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
-        total += loss.item() * len(xb); n += len(xb)
-    return total / n
-```
-- **무엇을 하나**: 한 epoch 동안 배치마다 학습 한 step 을 하고 평균 손실을 돌려준다.
-- **어떤 개념**: 개념 1 — `.item()` 으로 숫자만 모아 그래프가 쌓이지 않게.
-- **출력**: epoch 마다 줄어드는 평균 손실 (8교시 CNN 에도 그대로 쓴다)
-
-```python
-def evaluate(model, loader):
-    model.eval()
-    correct, n = 0, 0
-    with torch.no_grad():
-        for xb, yb in loader:
-            xb, yb = xb.to(device), yb.to(device)
-            correct += (model(xb).argmax(dim=1) == yb).sum().item()
-            n += len(yb)
-    return correct / n
-```
-- **무엇을 하나**: 평가 모드 + 기록 끄기로 전체 정확도를 계산한다.
-- **어떤 개념**: 개념 2.
-- **출력**: MLP 를 Adam 1e-3 으로 3 epoch 학습한 test 정확도
-
-```python
-torch.save(model.state_dict(), "mlp.pt")
-model2 = MLP().to(device)
-model2.load_state_dict(torch.load("mlp.pt", map_location=device))
-evaluate(model2, test_loader)
-```
-- **무엇을 하나**: 파라미터만 저장하고, 새 모델에 불러와 정확도를 다시 잰다.
-- **어떤 개념**: 개념 3.
-- **출력**: 저장 키 `fc1.weight (100, 784)`, `fc1.bias (100,)`, `fc2.weight (10, 100)`, `fc2.bias (10,)` · 불러온 정확도 = 저장 전 정확도
+<<CODE 5-4 | state_dict 저장 → 새 모델에 불러와 정확도 확인>>
 
 #### 한 번에 정리
 - 학습: train() → 배치마다 (to device → 순전파 → 손실 → zero_grad → backward → step).
@@ -840,6 +697,9 @@ MNIST 는 이미 다듬어진 28 × 28 흑백이었다. 실제 사진은 크고,
 
 `permute(2, 0, 1)` 은 "새 0번 축 = 옛 2번(C), 새 1번 = 옛 0번(H), 새 2번 = 옛 1번(W)" 이다.
 
+<<CODE 6-c1 | 종이 손글씨 사진 내려받아 열기>>
+<<CODE 6-1 | OpenCV 의 BGR 을 RGB 로 뒤집기>>
+
 #### 개념 2 · 흑백과 uint8 overflow
 흑백은 세 채널의 가중 평균이다: gray = 0.299R + 0.587G + 0.114B (합 1 — 사람 눈은 초록에 가장 민감). 직접 계산할 때는 반드시 float 로 바꾼 뒤 계산한다. uint8 끼리 더하면 255 를 넘을 때 256 을 빼고 다시 세기 때문이다.
 
@@ -849,6 +709,9 @@ MNIST 는 이미 다듬어진 28 × 28 흑백이었다. 실제 사진은 크고,
 | `uint8(250) + 100` | 94 |
 | `float32 + 100` | 300 · 350 |
 | `cv2.add(p, 100)` | 255 · 255 (포화) |
+
+<<CODE 6-2 | 흑백 공식 0.299R + 0.587G + 0.114B 직접 계산>>
+<<CODE 6-c2 | uint8 overflow — 200 + 100 이 44 가 된다>>
 
 #### 개념 3 · 입력 만들기 파이프라인
 > center crop → resize → ToTensor → Normalize → unsqueeze(0)
@@ -863,39 +726,9 @@ MNIST 는 이미 다듬어진 28 × 28 흑백이었다. 실제 사진은 크고,
 
 ImageNet 사전학습 모델의 mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]. 학습 때 쓴 전처리를 추론 때도 **똑같이** 써야 한다.
 
-#### 코드로 확인
-```python
-img = cv2.imread("data/paper_digits/d3_0.jpg")      # BGR uint8 (H, W, 3)
-rgb = img[:, :, ::-1]                                # BGR → RGB
-B, G, R = [img[:, :, k].astype(np.float32) for k in range(3)]
-gray_mine = 0.299 * R + 0.587 * G + 0.114 * B
-gray_cv = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-```
-- **무엇을 하나**: 사진을 읽어 RGB 순서로 뒤집고, 흑백을 직접 계산해 OpenCV 결과와 비교한다.
-- **어떤 개념**: 개념 1 · 2 — float32 로 바꾼 뒤 계산.
-- **출력**: 두 흑백 이미지가 거의 같다 (차이는 반올림 정도) — 둘 다 (H, W) 한 장
-
-```python
-p = np.array([[200, 250]], dtype=np.uint8)
-p + np.uint8(100)                     # uint8 끼리
-p.astype(np.float32) + 100
-cv2.add(p, np.full_like(p, 100))
-```
-- **무엇을 하나**: 같은 덧셈을 세 방식으로 해 본다.
-- **어떤 개념**: 개념 2.
-- **출력**: `[[44, 94]]` · `[[300., 350.]]` · `[[255, 255]]`
-
-```python
-h, w = rgb.shape[:2]; s = min(h, w)
-top, left = (h - s) // 2, (w - s) // 2
-crop = rgb[top:top + s, left:left + s]
-small_img = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_AREA)
-batch = torch.from_numpy(small_img).permute(2, 0, 1).float().div(255).unsqueeze(0)
-x_norm = (batch[0] - mean.view(3, 1, 1)) / std.view(3, 1, 1)
-```
-- **무엇을 하나**: 사진 한 장을 crop → resize → 텐서 → 정규화한다.
-- **어떤 개념**: 개념 3.
-- **출력**: `batch.shape` = **(1, 3, 224, 224)**, float32 0 ~ 1 · `x_norm` 은 채널마다 0 근처 평균
+<<CODE 6-3 | ToTensor 를 직접 — HWC→CHW · 0~1>>
+<<CODE 6-4 | 짧은 변 기준 resize + 가운데 224 자르기>>
+<<CODE 6-5 | ImageNet 평균 · 표준편차로 정규화>>
 
 #### 한 번에 정리
 - OpenCV (H, W, C) uint8 BGR → PyTorch (N, C, H, W) float32 RGB.
@@ -992,6 +825,10 @@ cap.release(); writer.release()
 
 `mp4v` 코덱은 브라우저에서 재생되지 않는 경우가 많아 ffmpeg 로 H.264 로 바꿔 본다.
 
+<<CODE 7-c1 | 테스트 영상 재료 — 숫자 6개를 이어 붙인 띠 만들기>>
+<<CODE 7-1 | 프레임 180장을 digits.mp4 로 저장>>
+<<CODE 7-2 | 영상 속성 읽기 — fps · 크기 · 프레임 수>>
+
 #### 개념 2 · 읽기 → 처리 → 쓰기 루프
 | 단계 | 코드 |
 |---|---|
@@ -1003,42 +840,9 @@ cap.release(); writer.release()
 
 30 FPS 로 실시간 처리하려면 프레임 하나를 **33 ms** 안에 끝내야 한다 → `time.perf_counter()` 로 잰다.
 
-#### 코드로 확인
-```python
-cap = cv2.VideoCapture("digits.mp4")
-n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-fps = cap.get(cv2.CAP_PROP_FPS)
-width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)); height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-cap.release()
-```
-- **무엇을 하나**: 만든 영상을 다시 열어 정보를 읽는다.
-- **어떤 개념**: 개념 1.
-- **출력**: 180 프레임 · 30 FPS · 320 × 120 · **6.0 초**
-
-```python
-def frame_to_input(frame):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)          # (120, 320)
-    h, w = gray.shape
-    c = gray[:, (w - h) // 2:(w - h) // 2 + h]             # 가운데 (120, 120)
-    small = cv2.resize(c, (28, 28), interpolation=cv2.INTER_AREA)
-    return torch.from_numpy(small).float().div(255)[None, None]   # (1, 1, 28, 28)
-```
-- **무엇을 하나**: 프레임의 가운데 정사각형을 MNIST 크기 입력 텐서로 바꾼다.
-- **어떤 개념**: 6교시 파이프라인을 프레임에 — `[None, None]` 은 배치 · 채널 축 두 개를 붙인다.
-- **출력**: shape **(1, 1, 28, 28)**, float32 0 ~ 1
-
-```python
-while True:
-    ok, frame = cap.read()
-    if not ok:
-        break
-    cv2.rectangle(frame, (100, 0), (219, 119), (0, 200, 255), 2)
-    writer.write(frame)
-cap.release(); writer.release()
-```
-- **무엇을 하나**: 모든 프레임에 가운데 상자를 그려 새 영상으로 저장한다.
-- **어떤 개념**: 개념 2 — ok 확인 · release.
-- **출력**: 180 프레임 처리 · 프레임당 평균 처리 시간(ms) — 그리기만 하므로 33 ms 보다 훨씬 짧다
+<<CODE 7-3 | 프레임 하나를 모델 입력으로 — frame_to_input>>
+<<CODE 7-4 | 읽기 → 처리 → 쓰기 루프 (네모 · 번호 그리기)>>
+<<CODE 7-c2 | 결과 영상을 노트북에서 재생>>
 
 #### 한 번에 정리
 - 영상 = 프레임의 연속, 길이 = 프레임 수 / FPS.
@@ -1143,6 +947,10 @@ _, bw = cv2.threshold(cv2.GaussianBlur(g, (5, 5), 0), 0, 255, cv2.THRESH_BINARY_
 
 모델은 배운 세상(MNIST)의 규칙만 안다. 학습 데이터와 실제 입력의 분포가 다른 것을 **도메인 이동(domain shift)** 이라 하고, "실험실에선 되는데 현장에서 안 된다" 의 가장 흔한 원인이다. 해결 방향은 두 가지 — 입력을 학습 데이터 쪽으로 옮기거나(전처리, 오늘), 모델이 실제 데이터를 보게 하거나(증강 · 전이학습, Day 2 · 3).
 
+<<CODE 8-1 | SimpleConvNet 클래스 (Conv → ReLU → Pool → FC)>>
+<<CODE 8-2 | SimpleConvNet 을 MNIST 로 학습>>
+<<CODE 8-c1 | 종이 손글씨에 그냥 넣어 보기 — domain shift>>
+
 #### 개념 2 · 전처리 6단계
 ![종이 사진을 MNIST 모양으로 바꾸는 전처리 6단계](assets/fig/vb/d1-preprocess.svg)
 
@@ -1155,49 +963,15 @@ _, bw = cv2.threshold(cv2.GaussianBlur(g, (5, 5), 0), 0, 255, cv2.THRESH_BINARY_
 | ⑤ 20 × 20 | `scale = 20 / max(w, h)`, 비율 유지 | MNIST 규칙 |
 | ⑥ 무게중심 | `moments` 로 (cx, cy) → `warpAffine` 으로 (14, 14) 로 | MNIST 규칙 |
 
+<<CODE 8-3 | preprocess — 종이 사진을 MNIST 처럼 만드는 6단계>>
+<<CODE 8-4 | 전처리 전 · 후 종이 정확도 비교>>
+<<CODE 8-c2 | 전처리한 30장 한눈에 보기>>
+
 #### 개념 3 · 영상 숫자 인식 — 신뢰도
 7교시 루프 안에서 프레임 → `frame_to_input` → predict → 그리기 → write. predict 는 softmax 의 최대 확률(**신뢰도**)도 함께 돌려준다. 두 숫자 사이 프레임처럼 애매한 입력에서는 신뢰도가 낮고 예측이 흔들린다 → 실제 서비스라면 신뢰도 문턱(예 0.9)과 연속 프레임 다수결(투표)을 쓴다.
 
-#### 코드로 확인
-```python
-class SimpleConvNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv = nn.Conv2d(1, 30, 5)
-        self.pool = nn.MaxPool2d(2)
-        self.fc1 = nn.Linear(30 * 12 * 12, 100)
-        self.fc2 = nn.Linear(100, 10)
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv(x)))      # (N, 30, 12, 12)
-        x = F.relu(self.fc1(x.flatten(1)))
-        return self.fc2(x)
-```
-- **무엇을 하나**: 1교시 구조를 nn.Module 클래스로 쓰고, 5교시 train_one_epoch · evaluate 로 2 epoch 학습한다.
-- **어떤 개념**: 4 · 5교시의 틀을 CNN 에.
-- **출력**: 파라미터 433,890 · (2, 1, 28, 28) → (2, 10) · 2 epoch test **0.98 이상**
-
-```python
-g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-bg = cv2.GaussianBlur(g, (0, 0), 25)
-g = cv2.divide(g, bg, scale=255)                                   # 조명 평평하게
-_, bw = cv2.threshold(cv2.GaussianBlur(g, (5, 5), 0), 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-c = max(cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0], key=cv2.contourArea)
-x, y, w, h = cv2.boundingRect(c)
-```
-- **무엇을 하나**: preprocess 의 앞부분 — 조명 보정 → 반전 이진화 → 가장 큰 덩어리의 상자.
-- **어떤 개념**: 개념 2 의 ① ~ ④.
-- **출력**: 숫자만 감싼 (x, y, w, h) — 뒤이어 20 × 20 · 무게중심 (14, 14) ± 1 로 맞춘 (1, 1, 28, 28)
-
-```python
-def predict(model, x):
-    model.eval()
-    with torch.no_grad():
-        p = torch.softmax(model(x.to(device)), dim=1)[0].cpu()
-    return int(p.argmax()), float(p.max())
-```
-- **무엇을 하나**: 입력 한 장의 (예측, 신뢰도) 를 돌려준다.
-- **어떤 개념**: 개념 3.
-- **출력**: 종이 사진 30장 — 그냥 줄이기보다 전처리가 **0.3 이상** 높고 전처리 정확도 0.8 이상 (채점 기준) · 영상 가운데 프레임 6장 예측 = [7, 2, 1, 0, 4, 1]
+<<CODE 8-5 | 영상 프레임마다 숫자 예측 · 신뢰도로 색 바꾸기>>
+<<CODE 8-c3 | 예측 영상 재생 · 프레임별 예측 그래프>>
 
 #### 한 번에 정리
 - 학습 데이터와 실제 입력이 다르면(domain shift) 좋은 모델도 틀린다.

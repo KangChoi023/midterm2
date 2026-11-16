@@ -1,0 +1,74 @@
+{
+  "_설명": "VB Day 1 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "vb/1/1-1": [
+    {"at": "net = nn.Sequential(", "to": ")", "t": "부품을 순서대로 묶기", "d": "NN Day 5 의 mynn 계층 목록과 같은 순서 — `Conv2d → ReLU → MaxPool2d → Flatten → Linear → ReLU → Linear`. 주석의 shape 가 층마다 바뀌는 모양."},
+    {"at": "n_params = sum(", "t": "파라미터 수 세기", "d": "`net.parameters()` 는 모든 weight · bias 텐서. `numel()` = 원소 개수 → 다 더하면 433,890 (780 + 432,100 + 1,010 — mynn 과 같은지 확인)."}
+  ],
+  "vb/1/2-3": [
+    {"at": "def forward_np(", "to": "return e / e.sum(axis=1", "t": "NumPy 판 — Affine + softmax", "d": "max 를 빼서 exp 가 넘치지 않게 (overflow 방지) 한 뒤 행마다 합으로 나눈다."},
+    {"at": "def forward_torch(", "to": "return e / e.sum(dim=1", "t": "PyTorch 판 — 이름만 바뀐다", "d": "`axis` → `dim`, `keepdims` → `keepdim`, `max` 는 (값, 위치) 를 돌려주므로 `.values`."},
+    {"at": "Xn, Wn, bn =", "to": "P_t = forward_torch(", "t": "같은 입력으로 두 결과 비교", "d": "`torch.from_numpy` 로 같은 숫자를 넘겨 `allclose` — 옮긴 코드가 맞는지 숫자로 확인하는 습관."}
+  ],
+  "vb/1/2-c2": [
+    {"at": "A = torch.randn(n, n, device=dev)", "to": "if dev.type == \"cuda\": torch.cuda.synchronize()", "t": "행렬을 그 장치에서 만들고 준비 운동", "d": "처음부터 `device=` 로 만들면 복사가 없다. 첫 실행은 초기화 시간이 섞여서 한 번 버린다."},
+    {"at": "t0 = time.perf_counter()", "to": "return (time.perf_counter() - t0)", "t": "reps 번 행렬곱 평균 (ms)", "d": "GPU 는 **비동기** — 명령만 맡기고 바로 돌아오므로 `synchronize()` 로 끝날 때까지 기다린 뒤 시간을 잰다."},
+    {"at": "cpu_ms = bench(", "t": "CPU · GPU 비교", "d": "GPU 가 있을 때만 재서 몇 배 빠른지 출력. 2048×2048 처럼 큰 계산일수록 GPU 가 유리하다."}
+  ],
+  "vb/1/3-3": [
+    {"at": "N, D, K = 6, 4, 3", "to": "b = torch.zeros(K, requires_grad=True)", "t": "작은 문제 만들기", "d": "6개 · 특징 4 · 클래스 3. 정답 t 를 one-hot T 로도 만들어 둔다. W · b 만 `requires_grad=True` — 기울기를 구할 대상."},
+    {"at": "logits = X @ W + b", "to": "loss.backward()", "t": "순전파 → backward 한 줄", "d": "`F.cross_entropy` = softmax + cross-entropy + 평균. `backward()` 가 `W.grad` · `b.grad` 를 채운다."},
+    {"at": "Y = torch.softmax(logits", "to": "db_manual =", "t": "손으로 유도한 기울기", "d": "NN 과정의 결과 — dL/dY = (Y − T) / N, dW = Xᵀ(Y − T)/N, db = 행 합. `detach()` 는 그래프에서 떼어 낸 값만 쓰려고."}
+  ],
+  "vb/1/4-1": [
+    {"at": "class MLP(nn.Module):", "to": "self.fc2 = nn.Linear(100, 10)", "t": "__init__ — 부품(층) 만들기", "d": "`super().__init__()` 를 먼저 불러야 층이 등록된다. 여기서 만든 층의 weight · bias 가 `parameters()` 에 모인다."},
+    {"at": "def forward(self, x):", "to": "return self.fc2(x)", "t": "forward — 부품을 잇는 순서", "d": "`flatten(1)` 은 배치 축(0)은 남기고 나머지를 편다. softmax 는 넣지 않는다 — `CrossEntropyLoss` 안에서 한다."},
+    {"at": "mlp = MLP()", "to": "print(mlp", "t": "만들고 파라미터 세기", "d": "784·100 + 100 + 100·10 + 10 = 79,510."}
+  ],
+  "vb/1/4-2": [
+    {"at": "def __len__(self):", "to": "return len(self.X)", "t": "__len__ — 몇 개인가", "d": "DataLoader 가 epoch 길이(배치 수)를 계산할 때 쓴다."},
+    {"at": "def __getitem__(self, i):", "to": "return x.unsqueeze(0), int(self.y[i])", "t": "__getitem__ — i 번째 (입력, 정답)", "d": "uint8 → float · /255 로 0~1, `unsqueeze(0)` 으로 채널 축을 붙여 (1, 28, 28). ToTensor 와 같은 결과."},
+    {"at": "X_small = test_set.data[:500]", "to": "x0, y0 = small[0]", "t": "만들어서 한 개 꺼내 보기", "d": "`small[0]` 이 곧 `__getitem__(0)` — Dataset 은 인덱스로 하나씩 꺼내는 약속일 뿐이다."}
+  ],
+  "vb/1/5-1": [
+    {"at": "model.train()", "t": "학습 모드로", "d": "Dropout · BatchNorm 이 학습용으로 동작하게. (평가 때는 `eval()`)"},
+    {"at": "for xb, yb in loader:", "to": "loss = loss_fn(logits, yb)", "t": "배치를 장치로 → 순전파 → 손실", "d": "모델과 데이터가 **같은 device** 에 있어야 한다."},
+    {"at": "opt.zero_grad()", "to": "opt.step()", "t": "기울기 지우기 → 역전파 → 갱신", "d": "기울기는 누적되므로 매번 `zero_grad()` 먼저 (3교시). 이 세 줄이 학습의 핵심."},
+    {"at": "total += loss.item()", "to": "return total / n", "t": "평균 손실", "d": "`item()` 은 텐서 한 개를 파이썬 숫자로. 배치 크기를 곱해 더해야 마지막 작은 배치까지 정확한 평균."}
+  ],
+  "vb/1/5-2": [
+    {"at": "model.eval()", "to": "with torch.no_grad():", "t": "eval() 과 no_grad() — 다른 일 두 개", "d": "`eval()` = Dropout · BN 을 평가 동작으로, `no_grad()` = 기울기 기록을 꺼서 빠르고 메모리 절약. 둘 다 필요하다."},
+    {"at": "pred = model(xb).argmax(dim=1)", "to": "return correct / n", "t": "맞은 개수 ÷ 전체", "d": "가장 큰 점수의 위치가 예측 클래스. `(pred == yb).sum()` 이 맞은 개수."}
+  ],
+  "vb/1/5-3": [
+    {"at": "torch.manual_seed(0)", "to": "loss_fn = nn.CrossEntropyLoss()", "t": "모델 · 옵티마이저 · 손실 준비", "d": "seed 고정으로 다시 돌려도 같은 결과. Adam(lr 0.001) 은 대부분 그대로 잘 된다."},
+    {"at": "for epoch in range(3):", "to": "print(f\"epoch", "t": "epoch 마다 학습 → 평가 → 기록", "d": "5-1 · 5-2 함수를 그대로 부르고 손실 · 정확도를 `hist` 에 쌓아 곡선을 그린다 (5-c1)."}
+  ],
+  "vb/1/7-c1": [
+    {"at": "VID_DIGITS = [", "to": "strip = np.zeros(", "t": "숫자 6개와 띠 크기", "d": "test 셋 0~5번 이미지(정답 7 2 1 0 4 1)를 칸(CELL 160) 마다 하나씩 놓을 빈 띠."},
+    {"at": "for k, d in enumerate(digits_img):", "to": "strip[12:108, x0:x0 + 96] = big", "t": "96×96 으로 키워 칸 가운데에", "d": "앞뒤로 빈 칸을 하나씩 두어 영상이 빈 화면에서 시작해 빈 화면으로 끝나게."},
+    {"at": "def frame_at(i):", "to": "return cv2.cvtColor(win", "t": "i 번째 프레임 = 띠를 미는 창", "d": "1초(30 프레임)에 한 칸씩 왼쪽으로. 흑백을 BGR 3채널로 바꿔야 VideoWriter 가 받는다."}
+  ],
+  "vb/1/7-4": [
+    {"at": "cap = cv2.VideoCapture(", "to": "writer = cv2.VideoWriter(", "t": "읽을 영상 · 쓸 영상 열기", "d": "쓰기는 코덱(mp4v) · FPS · (가로, 세로) 를 정해야 한다 — 크기가 프레임과 다르면 조용히 빈 파일."},
+    {"at": "while True:", "to": "break", "t": "끝까지 한 프레임씩", "d": "`read()` 는 (성공 여부, 프레임). 영상이 끝나면 ok 가 False."},
+    {"at": "cv2.rectangle(frame", "to": "writer.write(frame)", "t": "처리 → 쓰기", "d": "프레임(ndarray) 위에 바로 그린다. 8교시에는 여기에 모델 예측이 들어간다."},
+    {"at": "cap.release(); writer.release()", "t": "닫기", "d": "`release()` 를 안 하면 파일이 끝까지 저장되지 않을 수 있다."}
+  ],
+  "vb/1/8-c1": [
+    {"at": "def predict(model, x):", "to": "return int(p.argmax()), float(p.max())", "t": "예측 + 신뢰도", "d": "softmax 확률의 최댓값 = 신뢰도. eval · no_grad 를 함께."},
+    {"at": "def naive(img_bgr):", "to": "return torch.from_numpy(cv2.resize(", "t": "그냥 흑백 · 28×28 로 줄이기만", "d": "MNIST 는 '검은 바탕의 흰 글씨 · 가운데 정렬' 인데 종이 사진은 반대 — 이 차이(domain shift) 때문에 많이 틀린다."},
+    {"at": "fig, ax = plt.subplots(2, 6", "to": "plt.tight_layout(); plt.show()", "t": "원본 · 모델이 본 입력 · 예측", "d": "아래 줄을 보면 모델 입력이 MNIST 와 얼마나 다른지 바로 보인다."}
+  ],
+  "vb/1/8-3": [
+    {"at": "g = cv2.cvtColor(img_bgr", "to": "g = cv2.divide(g, bg, scale=255)", "t": "①② 흑백 · 그림자 지우기", "d": "크게 흐린 사진 = 조명 · 그림자만 남은 배경. 원본 ÷ 배경으로 고르게 만든다."},
+    {"at": "g = cv2.GaussianBlur(g, (5, 5), 0)", "to": "bw = cv2.morphologyEx(", "t": "③ 흑백 반전 이진화", "d": "Otsu 가 문턱을 자동으로 고르고 `INV` 로 글씨를 흰색(MNIST 처럼). opening 으로 가는 줄 · 점 제거."},
+    {"at": "contours, _ = cv2.findContours(", "to": "digit = bw[y:y + h, x:x + w]", "t": "④ 가장 큰 덩어리만 잘라내기", "d": "외곽선 중 넓이가 가장 큰 것 = 숫자. 그 박스로 자른다."},
+    {"at": "scale = 20.0 / max(w, h)", "to": "digit = cv2.resize(digit, (nw, nh)", "t": "⑤ 긴 변 20 · 비율 유지", "d": "MNIST 숫자는 20×20 상자 안에 들어 있다 — 그 규칙을 따라 한다."},
+    {"at": "canvas = np.zeros((28, 28)", "to": "return torch.from_numpy(canvas)", "t": "⑥ 28×28 가운데 · 무게중심 맞추기", "d": "모멘트로 무게중심 (cx, cy) 를 구해 (14, 14) 로 옮긴다 (warpAffine) — MNIST 를 만든 방식 그대로."}
+  ],
+  "vb/1/8-5": [
+    {"at": "cap = cv2.VideoCapture(", "to": "frame_preds, i = [], 0", "t": "7교시 루프 그대로", "d": "읽기 → 처리 → 쓰기 구조는 같고 '처리' 만 예측으로 바뀐다."},
+    {"at": "pred, conf = predict(cnn, frame_to_input(frame))", "to": "cv2.putText(frame", "t": "프레임마다 예측 · 신뢰도로 색", "d": "신뢰도 0.9 초과면 초록, 아니면 주황 — 숫자가 칸 경계에 걸린 프레임은 신뢰도가 떨어진다."},
+    {"at": "centers = [", "to": "video_acc =", "t": "숫자가 창 가운데인 프레임만 채점", "d": "k 번째 숫자는 30k + 15 번째 프레임에서 가운데. 그 6장의 예측을 정답과 비교."}
+  ]
+}

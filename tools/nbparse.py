@@ -107,7 +107,11 @@ def fill_blanks(blank, sol):
     code = lambda l: re.split(r'\s+#', l, 1)[0].strip()                 # 끝 주석 · 들여쓰기 무시
     sl = sol.split('\n'); out, j = [], 0
     for line in blank.split('\n'):
-        if '____' not in line: out.append(line); continue
+        if '____' not in line:                                          # 같은 줄이 정답에도 있으면 그 뒤에서부터 찾는다
+            out.append(line)                                            # (x = torch.zeros(…) 다음의 x = ____ 가 앞줄과 짝지어지지 않게)
+            k = next((k for k in range(j, len(sl)) if code(sl[k]) == code(line) and code(line)), None)
+            if k is not None: j = k + 1
+            continue
         pat = re.compile('^' + '(.+?)'.join(re.escape(part) for part in code(line).split('____')) + '$')
         for k in range(j, len(sl)):
             if pat.match(code(sl[k])):

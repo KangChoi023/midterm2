@@ -73,10 +73,14 @@ Day 1 은 MNIST(가운데 놓인 흑백 숫자)였다. 오늘은 실제 사진�
 
 고양이 ↔ 개, 자동차 ↔ 트럭처럼 비슷한 클래스가 많아, 위치 · 크기가 바뀌어도 견디는 특징을 배워야 한다.
 
+<<CODE 1-c1 | CIFAR-10 불러오기 — ToTensor + Normalize · DataLoader>>
+
 #### 개념 2 · 정규화 상수는 train 으로만
 Day 1 의 정규화((x − mean) / std)를 CIFAR-10 에 쓰려면 이 데이터의 채널별 평균 · 표준편차가 필요하다. 반드시 **train** 데이터로 계산하고 test 에도 같은 값을 쓴다. test 로 계산하면 시험 문제를 미리 본 셈이다 (NN Day 4 의 validation 원칙).
 
 원본 `train_set.data` 는 (50000, 32, 32, 3) — N · H · W 세 축을 평균하면(`axis=(0, 1, 2)`) 채널 3개만 남는다.
+
+<<CODE 1-1 | 정규화 상수 MEAN · STD 를 train 데이터로 계산>>
 
 #### 개념 3 · MLP 는 절반만 맞힌다
 | 층 | 계산 | 파라미터 |
@@ -90,29 +94,8 @@ Day 1 의 정규화((x − mean) / std)를 CIFAR-10 에 쓰려면 이 데이터�
 
 ![이미지를 펼치면 이웃 픽셀이 멀리 떨어진다 (NN Day 5 그림 — CIFAR 는 한 줄이 32칸)](assets/fig/nn/d5-flatten.svg)
 
-#### 코드로 확인
-```python
-data01 = train_set.data / 255.0               # (50000, 32, 32, 3)
-ch_mean = data01.mean(axis=(0, 1, 2))
-ch_std = data01.std(axis=(0, 1, 2))
-plain_tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(ch_mean, ch_std)])
-```
-- **무엇을 하나**: train 이미지로 채널별 평균 · 표준편차를 구해 정규화 변환을 만든다.
-- **어떤 개념**: 개념 2.
-- **출력**: mean · std 각각 길이 3 (R, G, B) — 이 값을 test 변환에도 그대로 쓴다
-
-```python
-mlp = nn.Sequential(
-    nn.Flatten(),
-    nn.Linear(3 * 32 * 32, 512), nn.ReLU(),
-    nn.Linear(512, 256), nn.ReLU(),
-    nn.Linear(256, 10),
-)
-hist_mlp = fit(mlp.to(device), train_loader, test_loader, 3, torch.optim.Adam(mlp.parameters(), lr=1e-3), label="MLP")
-```
-- **무엇을 하나**: MLP 3072-512-256-10 을 Adam 으로 3 epoch 학습한다.
-- **어떤 개념**: 개념 3.
-- **출력**: 파라미터 **1,707,274** · test 약 **0.50** (강사 실행 예 0.4994)
+<<CODE 1-2 | CIFAR-10 용 MLP 3072 → 512 → 256 → 10>>
+<<CODE 1-3 | MLP 를 Adam 으로 3 epoch 학습>>
 
 #### 한 번에 정리
 - CIFAR-10: 32 × 32 × 3 컬러, 10 클래스, train 5만 · test 1만 — 변화가 많다.
@@ -212,8 +195,13 @@ print(tuple(down(torch.zeros(2, 64, 32, 32)).shape))   # (2, 128, 16, 16)
 
 `groups = Cin` 이면 채널마다 따로 합성곱하는 **depthwise** — Day 3 MobileNet 의 핵심이다.
 
+<<CODE 2-1 | conv_out — 출력 크기 공식을 nn.Conv2d 로 확인>>
+<<CODE 2-2 | conv_params — 파라미터 수 공식 (groups 포함)>>
+
 #### 개념 2 · 크기 1/2 · 채널 2배
 stride 2 로 크기를 절반으로 줄이면 위치 수는 1/4. 채널을 2배로 늘려도 연산량은 절반이다. 그래서 CNN 은 보통 "크기 1/2 마다 채널 2배" 로 설계해 층마다 연산량을 비슷하게 맞춘다. 예: Conv(64 → 128, 3×3, S2, P1) 에 (2, 64, 32, 32) → (2, 128, 16, 16).
+
+<<CODE 2-4 | 크기 1/2 · 채널 2배 Conv 설계 — stride 2 · padding 1>>
 
 #### 개념 3 · 수용 영역 — 쌓을수록 넓게 본다
 출력 한 칸이 영향을 받는 입력 영역의 크기를 **수용 영역**이라 한다.
@@ -231,31 +219,7 @@ stride 2 로 크기를 절반으로 줄이면 위치 수는 1/4. 채널을 2배�
 
 jump 는 "현재 층 한 칸이 입력에서 몇 픽셀 간격인지" 다. 풀링 · stride 를 지날 때마다 곱해져, 뒤쪽의 같은 3×3 이 입력에서는 훨씬 넓게 퍼진다.
 
-#### 코드로 확인
-```python
-def conv_out(n, k, s=1, p=0):
-    return (n + 2 * p - k) // s + 1
-
-def conv_params(cin, cout, k, groups=1, bias=True):
-    return cout * (cin // groups) * k * k + (cout if bias else 0)
-
-real = nn.Conv2d(1, 1, 3, stride=2, padding=1)(torch.zeros(1, 1, 32, 32)).shape[-1]
-```
-- **무엇을 하나**: 공식으로 출력 크기 · 파라미터를 계산하고 실제 `nn.Conv2d` 결과와 비교한다.
-- **어떤 개념**: 개념 1.
-- **출력**: 공식 = 실제 — 32 → 16 · Conv(64→64, groups=64) **640** · Conv(16→32, 3×3, bias 없음) 4,608
-
-```python
-def receptive_field(layers):
-    rf, jump = 1, 1
-    for k, s in layers:
-        rf = rf + (k - 1) * jump
-        jump = jump * s
-    return rf
-```
-- **무엇을 하나**: (K, S) 목록으로 수용 영역을 계산한다 — 풀링도 (2, 2) 로 넣는다.
-- **어떤 개념**: 개념 3.
-- **출력**: `[(3,1)]*2` → **5** · `[(3,1)]*3` → 7 · LeNet `[(5,1),(2,2),(5,1),(2,2)]` → **16** · VGG 블록 3개 → **32**
+<<CODE 2-3 | receptive_field — 쌓을수록 넓어지는 수용 영역>>
 
 #### 한 번에 정리
 - O = (N + 2P − K) // S + 1, 파라미터 = Cout · (Cin / G) · K² + Cout.
@@ -355,6 +319,9 @@ CNN 이 어떻게 지금의 모습이 되었는지 두 모델로 본다. 최초�
 
 MLP 의 1/27 파라미터로 test 0.5489 > 0.4994. 합성곱이라는 구조가 "이웃 픽셀이 중요하다, 위치가 달라도 같은 특징이다" 라는 가정을 미리 갖고 있어서다 — 이것을 **귀납적 편향**이라 한다.
 
+<<CODE 3-1 | LeNet-5 를 nn.Module 로 — 파라미터 62,006>>
+<<CODE 3-2 | LeNet-5 를 MLP 와 같은 조건으로 학습>>
+
 #### 개념 2 · AlexNet — 딥러닝의 귀환
 2012년 ImageNet 대회(ILSVRC: 1,000 클래스 · 약 128만 장)에서 AlexNet 은 top-5 오류 **15.3%** 로 2위(26.2%)를 10%p 이상 앞섰다. 이후 우승 모델은 모두 CNN 이고 해마다 깊어졌다 (8층 → VGG 19 → GoogLeNet 22 → ResNet 152).
 
@@ -368,32 +335,7 @@ MLP 의 1/27 파라미터로 test 0.5489 > 0.4994. 합성곱이라는 구조가 
 #### 개념 3 · 파라미터는 FC 에, 연산은 Conv 에
 AlexNet 약 6,110만 파라미터 중 Linear(9216 → 4096) 한 층이 **61.8%**(37,748,736), 합성곱 5층은 모두 합쳐 4.0%. NN Day 5 SimpleConvNet 에서 본 것과 같은 결론이다. 그래서 뒤의 모델들은 거대 FC 를 줄여 간다 — ResNet 은 GAP + FC 하나.
 
-#### 코드로 확인
-```python
-class LeNet5(nn.Module):
-    def __init__(self, in_ch=3, n_cls=10):
-        super().__init__()
-        self.conv1, self.conv2 = nn.Conv2d(in_ch, 6, 5), nn.Conv2d(6, 16, 5)
-        self.pool = nn.MaxPool2d(2)
-        self.fc1, self.fc2, self.fc3 = nn.Linear(16 * 5 * 5, 120), nn.Linear(120, 84), nn.Linear(84, n_cls)
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))     # (N, 6, 14, 14)
-        x = self.pool(F.relu(self.conv2(x)))     # (N, 16, 5, 5)
-        x = F.relu(self.fc1(x.flatten(1))); x = F.relu(self.fc2(x))
-        return self.fc3(x)
-```
-- **무엇을 하나**: LeNet-5 를 정의하고 MLP 와 같은 조건(Adam 3 epoch)으로 학습한다.
-- **어떤 개념**: 개념 1.
-- **출력**: 파라미터 **62,006** · test 약 **0.55** (강사 실행 예 0.5489)
-
-```python
-alex = torchvision.models.alexnet(weights=None)
-total = sum(p.numel() for p in alex.parameters())
-name, p = max(alex.named_parameters(), key=lambda kv: kv[1].numel())
-```
-- **무엇을 하나**: AlexNet 구조만 만들어 가장 큰 파라미터 텐서를 찾는다.
-- **어떤 개념**: 개념 3.
-- **출력**: `classifier.1.weight` (4096, 9216) = **37,748,736** — 전체의 **61.8%**
+<<CODE 3-3 | AlexNet 구조 — 전체 파라미터와 가장 큰 텐서>>
 
 #### 한 번에 정리
 - LeNet-5: Conv-Pool-Conv-Pool-FC×3, 62,006 파라미터로 MLP(170만)보다 높다 — 귀납적 편향.
@@ -478,6 +420,8 @@ AlexNet 은 11×11, 5×5 같은 큰 필터를 썼다. 2014년 VGG 는 **모든 �
 
 같은 영역을 보면서 파라미터는 적고, 비선형(ReLU)은 더 많이 들어가 더 복잡한 함수를 표현한다. 현대 CNN 은 대부분 3×3 이다.
 
+<<CODE 4-1 | 3×3 두 층 vs 5×5 한 층 — 파라미터 비교표>>
+
 #### 개념 2 · VGG 블록과 VGG-mini
 > VGG 블록 = [Conv 3×3 → BN → ReLU] × n → MaxPool 2×2
 
@@ -494,22 +438,9 @@ AlexNet 은 11×11, 5×5 같은 큰 필터를 썼다. 2014년 VGG 는 **모든 �
 
 BN 은 원래 VGG 에 없었다(2015년 등장) — 오늘 것은 학습을 쉽게 하려고 넣은 현대판이다. BN 바로 앞 Conv 는 `bias=False` (β 가 bias 역할).
 
-#### 코드로 확인
-```python
-def vgg_block(cin, cout, n_convs):
-    layers = []
-    for i in range(n_convs):
-        layers += [nn.Conv2d(cin if i == 0 else cout, cout, 3, padding=1, bias=False),
-                   nn.BatchNorm2d(cout), nn.ReLU(inplace=True)]
-    layers.append(nn.MaxPool2d(2))
-    return nn.Sequential(*layers)
-
-vgg = nn.Sequential(vgg_block(3, 32, 2), vgg_block(32, 64, 2), vgg_block(64, 128, 2),
-                    nn.Flatten(), nn.Linear(128 * 4 * 4, 10))
-```
-- **무엇을 하나**: 블록 함수로 VGG-mini 를 조립하고 3 epoch 학습한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: (N, 3, 32, 32) → (N, 128, 4, 4) → (N, 10) · 파라미터 **307,946** · test **0.7526** (강사 실행 예, LeNet 0.5489)
+<<CODE 4-2 | vgg_block 과 VGG-mini 만들기>>
+<<CODE 4-3 | VGG-mini 를 같은 조건으로 학습>>
+<<CODE 4-c1 | MLP · LeNet-5 · VGG-mini test 정확도 곡선>>
 
 #### 한 번에 정리
 - 3×3 두 층 = 5×5 수용 영역, 파라미터 28% 적고 ReLU 2번.
@@ -595,6 +526,9 @@ VGG 는 깊이로 성공했다. 그렇다면 층을 계속 쌓으면 계속 좋�
 
 BN 이 없으면 8층조차 3 epoch 동안 손실이 2.30(= ln 10, 찍기)에서 움직이지 않는다.
 
+<<CODE 5-c1 | plain_net — 3×3 Conv 를 depth 개 쌓은 망>>
+<<CODE 5-1 | 층마다 기울기 크기 — plain-8 · plain-20 · +BN>>
+
 #### 개념 2 · BatchNorm2d — 층마다 분포를 다시 맞춘다
 NN Day 4 의 BN 을 Conv 뒤에 쓰는 판이다.
 
@@ -606,6 +540,8 @@ NN Day 4 의 BN 을 Conv 뒤에 쓰는 판이다.
 
 running 평균 · 분산은 학습 대상이 아니지만 모델과 함께 저장되는 값(**buffer**)이다.
 
+<<CODE 5-3 | BatchNorm2d 의 학습 파라미터 · state_dict 항목>>
+
 #### 개념 3 · 성능 저하 — BN 으로도 남는 문제
 | 3 epoch (train 손실 / test) | BN 없음 | BN 있음 |
 |---|---|---|
@@ -614,40 +550,7 @@ running 평균 · 분산은 학습 대상이 아니지만 모델과 함께 저�
 
 BN 을 넣으면 둘 다 배운다. 그런데 20층의 **train** 손실(1.785)이 8층(1.699)보다 높다. 과적합(train 은 좋고 test 만 나쁨)이 아니라 학습 데이터조차 더 못 맞추는 것 — 깊은 망의 최적화 자체가 어려운 **성능 저하(degradation)** 다. 6교시 ResNet 이 이것을 푼다.
 
-#### 코드로 확인
-```python
-def plain_net(depth, bn=False, width=16):
-    layers, cin = [], 3
-    for _ in range(depth - 1):
-        layers.append(nn.Conv2d(cin, width, 3, padding=1, bias=not bn))
-        if bn:
-            layers.append(nn.BatchNorm2d(width))
-        layers.append(nn.ReLU(inplace=True))
-        cin = width
-    layers += [nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(width, 10)]
-    return nn.Sequential(*layers)
-```
-- **무엇을 하나**: 깊이와 BN 유무를 골라 지름길 없는 망을 만든다. 끝은 GAP(채널마다 평균 하나) + Linear.
-- **어떤 개념**: 개념 1 · 3.
-- **출력**: 파라미터 plain-8 **14,538** · plain-20 **42,378**
-
-```python
-def conv_grad_norms(net, xb, yb):
-    net.zero_grad()
-    F.cross_entropy(net(xb), yb).backward()
-    return [m.weight.grad.norm().item() for m in net.modules() if isinstance(m, nn.Conv2d)]
-```
-- **무엇을 하나**: 배치 하나로 역전파한 뒤 Conv 층마다 기울기 크기를 모은다.
-- **어떤 개념**: 개념 1.
-- **출력**: 첫 층 plain-8 3.2e-04 · plain-20 **1.1e-09** · plain-20 + BN 3.4e-01 (강사 실행 예)
-
-```python
-bn16 = nn.BatchNorm2d(16)
-sum(p.numel() for p in bn16.parameters()), list(bn16.state_dict().keys())
-```
-- **무엇을 하나**: BN 층의 학습 파라미터 수와 저장되는 값을 본다.
-- **어떤 개념**: 개념 2.
-- **출력**: **32** · `['weight', 'bias', 'running_mean', 'running_var', 'num_batches_tracked']`
+<<CODE 5-2 | plain-8 · plain-20 을 BN 없이 · 있이 학습해 비교>>
 
 #### 한 번에 정리
 - 그냥 깊게 쌓으면 기울기 소실 — plain-20 첫 층 1e-9.
@@ -748,12 +651,16 @@ class BasicBlock(nn.Module):
 
 바꿀 게 없으면 F = 0 을 배우면 된다. 가중치를 0 근처로 두는 것은 쉽다. 그래서 층을 더 쌓아도 최소한 얕은 망만큼은 할 수 있다.
 
+<<CODE 6-1 | BasicBlock — 두 Conv + 지름길 더하기 (1×1 shortcut)>>
+
 #### 개념 2 · 기울기에 항상 +1
 덧셈 노드는 기울기를 그대로 두 갈래로 보낸다 (NN Day 3). 그래서
 
 > ∂y/∂x = F′(x) + 1
 
 F′ 이 아무리 작아져도 1 이 남는다. 블록이 쌓이면 지름길끼리 이어져 출력에서 입력까지 기울기가 줄지 않고 흐르는 "고속도로" 가 생긴다.
+
+<<CODE 6-3 | plain-20 vs ResNet-20 — 지름길만 빼고 비교>>
 
 #### 개념 3 · BasicBlock 과 ResNet-20
 | 상황 | 지름길 |
@@ -772,46 +679,7 @@ F′ 이 아무리 작아져도 1 이 남는다. 블록이 쌓이면 지름길�
 
 (강사 실행 예) 지름길만 더했는데 train 손실이 낮아졌다 — 성능 저하가 사라졌다.
 
-#### 코드로 확인
-```python
-class BasicBlock(nn.Module):
-    def __init__(self, cin, cout, stride=1, residual=True):
-        super().__init__()
-        self.residual = residual
-        self.conv1 = nn.Conv2d(cin, cout, 3, stride=stride, padding=1, bias=False); self.bn1 = nn.BatchNorm2d(cout)
-        self.conv2 = nn.Conv2d(cout, cout, 3, padding=1, bias=False);               self.bn2 = nn.BatchNorm2d(cout)
-        if stride != 1 or cin != cout:
-            self.shortcut = nn.Sequential(nn.Conv2d(cin, cout, 1, stride=stride, bias=False), nn.BatchNorm2d(cout))
-        else:
-            self.shortcut = nn.Identity()
-    def forward(self, x):
-        out = self.bn2(self.conv2(F.relu(self.bn1(self.conv1(x)))))
-        if self.residual:
-            out = out + self.shortcut(x)
-        return F.relu(out)
-```
-- **무엇을 하나**: 잔차 블록 — 모양이 바뀌면 1×1 Conv 지름길, 아니면 Identity. `residual=False` 면 지름길을 더하지 않는 plain 블록(파라미터 수는 같음).
-- **어떤 개념**: 개념 1 · 3.
-- **출력**: `BasicBlock(16, 32, stride=2)` 에 (2, 16, 32, 32) → (2, 32, 16, 16) · 파라미터 **14,528**
-
-```python
-class ResNet(nn.Module):
-    def __init__(self, n=3, n_cls=10, residual=True):
-        super().__init__()
-        self.stem = nn.Sequential(nn.Conv2d(3, 16, 3, padding=1, bias=False), nn.BatchNorm2d(16), nn.ReLU(inplace=True))
-        self.layer1 = self.make_layer(16, 16, n, stride=1, residual=residual)
-        self.layer2 = self.make_layer(16, 32, n, stride=2, residual=residual)
-        self.layer3 = self.make_layer(32, 64, n, stride=2, residual=residual)
-        self.pool = nn.AdaptiveAvgPool2d(1)          # GAP: (N, 64, 8, 8) → (N, 64, 1, 1)
-        self.fc = nn.Linear(64, n_cls)
-    # make_layer: 첫 블록만 stride, 나머지 n − 1 개는 stride 1
-    def forward(self, x):
-        x = self.layer3(self.layer2(self.layer1(self.stem(x))))
-        return self.fc(self.pool(x).flatten(1))
-```
-- **무엇을 하나**: 단계마다 블록 3개씩 쌓은 ResNet-20 을 만든다 (layer2 · layer3 첫 블록은 stride 2).
-- **어떤 개념**: 개념 3.
-- **출력**: **272,474** · 가중치 층(Conv + Linear) **20**개
+<<CODE 6-2 | ResNet 클래스 · resnet20 — 3단 × 블록 3개>>
 
 #### 한 번에 정리
 - y = ReLU(F(x) + x): 층은 잔차(바꿀 양)만 배운다 — 바꿀 게 없으면 F = 0.
@@ -913,13 +781,19 @@ def hook(m, inp, out):                       # Conv MAC 세기
 
 test 는 언제나 원본 그대로다. 숫자 6 을 위아래로 뒤집으면 9 가 되듯, 정답이 바뀌는 변형은 금지.
 
+<<CODE 7-1 | 증강 transform — RandomCrop · HorizontalFlip>>
+
 #### 개념 2 · OneCycleLR — 작게 → 크게 → 거의 0
 ![OneCycleLR — max_lr 0.1 이면 0.004 에서 시작해 30% 지점 0.1, 끝은 4e-07](assets/fig/vb/d2-onecycle.svg)
 
 처음엔 작은 학습률로 시작해(warm-up) 초기의 불안정한 큰 기울기를 견디고, 최댓값으로 빠르게 내려간 뒤, 끝에는 거의 0 으로 바닥에 정착한다. `scheduler.step()` 은 **배치마다** 부른다.
 
+<<CODE 7-2 | OneCycleLR 학습률 곡선 그려 보기>>
+
 #### 개념 3 · 혼동 행렬 — 무엇을 무엇으로 틀리나
 M[i, j] = 정답이 i 인데 j 로 예측한 개수. 대각선이 맞힌 것, 대각선 밖이 틀린 것이다. 대각선을 지우고 가장 큰 칸을 찾으면 가장 헷갈리는 쌍이 나온다 (VGG-mini 실행 예: cat → dog 180장).
+
+<<CODE 7-3 | predict_all · confusion_matrix — 혼동 행렬 만들기>>
 
 #### 개념 4 · MAC — 파라미터와 연산량은 따로
 > Conv MAC = Cout · OH · OW · (Cin / G) · K², Linear MAC = in · out
@@ -928,43 +802,7 @@ M[i, j] = 정답이 i 인데 j 로 예측한 개수. 대각선이 맞힌 것, �
 
 합성곱은 같은 가중치를 모든 위치에서 다시 쓰므로 파라미터는 적어도 연산량이 많다. 온디바이스에서는 두 숫자를 함께 봐야 한다.
 
-#### 코드로 확인
-```python
-train_tf = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(MEAN, STD),
-])
-aug_set = datasets.CIFAR10("data", train=True, download=False, transform=train_tf)
-```
-- **무엇을 하나**: 증강이 들어간 train 데이터셋을 만든다.
-- **어떤 개념**: 개념 1.
-- **출력**: `aug_set[7]` 을 여러 번 꺼내면 매번 조금씩 다른 그림 (그릴 때는 × std + mean 으로 복원)
-
-```python
-sched = torch.optim.lr_scheduler.OneCycleLR(opt_d, max_lr=0.1, epochs=15, steps_per_epoch=391)
-lrs = []
-for _ in range(15 * 391):
-    opt_d.step(); sched.step()
-    lrs.append(sched.get_last_lr()[0])
-```
-- **무엇을 하나**: 가짜 파라미터로 스케줄러만 돌려 학습률 변화를 기록한다.
-- **어떤 개념**: 개념 2.
-- **출력**: 시작 **0.0040** → 최대 **0.1000** (30% 지점) → 끝 **4.0e-07**
-
-```python
-def confusion_matrix(pred, true, K=10):
-    return np.bincount(true * K + pred, minlength=K * K).reshape(K, K)
-
-def hook(m, inp, out):                                       # Conv 만
-    cout, oh, ow = out.shape[1:]
-    total[0] += cout * oh * ow * (m.in_channels // m.groups) * m.kernel_size[0] * m.kernel_size[1]
-hs = [m.register_forward_hook(hook) for m in model.modules() if isinstance(m, nn.Conv2d)]
-```
-- **무엇을 하나**: (정답, 예측) 쌍을 칸 번호 하나로 바꿔 세고, 순전파 때 Conv 마다 MAC 을 더하는 hook 을 단다.
-- **어떤 개념**: 개념 3 · 4.
-- **출력**: MAC — MLP 1,706,496 · LeNet-5 651,720 · VGG-mini 38,653,952 · ResNet-20 **40,813,184**
+<<CODE 7-4 | count_macs — hook 으로 MAC 세고 네 모델 비교>>
 
 #### 한 번에 정리
 - 증강: train 에만, 정답이 바뀌지 않는 변형(±4 px 이동 · 좌우 반전), Normalize 는 맨 뒤.
@@ -1046,6 +884,10 @@ top3 = np.argsort(off.ravel())[::-1][:3]            # 가장 헷갈린 쌍
 
 강사 실행 예: 20 epoch test **0.8587** (15 epoch 는 0.8479 로 미달).
 
+<<CODE 8-1 | 과제 1 — ResNet-20 · SGD(nesterov) · OneCycleLR 20 epoch 준비>>
+<<CODE 8-2 | 과제 2 — 학습 (GPU 없으면 강사 가중치) · 저장>>
+<<CODE 8-c1 | 손실 · 정확도 곡선>>
+
 #### 개념 2 · 오답 분석과 모델 비교
 | 모델 | 파라미터 | MAC | test (학습 조건) |
 |---|---|---|---|
@@ -1056,26 +898,9 @@ top3 = np.argsort(off.ravel())[::-1][:3]            # 가장 헷갈린 쌍
 
 이 표는 학습 조건이 다르다. 구조 덕인지 학습 방법 덕인지 가르려면 같은 조건에서 다시 학습해야 공정하다. 같은 ResNet-20 을 약 160 epoch 학습하면 91.25%(원 논문)까지 간다. 온디바이스는 반대로 정확도를 조금 내주고 연산을 크게 줄이는 방향 — Day 3 MobileNet 과 전이학습이다.
 
-#### 코드로 확인
-```python
-opt = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=5e-4)
-sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=0.1, epochs=20, steps_per_epoch=len(aug_loader))
-hist_res = fit(model, aug_loader, test_loader, 20, opt, sched, label="ResNet-20")
-```
-- **무엇을 하나**: 85% 설정으로 ResNet-20 을 20 epoch 학습한다. `fit` 의 다섯 번째 인자가 scheduler.
-- **어떤 개념**: 개념 1.
-- **출력**: `len(aug_loader)` = **391** · 20 epoch test **0.8587** (강사 실행 예, T4 로 약 7분)
-
-```python
-pred, true = predict_all(model, test_loader)
-cm = confusion_matrix(pred, true)
-off = cm.copy(); np.fill_diagonal(off, 0)
-top3 = np.argsort(off.ravel())[::-1][:3]
-pairs = [(CLASSES[k // 10], CLASSES[k % 10], off.ravel()[k]) for k in top3]
-```
-- **무엇을 하나**: 혼동 행렬에서 대각선(맞힌 것)을 지우고 가장 큰 3칸을 (정답, 예측, 개수) 로 바꾼다.
-- **어떤 개념**: 개념 2 · 7교시 개념 3.
-- **출력**: 가장 헷갈린 쌍 3개 — 보통 cat ↔ dog 같은 비슷한 동물 쌍이 상위
+<<CODE 8-3 | 과제 3 — 가장 헷갈린 쌍 · 클래스별 정확도>>
+<<CODE 8-c2 | 틀린 사진 16장 보기>>
+<<CODE 8-4 | 과제 4 — MLP · LeNet · VGG · ResNet 비교표>>
 
 #### 한 번에 정리
 - ResNet-20 + 증강 + SGD(nesterov, wd 5e-4) + OneCycle 20 epoch → 0.8587.
