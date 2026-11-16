@@ -1,5 +1,6 @@
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1c2330; --ink-2: #566173; --ink-3: #8a93a3;
+  --lv1: #1c2330; --lv2: #3e4858; --lv3: #636d7d; --lv4: #8a93a3;   /* 목차 단계 색: 과목 → Day → 교시 → 코드 (검정 → 연한 회색) */
   --line: #e1e5eb; --accent: #2457c5; --accent-soft: #e3ebfb; --ok: #178a67; --ok-soft: #ddf2ea;
   --bad: #c9432e; --bad-soft: #fbe5e0; --warn: #b07a0c; --warn-soft: #fbf0d3; --mark: #ffe58a;
   --code-bg: #f4f6f9; --code-ink: #24292f;
@@ -13,7 +14,8 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12151b; --panel: #1a1e26; --panel-2: #222733; --ink: #e4e8ef; --ink-2: #a3acbb; --ink-3: #737d8e;
-    --line: #2d3340; --accent: #7aa2ff; --accent-soft: #1f2b47; --ok: #4cc79b; --ok-soft: #173329;
+    --lv1: #e4e8ef; --lv2: #c2c9d4; --lv3: #9fa8b7; --lv4: #7c8697;
+  --line: #2d3340; --accent: #7aa2ff; --accent-soft: #1f2b47; --ok: #4cc79b; --ok-soft: #173329;
     --bad: #ff7a66; --bad-soft: #3a1f1b; --warn: #e6b450; --warn-soft: #362c14; --mark: #6b5713;
     --code-bg: #151920; --code-ink: #d6dde8;
     --c: #7aa2ff; --linux: #4cc79b; --mcu: #f09a5c; --eio: #b593ef;
@@ -23,6 +25,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #12151b; --panel: #1a1e26; --panel-2: #222733; --ink: #e4e8ef; --ink-2: #a3acbb; --ink-3: #737d8e;
+  --lv1: #e4e8ef; --lv2: #c2c9d4; --lv3: #9fa8b7; --lv4: #7c8697;
   --line: #2d3340; --accent: #7aa2ff; --accent-soft: #1f2b47; --ok: #4cc79b; --ok-soft: #173329;
   --bad: #ff7a66; --bad-soft: #3a1f1b; --warn: #e6b450; --warn-soft: #362c14; --mark: #6b5713;
   --code-bg: #151920; --code-ink: #d6dde8;
@@ -706,3 +709,24 @@ details.cx > summary:hover { background: color-mix(in srgb, var(--accent) 6%, tr
 .fpop-args { margin-top: 6px; font-size: 12.5px; border-collapse: collapse; }
 .fpop-args td { padding: 2px 8px 2px 0; border: 0; vertical-align: top; }
 @media (max-width: 600px) { .cx-hint, .cx-ic { display: none; } details.cx > summary { font-size: 14px; flex-wrap: wrap; } .cx-meta { margin-left: 18px; } }
+
+/* 목차 단계: 과목(검정) → Day → 교시 → 코드(연한 회색), 하위 단계 앞에 └ — 왼쪽 목차 · 오른쪽 코드 목록 공통 */
+.tw { order: -1; color: var(--line); font-family: var(--mono); font-weight: 400; font-size: 12px; margin-right: -2px; flex: none; }
+.side .subj > summary { color: var(--lv1); }
+.side .day > summary { color: var(--lv2); }
+.side .day > summary .tw { color: color-mix(in srgb, var(--lv2) 65%, transparent); }
+.side .day { margin-left: 4px; }
+.side .les { color: var(--lv3); padding-left: 16px; }
+.side .les .tw { color: color-mix(in srgb, var(--lv3) 65%, transparent); align-self: center; }
+.side .les.on .tw { color: var(--accent); }
+details.ctree.s > summary { color: var(--lv1); }
+details.ctree.d > summary { color: var(--lv2); }
+details.ctree.d > summary .tw { color: color-mix(in srgb, var(--lv2) 65%, transparent); }
+details.ctree.d { margin-left: 4px; }
+details.ctree.l { margin-left: 8px; }
+details.ctree.l > summary { color: var(--lv3); }
+details.ctree.l > summary .tw { color: color-mix(in srgb, var(--lv3) 65%, transparent); }
+details.ctree.l > .citem { position: relative; margin-left: 10px; width: calc(100% - 10px); padding-left: 22px; }
+details.ctree.l > .citem::before { content: '└'; position: absolute; left: 6px; top: 6px; font-family: var(--mono); font-size: 12px; color: color-mix(in srgb, var(--lv4) 70%, transparent); }
+details.ctree.l > .citem .cn { color: var(--lv4); font-weight: 500; }
+details.ctree.l > .citem:hover .cn { color: var(--lv3); }
