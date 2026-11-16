@@ -25,5 +25,5 @@
 <text x="625.0" y="100.0" font-size="15" fill="#16a34a" text-anchor="middle" font-weight="700">8,768</text>
 <text x="625.0" y="120.0" font-size="12" fill="#64748b" text-anchor="middle">(11.9%)</text>
 <text x="350.0" y="210.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">DS / 일반 = 1/Cout + 1/K² = 1/128 + 1/9 = 0.1189 — MAC 75,497,472 → 8,978,432 (32 × 32)</text>
-<text x="350.0" y="234.0" font-size="12" fill="#dc2626" text-anchor="middle">실제 속도는 덜 빨라진다: MAC 8.4배 ↓ → 실측 4.1배 (depthwise 는 계산 대비 메모리 이동이 많다)</text>
+<text x="350.0" y="234.0" font-size="12" fill="#dc2626" text-anchor="middle">실제 속도는 덜 빨라진다: MAC 8.4배 ↓ → 실측 3.4배 (depthwise 는 계산 대비 메모리 이동이 많다)</text>
 </svg>

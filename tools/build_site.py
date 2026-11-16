@@ -376,6 +376,45 @@ def attach_guides(sid, d, topics, n=0):
             if out: tp['guide'] = out; GUIDE_HIT.add(key)
             if miss: GUIDE_MISS.setdefault(key, miss)
 
+CODE_MARK = re.compile(r'^<<CODE\s+([\w-]+)\s*(?:\|\s*(.*?))?\s*>>\s*$', re.M)
+CODE_WARN = []
+
+def code_title(c):
+    """제목이 없을 때: 빈칸 문제 문장 → 코드 첫 줄 주석 → 토픽 제목"""
+    q = (c.get('q') or '').strip()
+    if q: return q[:60] + ('…' if len(q) > 60 else '')
+    m = re.match(r'\s*#\s*(?!@)(.+)', c['code'])
+    return (m.group(1).strip()[:60] if m else '') or (c.get('topic') or '강의 코드')
+
+def attach_codes(sid, d, n, codes, sections):
+    """상세 학습의 <<CODE 키 | 제목>> → 교안 코드 블록에 제목 · 코드 읽기 가이드(줄 범위)를 붙인다.
+    상세 학습에 마커가 하나도 없으면 [] (예전 화면: 강의 원문 · 빈칸 섹션)."""
+    study = next((s['md'] for s in sections if s['key'] == 'study'), '')
+    marks = CODE_MARK.findall(study)
+    if not marks: return []
+    keys = {c['k'] for c in codes}
+    titles = {}
+    for k, title in marks:
+        if k not in keys: CODE_WARN.append(f'{sid} D{d}·{n}교시 <<CODE {k}>> — 교안에 없는 키 (있는 키: {", ".join(sorted(keys))})')
+        titles[k] = title.strip()
+    out = []
+    for c in codes:
+        c = dict(c, t=titles.get(c['k']) or code_title(c), ref=c['k'] in titles)
+        key = f'{sid}/{d}/{c["k"]}'
+        steps = GUIDE.get(key)
+        if steps:
+            lines, pos, g, miss = c['code'].split('\n'), 0, [], []
+            for st in steps:
+                a = next((i for i in range(pos, len(lines)) if st['at'] in lines[i]), None)
+                z = a if a is None or not st.get('to') else next((i for i in range(a, len(lines)) if st['to'] in lines[i]), None)
+                if a is None or z is None: miss.append(f'{st["t"]} (at={st["at"]!r})'); continue
+                g.append({'from': a, 'to': z, 't': st['t'], 'd': st.get('d', '')}); pos = z + 1
+            if g: c['guide'] = g
+            GUIDE_HIT.add(key)
+            if miss: GUIDE_MISS.setdefault(key, miss)
+        out.append(c)
+    return out
+
 def build_subject(cfg, index):
     sid = cfg['id']; S = {'id': sid, 'name': cfg['name'], 'days': []}
     meta = {'id': sid, 'name': cfg['name'], 'short': cfg['short'], 'flow': cfg.get('flow', ''), 'days': []}
@@ -427,10 +466,12 @@ def build_subject(cfg, index):
             topics = L['topics'] if L else []
             attach_figs(topics, n, figs)
             attach_guides(sid, d, topics, n)
+            codes = attach_codes(sid, d, n, (L.get('codes') or []) if L else [], sections)
             S_l = {'n': n, 'title': title, 'status': status, 'goals': L['goals'] if L else [],
                    'lectureTitle': L['title'] if L else '', 'sections': sections, 'terms': terms, 'funcs': funcs,
                    'keywords': kws, 'topics': topics, 'quiz': quiz,
-                   'fills': [{'t': x['title'], 'k': x['kind'], 'q': x['q'], 'w': x['w']} for x in (L['fills'] if L else [])],
+                   'fills': [] if codes else [{'t': x['title'], 'k': x['kind'], 'q': x['q'], 'w': x['w']} for x in (L['fills'] if L else [])],
+                   'codes': codes,
                    'anim': f'{anim}#l{n}' if anim else ''}
             D['lessons'].append(S_l)
             dm['lessons'].append({'n': n, 'title': title, 'status': status, 'nq': len(quiz),
@@ -450,14 +491,16 @@ def build_subject(cfg, index):
                 index['search'].append(loc + ['note', f's{si}', s['label'] or '노트', strip_md(s['md'])])
             for l in links: index['links'].append(loc + [l['text'], l['href']])
             pending_code.append((n, topics, sections))
-            for t in topics:
+            for ci, c in enumerate(codes):                # 코드 블록 화면: 강의 원문 · 빈칸 대신 블록 하나가 검색 결과 하나
+                index['search'].append(loc + ['code', f'K{ci}', c['t'], ' '.join([c.get('q', ''), c['code'], c.get('expl', '')])])
+            for t in ([] if codes else topics):
                 index['search'].append(loc + ['topic', f'L{t["id"]}', t['title'], t['text']])
                 code = '\n'.join(b['text'] for b in t['blocks'] if b['kind'] in ('code', 'cmd'))
                 if code: index['search'].append(loc + ['code', f'X{t["id"]}', t['title'], code])
             for qi, q in enumerate(quiz):
                 body = ' '.join([q.get('p', ''), q.get('c', '') or '', ' '.join(q.get('o') or []), q.get('w', '')])
                 index['search'].append(loc + ['quiz', f'q{qi}', f'Q{qi + 1}', re.sub(r'<[^>]+>', '', body)])
-            for fi, x in enumerate(L['fills'] if L else []):
+            for fi, x in enumerate(L['fills'] if L and not codes else []):
                 index['search'].append(loc + ['fill', f'F{fi}', x['title'], x['text']])
         # ④ 그래도 그림이 없는 '코드가 있는' 예제: 같은 Day 앞 교시의 가장 가까운 그림 (보드를 이어서 쓰는 경우)
         last = None
@@ -540,6 +583,7 @@ def main():
     if UNSUPPORTED_WS: print(f'  · 아직 문항을 못 읽는 워크시트 형식 {len(UNSUPPORTED_WS)}개: ' + ', '.join(UNSUPPORTED_WS))
     for k in GUIDE:
         if k not in GUIDE_HIT: print(f'  ! 코드 가이드 파일을 못 찾음: {k}')
+    for w in CODE_WARN: print('  ! ' + w)
     for k, ms in GUIDE_MISS.items():
         for m in ms: print(f'  ! 코드 가이드 단계 못 찾음: {k} — {m}')
     p = os.path.join(REPO, 'data', 'index.js')

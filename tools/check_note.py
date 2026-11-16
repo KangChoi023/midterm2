@@ -70,6 +70,18 @@ def main():
     for f in funcs:
         if f[7] and f[3] not in own and f[3].split('(')[0].strip() not in own:
             print('  ⚠ 다른 과목의 상세가 이름으로 연결됨 — 의도한 것인지 확인:', f[3], '→', f[7].get('role'))
+    # 상세 학습 코드 블록 (<<CODE 키 | 제목>>): 교안 코드 전부가 화면에 있나 — 본문에 붙은 것 + 교시 끝 "다른 강의 코드"
+    if '<<CODE' in text:
+        s2 = open(os.path.join(REPO, 'data', f'{sid}.js'), encoding='utf8').read()
+        S = json.loads(s2[s2.index(']=') + 2:].rstrip().rstrip(';'))
+        D = next((x for x in S['days'] if x['n'] == day), {'lessons': []})
+        tot = ref = gd = 0
+        for L in D['lessons']:
+            cs = L.get('codes') or []
+            tot += len(cs); ref += sum(1 for c in cs if c.get('ref')); gd += sum(1 for c in cs if c.get('guide'))
+            for c in cs:
+                if not c.get('ref'): print(f'  · {L["n"]}교시 {c["k"]} 는 교시 끝 "이 교시의 다른 강의 코드" 로 — {c["t"]}')
+        print(f'코드 블록 {tot}개 (본문 {ref} · 교시 끝 {tot - ref}) · 줄 묶음 설명 {gd}개 블록 — 교안 코드 전부')
     print('링크', len(links), '개 · 문제', bad)
     subprocess.run(['git', 'checkout', '-q', '--', 'data', 'index.html'], cwd=REPO)
     subprocess.run(['git', 'clean', '-qfd', '--', 'anim'], cwd=REPO)
