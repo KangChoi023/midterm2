@@ -219,7 +219,7 @@ def run(sid, day, timeout, root, force_thread=False):
         if '정답 보기' in first or ('b64decode' in src and '@title' in first):
             num, sol = nbparse._solution(nbparse._answer(src))
             if num and sol and pending:
-                sol = nbparse.fill_blanks(blank_src, sol) or sol           # 빈칸 셀의 나머지 코드(도우미 함수 등)도 실행
+                sol = nbparse.fill_blanks(blank_src, sol) or nbparse.fill_hints(blank_src, sol) or sol           # 빈칸 셀의 나머지 코드(도우미 함수 등)도 실행
                 out, err = execute(sol, f'정답 {num}')
                 res[num] = {'text': out, 'err': err, 'check': False}
                 last = num

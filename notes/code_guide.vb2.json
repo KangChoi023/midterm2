@@ -1,0 +1,60 @@
+{
+  "_설명": "VB Day 2 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "vb/2/2-3": [
+    {"at": "rf, jump = 1, 1", "t": "시작: 픽셀 하나 · 간격 1", "d": "rf = 지금 한 칸이 보는 입력 폭, jump = 지금 한 칸이 입력에서 몇 픽셀 간격인가."},
+    {"at": "for k, s in layers:", "to": "jump = jump * s", "t": "층마다 넓히고 간격 곱하기", "d": "커널 k 는 (k − 1) × jump 만큼 넓히고, stride s 는 이후 간격을 s 배로. pooling 뒤의 3×3 이 훨씬 넓게 보는 이유."},
+    {"at": "print(\"3×3 ×2", "to": "receptive_field([(3, 1), (3, 1), (2, 2)", "t": "예: 3×3 두 개 = 5, 세 개 = 7", "d": "3×3 두 층이 5×5 한 층과 같은 범위를 본다 (4교시 VGG 의 근거)."}
+  ],
+  "vb/2/3-1": [
+    {"at": "self.conv1 = nn.Conv2d(in_ch, 6, 5)", "to": "self.pool = nn.MaxPool2d(2)", "t": "합성곱 두 층 + pooling", "d": "5×5 필터로 32 → 28, pool 로 14, 다시 5×5 로 10, pool 로 5. pool 은 가중치가 없어 하나를 두 번 쓴다."},
+    {"at": "self.fc1 = nn.Linear(16 * 5 * 5, 120)", "to": "self.fc3 = nn.Linear(84, n_cls)", "t": "FC 세 층 120 → 84 → 10", "d": "16 × 5 × 5 = 400 개를 펼쳐 받는다. 파라미터의 대부분(59,134 / 62,006 ≈ 95%)이 여기에 있다."},
+    {"at": "def forward(self, x):", "to": "return self.fc3(x)", "t": "Conv → ReLU → Pool 두 번 → 펴기 → FC", "d": "주석의 shape 를 따라가면 (N, 3, 32, 32) → (N, 6, 14, 14) → (N, 16, 5, 5) → (N, 400) → (N, 10)."}
+  ],
+  "vb/2/4-2": [
+    {"at": "def vgg_block(cin, cout, n_convs):", "to": "return nn.Sequential(*layers)", "t": "vgg_block — 3×3 Conv · BN · ReLU 를 n 번 + pool", "d": "첫 Conv 만 cin → cout, 나머지는 cout → cout. padding 1 이라 Conv 는 크기를 지키고 마지막 MaxPool 만 반으로. BN 이 있어 bias 는 끈다."},
+    {"at": "def vgg_mini(n_cls=10):", "to": "nn.Linear(128 * 4 * 4, n_cls)", "t": "블록 3개 — 크기 반 · 채널 2배", "d": "32 → 16 → 8 → 4, 채널 32 → 64 → 128. 마지막에 펴서 2,048 → 10."},
+    {"at": "vgg = vgg_mini()", "to": "print(\"파라미터 수:\"", "t": "만들고 출력 모양 확인", "d": "가짜 입력 (2, 3, 32, 32) 로 (2, 10) 이 나오는지 — 층을 쌓으면 늘 모양부터 확인한다."}
+  ],
+  "vb/2/5-c1": [
+    {"at": "layers, cin = [], 3", "to": "cin = width", "t": "3×3 Conv (+ BN) + ReLU 를 depth − 1 번", "d": "모두 같은 폭(16) · 같은 크기. `bn=True` 면 Conv 뒤에 BatchNorm 을 끼우고 Conv 의 bias 는 끈다 (BN 의 β 가 대신)."},
+    {"at": "layers += [nn.AdaptiveAvgPool2d(1)", "to": "return nn.Sequential(*layers)", "t": "GAP → Linear 로 마무리", "d": "GAP 는 채널마다 평균 하나 → (N, 16). 지름길이 없는 '평범한(plain)' 깊은 망 — 5 · 6교시의 비교 대상."}
+  ],
+  "vb/2/5-1": [
+    {"at": "def conv_grad_norms(net, xb, yb):", "to": "return [m.weight.grad.norm()", "t": "배치 하나 역전파 → Conv 층마다 기울기 크기", "d": "`norm()` = 기울기 벡터의 길이. 앞(입력 쪽) 층일수록 작아지면 기울기 소실."},
+    {"at": "g8, g20 = conv_grad_norms(", "to": "g20bn = conv_grad_norms(", "t": "plain-8 · plain-20 · plain-20+BN", "d": "같은 배치 · 같은 seed 로 비교. 20층이면 첫 층 기울기가 크게 줄고, BN 을 넣으면 살아난다."}
+  ],
+  "vb/2/6-1": [
+    {"at": "self.conv1 = nn.Conv2d(cin, cout, 3, stride=stride", "to": "self.bn2 = nn.BatchNorm2d(cout)", "t": "본 길 — 3×3 Conv · BN 두 번", "d": "첫 Conv 만 stride 를 써서 크기를 줄일 수 있다 (16 → 32 채널로 넘어가는 블록)."},
+    {"at": "if stride != 1 or cin != cout:", "to": "self.shortcut = nn.Identity()", "t": "지름길 — 모양이 다르면 1×1 Conv 로 맞춤", "d": "크기나 채널이 바뀌면 x 를 그대로 더할 수 없으니 1×1 Conv(stride) + BN 으로 모양을 맞춘다. 같으면 아무것도 안 하는 Identity."},
+    {"at": "def forward(self, x):", "to": "return F.relu(out)", "t": "본 길 + 지름길 → ReLU", "d": "out = F(x) + x. 마지막 ReLU 는 더한 뒤에. `residual=False` 면 지름길을 빼 plain 블록이 된다 (6-3 비교용)."}
+  ],
+  "vb/2/6-2": [
+    {"at": "self.stem = nn.Sequential(", "to": "self.fc = nn.Linear(64, n_cls)", "t": "stem → 3단(16 · 32 · 64) → GAP → FC", "d": "단마다 블록 n 개(n = 3 이면 ResNet-20: 1 + 3 × 3 × 2 + 1 = 20 층). 2 · 3 단에서 크기 반 · 채널 2배."},
+    {"at": "def make_layer(cin, cout, n, stride, residual):", "to": "return nn.Sequential(*blocks)", "t": "make_layer — 첫 블록만 stride", "d": "첫 블록이 크기 · 채널을 바꾸고, 나머지 n − 1 개는 같은 모양으로 쌓는다."},
+    {"at": "def forward(self, x):", "to": "return self.fc(self.pool(x).flatten(1))", "t": "통과 순서", "d": "(N, 3, 32, 32) → 16×32×32 → 32×16×16 → 64×8×8 → GAP (N, 64) → (N, 10)."}
+  ],
+  "vb/2/7-2": [
+    {"at": "dummy = torch.nn.Parameter", "to": "sched = torch.optim.lr_scheduler.OneCycleLR(", "t": "학습률 일정만 보려는 가짜 학습", "d": "파라미터 하나짜리 옵티마이저에 OneCycleLR 을 걸어 15 epoch × 391 step 의 학습률만 기록한다."},
+    {"at": "for _ in range(15 * 391):", "to": "lrs.append(", "t": "step 마다 opt.step() → sched.step()", "d": "스케줄러는 **배치(step)마다** 한 번. 순서는 옵티마이저 먼저 (반대면 경고)."},
+    {"at": "peak = int(np.argmax(lrs))", "t": "작게 → 최대 → 거의 0", "d": "최대(0.1)는 전체의 약 30% 지점, 끝은 거의 0 — 처음엔 조심, 중간엔 크게, 끝에선 곱게 다듬는다."}
+  ],
+  "vb/2/7-3": [
+    {"at": "def predict_all(model, loader):", "to": "return torch.cat(P).numpy()", "t": "test 전체 예측 · 정답 모으기", "d": "배치마다 argmax 를 CPU 로 모아 마지막에 이어 붙인다 (eval + no_grad)."},
+    {"at": "def confusion_matrix(pred, true, K=10):", "to": "return np.bincount(", "t": "bincount 한 줄로 혼동 행렬", "d": "(정답, 예측) 쌍을 칸 번호 정답 × 10 + 예측 으로 바꿔 세면 100칸 → 10×10. 행 = 정답, 열 = 예측, 대각선 = 맞힌 개수."}
+  ],
+  "vb/2/7-4": [
+    {"at": "def hook(m, inp, out):", "to": "total[0] += m.in_features * m.out_features", "t": "층 종류별 MAC 공식", "d": "Conv: 출력 원소 수(cout · oh · ow) × 필터 하나의 곱셈 수(cin/groups · k · k). Linear: 입력 × 출력."},
+    {"at": "hs = [m.register_forward_hook(hook)", "to": "h.remove()", "t": "hook 걸고 가짜 입력 한 번 → 떼기", "d": "출력 크기는 실제로 통과시켜 봐야 알 수 있어서 hook 을 쓴다. 끝나면 꼭 떼기."},
+    {"at": "table = {}", "to": "print(f\"{name:10s} 파라미터", "t": "네 모델의 파라미터 vs MAC", "d": "MLP 는 파라미터가 많고 MAC 은 적다, CNN 은 반대 — 파라미터와 연산량은 따로 본다."}
+  ],
+  "vb/2/8-1": [
+    {"at": "aug_loader = DataLoader(aug_set", "t": "증강 데이터 로더 (7교시)", "d": "batch 128 → epoch 당 391 step."},
+    {"at": "opt = torch.optim.SGD(", "t": "SGD + momentum 0.9 + nesterov + weight decay", "d": "ResNet 논문식 설정. weight_decay 5e-4 = 가중치가 커지지 않게 매 step 조금씩 줄인다."},
+    {"at": "sched = torch.optim.lr_scheduler.OneCycleLR(", "t": "OneCycleLR — 최대 0.1", "d": "steps_per_epoch 를 로더 길이로 줘야 일정이 정확히 끝난다."}
+  ],
+  "vb/2/8-2": [
+    {"at": "if TRAINED_ON_GPU:", "to": "print(f\"학습 시간", "t": "GPU 가 있으면 20 epoch 학습", "d": "`fit` = 5교시 학습 루프에 스케줄러 · 기록을 더한 강의 도우미 함수."},
+    {"at": "else:", "to": "hist_res = {\"loss\": []", "t": "없으면 강사가 학습한 가중치", "d": "CPU 로는 너무 오래 걸려서 같은 구조의 가중치를 내려받아 `load_state_dict` 로 채운다."},
+    {"at": "res_acc = hist_res[\"test_acc\"][-1]", "to": "torch.save(model.state_dict()", "t": "정확도 기록 · 저장", "d": "Day 3 이 이 파일(resnet20_cifar10.pt)을 다시 쓴다."}
+  ]
+}

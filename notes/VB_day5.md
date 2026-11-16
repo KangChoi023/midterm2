@@ -79,6 +79,8 @@ Penn-Fudan 의 마스크는 사진과 같은 크기의 PNG 다. 픽셀값 **0 = 
 - 마스크 → 박스는 쉽다: True 픽셀의 x · y 최솟값 · 최댓값 (`mask_box`). 첫 사진에서 마스크 박스 `(159, 181, 301, 430)` vs 어노테이션 `(160, 182, 302, 431)` — 어노테이션은 **1부터 센 좌표**라 정확히 1씩 크다
 - 거꾸로 박스 → 마스크는 안 된다 (박스 안 어디가 사람인지 모름)
 
+<<CODE 1-1 | 마스크 PNG 읽기 — 사람마다 떼어 내고 박스 복원>>
+
 #### 개념 3 · 박스의 한계 — 숫자로
 | 확인 | 식 | 실제 결과 (423명) | 뜻 |
 |---|---|---|---|
@@ -88,33 +90,8 @@ Penn-Fudan 의 마스크는 사진과 같은 크기의 PNG 다. 픽셀값 **0 = 
 
 "h/w < 1 이면 쓰러짐" 같은 박스 규칙은 카메라 각도 · 자세(쪼그려 앉음)에 쉽게 속는다 → 관절로 몸의 방향을 직접 재야 한다 (3교시).
 
-#### 코드로 확인
-```python
-m0 = np.array(Image.open(mask_path(img_paths[0])))
-ids = np.unique(m0)
-inst = [m0 == k for k in ids[1:]]                 # 0(배경) 빼고 사람마다
-print("픽셀값:", ids, "| 사람", len(inst), "명 | 픽셀 수", [int(m.sum()) for m in inst])
-print("마스크 박스", [mask_box(m) for m in inst])
-```
-- **무엇을 하나**: 첫 사진 마스크의 값 · 사람 수 · 사람별 픽셀 수, 마스크에서 복원한 박스.
-- **어떤 개념**: 개념 2.
-- **출력**: `픽셀값: [0 1 2] | 사람 2 명 | 픽셀 수 [11241, 17721]`, 마스크 박스 `(159, 181, 301, 430)` · `(419, 170, 534, 485)` (직접 실행)
-
-```python
-fills = []
-for p, g in zip(img_paths, gts):
-    m = np.array(Image.open(mask_path(p)))
-    for k, b in enumerate(g, start=1):
-        x1, y1, x2, y2 = (b - 1).astype(int)              # 1부터 센 좌표 → 0부터
-        box_area = (x2 - x1 + 1) * (y2 - y1 + 1)
-        fills.append((m[y1:y2 + 1, x1:x2 + 1] == k).sum() / box_area)
-all_boxes = np.concatenate(gts)
-ar = (all_boxes[:, 3] - all_boxes[:, 1]) / (all_boxes[:, 2] - all_boxes[:, 0])   # h / w
-ar_rot = 1 / ar                                           # 90° 돌리면 가로 · 세로가 바뀜
-```
-- **무엇을 하나**: 정답 박스마다 사람 픽셀 비율과 종횡비, 90° 돌렸을 때(역수)의 종횡비.
-- **어떤 개념**: 개념 3.
-- **출력**: `423명 | 박스 중 사람 픽셀 비율 평균 0.5036 (최소 0.27, 최대 0.78)`, `서 있음 h/w 평균 2.77 (최소 1.59) | 90° 회전 h/w 평균 0.38`, h/w < 1 인 서 있는 사람 0명 (직접 실행)
+<<CODE 1-2 | 박스 안 사람 픽셀 비율 — 423명 전체>>
+<<CODE 1-3 | 박스 h/w 비율과 90° 회전했을 때>>
 
 #### 한 번에 정리
 - 박스 = 어디에 · 몇 개, 마스크 = 모양 · 넓이 · 경계, 관절 = 자세.
@@ -210,6 +187,8 @@ def miou(pred, gt, n_cls=2):
 | semantic | 픽셀마다 클래스 | 하나의 "사람" 영역 | FCN · U-Net · DeepLabV3 |
 | instance | 물체마다 마스크 + 클래스 + 점수 | 사람 1 · 사람 2 따로 | Mask R-CNN · YOLOv8-seg |
 
+<<CODE 2-c1 | (선택) DeepLabV3 — semantic 세그멘테이션 21 클래스>>
+
 #### 개념 2 · Encoder-Decoder 와 업샘플링
 ![Encoder-Decoder(U-Net) 구조 — 인코더가 해상도를 줄이고 디코더가 키우며 skip connection 으로 경계를 살린다. Transposed Conv 출력 크기 공식](assets/fig/vb/d5-encdec.svg)
 
@@ -224,6 +203,8 @@ def miou(pred, gt, n_cls=2):
 
 n = 8 에서: (k4, s2, p1) → 7×2 − 2 + 4 = **16**, (k2, s2, p0) → 16, (k3, s2, p1) → **15** (2배가 아님), (k3, s1, p1) → 8.
 
+<<CODE 2-1 | tconv_out — Transposed Conv 출력 크기 확인>>
+
 #### 개념 3 · mIoU — 픽셀 집합의 IoU
 ![4×4 예제의 mIoU 손 계산 — 사람 IoU 8/12, 배경 IoU 4/8, 평균 0.5833](assets/fig/vb/d5-miou.svg)
 
@@ -234,6 +215,8 @@ n = 8 에서: (k4, s2, p1) → 7×2 − 2 + 4 = **16**, (k2, s2, p0) → 16, (k3
 | 합집합 0 | 그 클래스가 정답 · 예측 어디에도 없음 → `nan` 으로 두고 `nanmean` |
 
 **데이터 전체**의 mIoU 는 사진마다 IoU 를 구해 평균하지 않는다. 클래스별 교집합 · 합집합 **픽셀 수를 누적**한 뒤 마지막에 나눈다 — 큰 사람과 작은 사람이 픽셀 수만큼 반영된다.
+
+<<CODE 2-2 | miou — 클래스별 IoU 와 평균 (4×4 손 계산)>>
 
 #### 개념 4 · YOLOv8-seg — 계수 32개로 마스크 만들기
 - 탐지 head 가 칸마다 박스 4 + 클래스 80 에 **마스크 계수 32개**를 더 낸다 (4교시: 116 채널).
@@ -248,47 +231,8 @@ n = 8 에서: (k4, s2, p1) → 7×2 − 2 + 4 = **16**, (k2, s2, p0) → 16, (k3
 
 선택 실습 DeepLabV3-MobileNetV3 는 semantic 모델로, 픽셀마다 **21 클래스**(VOC) 점수를 내고 `argmax == 15` 가 사람이다.
 
-#### 코드로 확인
-```python
-def tconv_out(n, k, s, p):
-    return (n - 1) * s - 2 * p + k
-x8 = torch.randn(1, 64, 8, 8)
-for k, s, p in [(4, 2, 1), (2, 2, 0), (3, 2, 1), (3, 1, 1)]:
-    y = nn.ConvTranspose2d(64, 32, kernel_size=k, stride=s, padding=p)(x8)
-    print(f"k={k} s={s} p={p}: 공식 {tconv_out(8, k, s, p)} | 실제 {tuple(y.shape[2:])}")
-```
-- **무엇을 하나**: 공식과 실제 `ConvTranspose2d` 출력 크기 비교.
-- **어떤 개념**: 개념 2.
-- **출력**: `16 | (16, 16)`, `16 | (16, 16)`, `15 | (15, 15)`, `8 | (8, 8)` (직접 실행)
-
-```python
-def seg_person_mask(model, img_bgr, conf=0.25):
-    H, W = img_bgr.shape[:2]
-    r = model.predict(img_bgr, conf=conf, classes=[0], verbose=False)[0]
-    pm = np.zeros((H, W), np.uint8)
-    if r.masks is not None:
-        for poly in r.masks.xy:                     # 사람마다 외곽선 (원본 좌표)
-            if len(poly):
-                cv2.fillPoly(pm, [poly.astype(np.int32)], 1)
-    return pm, (0 if r.masks is None else len(r.masks))
-```
-- **무엇을 하나**: YOLOv8n-seg 결과를 원본 크기 사람 마스크(0/1)로.
-- **어떤 개념**: 개념 4.
-- **출력**: 첫 사진 `인스턴스 2개 | 배경 IoU 0.9869 · 사람 IoU 0.8896 · mIoU 0.9383` (직접 실행)
-
-```python
-inter_sum, union_sum = np.zeros(2), np.zeros(2)
-for p in img_paths:
-    pm, _ = seg_person_mask(seg, cv2.imread(p))
-    g = (np.array(Image.open(mask_path(p))) > 0).astype(int)
-    for c in range(2):
-        inter_sum[c] += ((pm == c) & (g == c)).sum()
-        union_sum[c] += ((pm == c) | (g == c)).sum()
-seg_ious = inter_sum / union_sum
-```
-- **무엇을 하나**: 170장의 교집합 · 합집합을 누적해 데이터 전체 IoU.
-- **어떤 개념**: 개념 3.
-- **출력**: `배경 IoU 0.9425 · 사람 IoU 0.7682 → mIoU 0.8553 | 58 ms/장 (cpu)` (직접 실행)
+<<CODE 2-3 | YOLOv8n-seg 로 사람 마스크 → 정답과 IoU>>
+<<CODE 2-4 | 170장 전체 mIoU — 교집합 · 합집합 누적>>
 
 #### 한 번에 정리
 - semantic = 픽셀마다 클래스, instance = 물체마다 마스크.
@@ -388,6 +332,9 @@ def is_fallen(kpts, conf, thr=60, min_conf=0.5):
 
 홀수 = 왼쪽, 짝수 = 오른쪽 — **사진 속 사람의** 왼쪽이다. 출력은 `r.keypoints.xy` `(사람, 17, 2)` 와 `r.keypoints.conf` `(사람, 17)`. 사진 한 장에서 `(2, 17, 2)`, 영상 프레임 200 에서는 사람이 없어 `(0, 17, 2)`.
 
+<<CODE 3-c1 | COCO 17 관절 이름 · 뼈대 연결 · draw_pose>>
+<<CODE 3-1 | YOLOv8n-pose 로 관절 찾기 — (사람, 17, 2)>>
+
 #### 개념 2 · 포즈 추정 방식
 | 방식 | 순서 | 장단점 |
 |---|---|---|
@@ -408,6 +355,8 @@ def is_fallen(kpts, conf, thr=60, min_conf=0.5):
 
 시험: `angle((1,0),(0,0),(0,1))` = **90°**, 일직선 `(0,0),(0,1),(0,2)` = **180°** (실행값 179.997 — 1e-9 때문). 첫 사람 무릎 각도 (11-13-15) 는 왼쪽 179.7° · 오른쪽 177.1° → 다리를 편 채 서 있다.
 
+<<CODE 3-2 | angle — 세 점이 이루는 각도>>
+
 #### 개념 4 · 몸통 기울기 → 쓰러짐 규칙
 - 어깨 중점 = (kpts[5] + kpts[6]) / 2, 엉덩이 중점 = (kpts[11] + kpts[12]) / 2
 - 기울기 = 엉덩이 중점에서 **위쪽 수직**(`[0, −1]`, 이미지 y 축은 아래가 +) 과 어깨 중점이 이루는 각
@@ -421,30 +370,7 @@ def is_fallen(kpts, conf, thr=60, min_conf=0.5):
 
 임계값 60° 는 선택이다 — 낮추면 허리 숙인 사람도 경보, 높이면 비스듬히 넘어진 사람을 놓친다.
 
-#### 코드로 확인
-```python
-def angle(a, b, c):
-    ba, bc = np.asarray(a, float) - b, np.asarray(c, float) - b
-    cos = ba @ bc / (np.linalg.norm(ba) * np.linalg.norm(bc) + 1e-9)
-    return float(np.degrees(np.arccos(np.clip(cos, -1, 1))))
-print(angle((1, 0), (0, 0), (0, 1)), angle((0, 0), (0, 1), (0, 2)))
-p0 = k0[0]
-print(f"왼쪽 무릎 {angle(p0[11], p0[13], p0[15]):.1f}° · 오른쪽 {angle(p0[12], p0[14], p0[16]):.1f}°")
-```
-- **무엇을 하나**: 각도 함수를 직각 · 일직선으로 시험하고, 첫 사람의 무릎 각도.
-- **어떤 개념**: 개념 3.
-- **출력**: `90.0 179.997…`, `왼쪽 무릎 179.7° · 오른쪽 177.1°` (직접 실행)
-
-```python
-img_rot = cv2.rotate(img0, cv2.ROTATE_90_CLOCKWISE)
-kr, cr, br = run_pose(pose, img_rot)
-for name, (k, c, b) in [("원본", (k0, c0, b0)), ("90° 회전", (kr, cr, br))]:
-    i = biggest(b)                                  # 가장 큰 사람 = 주인공
-    print(f"{name}: 기울기 {body_tilt(k[i]):.1f}° → 쓰러짐 {is_fallen(k[i], c[i])}")
-```
-- **무엇을 하나**: 같은 사진을 90° 돌려 "누운 사람" 을 흉내 내고 쓰러짐 판정.
-- **어떤 개념**: 개념 4.
-- **출력**: `원본: 기울기 3.3° → 쓰러짐 False`, `90° 회전: 기울기 84.2° → 쓰러짐 True` (직접 실행)
+<<CODE 3-3 | body_tilt · is_fallen — 90° 돌려서 쓰러짐 판정>>
 
 #### 한 번에 정리
 - COCO 17: 어깨 5·6, 엉덩이 11·12, 무릎 13·14, 발목 15·16 (홀수 = 왼쪽).
@@ -531,6 +457,8 @@ def n_channels(task, nc=80, nm=32, nk=17):
 - backbone · neck 이 같으므로 파라미터 차이도 head 만큼뿐이다 (seg +25만, pose +14만).
 - pose 는 클래스 80개 대신 **사람 점수 1개** — 사람만 찾는 모델이다.
 
+<<CODE 4-1 | n_channels — 세 모델의 원시 출력 모양 확인>>
+
 #### 개념 2 · 시나리오 → 태스크 고르기
 질문 순서: **있나?** (cls) → **어디 · 몇 개?** (det) → **어떤 모양 · 넓이?** (seg) → **어떤 자세?** (pose). 답할 수 있는 것 중 **가장 단순한** 것을 고른다 — 단순할수록 빠르고, 라벨 만들기 · 검증도 쉽다.
 
@@ -543,22 +471,7 @@ def n_channels(task, nc=80, nm=32, nk=17):
 | 작업자 쓰러짐 감지 | pose | 자세 |
 | 크레인 아래 위험구역에 발을 들였나 | det + roi | 발 위치(박스 아래 중앙) + 다각형 — 7교시 |
 
-#### 코드로 확인
-```python
-def n_channels(task, nc=80, nm=32, nk=17):
-    if task == "detect":  return 4 + nc
-    if task == "segment": return 4 + nc + nm
-    if task == "pose":    return 4 + 1 + nk * 3
-x640 = torch.zeros(1, 3, 640, 640)
-for task, w in [("detect", "yolov8n.pt"), ("segment", "yolov8n-seg.pt"), ("pose", "yolov8n-pose.pt")]:
-    with torch.no_grad():
-        o = YOLO(w).model.eval()(x640)[0]
-    o = o[0] if isinstance(o, (list, tuple)) else o       # seg 는 (출력, prototype)
-    print(f"{task:8s} 원시 출력 {tuple(o.shape)} | 공식 {n_channels(task)}")
-```
-- **무엇을 하나**: 세 모델에 같은 빈 입력을 넣어 원시 출력 모양을 공식과 비교.
-- **어떤 개념**: 개념 1.
-- **출력**: `detect (1, 84, 8400) | 84`, `segment (1, 116, 8400) | 116`, `pose (1, 56, 8400) | 56` (직접 실행)
+<<CODE 4-2 | 현장 시나리오 → 태스크 고르기>>
 
 #### 한 번에 정리
 - 같은 backbone · neck, 다른 head: 84 · 116(+ prototype) · 56, 칸은 모두 8,400.
@@ -667,6 +580,8 @@ PyTorch 모델은 파이썬과 PyTorch 가 있어야 돈다. Jetson 같은 작�
 
 ⚠ tracing 은 **예시 입력이 지나간 길만** 기록한다 — 입력 값에 따라 갈라지는 `if` 는 한쪽으로 굳는다.
 
+<<CODE 5-1 | export_onnx — MobileNetV3-S 를 ONNX 로 (노드 · 파일 크기)>>
+
 #### 개념 3 · 변환 후 검증
 "에러 없이 끝났다" ≠ "같은 결과". 같은 입력을 PyTorch 와 ONNX Runtime 에 넣고 **최대 절대 차이** `np.abs(a − b).max()` 를 본다.
 
@@ -678,32 +593,8 @@ PyTorch 모델은 파이썬과 PyTorch 가 있어야 돈다. Jetson 같은 작�
 
 YOLO 의 ONNX 는 **원시 출력만** 준다. letterbox · decode(전치 → conf 필터 → xywh→xyxy → NMS) · 원본 좌표 되돌리기는 Day 4 의 함수를 그대로 쓴다.
 
-#### 코드로 확인
-```python
-def export_onnx(model, path, input_size=(1, 3, 224, 224)):
-    model = copy.deepcopy(model).cpu().eval()          # 원본은 그대로 두고 복사본으로
-    torch.onnx.export(model, torch.randn(input_size), path,
-                      input_names=["input"], output_names=["logits"],
-                      dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
-                      opset_version=17, dynamo=False)
-    m = onnx.load(path); onnx.checker.check_model(m)
-    return m
-```
-- **무엇을 하나**: MobileNetV3-S 를 ONNX 로 내보내고 그래프 검사.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `노드 159개 | 'HardSwish' 포함 | 파일 10.2 MB ≈ 파라미터 × 4 B`, 입력 0번 축 `dim_param = 'batch'` (교안 검증 셀)
-
-```python
-sess = ort.InferenceSession("mnv3s.onnx", providers=["CPUExecutionProvider"])
-xb = torch.randn(4, 3, 224, 224)
-with torch.no_grad():
-    ref = mnv3(xb).numpy()
-onx = sess.run(None, {"input": xb.numpy()})[0]     # None = 출력 전부, 입력은 이름으로
-print([(i.name, i.shape) for i in sess.get_inputs()], onx.shape, float(np.abs(onx - ref).max()))
-```
-- **무엇을 하나**: 배치 4 로 PyTorch · ONNX Runtime 출력 비교 (dynamic_axes 덕분에 배치 4 가 들어간다).
-- **어떤 개념**: 개념 3.
-- **출력**: `[('input', ['batch', 3, 224, 224])] (4, 1000) 1.48e-05` (직접 실행)
+<<CODE 5-2 | ONNX Runtime 으로 실행해 PyTorch 와 비교 (배치 4)>>
+<<CODE 5-3 | YOLOv8n ONNX — letterbox · decode_yolo 로 PyTorch 와 비교>>
 
 #### 한 번에 정리
 - ONNX = 프레임워크 독립 모델 파일 (그래프 + 가중치), 크기 ≈ 파라미터 × 4 B.
@@ -806,6 +697,8 @@ def benchmark(fn, warmup=5, reps=50):
    - 스레드: `torch.set_num_threads(n)` / `ort.SessionOptions().intra_op_num_threads = n`
    - 1 · 2 · 전체 코어로 바꿔 작은 장치(코어가 적은 Jetson) 를 흉내.
 
+<<CODE 6-1 | benchmark — warm-up 후 평균 · p50 · p95 · FPS>>
+
 #### 개념 3 · 실제 측정 (이 사이트의 실행, CPU · 스레드 1)
 | 모델 | 프레임워크 | 입력 | 평균 ms | p95 ms | FPS | 파일 MB |
 |---|---|---|---|---|---|---|
@@ -826,36 +719,8 @@ def benchmark(fn, warmup=5, reps=50):
 
 작은 모델은 나눌 일이 적어 거의 그대로다. 다른 작업과 CPU 를 나누면 p95 가 크게 튄다 (이 사이트의 첫 측정은 다른 실행과 겹쳐 4스레드 숫자가 수십 배 흔들렸다).
 
-#### 코드로 확인
-```python
-def benchmark(fn, warmup=5, reps=50):
-    for _ in range(warmup):
-        fn()                                    # 버리는 실행
-    ts = []
-    for _ in range(reps):
-        t0 = time.perf_counter(); fn(); ts.append((time.perf_counter() - t0) * 1000)
-    ts = np.array(ts)
-    return {"mean": float(ts.mean()), "p50": float(np.percentile(ts, 50)),
-            "p95": float(np.percentile(ts, 95)), "fps": float(1000 / ts.mean())}
-print(benchmark(lambda: time.sleep(0.01), warmup=1, reps=20))
-```
-- **무엇을 하나**: 10 ms 짜리 가짜 작업으로 측정 함수를 시험.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `mean 10.13, p50 10.13, p95 10.15, fps 98.7` (직접 실행 — sleep 자체의 오차로 10 ms 보다 조금 길다)
-
-```python
-def ort_session(path, n):
-    so = ort.SessionOptions(); so.intra_op_num_threads = n
-    return ort.InferenceSession(path, so, providers=["CPUExecutionProvider"])
-for n in sorted({1, 2, os.cpu_count()}):
-    torch.set_num_threads(n)
-    s_m = ort_session("mnv3s.onnx", n)
-    b = benchmark(lambda: s_m.run(None, {"input": x224.numpy()}))
-    rows.append({"model": "MobileNetV3-S", "framework": "ONNX Runtime", "input": 224, "threads": n, **b})
-```
-- **무엇을 하나**: 스레드 수를 바꿔 가며 측정해 한 줄씩 `rows` 에 쌓는다 (강의는 PyTorch · YOLO 까지 4가지).
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: 위 표 (스레드 1). `pd.DataFrame(rows)` 에 파일 크기 열을 더해 `baseline.csv` 로 저장
+<<CODE 6-2 | 스레드 1 · 2 · 전체 × PyTorch · ONNX Runtime 측정>>
+<<CODE 6-3 | 파일 크기 더해 baseline.csv 저장>>
 
 #### 한 번에 정리
 - warm-up 버리고 → 평균 · p50 · p95 · FPS. 실시간 판단은 p95.
@@ -971,6 +836,10 @@ def find_events(alarm, fps):
 | (300, 340) | 안 | 경계 (180,300)–(380,350) 아래 |
 | (300, 320) | 밖 | 같은 x 에서 경계(약 330) 보다 위 |
 
+<<CODE 7-c1 | 침입 감지 파이프라인 한 줄 요약>>
+<<CODE 7-c2 | 위험구역 GRASS 다각형 정의 · 그려 보기>>
+<<CODE 7-1 | 과제 1 — in_zone · foot_points (발 위치 판정)>>
+
 #### 개념 2 · ONNX 탐지 → 원본 좌표 (`detect_onnx`)
 | 단계 | 코드 |
 |---|---|
@@ -981,6 +850,8 @@ def find_events(alarm, fps):
 | 되돌리기 | `(boxes − [pl, pt, pl, pt]) / r` → `clip(0, W)` · `clip(0, H)` |
 
 프레임 200 에서 7명, 발 위치 예 `(633, 368)` · `(502, 221)` · `(235, 267)`.
+
+<<CODE 7-2 | 과제 2 — detect_onnx: 원본 좌표 사람 박스>>
 
 #### 개념 3 · debounce 와 이벤트
 - 한두 프레임만 구역에 들어갔다 나오는 **깜빡임 · 오탐**에 경보가 울리면 현장에서 무시당한다.
@@ -997,6 +868,10 @@ def find_events(alarm, fps):
 
 n_consec 를 키우면 오경보는 줄지만 경보가 늦어진다 (10 FPS 에서 3프레임 = 0.3초 지연) — 과제 5 에서 이 균형을 발표한다.
 
+<<CODE 7-3 | 과제 3 — run_intrusion: streak · 경보 · 그리기 · 로그>>
+<<CODE 7-c3 | H.264 변환 · 경보 그래프 · 재생>>
+<<CODE 7-4 | 과제 4 — find_events · 파이프라인 성능 기록>>
+
 #### 개념 4 · 채점 구성
 | 과제 | 내용 | 배점 |
 |---|---|---|
@@ -1005,49 +880,6 @@ n_consec 를 키우면 오경보는 줄지만 경보가 늦어진다 (10 FPS 에
 | 3 | `run_intrusion` — 영상 · 경보 · 로그 · `intrusion.mp4` | 20 |
 | 4 | `find_events` + 파이프라인 전체 ms · FPS 를 `baseline.csv` 에 추가 | 20 |
 | 5 | 발표: 오경보 · 놓침 사례, n_consec, 실시간 여부, Jetson 이전 계획 | 20 (강사) |
-
-#### 코드로 확인
-```python
-def in_zone(pt, poly=GRASS):
-    return cv2.pointPolygonTest(poly, (float(pt[0]), float(pt[1])), False) >= 0
-def foot_points(boxes):
-    boxes = np.asarray(boxes, float).reshape(-1, 4)
-    return np.stack([(boxes[:, 0] + boxes[:, 2]) / 2, boxes[:, 3]], 1)
-for p in [(100, 400), (600, 200), (300, 340), (300, 320)]:
-    print(p, "안" if in_zone(p) else "밖")
-```
-- **무엇을 하나**: 점 4개의 구역 판정 (과제 1).
-- **어떤 개념**: 개념 1.
-- **출력**: `(100, 400) 안`, `(600, 200) 밖`, `(300, 340) 안`, `(300, 320) 밖` (직접 실행)
-
-```python
-def detect_onnx(frame, sess=sess_yolo, conf=0.25, iou_thr=0.7):
-    lb, r, (pl, pt) = letterbox(frame)
-    x = (lb[..., ::-1].transpose(2, 0, 1)[None] / 255.0).astype(np.float32)
-    out = sess.run(None, {"images": x})[0]
-    boxes, scores = decode_yolo(out, conf, iou_thr)
-    boxes = (boxes - [pl, pt, pl, pt]) / r
-    H, W = frame.shape[:2]
-    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, W); boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, H)
-    return boxes, scores
-```
-- **무엇을 하나**: 원본 프레임 → 원본 좌표 사람 박스 (과제 2).
-- **어떤 개념**: 개념 2.
-- **출력**: 프레임 200 에서 `7 명 | 발 위치 [[633 368] [502 221] [235 267]] ...` (직접 실행)
-
-```python
-streak = 0
-for i in range(n_frames):
-    ok, frame = cap.read()
-    boxes, _ = detect_onnx(frame)
-    inside = np.array([in_zone(p) for p in foot_points(boxes)], bool)
-    streak = streak + 1 if inside.any() else 0
-    alarm = int(streak >= n_consec)
-    log.append([i, round(i / fps, 2), len(boxes), int(inside.sum()), alarm])
-```
-- **무엇을 하나**: `run_intrusion` 의 핵심 — 프레임마다 탐지 → 발 위치 → 구역 판정 → streak → 경보 → 로그 (과제 3, 그리기 · 저장 생략).
-- **어떤 개념**: 개념 3.
-- **출력**: `intrusion.mp4` + `intrusion_log.csv` (강사 실행: 795 프레임 중 경보 224, 이벤트 5번)
 
 #### 한 번에 정리
 - 발 위치 = `((x1+x2)/2, y2)`, 판정 = `pointPolygonTest ≥ 0`.
@@ -1126,6 +958,8 @@ with zipfile.ZipFile("submission.zip", "w", zipfile.ZIP_DEFLATED) as z:
 | 17:45 | 제출 — 셀을 실행하면 `submission.zip` 이 만들어진다 |
 
 `submission.zip` = `baseline.csv` · `intrusion_log.csv` · `intrusion_h264.mp4` · `mnv3s.onnx` · `yolov8n.onnx`.
+
+<<CODE 8-c1 | 제출 파일 submission.zip 만들기>>
 
 #### 개념 2 · 5일을 한 줄로
 | Day | 질문 | 답 |

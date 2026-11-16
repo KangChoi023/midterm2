@@ -1,0 +1,100 @@
+{
+  "_설명": "VB Day 4 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "vb/4/1-1": [
+    {"at": "def parse_annotation(path):", "to": "return np.array(pairs", "t": "정규식으로 (x, y) - (x, y) 숫자 4개씩", "d": "`\\((\\d+), (\\d+)\\) - \\((\\d+), (\\d+)\\)` — 괄호 안 숫자 네 개를 한 묶음으로. 결과는 사진마다 (사람 수, 4) 배열."},
+    {"at": "img_paths = sorted(", "to": "gts = [parse_annotation(", "t": "사진 경로 → 어노테이션 경로 → 정답 목록", "d": "PNGImages/xxx.png ↔ Annotation/xxx.txt 처럼 이름이 짝지어져 있다. gts[i] = i 번째 사진의 정답 박스들."}
+  ],
+  "vb/4/2-1": [
+    {"at": "def xyxy_to_xywh(b):", "to": "return np.stack([b[..., 0], b[..., 1], b[..., 2] - b[..., 0]", "t": "xyxy → xywh (COCO)", "d": "너비 = x2 − x1, 높이 = y2 − y1. `[..., k]` 는 마지막 축의 k 번째 — 박스 하나든 (N, 4) 든 같은 코드."},
+    {"at": "def xywh_to_xyxy(b):", "to": "return np.stack([b[..., 0], b[..., 1], b[..., 0] + b[..., 2]", "t": "xywh → xyxy", "d": "반대로 더한다."},
+    {"at": "def xyxy_to_cxcywh_norm(b, W, H):", "to": "return np.stack([cx / W", "t": "xyxy → 중심 · 크기 · 0~1 (YOLO)", "d": "중심 = 왼쪽 위 + 크기/2, 그다음 이미지 폭 · 높이로 나눠 정규화 — 사진 크기가 바뀌어도 값이 그대로."},
+    {"at": "def cxcywh_norm_to_xyxy(b, W, H):", "to": "return np.stack([cx - w / 2", "t": "YOLO 형식 → xyxy", "d": "W · H 를 곱해 픽셀로 되돌린 뒤 중심 ± 크기/2."}
+  ],
+  "vb/4/2-3": [
+    {"at": "coco = {\"images\"", "t": "세 목록 + 카테고리", "d": "images · annotations · categories — 서로 id 로 연결된다."},
+    {"at": "for img_id, (p, g) in enumerate(", "to": "coco[\"images\"].append(", "t": "사진마다 images 에 한 줄", "d": "id 는 1부터, 크기는 사진을 읽어서."},
+    {"at": "for b in xyxy_to_xywh(g):", "to": "ann_id += 1", "t": "박스마다 annotations 에 한 줄", "d": "COCO bbox 는 **xywh**. image_id 로 어느 사진인지, category_id 1 = person. area = w × h."}
+  ],
+  "vb/4/3-1": [
+    {"at": "x1 = np.maximum(box[0]", "to": "inter = np.clip(", "t": "교집합 사각형", "d": "왼쪽 위 = 두 박스의 큰 쪽, 오른쪽 아래 = 작은 쪽. 안 겹치면 폭이 음수 → `clip(…, 0)` 으로 0."},
+    {"at": "area = lambda b:", "to": "return inter / (area(box) + area(boxes) - inter)", "t": "IoU = 교집합 / 합집합", "d": "합집합 = 넓이 A + 넓이 B − 교집합 (겹친 부분을 두 번 세지 않게)."}
+  ],
+  "vb/4/3-2": [
+    {"at": "x1 = np.maximum(A[:, None, 0], B[None, :, 0])", "to": "inter = np.clip(", "t": "브로드캐스팅 — (N, 1) 과 (1, M) → (N, M)", "d": "A 에 축을 하나 세우고 B 에 눕히면 모든 짝의 교집합이 반복문 없이 한 번에."},
+    {"at": "aA = (A[:, 2] - A[:, 0])", "to": "return inter / (aA[:, None] + aB[None, :] - inter)", "t": "넓이도 같은 방식으로", "d": "결과 (N, M) 의 [i, j] = A 의 i 번째와 B 의 j 번째 IoU."},
+    {"at": "A, B = rand_boxes(50, 1)", "to": "print(M_np.shape", "t": "torchvision.ops.box_iou 와 비교", "d": "직접 만든 함수는 라이브러리 결과와 숫자로 맞춰 본다 — 최대 차이 ≈ 0."}
+  ],
+  "vb/4/3-3": [
+    {"at": "order = np.argsort(-scores)", "t": "점수 높은 순으로 줄 세우기", "d": "`-scores` 로 정렬하면 내림차순."},
+    {"at": "while order.size > 0:", "to": "order = rest[iou(boxes[i], boxes[rest]) <= iou_thr]", "t": "1등을 남기고, 1등과 많이 겹치는 박스는 지우기", "d": "남은 것 중 1등을 keep 에 넣고, 나머지 중 그 박스와 IoU 가 기준보다 큰 것을 버린다 — 박스가 다 없어질 때까지."},
+    {"at": "Bx = rand_boxes(300, 3)", "to": "print(\"무작위 300개", "t": "torchvision.ops.nms 와 같은지", "d": "남긴 번호 목록이 완전히 같아야 한다 (`array_equal`)."}
+  ],
+  "vb/4/3-c2": [
+    {"at": "for b in g:", "to": "B.append(b + jit); S.append(", "t": "정답마다 흔들린 박스 15개", "d": "정답 크기의 8% 정도로 흔든다. 많이 흔들릴수록 점수를 낮게 — 진짜 탐지기처럼 한 사람에 박스가 여러 개."},
+    {"at": "for _ in range(n_bg):", "to": "B.append([x, y, x + rs.uniform(30, 60)", "t": "배경에 낮은 점수 박스 10개", "d": "점수 0.05~0.45 — conf 기준을 올리면 사라지는 오탐."}
+  ],
+  "vb/4/4-2": [
+    {"at": "mrec = np.concatenate([[0.0], rec, [1.0]])", "to": "mpre = np.concatenate(", "t": "양 끝에 (0, …) · (1, 0) 붙이기", "d": "곡선이 recall 0 에서 시작해 1 에서 끝나도록."},
+    {"at": "for i in range(len(mpre) - 2, -1, -1):", "to": "mpre[i] = max(mpre[i], mpre[i + 1])", "t": "envelope — 오른쪽 최댓값으로 채우기", "d": "뒤에서부터 훑으며 지그재그 곡선을 계단 모양으로 편다 (그 recall 이상에서 얻을 수 있는 최고 precision)."},
+    {"at": "idx = np.where(mrec[1:] != mrec[:-1])[0]", "to": "return float(np.sum(", "t": "recall 이 바뀌는 곳마다 폭 × 높이", "d": "계단 아래 넓이 = AP. 손 계산 예제(0.6875)와 같아야 한다."}
+  ],
+  "vb/4/4-3": [
+    {"at": "for i, d in enumerate(dets):", "to": "recs.sort(key=lambda t: -t[0])", "t": "모든 사진의 탐지를 한 줄로 → 점수 순", "d": "(점수, 사진 번호, 박스). AP 는 사진 단위가 아니라 데이터셋 전체 탐지를 점수 순으로 본다."},
+    {"at": "used = [np.zeros(len(g), bool) for g in gts]", "t": "정답마다 '이미 짝지어짐' 표시", "d": "정답 하나에는 탐지 하나만 TP — 같은 사람에 두 번째 박스는 FP."},
+    {"at": "for s, i, b in recs:", "to": "scores.append(s); tp.append(ok)", "t": "IoU 가 가장 큰 정답과 짝짓기", "d": "그 정답과 IoU ≥ 기준이고 아직 안 쓰였으면 TP(1), 아니면 FP(0)."},
+    {"at": "return np.array(scores), np.array(tp), sum(len(g) for g in gts)", "t": "(점수, TP 배열, 정답 수)", "d": "정답 수가 recall 의 분모 — 하나도 못 찾은 정답(FN)까지 반영된다."}
+  ],
+  "vb/4/4-4": [
+    {"at": "def evaluate_ap(dets, gts, iou_thr=0.5):", "to": "return ap_from_pr(recall, precision)", "t": "짝짓기 → P · R → AP", "d": "4-1 · 4-2 · 4-3 을 이은 것. IoU 기준 하나에 AP 하나."},
+    {"at": "IOU_THRS = np.arange(0.5, 0.96, 0.05)", "to": "return float(np.mean([evaluate_ap(", "t": "mAP50-95 = 기준 10개의 평균", "d": "0.50, 0.55, …, 0.95 — 기준이 엄격할수록 위치가 정확해야 TP."},
+    {"at": "perfect = [np.concatenate(", "to": "shifted = [shift(g) for g in gts]", "t": "검증용 탐지기 둘", "d": "정답 그대로(점수 1) vs 폭의 10% 만큼 오른쪽으로 민 박스."},
+    {"at": "print(f\"완벽한 탐지기", "to": "print(f\"10% 밀린 탐지기", "t": "AP50 은 같고 mAP50-95 는 다르다", "d": "조금 밀린 박스는 0.5 기준에서는 TP 지만 엄격한 기준에서는 FP — 위치 정확도는 mAP50-95 에 드러난다."}
+  ],
+  "vb/4/5-1": [
+    {"at": "for s in sizes:", "to": "base = np.array(base)", "t": "기준 박스 9개 (크기 3 × 비율 3)", "d": "넓이 s² 를 유지하며 h/w = 0.5 · 1 · 2. 중심 (0, 0) 기준 좌표."},
+    {"at": "cx = (np.arange(fw) + 0.5) * stride", "to": "centers = np.stack(", "t": "특징맵 칸마다 중심 좌표", "d": "stride 16 이면 칸 하나 = 원본 16픽셀. 칸 가운데(+0.5) 를 원본 좌표로."},
+    {"at": "return (centers + base[None]).reshape(-1, 4)", "t": "중심 + 기준 박스 → 모든 anchor", "d": "(칸 수, 1, 4) + (1, 9, 4) 브로드캐스팅 → (칸 수 × 9, 4)."},
+    {"at": "fh, fw = int(np.ceil(H0 / 16))", "to": "best = iou_matrix(gts[0], anchors).max(1)", "t": "정답마다 가장 잘 맞는 anchor 의 IoU", "d": "anchor 가 정답과 완벽하진 않으니(≈ 0.5) 모델이 이동 · 크기 조정을 회귀로 배운다."}
+  ],
+  "vb/4/5-2": [
+    {"at": "x = torch.from_numpy(img).permute(2, 0, 1)", "to": "out = model([x])[0]", "t": "torchvision 탐지기 입력 = 이미지 리스트", "d": "(3, H, W) 0~1 텐서를 **리스트**로 — 크기가 서로 달라도 된다. 결과도 사진마다 dict."},
+    {"at": "m = (out[\"labels\"] == 1)", "to": "return out[\"boxes\"][m]", "t": "COCO 클래스 1 = person, 점수 기준", "d": "boxes 는 원본 좌표 xyxy — letterbox 같은 되돌리기가 필요 없다."},
+    {"at": "for name, m in [(\"frcnn\", frcnn)", "to": "run_tv(m, img_b)", "t": "warm-up", "d": "첫 실행은 느려서 한 번 버린 뒤 시간을 잰다."}
+  ],
+  "vb/4/6-2": [
+    {"at": "def letterbox(img, size=640, color=114):", "to": "r = min(size / h, size / w)", "t": "비율 r = 긴 변이 640 이 되게", "d": "가로 · 세로 중 더 많이 줄여야 하는 쪽에 맞춘다 — 비율을 지켜 찌그러지지 않게."},
+    {"at": "nw, nh = round(w * r)", "to": "out[top:top + nh, left:left + nw] = resized", "t": "줄이고 회색(114) 캔버스 가운데에", "d": "남는 곳은 위아래(또는 좌우) 같은 폭의 패딩. 되돌릴 때 필요한 r · (left, top) 을 함께 돌려준다."},
+    {"at": "x = torch.from_numpy(lb[..., ::-1].copy())", "to": "raw = yolo.model.eval()(x)[0]", "t": "BGR→RGB · CHW · 0~1 → 원시 출력", "d": "ultralytics 의 `predict` 를 거치지 않고 모델을 직접 부르면 후처리 전 출력 (1, 84, 8400)."}
+  ],
+  "vb/4/6-3": [
+    {"at": "p = out[0].T.cpu().numpy()", "to": "best, conf = cls_scores.argmax(1)", "t": "(84, 8400) → (8400, 84) · 칸마다 최고 클래스", "d": "84 = 박스 4 (cx, cy, w, h) + 클래스 점수 80. 가장 높은 클래스와 그 점수가 conf."},
+    {"at": "m = (conf > conf_thr) & (best == cls)", "to": "boxes = np.stack([cx - w / 2", "t": "점수 · 사람만 남기고 xyxy 로", "d": "cls 0 = person. 중심 · 크기 → 모서리 좌표."},
+    {"at": "keep = nms(boxes, conf[m], iou_thr)", "t": "3교시 NMS 로 중복 제거", "d": "YOLO 기본 IoU 기준 0.7."},
+    {"at": "orig = (my_boxes - [padl, padt, padl, padt]) / ratio", "t": "letterbox 되돌리기", "d": "640 좌표에서 패딩을 빼고 r 로 나누면 원본 사진 좌표."}
+  ],
+  "vb/4/7-2": [
+    {"at": "cap = cv2.VideoCapture(source)", "to": "counts, T = [], {", "t": "열기 · 쓰기 준비 · 단계별 시간 기록표", "d": "영상을 여는 곳은 이 한 줄 — 나중에 source 만 카메라 번호로 바꾸면 된다."},
+    {"at": "t0 = time.perf_counter()", "to": "T[\"read\"] +=", "t": "읽기 (끝이면 멈춤)", "d": "`max_frames` 로 앞부분만 처리할 수도 있다 (CPU 비교용)."},
+    {"at": "boxes, scores, sp = detect_people(", "to": "T[k] += sp[k]", "t": "탐지 — 전처리 · 추론 · 후처리 시간 합산", "d": "detect_people (7-1) 이 단계별 ms 를 함께 돌려준다."},
+    {"at": "t1 = time.perf_counter()", "to": "counts.append(len(boxes))", "t": "박스 · 인원 그리기 → 쓰기", "d": "프레임마다 사람 수를 모아 둔다."},
+    {"at": "cap.release(); writer.release()", "to": "return np.array(counts)", "t": "닫고 프레임당 평균 시간", "d": "단계별 합 ÷ 프레임 수 = 7-3 의 실시간 판정 재료."}
+  ],
+  "vb/4/7-3": [
+    {"at": "total = sum(times.values())", "to": "return 1000 / total", "t": "단계 합 → FPS → 실시간인가", "d": "프레임 시간이 영상 한 프레임 간격(1000 / 영상 FPS) 안이면 실시간."},
+    {"at": "if device.type == \"cuda\":", "to": "realtime_report(times_cpu, \"cpu\")", "t": "GPU 런타임이면 CPU 와도 비교", "d": "같은 영상 60 프레임만 CPU 로 — 작은 장치에서의 모습을 흉내."}
+  ],
+  "vb/4/8-1": [
+    {"at": "def predict_dataset(model, imgsz=640, conf=0.001):", "to": "return dets", "t": "170장 탐지 → (박스 + 점수) 목록", "d": "AP 를 잴 때는 conf 를 아주 낮게(0.001) — 낮은 점수 박스까지 있어야 recall 곡선이 끝까지 그려진다."},
+    {"at": "for name, m in yolos.items():", "to": "print(f\"{name} 640", "t": "4교시에 직접 만든 함수로 평가", "d": "evaluate_ap · map_50_95 — 라이브러리 지표가 아니라 우리가 만든 코드."}
+  ],
+  "vb/4/8-2": [
+    {"at": "def cpu_ms(weights, imgsz, n=15):", "to": "return float(np.mean(", "t": "CPU 추론 시간 (ultralytics speed)", "d": "warm-up 한 번 뒤 15장의 inference ms 평균."},
+    {"at": "for name, m in yolos.items():", "to": "res[(name, sz)][\"ms\"] = cpu_ms(", "t": "입력 320 도 평가 · 모든 조합 시간", "d": "모델 2 × 입력 2 = 4 조합."},
+    {"at": "print(f\"{'모델'", "to": "print(f\"{name:8s} {sz:5d}", "t": "한 표로", "d": "작은 입력은 빠르지만 AP 가 떨어진다 — 정확도와 속도를 함께 보고 고른다."}
+  ],
+  "vb/4/8-3": [
+    {"at": "CONFS = np.round(np.arange(0.10, 0.91, 0.05), 2)", "t": "conf 후보 17개", "d": "0.10, 0.15, …, 0.90."},
+    {"at": "for c in CONFS:", "to": "P_c.append(P); R_c.append(Rc); F1_c.append(", "t": "conf 마다 남기고 → 짝짓기 → P · R · F1", "d": "F1 = 2PR / (P + R) — precision 과 recall 의 조화평균."},
+    {"at": "best_conf = float(CONFS[np.argmax(F1_c)])", "t": "F1 이 가장 큰 conf = 운영 기준", "d": "현장 목적에 따라 조정 — 놓치면 안 되는 일(침입 감지)은 conf 를 낮춘다."}
+  ]
+}

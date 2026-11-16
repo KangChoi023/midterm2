@@ -107,13 +107,39 @@ def fill_blanks(blank, sol):
     code = lambda l: re.split(r'\s+#', l, 1)[0].strip()                 # 끝 주석 · 들여쓰기 무시
     sl = sol.split('\n'); out, j = [], 0
     for line in blank.split('\n'):
-        if '____' not in line: out.append(line); continue
+        if '____' not in line:                                          # 같은 줄이 정답에도 있으면 그 뒤에서부터 찾는다
+            out.append(line)                                            # (x = torch.zeros(…) 다음의 x = ____ 가 앞줄과 짝지어지지 않게)
+            k = next((k for k in range(j, len(sl)) if code(sl[k]) == code(line) and code(line)), None)
+            if k is not None: j = k + 1
+            continue
         pat = re.compile('^' + '(.+?)'.join(re.escape(part) for part in code(line).split('____')) + '$')
         for k in range(j, len(sl)):
             if pat.match(code(sl[k])):
                 out.append(line[:len(line) - len(line.lstrip())] + sl[k].strip()); j = k + 1; break
         else:
             return None
+    return '\n'.join(out)
+
+def fill_hints(blank, sol):
+    """정답이 '# 빈칸: 답1 / 답2 / …' 한 줄 힌트뿐일 때 — 빈칸(____)마다 앞뒤 글자가 맞는 힌트에서 빈칸 값을 꺼내 차례로 채운다.
+    (VB D5 7-3: 정답 셀에 run_intrusion 코드 없이 힌트만 있음) 하나라도 못 채우면 None."""
+    m = re.match(r'\s*#\s*빈칸\s*[:：]\s*(.+)$', sol.strip())
+    if not m or '\n' in sol.strip() or '____' not in blank: return None
+    hints = [h.strip() for h in m.group(1).split(' / ') if h.strip()]
+    used, out = set(), []
+    for line in blank.split('\n'):
+        while '____' in line:
+            i = line.index('____')
+            before = re.split(r'\s+#', line[:i])[0].lstrip()[-24:]
+            after = re.split(r'\s+#', line[i + 4:])[0].strip()
+            got = None
+            for bl, al in [(b, a) for b in (24, 12, 6) for a in (24, 12, 6, 3, 1, 0)]:   # 앞뒤 글자는 힌트에 일부만 있을 수 있다 — 줄여 가며
+                pat = re.escape(before[-bl:]) + r'(.+)' + (re.escape(after[:al]) if al and after else r'$')
+                got = next(((k, mm) for k, h in enumerate(hints) if k not in used for mm in [re.search(pat, h)] if mm), None)
+                if got: break
+            if not got: return None
+            used.add(got[0]); line = line[:i] + got[1].group(1).strip() + line[i + 4:]
+        out.append(line)
     return '\n'.join(out)
 
 def _block(code):
@@ -283,7 +309,7 @@ def parse_ipynb(path):
                     where, k = st['blank']
                     blank_src = k[0]['blocks'][k[1]]['text'] if where == 'topic' and k[0] is st['topic'] else \
                         (st['fill']['code'][-1] if st['fill'] is not None and st['fill']['code'] else '')
-                    sol = fill_blanks(blank_src, sol) or sol                     # 빈칸 셀의 나머지 코드도 지킨다
+                    sol = fill_blanks(blank_src, sol) or fill_hints(blank_src, sol) or sol   # 빈칸 셀의 나머지 코드도 지킨다
                     sol = f'# ✏️ 문제 {num} — 빈칸을 정답으로 채운 코드\n' + sol if num else sol
                     t, pos = None, None
                     if where == 'topic' and k[0] is st['topic']:
