@@ -1,0 +1,75 @@
+{
+  "_설명": "VB Day 5 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "vb/5/1-2": [
+    {"at": "for p, g in zip(img_paths, gts):", "to": "m = np.array(Image.open(mask_path(p)))", "t": "사진마다 마스크 PNG 열기", "d": "픽셀값 0 = 배경, k = k 번째 사람."},
+    {"at": "x1, y1, x2, y2 = (b - 1).astype(int)", "to": "box_area =", "t": "1부터 센 좌표 → 0부터 · 박스 넓이", "d": "Penn-Fudan 어노테이션은 1부터 센 좌표라 1을 빼야 배열 인덱스가 된다. 양 끝 포함이라 +1."},
+    {"at": "fills.append((m[y1:y2 + 1, x1:x2 + 1] == k).sum() / box_area)", "t": "박스 안에서 그 사람(k) 픽셀 비율", "d": "박스 영역을 잘라 값이 k 인 픽셀만 센다 — 평균 0.50, 박스의 절반은 배경."}
+  ],
+  "vb/5/2-2": [
+    {"at": "for c in range(n_cls):", "to": "ious.append(", "t": "클래스마다 픽셀 집합의 IoU", "d": "p · g = 그 클래스인 픽셀 (True/False 지도). 교집합 `&` · 합집합 `|` 픽셀 수의 비. 어디에도 없는 클래스는 nan."},
+    {"at": "ious = np.array(ious)", "to": "return ious, float(np.nanmean(ious))", "t": "mIoU = nan 을 뺀 평균", "d": "배경(0)도 한 클래스로 들어간다."},
+    {"at": "gt4 = np.zeros((4, 4), int)", "to": "print(miou(pr4, gt4))", "t": "4×4 손 계산 예제", "d": "정답 = 왼쪽 2열, 예측 = 왼쪽 3열 → 사람 8/12, 배경 4/8 → mIoU 0.5833."}
+  ],
+  "vb/5/2-3": [
+    {"at": "def seg_person_mask(model, img_bgr, conf=0.25):", "to": "r = model.predict(", "t": "YOLOv8n-seg 로 사람만 예측", "d": "`classes=[0]` = person 만."},
+    {"at": "pm = np.zeros((H, W), np.uint8)", "to": "return pm, (0 if r.masks is None", "t": "사람마다 외곽선 → 원본 크기 0/1 마스크", "d": "`r.masks.xy` 는 원본 좌표 다각형 목록. `cv2.fillPoly` 로 안을 1로 채우면 모든 사람의 합집합 = semantic 사람 마스크. 사람이 없으면 `masks` 가 None."},
+    {"at": "gt0 = (np.array(Image.open(mask_path(img_paths[0]))) > 0)", "to": "print(f\"인스턴스", "t": "정답 마스크와 IoU", "d": "정답 PNG 를 0 보다 크면 1 (사람 번호를 지움) 로 바꿔 같은 형식으로 비교."}
+  ],
+  "vb/5/2-4": [
+    {"at": "for p in img_paths:", "to": "union_sum[c] +=", "t": "사진마다 교집합 · 합집합 픽셀 수를 누적", "d": "사진별 IoU 를 평균하지 않는다 — 큰 사람 · 작은 사람이 픽셀 수만큼 반영되게."},
+    {"at": "seg_ious = inter_sum / union_sum", "to": "seg_ms =", "t": "마지막에 한 번 나누기 · 장당 시간", "d": "배경 IoU 는 넓어서 높게 나온다 — 사람 IoU 를 따로 본다."}
+  ],
+  "vb/5/3-1": [
+    {"at": "def run_pose(model, img_bgr, conf=0.25):", "to": "return r.keypoints.xy.cpu().numpy()", "t": "관절 좌표 · 신뢰도 · 박스를 NumPy 로", "d": "`keypoints.xy` (사람, 17, 2) · `keypoints.conf` (사람, 17) · `boxes.xyxy` (사람, 4)."},
+    {"at": "k0, c0, b0 = run_pose(pose, img0)", "to": "print(\"첫 사람 어깨", "t": "사진 · 영상 프레임에서 확인", "d": "사람이 없으면 (0, 17, 2) — 빈 배열도 처리할 수 있어야 한다. 5 · 6 = 왼쪽 · 오른쪽 어깨."}
+  ],
+  "vb/5/3-3": [
+    {"at": "def body_tilt(kpts):", "to": "return angle(hip + np.array([0, -1]), hip, shoulder)", "t": "몸통 기울기 — 위쪽 수직과의 각", "d": "어깨 중점(5, 6) · 엉덩이 중점(11, 12). 이미지 y 축은 아래가 + 라서 위쪽 = [0, −1]."},
+    {"at": "def is_fallen(kpts, conf, thr=60, min_conf=0.5):", "to": "return body_tilt(kpts) > thr", "t": "신뢰도가 낮으면 판정 보류(None)", "d": "어깨 · 엉덩이 중 하나라도 conf < 0.5 면 None — 가려진 사람을 쓰러짐으로 오판하지 않게. 60° 초과면 쓰러짐."},
+    {"at": "def biggest(b):", "to": "return int(np.argmax(", "t": "가장 큰 박스 = 주인공", "d": "여러 명 중 판정할 한 사람을 고른다."},
+    {"at": "img_rot = cv2.rotate(", "to": "print(f\"90° 회전", "t": "사진을 90° 돌려 '누운 사람' 흉내", "d": "같은 사람이 원본 3.3° → 회전 84.2° (실행값)."}
+  ],
+  "vb/5/4-1": [
+    {"at": "def n_channels(task, nc=80, nm=32, nk=17):", "to": "if task == \"pose\":", "t": "칸마다 숫자 개수 공식", "d": "탐지 4 + 80 = 84, seg + 마스크 계수 32 = 116, pose 4 + 사람 점수 1 + 17 × 3 = 56."},
+    {"at": "x640 = torch.zeros(1, 3, 640, 640)", "to": "print(f\"{task:8s} 원시 출력", "t": "세 모델의 원시 출력과 맞추기", "d": "seg 는 (출력, prototype) 두 개를 돌려주므로 첫 번째만. 칸 수는 모두 8,400."}
+  ],
+  "vb/5/5-1": [
+    {"at": "def export_onnx(model, path, input_size=(1, 3, 224, 224)):", "to": "model = copy.deepcopy(model).cpu().eval()", "t": "복사본 · CPU · eval 로", "d": "원본은 그대로 두고, BN · Dropout 을 추론 모드로 해서 내보낸다."},
+    {"at": "torch.onnx.export(model, torch.randn(input_size), path", "to": "dynamic_axes={\"input\": {0: \"batch\"}", "t": "tracing — 이름 · 배치 축 · opset 17", "d": "예시 입력으로 한 번 실행하며 연산을 기록. `dynamic_axes` 로 배치 크기를 자유롭게, 입출력 이름은 ONNX Runtime 에서 이 이름으로 넣고 뺀다."},
+    {"at": "m = onnx.load(path); onnx.checker.check_model(m)", "t": "파일 검사", "d": "그래프 규칙 검사 — 결과가 맞는지는 5-2 에서 따로 비교."},
+    {"at": "ops = sorted({n.op_type for n in onnx_mnv3.graph.node})", "to": "n_params =", "t": "노드 · 연산 종류 · 파일 크기", "d": "노드 159개 (HardSwish 포함), 파일 ≈ 파라미터 × 4 B."}
+  ],
+  "vb/5/5-3": [
+    {"at": "onnx_path = yolo.export(format=\"onnx\"", "to": "print([(i.name, i.shape)", "t": "ultralytics 로 ONNX 내보내기", "d": "입력 이름 `images` (1, 3, 640, 640), 출력 `output0` (1, 84, 8400)."},
+    {"at": "lb, ratio, (padl, padt) = letterbox(frame200)", "to": "ob, oc = decode_yolo(raw_onnx)", "t": "전 · 후처리는 Day 4 함수 그대로", "d": "ONNX 는 원시 출력만 준다 — letterbox · decode_yolo(NMS 포함) 는 우리가 한다."},
+    {"at": "ref = YOLO(\"yolov8n.pt\").predict(", "to": "print(f\"ONNX", "t": "PyTorch 결과와 박스 짝 IoU", "d": "같은 640 입력으로 사람 수와 박스가 같은지 — 짝 IoU 최소 1.0000 이면 완전히 같다."}
+  ],
+  "vb/5/6-1": [
+    {"at": "for _ in range(warmup):", "to": "fn()", "t": "warm-up — 버리는 실행", "d": "첫 실행은 메모리 할당 · 준비 때문에 느리다."},
+    {"at": "ts = []", "to": "ts = np.array(ts)", "t": "reps 번 · 한 번씩 ms", "d": "`perf_counter` 로 실행마다 따로 잰다 — 평균만이 아니라 분포(p95)를 보려고."},
+    {"at": "return {\"mean\"", "to": "\"p95\": float(np.percentile(ts, 95))", "t": "평균 · p50 · p95 · FPS", "d": "실시간 판단은 p95. FPS = 1000 / 평균 ms."}
+  ],
+  "vb/5/6-2": [
+    {"at": "THREADS = sorted({1, 2, os.cpu_count()})", "to": "x224, x640n =", "t": "스레드 후보 · 모델 · 입력 준비", "d": "1 · 2 · 전체 코어 — 작은 장치(코어가 적은 Jetson)를 흉내."},
+    {"at": "def ort_session(path, n):", "to": "return ort.InferenceSession(path, so", "t": "ONNX Runtime 스레드 지정", "d": "`SessionOptions().intra_op_num_threads = n` — 세션을 만들기 **전에** 정한다."},
+    {"at": "for n in THREADS:", "to": "torch.set_num_threads(n)", "t": "PyTorch 도 같은 스레드로", "d": "같은 조건(CPU · 배치 1 · 같은 입력 · 같은 스레드)이어야 공정한 비교."},
+    {"at": "cases = [(\"MobileNetV3-S\", \"PyTorch\"", "to": "print(f\"{model_name:14s}", "t": "4가지 × 스레드마다 benchmark → 한 줄씩", "d": "조건(model · framework · input · threads)을 열로 남겨 baseline.csv 의 행이 된다. 끝나면 스레드 수를 되돌린다."}
+  ],
+  "vb/5/7-2": [
+    {"at": "lb, r, (pl, pt) = letterbox(frame)", "to": "out = sess.run(None, {\"images\": x})[0]", "t": "letterbox → CHW float32 → ONNX", "d": "BGR→RGB (`[..., ::-1]`), HWC→CHW, 배치 축, /255."},
+    {"at": "boxes, scores = decode_yolo(out, conf, iou_thr)", "to": "boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, W)", "t": "decode → 원본 좌표 → 화면 안으로", "d": "패딩을 빼고 r 로 나눈 뒤, 화면 밖으로 나간 좌표는 잘라 낸다."}
+  ],
+  "vb/5/7-3": [
+    {"at": "cap = cv2.VideoCapture(source)", "to": "log, streak, t_det = [], 0, []", "t": "열기 · 쓰기 준비 · 상태", "d": "streak = 구역 안 사람이 있는 프레임이 연속 몇 번째인가 (0 부터)."},
+    {"at": "boxes, scores = detect_onnx(frame, conf=conf)", "to": "inside = np.array([in_zone(p, poly)", "t": "탐지 → 발 위치 → 구역 안인가", "d": "탐지 시간만 따로 모아 '추론만 ms' 를 낸다."},
+    {"at": "streak = streak + 1 if inside.any() else 0", "to": "alarm = int(streak >= n_consec)", "t": "debounce — 3 프레임 연속이어야 경보", "d": "한 프레임이라도 비면 0 으로. 한두 프레임 튀는 오탐에는 울리지 않지만, 경보가 0.3 초 늦다."},
+    {"at": "ov = frame.copy(); cv2.fillPoly(ov, [poly]", "to": "cv2.putText(frame, \"INTRUSION ALARM\"", "t": "그리기 — 구역(경보면 진하게) · 박스 색 · 문구", "d": "`addWeighted` 로 반투명. 구역 안 사람은 빨강, 밖은 초록, 발 위치는 점."},
+    {"at": "writer.write(frame)", "to": "i += 1", "t": "쓰기 · 로그 한 줄", "d": "frame · time_s · n_people · n_inside · alarm."},
+    {"at": "cap.release(); writer.release()", "to": "return log, float(np.mean(t_det))", "t": "닫고 CSV 저장", "d": "`intrusion_log.csv` — 8교시 제출물."},
+    {"at": "t_start = time.perf_counter()", "to": "total_ms =", "t": "영상 전체 실행 · 프레임당 전체 시간", "d": "읽기 · 그리기 · 저장까지 포함 — 추론만 잰 6교시 숫자와 구분."}
+  ],
+  "vb/5/7-4": [
+    {"at": "for i, a in enumerate(alarm):", "to": "events.append((start / fps, (i - 1) / fps)); start = None", "t": "0 → 1 이면 시작, 1 → 0 이면 끝", "d": "끝은 꺼지기 직전 프레임 (i − 1). 프레임 번호 ÷ fps = 초."},
+    {"at": "if start is not None:", "to": "events.append((start / fps, (len(alarm) - 1) / fps))", "t": "영상 끝까지 켜져 있으면", "d": "마지막 프레임을 끝으로 닫는다."}
+  ]
+}
