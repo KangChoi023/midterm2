@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Percentile 이 고른 scale ÷ MinMax scale — 활성값 34개 (점선 = 평균 0.819)</text>
+<line x1="60.0" y1="190.0" x2="680.0" y2="190.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="194.0" font-size="12" fill="#64748b" text-anchor="end">0</text>
+<line x1="60.0" y1="154.3" x2="680.0" y2="154.3" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="158.3" font-size="12" fill="#64748b" text-anchor="end">0.25</text>
+<line x1="60.0" y1="118.6" x2="680.0" y2="118.6" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="122.6" font-size="12" fill="#64748b" text-anchor="end">0.5</text>
+<line x1="60.0" y1="82.9" x2="680.0" y2="82.9" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="86.9" font-size="12" fill="#64748b" text-anchor="end">0.75</text>
+<line x1="60.0" y1="47.1" x2="680.0" y2="47.1" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="51.1" font-size="12" fill="#64748b" text-anchor="end">1</text>
+<line x1="60.0" y1="190.0" x2="680.0" y2="190.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="60.0" y1="40.0" x2="60.0" y2="190.0" stroke="#1e293b" stroke-width="1.3"/>
+<rect x="62.5" y="47.1" width="13.0" height="142.9" rx="1" fill="#fff" stroke="#64748b" stroke-width="1.1"/>
+<rect x="80.7" y="80.0" width="13.0" height="110.0" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="99.0" y="67.1" width="13.0" height="122.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="117.2" y="68.1" width="13.0" height="121.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="135.4" y="75.4" width="13.0" height="114.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="153.7" y="81.4" width="13.0" height="108.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="171.9" y="72.7" width="13.0" height="117.3" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="190.1" y="76.0" width="13.0" height="114.0" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="208.4" y="95.0" width="13.0" height="95.0" rx="1" fill="#fee2e2" stroke="#dc2626" stroke-width="1.1"/>
+<rect x="226.6" y="75.9" width="13.0" height="114.1" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="244.9" y="72.4" width="13.0" height="117.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="263.1" y="77.1" width="13.0" height="112.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="281.3" y="74.4" width="13.0" height="115.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="299.6" y="69.3" width="13.0" height="120.7" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="317.8" y="91.9" width="13.0" height="98.1" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="336.0" y="85.9" width="13.0" height="104.1" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="354.3" y="60.4" width="13.0" height="129.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="372.5" y="75.0" width="13.0" height="115.0" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="390.7" y="74.7" width="13.0" height="115.3" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="409.0" y="71.6" width="13.0" height="118.4" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="427.2" y="79.3" width="13.0" height="110.7" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="445.4" y="76.4" width="13.0" height="113.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="463.7" y="77.1" width="13.0" height="112.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="481.9" y="74.4" width="13.0" height="115.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="500.1" y="81.4" width="13.0" height="108.6" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="518.4" y="93.6" width="13.0" height="96.4" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="536.6" y="80.9" width="13.0" height="109.1" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="554.9" y="81.1" width="13.0" height="108.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="573.1" y="79.9" width="13.0" height="110.1" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="591.3" y="57.7" width="13.0" height="132.3" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="609.6" y="66.1" width="13.0" height="123.9" rx="1" fill="#fef3c7" stroke="#d97706" stroke-width="1.1"/>
+<rect x="627.8" y="47.1" width="13.0" height="142.9" rx="1" fill="#fff" stroke="#64748b" stroke-width="1.1"/>
+<rect x="646.0" y="47.1" width="13.0" height="142.9" rx="1" fill="#fff" stroke="#64748b" stroke-width="1.1"/>
+<rect x="664.3" y="47.1" width="13.0" height="142.9" rx="1" fill="#fff" stroke="#64748b" stroke-width="1.1"/>
+<line x1="60.0" y1="73.0" x2="680.0" y2="73.0" stroke="#0284c7" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="214.9" y="89.0" font-size="11.5" fill="#dc2626" text-anchor="middle" font-weight="700">0.665</text>
+<text x="370.0" y="212.0" font-size="11.5" fill="#64748b" text-anchor="middle">왼쪽 끝 input · 오른쪽 끝 pool · Flatten · logits 는 1.0 (잘리지 않음)   ·   빨강 = layer1.2 Relu (67% 로 축소)</text>
+<text x="370.0" y="232.0" font-size="11.5" fill="#64748b" text-anchor="middle">Entropy 는 34개 모두 MinMax 와 같은 scale (비율 1.000) — 정확도도 MinMax 와 똑같음</text>
+</svg>

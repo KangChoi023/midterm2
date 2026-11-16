@@ -223,6 +223,164 @@ def d1_results():
     s.save('d1-results.svg')
 
 
+# ---------------- QP Day 2 ----------------
+# 숫자는 교안 노트북(QP_Day2_lecture.ipynb)을 CPU · 스레드 1 · onnxruntime 1.32 로 직접 실행한 값.
+# 지연 시간은 컴퓨터마다 다르다 — 그림에는 "비율" 이 보이도록 그린다.
+
+D2_PERF = [  # (이름, 크기 KB, 정확도, 배치1 mean ms, 배치32 장/초)
+    ('FP32', 1070.8, 0.8460, 0.701, 1244.7),
+    ('dynamic', 310.2, 0.8445, 6.183, 170.3),
+    ('QDQ U8/S8', 321.8, 0.8450, 0.480, 2757.9),
+    ('QDQ S8/S8', 322.1, 0.8450, 1.113, 986.9),
+    ('QOperator U8/S8', 296.9, 0.8450, 0.342, 3016.6)]
+
+D2_PC_RATIO = [  # per-channel 모델, 활성값 34개의 Percentile scale / MinMax scale (QuantizeLinear 순서)
+    1.0, 0.77, 0.86, 0.853, 0.802, 0.76, 0.821, 0.798, 0.665, 0.799, 0.823, 0.79, 0.809, 0.845, 0.687, 0.729, 0.907,
+    0.805, 0.807, 0.829, 0.775, 0.795, 0.79, 0.809, 0.76, 0.675, 0.764, 0.762, 0.771, 0.926, 0.867, 1.0, 1.0, 1.0]
+
+D2_GRID = [  # (fmt, act, method, pc, acc, mean_ms) — 미니 프로젝트 16가지 조합
+    ('QDQ', 'U8', 'MinMax', False, 0.8460, 0.341), ('QOperator', 'U8', 'MinMax', True, 0.8450, 0.342),
+    ('QDQ', 'U8', 'Percentile', True, 0.8435, 0.353), ('QOperator', 'U8', 'Percentile', False, 0.8465, 0.359),
+    ('QOperator', 'U8', 'Percentile', True, 0.8435, 0.361), ('QDQ', 'U8', 'Percentile', False, 0.8465, 0.409),
+    ('QOperator', 'U8', 'MinMax', False, 0.8460, 0.417), ('QDQ', 'U8', 'MinMax', True, 0.8450, 0.492),
+    ('QDQ', 'S8', 'Percentile', True, 0.8440, 1.071), ('QDQ', 'S8', 'MinMax', False, 0.8455, 1.098),
+    ('QDQ', 'S8', 'MinMax', True, 0.8450, 1.106), ('QDQ', 'S8', 'Percentile', False, 0.8465, 1.306),
+    ('QOperator', 'S8', 'Percentile', True, 0.8435, 4.544), ('QOperator', 'S8', 'MinMax', False, 0.8460, 4.598),
+    ('QOperator', 'S8', 'MinMax', True, 0.8450, 4.962), ('QOperator', 'S8', 'Percentile', False, 0.8465, 5.131)]
+
+
+def d2_ptq():
+    s = Svg(700, 250)
+    s.text(350, 22, 'PTQ 두 갈래 — 활성값의 scale 을 언제 정하나', 14, INK, 'middle', True)
+    s.text(20, 58, 'Dynamic', 14, BLUE, 'start', True)
+    s.box(20, 68, 150, 50, 'rn20.onnx', BLUE, 'FP32 1,071 KB')
+    s.box(205, 68, 200, 50, 'quantize_dynamic', BLUE, 'weight 만 미리 INT8', 13.5)
+    s.box(440, 68, 240, 50, '실행할 때마다 입력 min · max', BLUE, '→ 그때 scale 계산 (보정 X)', 13)
+    s.line(170, 93, 203, 93, MUTED, 2, True); s.line(405, 93, 438, 93, MUTED, 2, True)
+    s.text(20, 152, 'Static', 14, ORANGE, 'start', True)
+    s.box(20, 162, 150, 50, 'rn20_pre.onnx', ORANGE, '+ 보정 500장')
+    s.box(205, 162, 200, 50, 'quantize_static', ORANGE, 'CalibrationDataReader', 13.5)
+    s.box(440, 162, 240, 50, '활성값 scale · zp 를 파일에', ORANGE, '실행 중에는 계산 없음', 13)
+    s.line(170, 187, 203, 187, MUTED, 2, True); s.line(405, 187, 438, 187, MUTED, 2, True)
+    s.text(350, 238, 'dynamic = MatMul · Linear 위주(LSTM · Transformer)   ·   static = Conv 위주(CNN) 의 표준', 12, MUTED, 'middle')
+    s.save('d2-ptq.svg')
+
+
+def d2_dynamic():
+    s = Svg(700, 250)
+    s.text(350, 22, 'dynamic 모델의 Conv 하나 = 실행할 때마다 5단계', 14, INK, 'middle', True)
+    steps = [('min · max', '입력 범위 재기'), ('DynamicQuantize', '활성값 → UINT8'), ('ConvInteger', '정수 Conv'),
+             ('Cast', 'INT32 → FP32'), ('Mul', '× scale')]
+    for i, (a, b) in enumerate(steps):
+        x = 12 + i * 138
+        s.box(x, 45, 124, 52, a, BLUE if i != 2 else GREEN, b, 13)
+        if i: s.line(x - 14, 71, x - 2, 71, MUTED, 2, True)
+    P = Plot(s, 150, 120, 500, 80, (0, 300), (0, 2))
+    for j, (name, n, ms, c) in enumerate([('FP32', 52, 0.68, ORANGE), ('dynamic', 181, 6.08, BLUE)]):
+        y = 125 + j * 38
+        s.text(140, y + 19, name, 13, INK, 'end', True)
+        s.rect(150, y, P.X(n) - 150, 26, c, None, 3, 1.3)
+        s.text(P.X(n) + 8, y + 18, f'노드 {n}개 · 배치 1 {ms} ms', 12.5, INK)
+    s.text(350, 222, '노드가 3.5배 → CPU 에서 9배 느림 (배치 32 도 0.10배 처리량) — 크기는 1/3.5, 정확도 0.846 → 0.8445', 12, MUTED, 'middle')
+    s.text(350, 242, '⚠ "INT8 이면 빠르다" 가 아니다 — CNN 은 static 으로', 12, RED, 'middle')
+    s.save('d2-dynamic.svg')
+
+
+def d2_bnfold():
+    s = Svg(700, 230)
+    s.text(350, 22, 'BatchNorm folding — Conv → BN 두 단계를 Conv 하나로', 14, INK, 'middle', True)
+    s.box(20, 50, 110, 50, 'x', MUTED)
+    s.box(160, 50, 130, 50, 'Conv (W)', BLUE, 'bias 없음')
+    s.box(320, 50, 150, 50, 'BN (γ, β, μ, σ²)', PURPLE, '채널마다 곱 · 덧셈', 13.5)
+    s.line(130, 75, 158, 75, MUTED, 2, True); s.line(290, 75, 318, 75, MUTED, 2, True)
+    s.box(520, 50, 160, 50, "Conv (W', b')", GREEN, '같은 출력 · 차이 9.5e-07', 13.5)
+    s.line(470, 75, 518, 75, GREEN, 2.5, True)
+    s.text(350, 135, "k = γ / √(σ² + ε)   (채널마다 하나)", 14, INK, 'middle', True)
+    s.text(350, 160, "W' = W × k (채널 축)   ·   b' = β − μ × k", 14, INK, 'middle', True)
+    s.text(350, 192, 'PyTorch BN 모듈 21개 → ONNX BatchNormalization 노드 0개 (eval 모드 export 가 이미 합침)', 12, MUTED, 'middle')
+    s.text(350, 212, "ONNX 첫 Conv weight 와 직접 만든 W' 의 최대 차이 0.0", 12, MUTED, 'middle')
+    s.save('d2-bnfold.svg')
+
+
+def d2_qdq():
+    s = Svg(700, 270)
+    s.text(350, 22, '같은 static INT8 을 그래프에 담는 두 방식', 14, INK, 'middle', True)
+    s.text(20, 52, 'QDQ — 원래 Conv 앞뒤에 Q · DQ 를 끼운다', 13.5, BLUE, 'start', True)
+    s.box(20, 62, 90, 32, 'Q', BLUE, None, 14)
+    s.box(140, 62, 90, 32, 'DQ', BLUE, None, 14)
+    s.box(300, 62, 140, 32, 'Conv', ORANGE, None, 14)
+    s.box(470, 62, 90, 32, 'Q', BLUE, None, 14)
+    s.box(140, 108, 130, 32, 'INT8 W → DQ', BLUE, None, 13)
+    s.line(110, 78, 138, 78, MUTED, 2, True); s.line(230, 78, 298, 78, MUTED, 2, True); s.line(440, 78, 468, 78, MUTED, 2, True)
+    s.line(270, 120, 330, 96, MUTED, 1.8, True)
+    s.text(580, 74, '노드 145개', 13, INK, 'start', True)
+    s.text(580, 92, 'DQ 78 · Q 34', 11.5, MUTED)
+    s.text(580, 108, 'Conv 21 · Add 9', 11.5, MUTED)
+    s.text(20, 172, 'QOperator — Conv 자체를 정수 연산자로', 13.5, GREEN, 'start', True)
+    s.box(20, 182, 110, 34, 'Q (입력 1번)', GREEN, None, 13)
+    s.box(160, 182, 170, 34, 'QLinearConv', GREEN, None, 14)
+    s.box(360, 182, 150, 34, 'QLinearAdd', GREEN, None, 14)
+    s.line(130, 199, 158, 199, MUTED, 2, True); s.line(330, 199, 358, 199, MUTED, 2, True)
+    s.text(580, 194, '노드 35개', 13, INK, 'start', True)
+    s.text(580, 212, 'QLinearConv 21', 11.5, MUTED)
+    s.text(580, 228, 'QLinearAdd 9', 11.5, MUTED)
+    s.text(350, 252, '정확도는 둘 다 0.845 · QDQ = TensorRT 등의 표준 입력 · QOperator = ORT CPU 가 그대로 실행', 12, MUTED, 'middle')
+    s.save('d2-qdq.svg')
+
+
+def d2_scales():
+    r = D2_PC_RATIO
+    s = Svg(700, 250)
+    s.text(350, 22, f'Percentile 이 고른 scale ÷ MinMax scale — 활성값 34개 (점선 = 평균 {float(np.mean(D2_PC_RATIO)):.3f})', 14, INK, 'middle', True)
+    P = Plot(s, 60, 40, 620, 150, (0, 34), (0, 1.05))
+    P.axes(yt=(0, 0.25, 0.5, 0.75, 1.0), grid=True)
+    k = int(np.argmin(r))
+    for i, v in enumerate(r):
+        c = RED if i == k else (MUTED if v >= 0.999 else ORANGE)
+        s.rect(P.X(i) + 2.5, P.Y(v), 13, P.Y(0) - P.Y(v), c, None, 1, 1.1)
+    m = float(np.mean(r))
+    s.line(60, P.Y(m), 680, P.Y(m), BLUE, 2, dash='6 4')
+    s.text(P.X(k) + 9, P.Y(r[k]) - 6, f'{r[k]:.3f}', 11.5, RED, 'middle', True)
+    s.text(370, 212, '왼쪽 끝 input · 오른쪽 끝 pool · Flatten · logits 는 1.0 (잘리지 않음)   ·   빨강 = layer1.2 Relu (67% 로 축소)', 11.5, MUTED, 'middle')
+    s.text(370, 232, 'Entropy 는 34개 모두 MinMax 와 같은 scale (비율 1.000) — 정확도도 MinMax 와 똑같음', 11.5, MUTED, 'middle')
+    s.save('d2-scales.svg')
+
+
+def d2_perf():
+    s = Svg(700, 270)
+    s.text(350, 22, '5개 모델 성능표 — CPU · 스레드 1 (지연 시간은 컴퓨터마다 다름)', 14, INK, 'middle', True)
+    heads = [('크기 KB', 1, 1100), ('배치 1 지연 ms', 3, 6.5), ('배치 32 장/초', 4, 3200)]
+    for j, (h, idx, mx) in enumerate(heads):
+        x0 = 150 + j * 185
+        s.text(x0 + 80, 50, h, 12.5, INK, 'middle', True)
+        for i, row in enumerate(D2_PERF):
+            y = 62 + i * 38
+            if j == 0: s.text(140, y + 18, row[0], 12.5, INK, 'end', True)
+            v = row[idx]; w = 115 * v / mx
+            c = [ORANGE, BLUE, GREEN, PURPLE, GREEN][i]
+            s.rect(x0, y + 4, max(w, 2), 20, c, None, 3, 1.2)
+            s.text(x0 + max(w, 2) + 5, y + 19, f'{v:g}', 11.5, INK)
+    s.text(350, 262, '정확도: FP32 0.846 · dynamic 0.8445 · 나머지 셋 0.845 — 차이는 2,000장 중 1 ~ 3장', 12, MUTED, 'middle')
+    s.save('d2-perf.svg')
+
+
+def d2_grid():
+    s = Svg(700, 290)
+    s.text(350, 22, '미니 프로젝트 16가지 PTQ 설정 — 배치 1 지연 시간 (규칙: 손실 1%p 이내 중 가장 빠른 것)', 13.5, INK, 'middle', True)
+    P = Plot(s, 70, 45, 600, 172, (0, 5.5), (0, 16))
+    P.axes(xt=(0, 1, 2, 3, 4, 5), grid=True)
+    for i, (f, a, m, pc, acc, ms) in enumerate(D2_GRID):
+        y = 50 + i * 10.4
+        c = (GREEN if f == 'QOperator' else BLUE) if a == 'U8' else (RED if f == 'QOperator' else ORANGE)
+        s.rect(70, y, P.X(ms) - 70, 8, c, None, 1, 1)
+    s.text(P.X(0.45), 58, '★ 선택: QDQ U8 MinMax per-tensor — 0.341 ms · acc 0.846', 11.5, INK, 'start', True)
+    s.text(P.X(0.65), 100, '활성값 U8 8개 — 0.34 ~ 0.49 ms (파랑 QDQ · 초록 QOperator)', 11.5, GREEN, 'start', True)
+    s.text(P.X(1.45), 146, 'QDQ S8 — 1.07 ~ 1.31 ms', 11.5, ORANGE, 'start', True)
+    s.text(P.X(1.45), 170, 'QOperator S8 — 4.5 ~ 5.1 ms', 11.5, RED, 'start', True)
+    s.text(370, 256, '가로: 배치 1 지연 시간 (ms) · 빠른 순으로 위에서부터', 12, MUTED, 'middle')
+    s.text(370, 276, '16개 정확도 0.8435 ~ 0.8465 (0.3%p = 6장) · 속도를 가르는 것은 활성값 U8 / S8', 12, MUTED, 'middle')
+    s.save('d2-grid.svg')
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_',)
     for name, fn in list(globals().items()):
