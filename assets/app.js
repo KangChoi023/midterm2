@@ -91,16 +91,15 @@
 
   /* ---------- 사이드바 ---------- */
   function renderSide(cur) {
-    const openS = store.get('sideOpen', {});
     let h = '<div class="mobile-nav"><a class="tool" href="#/links">🔗 과목 연결</a><a class="tool" href="#/quiz">📝 퀴즈</a></div>';
     h += '<div class="stitle">과목</div>';
     SUBJ.forEach((S, si) => {
       const isCur = cur && cur.s === S.id;
-      h += `<details class="subj sc-${S.id}" data-s="${S.id}" ${isCur || openS[S.id] ? 'open' : ''}><summary><span class="dot" style="background:var(--sc)"></span>${si + 1}. ${esc(S.name)}</summary>`;
+      h += `<details class="subj sc-${S.id}" data-s="${S.id}" ${isCur ? 'open' : ''}><summary><span class="dot" style="background:var(--sc)"></span>${si + 1}. ${esc(S.name)}</summary>`;
       S.days.forEach(D => {
         const isCurD = isCur && cur.d === D.n;
         const done = D.lessons.filter(l => l.status === 'done').length;
-        h += `<details class="day" ${isCurD || openS[S.id + D.n] ? 'open' : ''} data-k="${S.id}${D.n}"><summary><span class="tw">└</span>Day ${D.n} <span class="hit-loc">${esc(D.title)} · ${done}/${D.lessons.length}</span></summary>`;
+        h += `<details class="day" ${isCurD ? 'open' : ''} data-k="${S.id}${D.n}"><summary><span class="tw">└</span>Day ${D.n} <span class="hit-loc">${esc(D.title)} · ${done}/${D.lessons.length}</span></summary>`;
         D.lessons.forEach(L => {
           const on = isCurD && cur.n === L.n;
           h += `<a class="les${on ? ' on' : ''}" href="${href(S.id, D.n, L.n)}"><span class="tw">└</span><span class="dot ${L.status}"></span><span>${L.n}. ${esc(L.title)}</span></a>`;
@@ -111,9 +110,7 @@
     });
     h += `<div class="stitle">빌드 ${esc(IDX.built)}</div>`;
     sideToc.innerHTML = h;
-    $$('details', sideToc).forEach(dt => dt.addEventListener('toggle', () => {
-      const o = store.get('sideOpen', {}); o[dt.dataset.s || dt.dataset.k] = dt.open; store.set('sideOpen', o);
-    }));
+    // 기본은 지금 보고 있는 과목 · Day 만 펼침 — 다른 곳은 눌러서 펼치고, 페이지를 옮기면 다시 지금 위치만
     const on = $('.les.on', sideToc); if (on) side.scrollTop = Math.max(0, on.offsetTop - side.clientHeight / 2);   // 창은 움직이지 않고 목차 안에서만
     SIDE_CUR = cur; rpRefresh();
   }
@@ -270,17 +267,16 @@
         h += `<div class="dict-h">이 교시 (${loc(cur.s, cur.d, cur.n)}) · ${here.length}</div>` + (here.map(r => codeItem(r)).join('') || '<div class="dict-empty">이 교시에는 예제 코드가 없습니다.</div>');
         h += '<div class="dict-h">전체 목차</div>';
       }
-      const openK = store.get('codeOpen', {});
       SUBJ.forEach(S => {
-        const sOpen = cur ? cur.s === S.id : openK[S.id];
+        const sOpen = cur && cur.s === S.id;
         h += `<details class="ctree s" data-k="${S.id}" ${sOpen ? 'open' : ''}><summary>${esc(S.name)}</summary>`;
         S.days.forEach(D => {
-          const dOpen = cur ? cur.s === S.id && cur.d === D.n : openK[S.id + D.n];
+          const dOpen = cur && cur.s === S.id && cur.d === D.n;
           h += `<details class="ctree d" data-k="${S.id}${D.n}" ${dOpen ? 'open' : ''}><summary><span class="tw">└</span>Day ${D.n} <small>${esc(D.title)}</small></summary>`;
           D.lessons.forEach(L => {
             const rows = CODE_BY[S.id + '|' + D.n + '|' + L.n] || []; if (!rows.length) return;
             const isCur = cur && cur.s === S.id && cur.d === D.n && cur.n === L.n;
-            h += `<details class="ctree l" data-k="${S.id}${D.n}-${L.n}" ${isCur || openK[S.id + D.n + '-' + L.n] ? 'open' : ''}><summary><span class="tw">└</span>${L.n}. ${esc(L.title)} <small>${rows.length}</small></summary>${rows.map(r => codeItem(r, false)).join('')}</details>`;
+            h += `<details class="ctree l" data-k="${S.id}${D.n}-${L.n}" ${isCur ? 'open' : ''}><summary><span class="tw">└</span>${L.n}. ${esc(L.title)} <small>${rows.length}</small></summary>${rows.map(r => codeItem(r, false)).join('')}</details>`;
           });
           h += '</details>';
         });
@@ -293,7 +289,6 @@
     const sched = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; CODE.q = qi.value; const pos = qi.selectionStart; codeRender(); const n = $('.code-q', sideCode); n.focus(); n.setSelectionRange(pos, pos); }); };
     qi.addEventListener('input', e => { if (!e.isComposing) sched(); });
     qi.addEventListener('compositionend', sched);
-    $$('details.ctree', sideCode).forEach(dt => dt.addEventListener('toggle', () => { const o = store.get('codeOpen', {}); o[dt.dataset.k] = dt.open; store.set('codeOpen', o); }));
   }
   // 예제의 배선·보드 그림 (빌드 때 정한 figRefs: 자기 그림 / 같은 교시 앞 토픽 / Day 공통)
   const figsIn = h => (String(h).match(/<figure>[\s\S]*?<\/figure>/g) || []);
