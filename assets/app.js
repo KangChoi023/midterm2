@@ -830,6 +830,132 @@
     if (loose.length) h += `<section class="ccard loose"><h3>그 밖의 핵심 내용</h3><ul class="core-list">${loose.map(b => bulletLi(b)).join('')}</ul></section>`;
     return h;
   }
+  /* ---------- 상세 학습의 코드 블록 (.ipynb 과목) ----------
+   * 노트 상세 학습의 <<CODE 키 | 제목>> 자리에 교안 코드(정답을 채운 코드 · 실행 결과 · 💡 해설)를 접힌 블록으로.
+   * 마커가 없는 코드는 교시 끝 "이 교시의 다른 강의 코드" 에 모두 모은다 — 교안 코드가 빠지지 않게.
+   * 블록 안: 함수 이름(점선 밑줄)을 누르면 함수 설명, 색칠된 줄(🧭)을 누르면 그 부분 설명 — 둘 다 그 줄 바로 아래 작은 상자. */
+  function codeBox(c, j) {
+    const n = c.code.replace(/\n+$/, '').split('\n').length;
+    const g = c.guide || [];
+    const outs = (c.outs || []).map(o => codeBlock({ kind: 'out', lang: 'text', text: o.text, run: o.run || undefined })).join('');
+    return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${esc(c.t)}</span>`
+      + `<span class="cx-meta">${g.length ? `<span class="cx-g" title="색칠된 줄을 누르면 설명">🧭 ${g.length}</span>` : ''}${n}줄 · ${c.from === 'md' ? '강의 글' : '강의 ' + esc(c.k)}</span></summary>`
+      + `<div class="cx-in">${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
+      + `<div class="cb code cx-cb"><div class="cb-h"><span class="k code">코드</span><span class="cx-hint">${g.length ? '색칠된 줄 · ' : ''}점선 함수 이름을 누르면 설명</span><button type="button" data-copy>복사</button></div><pre${g.length ? ' class="has-guide"' : ''}><code data-lang="${esc(c.lang)}">${esc(c.code.replace(/\n+$/, ''))}</code></pre></div>`
+      + outs + (c.expl ? `<div class="cx-expl"><b>💡 해설</b>${md(c.expl)}</div>` : '') + `</div></details>`;
+  }
+  function studyWithCode(text, L) {
+    const used = new Set(), slots = [];
+    const src = text.replace(/^<<CODE\s+([\w-]+)\s*(?:\|[^>\n]*)?>>\s*$/gm, (m, k) => {
+      const j = L.codes.findIndex(c => c.k === k); if (j < 0) return '';
+      used.add(j); slots.push(j); return `\n\nCODESLOT${slots.length - 1}\n\n`;
+    });
+    let h = md(src).replace(/<p>CODESLOT(\d+)<\/p>/g, (_, i) => codeBox(L.codes[slots[+i]], slots[+i]));
+    const rest = L.codes.map((c, j) => used.has(j) ? '' : codeBox(c, j)).join('');
+    if (rest) h += `<h4 class="cx-rest">이 교시의 다른 강의 코드 <small>본문에 붙지 않은 교안 코드도 빠짐없이</small></h4>${rest}`;
+    return h;
+  }
+  // 함수 이름 → 함수 사전 상세 (지금 과목 먼저, 그다음 노트북 과목들). 'nn.Conv2d()' → 'nn.Conv2d'
+  let FNMAP = null;
+  const fnKey = name => name.replace(/`/g, '').replace(/\(.*$/, '').trim();
+  function fnMap(s) {
+    if (FNMAP && FNMAP.s === s) return FNMAP;
+    const order = [s, 'vb', 'nn', 'ot', 'qp'].filter((x, i, a) => a.indexOf(x) === i);
+    const full = new Map(), last = new Map();
+    order.forEach(sid => IDX.funcs.forEach(r => {
+      if (r[0] !== sid) return;
+      const key = fnKey(r[3]); if (!/^[A-Za-z_][\w.]*$/.test(key)) return;
+      const e = { s: r[0], d: r[1], n: r[2], name: r[3], sig: r[4], use: r[5], det: r[7] };
+      if (!full.has(key)) full.set(key, e);
+      const lk = key.split('.').pop(); if (key.includes('.') && !last.has(lk)) last.set(lk, e);
+    }));
+    return (FNMAP = { s, full, last });
+  }
+  function fnFind(tok, M) {
+    const parts = tok.split('.');
+    for (let i = 0; i < parts.length; i++) { const k = parts.slice(i).join('.'); if (M.full.has(k) && (i === 0 || k.includes('.'))) return M.full.get(k); }
+    return parts.length > 1 ? M.last.get(parts[parts.length - 1]) : null;    // x.mean( → Tensor.mean()
+  }
+  function cxDecorate(root) {
+    if (!CX || !(CX.L.codes || []).length) return;
+    const M = fnMap(CX.s);
+    $$('.cx pre code', root).forEach(code => {
+      if (code.dataset.fn) return; code.dataset.fn = 1;
+      const tw = document.createTreeWalker(code, NodeFilter.SHOW_TEXT), nodes = [];
+      while (tw.nextNode()) nodes.push(tw.currentNode);
+      nodes.forEach(nd => {
+        if (nd.parentElement.closest('.hljs-comment, .hljs-string')) return;
+        const tx = nd.nodeValue, re = /[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?=\s*\()/g; let m, i = 0, frag = null;
+        while ((m = re.exec(tx))) {
+          const e = fnFind(m[0], M); if (!e) continue;
+          frag = frag || document.createDocumentFragment();
+          frag.appendChild(document.createTextNode(tx.slice(i, m.index)));
+          const sp = document.createElement('span'); sp.className = 'fnk'; sp.dataset.fk = e.name; sp.textContent = m[0];
+          frag.appendChild(sp); i = m.index + m[0].length;
+        }
+        if (frag) { frag.appendChild(document.createTextNode(tx.slice(i))); nd.parentNode.replaceChild(frag, nd); }
+      });
+    });
+  }
+  function cxBands(box) {
+    const pre = $('pre.has-guide', box); if (!pre || !box.open) return;
+    $$('.gband', pre).forEach(x => x.remove());
+    const c = CX.L.codes[+box.dataset.ci], { lh, top0 } = preMetrics(pre);
+    (c.guide || []).forEach((g, i) => {
+      const band = document.createElement('div');
+      band.className = `gband g${i % 2}`; band.dataset.gi = i;
+      band.style.top = (top0 + g.from * lh) + 'px'; band.style.height = ((g.to - g.from + 1) * lh) + 'px'; band.style.width = pre.scrollWidth + 'px';
+      band.innerHTML = `<span class="gnum">${i + 1}</span>`; pre.appendChild(band);
+    });
+  }
+  function cxPopClose(root) { $$('.cxpop', root || main).forEach(x => x.remove()); $$('.cx .gband.on', root || main).forEach(x => x.classList.remove('on')); }
+  function cxPop(box, line, html) {
+    cxPopClose(box);
+    const pre = $('pre', box), { lh, top0 } = preMetrics(pre), inn = $('.cx-in', box);
+    const pop = document.createElement('div'); pop.className = 'gpop cxpop'; pop.setAttribute('role', 'dialog');
+    pop.innerHTML = html;
+    pop.style.top = (pre.getBoundingClientRect().top - inn.getBoundingClientRect().top + top0 + (line + 1) * lh + 6) + 'px';
+    inn.appendChild(pop);
+  }
+  function cxGuide(box, i) {
+    const c = CX.L.codes[+box.dataset.ci], g = (c.guide || [])[i]; if (!g) return cxPopClose(box);
+    cxPop(box, g.to, `<div class="gpop-h"><b>🧭 ${i + 1}. ${esc(g.t)}</b><span class="gl">${g.from + 1}${g.to > g.from ? '–' + (g.to + 1) : ''}줄</span><span class="sp"></span>`
+      + `<button type="button" class="icon-btn sm" data-cxg="${i - 1}" aria-label="이전" ${i ? '' : 'disabled'}>‹</button><span class="gpos">${i + 1}/${c.guide.length}</span>`
+      + `<button type="button" class="icon-btn sm" data-cxg="${i + 1}" aria-label="다음" ${i < c.guide.length - 1 ? '' : 'disabled'}>›</button><button type="button" class="icon-btn sm" data-cxg="x" aria-label="닫기">✕</button></div>`
+      + `<div class="gpop-d">${mdInline(g.d)}</div>`);
+    const band = $(`.gband[data-gi="${i}"]`, box); if (band) band.classList.add('on');
+  }
+  function cxFn(box, sp) {
+    const M = fnMap(CX.s), e = M.full.get(fnKey(sp.dataset.fk)) || fnFind(sp.textContent, M); if (!e) return;
+    const pre = $('pre', box), { lh, top0 } = preMetrics(pre);
+    const line = Math.round((sp.getBoundingClientRect().top - pre.getBoundingClientRect().top - top0) / lh);
+    const det = e.det || {};
+    const args = (det.args || []).length ? `<table class="fpop-args">${det.args.map(a => `<tr><td><code>${esc(a[0])}</code></td><td>${mdInline(a[1])}</td></tr>`).join('')}</table>` : '';
+    cxPop(box, line, `<div class="gpop-h"><b><code>${esc(e.name)}</code></b><span class="gl">${esc(loc(e.s, e.d, e.n))}</span><span class="sp"></span><button type="button" class="icon-btn sm" data-cxg="x" aria-label="닫기">✕</button></div>`
+      + `<div class="gpop-d"><b>${mdInline(det.role || e.use)}</b>${e.sig ? `<div class="fpop-sig">${mdInline(e.sig)}</div>` : ''}${(det.desc || []).length ? `<ul>${det.desc.map(x => `<li>${mdInline(x)}</li>`).join('')}</ul>` : ''}${args}${det.flow ? `<div class="fpop-flow">${mdInline(det.flow)}</div>` : ''}</div>`);
+  }
+  document.addEventListener('toggle', e => {
+    const box = e.target; if (!(box instanceof HTMLElement) || !box.classList.contains('cx') || !box.open) return;
+    cxBands(box);
+  }, true);
+  document.addEventListener('click', e => {
+    const box = e.target.closest && e.target.closest('details.cx'); if (!box || !main.contains(box)) return;
+    const nav = e.target.closest('[data-cxg]');
+    if (nav) { e.preventDefault(); return nav.dataset.cxg === 'x' ? cxPopClose(box) : cxGuide(box, +nav.dataset.cxg); }
+    if (e.target.closest('.cxpop')) return;
+    if (String(window.getSelection() || '')) return;                     // 드래그로 코드를 고를 때는 열지 않음
+    const sp = e.target.closest('.fnk'); if (sp) return cxFn(box, sp);
+    const pre = e.target.closest('pre.has-guide');
+    if (pre) {
+      const { lh, top0 } = preMetrics(pre), c = CX.L.codes[+box.dataset.ci];
+      const line = Math.floor((e.clientY - pre.getBoundingClientRect().top + pre.scrollTop - top0) / lh);
+      const i = (c.guide || []).findIndex(g => line >= g.from && line <= g.to);
+      if (i >= 0) return cxGuide(box, i);
+    }
+    if (e.target.closest('pre')) cxPopClose(box);
+  });
+  window.addEventListener('resize', () => $$('details.cx[open]', main).forEach(cxBands));
+
   function notesHtml(view) {
     const { L } = CX;
     if (!L.sections.length) return '';
@@ -837,7 +963,7 @@
       // 상세 학습: 노트의 "상세 학습" 섹션(공부용 풀어 쓴 설명)을 먼저, 표까지 있는 전체 노트는 접어서 아래에.
       // 상세 학습 섹션이 없는 교시는 예전 "노트 순서" 그대로.
       const flow = L.sections.map((x, i) => x.key === 'kw' || x.key === 'study' ? '' : noteSection(x, i, L)).join('');
-      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${md(x.md)}</section>` : '').join('');
+      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${(L.codes || []).length ? studyWithCode(x.md, L) : md(x.md)}</section>` : '').join('');
       return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
     }
     let h = '', placed = false;
@@ -993,7 +1119,7 @@
     $$('[data-view]', main).forEach(x => x.classList.toggle('on', x.dataset.view === view));
     const vn = $('#viewName', main); if (vn) vn.textContent = viewLabel(view);
     const nt = $('#notes', main); if (nt && nt.getBoundingClientRect().top < 0) nt.scrollIntoView();
-    highlightIn(box);
+    highlightIn(box); cxDecorate(box);
   }
 
   function quizCard(q, i, key) {
@@ -1179,28 +1305,29 @@
     const D = data.days.find(x => x.n === d); const L = D && D.lessons.find(x => x.n === n);
     if (!L) return notFound();
     const exTopics = L.topics.filter(t => t.blocks.some(b => b.kind !== 'out'));
+    const CM = (L.codes || []).length > 0;                                // 코드 블록 화면 (상세 학습에 교안 코드) — 강의 원문 · 빈칸 섹션 없음
     const readKey = `${s}|${d}|${n}`; const readSet = new Set(store.get('read', {})[readKey] || []);
     CX = { s, d, n, L, D, LK: window.WikiLink.build(L, n) }; peekStack = []; closePeek(); KW = { hits: [], i: -1, k: -1 };
     const anchor = params.get('a');
     // 기본은 개념별 묶어 보기. 검색에서 노트 섹션(s3 등)으로 오면 상세 학습(접힌 전체 노트 포함)으로
-    let view = params.get('v') || (anchor && /^s\d/.test(anchor) ? 'study' : 'concept');
+    let view = params.get('v') || (anchor && /^[sK]\d/.test(anchor) ? 'study' : 'concept');
     if (view === 'flow') view = 'study';                                    // 예전 링크(노트 순서)
     let h = `<article class="lesson sc-${s}"><div class="l-head"><div class="crumb"><a href="#/">홈</a> › <a href="#/${s}">${esc(S.name)}</a> › Day ${d} ${esc(D.title)}</div>
       <div class="l-title"><h1>${n}교시 · ${esc(L.title)}</h1>${L.anim ? `<a class="btn anim-btn" href="${esc(L.anim)}" target="_blank" rel="noopener" title="이 교시의 강의 애니메이션을 새 탭에서 엽니다">🎬 애니메이션 보기</a>` : ''}</div><div class="tags"><span class="tag s">${esc(S.short)} Day ${d}</span>
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a><button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button><button type="button" data-view="study" class="${view === 'study' ? 'on' : ''}">${L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서'}</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a>${CM ? '' : `<button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>`}${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button><button type="button" data-view="study" class="${view === 'study' ? 'on' : ''}">${L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서'}</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : (L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서')}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
     else h += `<div class="empty">아직 정리 전인 교시입니다. 공부하면서 <code>notes/${s.toUpperCase()}_day${d}.md</code> 에 <b>키워드 · 개요 · 핵심 용어 · 새로 나온 함수 · 예제 코드가 하는 일 · 핵심 내용 · 기본 사용형태 · 연결</b> 순서로 채우면 여기에 나타납니다. 그 전까지는 아래 강의 개념 목록과 예제 코드로 먼저 훑어보세요.</div>`;
     h += '</section>';
 
-    h += `<section class="part" id="lecture"><h2>강의 원문 <small>강의 자료를 주제별로. 읽고 정리했으면 체크 · 예제 코드는 오른쪽 💻 코드 패널</small></h2>
+    if (!CM) h += `<section class="part" id="lecture"><h2>강의 원문 <small>강의 자료를 주제별로. 읽고 정리했으면 체크 · 예제 코드는 오른쪽 💻 코드 패널</small></h2>
       <div class="tools-row"><button class="btn" data-all="lecture">모두 펼치기</button><span class="hit-loc" id="readCnt"></span></div>`;
-    h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
-    h += '</section>';
+    if (!CM) h += L.topics.map(t => `<details class="box lec${readSet.has(t.id) ? ' read' : ''}" id="L${t.id}"><summary><input type="checkbox" class="chk" data-t="${t.id}" ${readSet.has(t.id) ? 'checked' : ''} aria-label="읽음 표시"><span class="t">${esc(t.title)}</span>${t.example ? '<span class="sp"><span class="tag">예제</span></span>' : ''}</summary><div class="in lec-body">${lectureBody(t)}</div></details>`).join('') || '<div class="empty">강의 자료가 없습니다.</div>';
+    if (!CM) h += '</section>';
 
     const fills = L.fills || [];
     if (fills.length) {
@@ -1218,9 +1345,9 @@
     const pv = all[k - 1], nx = all[k + 1];
     h += `<div class="pager">${pv ? `<a href="${href(pv.s, pv.d, pv.n)}"><small>← 이전 · ${loc(pv.s, pv.d, pv.n)}</small>${esc(pv.L.title)}</a>` : '<span></span>'}${nx ? `<a class="nx" href="${href(nx.s, nx.d, nx.n)}"><small>다음 · ${loc(nx.s, nx.d, nx.n)} →</small>${esc(nx.L.title)}</a>` : '<span></span>'}</div></article>`;
     main.innerHTML = h;
-    highlightIn(main);
+    highlightIn(main); cxDecorate(main);
 
-    const updRead = () => { $('#readCnt').textContent = `읽음 ${readSet.size}/${L.topics.length}`; };
+    const updRead = () => { if ($('#readCnt')) $('#readCnt').textContent = `읽음 ${readSet.size}/${L.topics.length}`; };
     updRead();
     $$('.chk', main).forEach(c => {
       c.addEventListener('click', e => e.stopPropagation());

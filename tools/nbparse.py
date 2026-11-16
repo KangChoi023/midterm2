@@ -332,8 +332,70 @@ def parse_ipynb(path):
             w = ('<pre class="fillpre"><code>' + html.escape(f['ans']) + '</code></pre>') if f['ans'] else ''
             kind = 'blank' if '빈칸' in f['title'] else 'paren' if '괄호' in f['title'] else 'task'
             fills.append({'id': '', 'title': _text(_inline(f['title'])), 'kind': kind, 'q': q, 'w': w, 'text': _text(q + ' ' + w)})
-        res.append({'n': n, 'title': _text(_inline(L['title'])), 'goals': L['goals'], 'topics': topics, 'fills': fills})
+        res.append({'n': n, 'title': _text(_inline(L['title'])), 'goals': L['goals'], 'topics': topics, 'fills': fills,
+                    'codes': lesson_codes(n, L['topics'], L['fills'])})
     return res
+
+# ---------------- 교시의 코드 목록 (상세 학습의 코드 블록) ----------------
+# 강의 원문 · 빈칸 섹션 대신, 노트의 <<CODE 키 | 제목>> 자리에 붙는다. 교안 코드가 하나도 빠지지 않게:
+#   ① 토픽의 코드 셀 전부 (정답을 채운 빈칸 셀 = 키 '3-1', 시연 셀 = 키 '3-c1') — 그림만 띄우는 셀(#@title 🖼)은 뺀다
+#   ② 빈칸 정답에만 있고 코드 셀로는 안 나온 코드 (NN D4 처럼) — 정답 글에서 꺼낸다
+# 빈칸 문제의 문장(q) · 💡 해설(expl)도 같은 키의 블록에 붙는다.
+
+FIG_CELL = re.compile(r'^\s*#@title\s*🖼')
+SOLVED_HEAD = re.compile(r'^# ✏️ 문제 [^\n]*\n')
+
+def _fill_info(f):
+    """빈칸 하나 → (번호, 문제 문장, 해설, 정답 코드)"""
+    num, sol = _solution(f['ans']) if f['ans'] else ('', '')
+    q0 = _text(md_html(f['q'][0])) if f['q'] else ''
+    m = re.match(r'\s*문제\s*([\d]+\s*-\s*[\d]+)\s*', q0)
+    if not num and m: num = re.sub(r'\s', '', m.group(1))
+    q = q0[m.end():] if m else q0
+    q = re.split(r'(?<=[.?!다요])\s', q, 1)[0] if len(q) > 90 else q            # 첫 문장
+    parts = re.split(r'\n\s*💡\s*해설\s*\n?', f['ans'] or '', 1)
+    expl = parts[1].strip() if len(parts) > 1 else ''
+    return num, q.strip(), expl, sol
+
+def lesson_codes(n, topics, fills):
+    info = {}
+    for f in fills:
+        num, q, expl, sol = _fill_info(f)
+        if num: info[num] = {'q': q, 'expl': expl, 'sol': sol}
+    codes, used, demo = [], set(), 0
+    for t in topics:
+        title = re.sub(r'^[▶📌⚠️\s]+', '', _text(_inline(t['title'])))
+        toks, seen = [], set()
+        for x in t['md']:                        # 본문 순서대로: [[BLOCK i]] (코드 셀) 와 마크다운 속 ```코드```
+            for m in re.finditer(r'\[\[BLOCK (\d+)\]\]|```(\w*)[^\n]*\n(.*?)```', x, re.S):
+                if m.group(1) is not None:
+                    i = int(m.group(1))
+                    if i < len(t['blocks']) and i not in seen: seen.add(i); toks.append(('b', i))
+                elif m.group(3).strip(): toks.append(('m', m.group(2) or 'python', m.group(3).rstrip()))
+        toks += [('b', i) for i in range(len(t['blocks'])) if i not in seen]
+        cur, skip = None, False
+        for tk in toks:
+            if tk[0] == 'm':                     # ③ 강의 글 속 코드 (예: ImageFolder 폴더 구조)
+                demo += 1
+                codes.append({'k': f'{n}-c{demo}', 'lang': tk[1] if tk[1] != 'python' or re.search(r'[(=]', tk[2]) else 'text', 'code': tk[2], 'outs': [], 'topic': title, 'from': 'md'})
+                cur = None; continue
+            b = t['blocks'][tk[1]]
+            if b['kind'] in ('code', 'cmd'):
+                skip = bool(FIG_CELL.match(b['text']))
+                if skip: cur = None; continue
+                k = b.get('solved') or ''
+                if not k: demo += 1; k = f'{n}-c{demo}'
+                cur = {'k': k, 'lang': 'bash' if b['kind'] == 'cmd' else 'python', 'code': SOLVED_HEAD.sub('', b['text'], 1),
+                       'outs': [], 'topic': title}
+                if b.get('solved') in info:
+                    cur.update(q=info[b['solved']]['q'], expl=info[b['solved']]['expl']); used.add(b['solved'])
+                codes.append(cur)
+            elif b['kind'] == 'out' and cur is not None and not skip:
+                cur['outs'].append({'text': b['text'], 'run': b.get('run', '')})
+    for num, x in info.items():                  # ② 빈칸 정답에만 있는 코드
+        if num not in used and x['sol'].strip():
+            codes.append({'k': num, 'lang': 'python', 'code': x['sol'], 'outs': [], 'topic': '', 'q': x['q'], 'expl': x['expl'], 'from': 'answer'})
+    return codes
 
 # ---------------- 파워포인트 ----------------
 

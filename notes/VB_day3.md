@@ -85,6 +85,9 @@ def latency_ms(model, input_size, reps=30, threads=1):
 
 ResNet-50 과 MobileNetV3-Small 의 MAC 은 약 72배 차이인데 ImageNet 정확도 차이는 8.4%p 뿐이다. 경량 모델은 연산을 수십 분의 1로 줄이면서 정확도는 몇 %p 만 내준다.
 
+<<CODE 1-1 | Day 2 ResNet-20 가중치 받아 정확도 확인>>
+<<CODE 1-3 | 네 모델의 파라미터 · MAC · 지연시간 한 표로>>
+
 #### 개념 2 · 지연시간 재는 법 — 장치 흉내
 | 조건 | 이유 |
 |---|---|
@@ -94,37 +97,7 @@ ResNet-50 과 MobileNetV3-Small 의 MAC 은 약 72배 차이인데 ImageNet 정�
 | warm-up 3회 버림 | 첫 실행은 메모리 할당 · 캐시로 느리다 |
 | 30회 평균 | 한 번 재면 잡음이 크다 |
 
-#### 코드로 확인
-```python
-def latency_ms(model, input_size, reps=30, threads=1):
-    m = copy.deepcopy(model).cpu().eval()          # 원본 보존
-    x = torch.randn(input_size)
-    old = torch.get_num_threads()
-    torch.set_num_threads(threads)
-    with torch.no_grad():
-        for _ in range(3):                          # warm-up
-            m(x)
-        t0 = time.perf_counter()
-        for _ in range(reps):
-            m(x)
-        dt = (time.perf_counter() - t0) / reps
-    torch.set_num_threads(old)
-    return dt * 1000
-```
-- **무엇을 하나**: 모델을 CPU 로 복사해 스레드 1개 · 배치 1장으로 warm-up 후 평균 시간을 ms 로 잰다.
-- **어떤 개념**: 개념 2.
-- **출력**: ResNet-20 (32 입력) **2.87 ms** (실행 예 — 컴퓨터마다 다름)
-
-```python
-models_224 = {"ResNet-18": torchvision.models.resnet18(weights=None),
-              "ResNet-50": torchvision.models.resnet50(weights=None),
-              "MobileNetV3-S": torchvision.models.mobilenet_v3_small(weights=None)}
-for name, m in models_224.items():
-    print(name, count_params(m), count_macs(m, (1, 3, 224, 224)), latency_ms(m, (1, 3, 224, 224), reps=5))
-```
-- **무엇을 하나**: 가중치 없이 구조만 만들어 파라미터 · MAC · 지연시간을 한 표로 비교한다.
-- **어떤 개념**: 개념 1.
-- **출력**: ResNet-50 MAC 4,089,184,256 · 134 ms / MobileNetV3-S MAC **56,510,400** · 8.8 ms (실행 예)
+<<CODE 1-2 | latency_ms — 스레드 1개 · 배치 1장으로 지연시간 재기>>
 
 #### 한 번에 정리
 - 온디바이스 모델은 정확도 · 지연시간 · 파라미터 · MAC 을 함께 본다.
@@ -209,6 +182,8 @@ def model_cost(model, input_size):
 
 예: ResNet-50 은 25,557,032 × 4 B ≈ 102 MB (가중치만), ResNet-20 은 272,474 × 4 B ≈ 1.09 MB. 파라미터가 적어도 큰 해상도를 오래 유지하면 활성화 메모리는 크다.
 
+<<CODE 2-1 | model_cost — hook 으로 파라미터 · 활성화 메모리 · MAC 세기>>
+
 #### 개념 2 · bottleneck — 1×1 로 줄였다 늘리기
 3×3 합성곱의 가중치는 Cout · Cin · 9 — 채널이 많으면 급격히 커진다. 그래서 채널이 256 인 곳에서는 1×1 Conv 로 64 로 줄이고, 비싼 3×3 을 거기서 한 뒤, 1×1 로 다시 256 으로 늘린다.
 
@@ -221,34 +196,7 @@ def model_cost(model, input_size):
 
 1×1 Conv 는 위치마다 채널끼리만 섞는 "채널 압축기" 다. 덕분에 ResNet-50 은 ResNet-18 보다 층이 3배 가까이 많은데 MAC 은 2.3배다.
 
-#### 코드로 확인
-```python
-def model_cost(model, input_size):
-    acts = [0]
-    def hook(m, inp, out):
-        acts[0] += out.numel()
-    hs = [m.register_forward_hook(hook) for m in model.modules() if isinstance(m, (nn.Conv2d, nn.Linear))]
-    model.eval()
-    with torch.no_grad():
-        model(torch.zeros(input_size, device=next(model.parameters()).device))
-    for h in hs: h.remove()
-    p = count_params(model)
-    return {"params": p, "macs": count_macs(model, input_size), "param_MB": p * 4 / 1e6, "act_MB": acts[0] * 4 / 1e6}
-```
-- **무엇을 하나**: 가짜 입력을 한 번 통과시키며 hook 으로 Conv · Linear 출력 원소 수를 더해 활성화 메모리를 구하고, 파라미터 · MAC 과 함께 돌려준다.
-- **어떤 개념**: 개념 1 — Day 2 의 count_macs 를 넓힌 것.
-- **출력**: ResNet-50 (224) 파라미터 약 **102.2 MB** · ResNet-20 1.09 MB
-
-```python
-def w(cin, cout, k):
-    return cout * cin * k * k
-
-basic = 2 * w(256, 256, 3)
-bottleneck = w(256, 64, 1) + w(64, 64, 3) + w(64, 256, 1)
-```
-- **무엇을 하나**: 256 채널에서 두 블록의 가중치 수를 계산한다.
-- **어떤 개념**: 개념 2.
-- **출력**: basic **1,179,648** · bottleneck **69,632** · **16.9배** 적음
+<<CODE 2-2 | basic vs bottleneck 블록 가중치 수 비교>>
 
 #### 한 번에 정리
 - 파일 크기 = 파라미터 × 4 B, 실행 메모리 = + 활성화, 계산 = MAC.
@@ -261,7 +209,7 @@ bottleneck = w(256, 64, 1) + w(64, 64, 3) + w(64, 256, 1)
 
 ### 3교시 · Depthwise Separable Convolution
 
-**키워드**: `Depthwise 3×3`, `Pointwise 1×1`, `groups = Cin`, `1/Cout + 1/K²`, `73,728 → 8,768`, `75,497,472 → 8,978,432`, `0.1189`, `실제 속도 4.1배 < MAC 8.4배`
+**키워드**: `Depthwise 3×3`, `Pointwise 1×1`, `groups = Cin`, `1/Cout + 1/K²`, `73,728 → 8,768`, `75,497,472 → 8,978,432`, `0.1189`, `실제 속도 3.4배 < MAC 8.4배`
 
 **개요**: 일반 3×3 합성곱은 공간(3×3 이웃)과 채널(모든 입력 채널)을 한꺼번에 섞는다. **MobileNet 은 이걸 둘로 쪼갠다.** ① Depthwise 3×3 — 채널마다 따로 공간만 섞기(`groups = Cin`). ② Pointwise 1×1 — 위치마다 채널만 섞기. ③ 연산량이 `1/Cout + 1/K²` ≈ **1/9** 로 줄어든다. ④ 하지만 실제 속도 향상은 MAC 비율보다 작다 — depthwise 는 메모리 병목.
 
@@ -281,7 +229,7 @@ bottleneck = w(256, 64, 1) + w(64, 64, 3) + w(64, 256, 1)
 |---|---|
 | 3-1 | `DSConv` 클래스 — dw(3×3, groups=cin) + BN + ReLU → pw(1×1) + BN + ReLU |
 | 3-2 | 64→128, 32×32 에서 일반 vs DS 의 가중치 · MAC 비교, 공식 `1/128 + 1/9` 와 대조 |
-| 3-3 | 64×56×56 입력 CPU 1 스레드 지연시간 비교 (일반 5.14 ms vs DS 1.26 ms) |
+| 3-3 | 64×56×56 입력 CPU 1 스레드 지연시간 비교 (일반 3.49 ms vs DS 1.02 ms) |
 
 **핵심 내용**
 
@@ -293,7 +241,7 @@ bottleneck = w(256, 64, 1) + w(64, 64, 3) + w(64, 256, 1)
 - **연산의 93%** → pointwise 1×1
 
 #### 실제 속도는 덜 빨라진다
-> MAC 8.4배 ↓ → 실측 **4.1배** (64 × 56 × 56, CPU 1 스레드: 5.14 → 1.26 ms)
+> MAC 8.4배 ↓ → 실측 **3.4배** (64 × 56 × 56, CPU 1 스레드: 3.49 → 1.02 ms)
 - **메모리 병목** → depthwise 는 곱셈은 적지만 채널마다 따로 메모리를 읽어, 계산 대비 데이터 이동이 많다
 - ⚠ MAC 이 적다고 반드시 빠르지 않다 → 실제 장치에서 잰다 (Day 5 ONNX · TensorRT)
 
@@ -330,45 +278,25 @@ bottleneck 은 채널 수를 줄여서 3×3 을 싸게 했다. 3×3 합성곱 �
 | ② Pointwise 1×1 | 위치마다 채널만 | 64·128 = 8,192 |
 | DS 합계 | | **8,768** (11.9%) |
 
+<<CODE 3-1 | DSConv 블록 만들기 — depthwise 3×3 → pointwise 1×1>>
+
 #### 개념 2 · 연산량 공식
 > DS / 일반 = (Cin·K²·HW + Cin·Cout·HW) / (Cin·Cout·K²·HW) = 1/Cout + 1/K²
 
 K = 3 이면 약 1/9 ~ 1/8, Cout 이 클수록 1/9 에 가깝다. 64 → 128, 32 × 32 에서 MAC 75,497,472 → 8,978,432, 비율 0.1189 = 1/128 + 1/9 로 공식과 같다. 남은 연산의 93% 는 pointwise 다.
 
+<<CODE 3-2 | 일반 vs DS — 가중치 · MAC 세서 공식과 맞추기>>
+
 #### 개념 3 · 실제 속도는 덜 빨라진다
-64 × 56 × 56 입력, CPU 1 스레드에서 일반 5.14 ms → DS 1.26 ms — 4.1배 (MAC 은 8.4배 감소). depthwise 는 곱셈은 적지만 채널마다 따로 메모리를 읽어, 계산에 비해 데이터 이동이 많다(**메모리 병목**). MAC 이 적다고 반드시 빠르지는 않다 → 실제 장치에서 재야 한다.
+64 × 56 × 56 입력, CPU 1 스레드에서 일반 3.49 ms → DS 1.02 ms — 3.4배 (MAC 은 8.4배 감소). depthwise 는 곱셈은 적지만 채널마다 따로 메모리를 읽어, 계산에 비해 데이터 이동이 많다(**메모리 병목**). MAC 이 적다고 반드시 빠르지는 않다 → 실제 장치에서 재야 한다.
 
-#### 코드로 확인
-```python
-class DSConv(nn.Module):
-    def __init__(self, cin, cout, stride=1):
-        super().__init__()
-        self.dw = nn.Sequential(nn.Conv2d(cin, cin, 3, stride=stride, padding=1, groups=cin, bias=False),
-                                nn.BatchNorm2d(cin), nn.ReLU(inplace=True))
-        self.pw = nn.Sequential(nn.Conv2d(cin, cout, 1, bias=False),
-                                nn.BatchNorm2d(cout), nn.ReLU(inplace=True))
-    def forward(self, x):
-        return self.pw(self.dw(x))
-```
-- **무엇을 하나**: depthwise(groups = cin) → pointwise(1×1) 두 단계 합성곱 블록.
-- **어떤 개념**: 개념 1.
-- **출력**: `DSConv(64, 128)` 과 일반 Conv 모두 (1, 64, 32, 32) → **(1, 128, 32, 32)** — 출력 모양은 같다
-
-```python
-conv_w = lambda m: sum(c.weight.numel() for c in m.modules() if isinstance(c, nn.Conv2d))
-w_std, w_ds = conv_w(std), conv_w(ds)
-m_std, m_ds = count_macs(std, (1, 64, 32, 32)), count_macs(ds, (1, 64, 32, 32))
-formula = 1 / 128 + 1 / 9
-```
-- **무엇을 하나**: 일반 vs DS 의 Conv 가중치와 MAC 을 세고 공식과 비교한다.
-- **어떤 개념**: 개념 2.
-- **출력**: 가중치 73,728 → **8,768** (0.1189) · MAC 75,497,472 → 8,978,432 (**0.1189**) · 공식 0.1189
+<<CODE 3-3 | CPU 1스레드로 실제 속도 재기>>
 
 #### 한 번에 정리
 - DS Conv = Depthwise 3×3 (채널마다 공간) + Pointwise 1×1 (채널 섞기).
 - 연산량 비율 = 1/Cout + 1/K² ≈ 1/9.
 - 64 → 128: 73,728 → 8,768.
-- ⚠ 실제 속도 향상(4.1배)은 MAC 감소(8.4배)보다 작다 — 메모리 병목.
+- ⚠ 실제 속도 향상(3.4배)은 MAC 감소(8.4배)보다 작다 — 메모리 병목.
 
 **연관 문제**
 <<QA 3>>
@@ -476,6 +404,8 @@ ResNet bottleneck 은 256 → 64 → 256 (줄였다 늘림), V2 는 24 → 144 �
 | 1×1 줄이기 144 → 24 | 3,456 + BN 48 |
 | 합계 | **8,832** |
 
+<<CODE 4-1 | InvertedResidual 블록 만들기 — 늘리기 · depthwise · 줄이기>>
+
 #### 개념 3 · V3 의 부품 — h-swish 와 SE
 ![h-swish 는 swish 를 sigmoid 없이 근사한다](assets/fig/vb/d3-hswish.svg)
 
@@ -485,45 +415,8 @@ ResNet bottleneck 은 256 → 64 → 256 (줄였다 늘림), V2 는 24 → 144 �
 
 **SE** 는 이미지마다 "지금 중요한 채널" 을 다시 정한다. MobileNetV3-Small 은 InvertedResidual 11개 중 9개에 SE 가 있고, 파라미터 2,542,856 · MAC 56,510,400 (224 입력).
 
-#### 코드로 확인
-```python
-class InvertedResidual(nn.Module):
-    def __init__(self, cin, cout, stride=1, t=6):
-        super().__init__()
-        hid = cin * t
-        self.use_res = stride == 1 and cin == cout
-        self.block = nn.Sequential(
-            nn.Conv2d(cin, hid, 1, bias=False), nn.BatchNorm2d(hid), nn.ReLU6(inplace=True),                        # 늘리기
-            nn.Conv2d(hid, hid, 3, stride, 1, groups=hid, bias=False), nn.BatchNorm2d(hid), nn.ReLU6(inplace=True),  # depthwise
-            nn.Conv2d(hid, cout, 1, bias=False), nn.BatchNorm2d(cout))                                               # 줄이기 (linear)
-    def forward(self, x):
-        out = self.block(x)
-        return x + out if self.use_res else out
-```
-- **무엇을 하나**: V2 블록 — 늘리기 → depthwise → 줄이기(활성화 없음), 조건이 맞으면 지름길.
-- **어떤 개념**: 개념 2.
-- **출력**: `InvertedResidual(24, 24)` **8,832** · (1, 24, 16, 16) 그대로 / `InvertedResidual(16, 24, stride=2)` **5,136** · (1, 16, 32, 32) → (1, 24, 16, 16)
-
-```python
-def h_swish(x):
-    return x * F.relu6(x + 3) / 6
-
-x = torch.linspace(-6, 6, 241)
-torch.allclose(h_swish(x), nn.Hardswish()(x))
-```
-- **무엇을 하나**: h-swish 를 직접 만들어 내장 Hardswish 와 비교한다.
-- **어떤 개념**: 개념 3.
-- **출력**: `True` — x = −3 에서 0, x = 3 에서 3, x = 1 에서 1 · 4/6 ≈ 0.667
-
-```python
-mnv3 = torchvision.models.mobilenet_v3_small(weights=None)
-blocks = [b for b in mnv3.features if b.__class__.__name__ == "InvertedResidual"]
-n_se = sum(any(m.__class__.__name__ == "SqueezeExcitation" for m in b.modules()) for b in blocks)
-feat = mnv3.features(torch.zeros(1, 3, 224, 224))
-```
-- **무엇을 하나**: torchvision MobileNetV3-Small 의 블록 · SE 개수와 마지막 특징맵을 확인한다.
-- **어떤 개념**: 개념 1 · 3.
-- **출력**: InvertedResidual **11** · SE **9** · 마지막 특징맵 **(1, 576, 7, 7)**
+<<CODE 4-2 | h-swish 직접 만들어 nn.Hardswish 와 비교>>
+<<CODE 4-3 | MobileNetV3-Small 구조 살펴보기 — 블록 · SE 세기>>
 
 #### 한 번에 정리
 - V1 = DS Conv, V2 = inverted residual(늘렸다 줄이기) + linear bottleneck, V3 = NAS + SE + h-swish.
@@ -618,6 +511,8 @@ MobileNet 을 처음부터 학습하려면 많은 데이터와 시간이 필요�
 | classifier 전체 | 576·1024 + 1024 + 10,250 | 601,098 |
 | features | | 927,008 |
 
+<<CODE 5-1 | 사전학습 MobileNetV3-Small 불러와 분류기를 10 클래스로 교체>>
+
 #### 개념 2 · 두 가지 방법
 | 방법 | 학습하는 부분 | 장점 | 언제 | 1 epoch (실행 예) |
 |---|---|---|---|---|
@@ -627,29 +522,11 @@ MobileNet 을 처음부터 학습하려면 많은 데이터와 시간이 필요�
 
 **동결**은 `requires_grad = False` 로 기울기를 안 구하게 하는 것이다. CIFAR-10(32 × 32, 흐림)은 ImageNet 과 꽤 달라 앞쪽 특징도 조금 고쳐야 해서 fine-tuning 이 더 높다.
 
+<<CODE 5-2 | feature extraction — features 동결하고 분류기만 학습>>
+<<CODE 5-3 | fine-tuning — 동결 없이 전체 학습 (+ 처음부터 학습과 비교)>>
+
 #### 개념 3 · 전처리는 사전학습 때와 같게
 사전학습 모델은 학습 때 받던 입력을 기대한다 — RGB 0 ~ 1 을 ImageNet 평균 (0.485, 0.456, 0.406) · 표준편차 (0.229, 0.224, 0.225) 로 정규화. CIFAR 정규화 상수를 쓰면 안 된다. 또 32 × 32 그대로면 몇 번의 stride 2 를 거치며 특징이 사라지므로 96 × 96 으로 키워 넣는다.
-
-#### 코드로 확인
-```python
-mnet = torchvision.models.mobilenet_v3_small(weights=W_MNV3S)     # ImageNet 사전학습
-print(W_MNV3S.transforms())                                          # 기대하는 전처리
-mnet.classifier[3] = nn.Linear(1024, 10)                             # 마지막 층만 교체
-```
-- **무엇을 하나**: 사전학습 가중치로 모델을 만들고 마지막 분류 층을 10 클래스로 바꾼다.
-- **어떤 개념**: 개념 1 · 3.
-- **출력**: 파라미터 **1,528,106** · features 927,008 · classifier 601,098 · 전처리의 mean · std = ImageNet 값
-
-```python
-fe = copy.deepcopy(mnet)
-for p in fe.features.parameters():
-    p.requires_grad = False                                          # 동결
-opt = torch.optim.Adam([p for p in fe.parameters() if p.requires_grad], lr=1e-3)
-hist_fe = fit(fe, plain_loader, test_mn_loader, 1, opt, label="feature extraction")
-```
-- **무엇을 하나**: 복사본의 features 를 동결하고 학습되는 파라미터만 옵티마이저에 넣어 1 epoch 학습한다.
-- **어떤 개념**: 개념 2.
-- **출력**: 학습되는 파라미터 **601,098** / 1,528,106 · test **0.6607** (실행 예) — 같은 방식의 fine-tuning 은 0.8273
 
 #### 한 번에 정리
 - 전이학습 = 사전학습 특징 추출기 + 새 분류기.
@@ -740,6 +617,10 @@ mnet.classifier[3] = nn.Linear(1024, len(train_set.classes))
 
 가장 크게 오른 클래스는 frog (+0.59) · bird (+0.43) · dog (+0.38) — ImageNet 에 비슷한 대상이 많을수록 사전학습 특징이 바로 쓰인다. 데이터를 모을 때는 클래스별 개수(균형)부터, 평가할 때는 클래스별 정확도를 같이 본다.
 
+<<CODE 6-1 | 클래스마다 100장 — 균형 잡힌 1,000장 인덱스 만들기>>
+<<CODE 6-2 | 1,000장으로 처음부터 vs 사전학습 비교>>
+<<CODE 6-3 | 클래스별 정확도 — 사전학습이 특히 도운 클래스>>
+
 #### 개념 2 · BN momentum 함정
 torchvision MobileNetV3 의 BN 은 momentum 0.01 — running 평균 · 분산이 매 step 새 배치 쪽으로 1% 만 움직인다.
 
@@ -760,29 +641,8 @@ torchvision MobileNetV3 의 BN 은 momentum 0.01 — running 평균 · 분산이
 
 레이블 번호는 `train_set.classes` 순서(폴더 이름 순)이고, 분류기는 `nn.Linear(1024, len(train_set.classes))`.
 
-#### 코드로 확인
-```python
-targets = np.array(train_mn.targets)
-idx_small = np.concatenate([np.where(targets == c)[0][:100] for c in range(10)])
-small_loader = DataLoader(Subset(train_mn, idx_small), batch_size=64, shuffle=True, num_workers=NW)
-print(len(idx_small), np.bincount(targets[idx_small]))
-```
-- **무엇을 하나**: 클래스마다 앞 100장의 인덱스를 모아 그 부분만 쓰는 로더를 만든다.
-- **어떤 개념**: 개념 1 — 균형 잡힌 부분집합.
-- **출력**: `1000 [100 100 100 100 100 100 100 100 100 100]` · `len(small_loader)` = **16**
-
-```python
-for name, w in [("scratch", None), ("pretrained", W_MNV3S)]:
-    torch.manual_seed(0)
-    m = torchvision.models.mobilenet_v3_small(weights=w)
-    m.classifier[3] = nn.Linear(1024, 10)
-    m = set_bn_momentum(m).to(device)            # 두 모델 모두 BN momentum 0.1
-    opt = torch.optim.Adam(m.parameters(), lr=1e-3)
-    small_res[name] = (m, fit(m, small_loader, test_mn_loader, 10, opt, label=name))
-```
-- **무엇을 하나**: 같은 조건(1,000장 · 10 epoch · BN momentum 0.1)으로 처음부터 vs 사전학습을 비교한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 처음부터 **0.3560** · 사전학습 **0.6561** (실행 예)
+<<CODE 6-c1 | ImageFolder 폴더 구조 — 폴더 이름 = 클래스>>
+<<CODE 6-c2 | ImageFolder 로 내 데이터 불러오고 분류기 바꾸기>>
 
 #### 한 번에 정리
 - 데이터가 1/50 이어도 사전학습은 0.66, 처음부터는 0.36.
@@ -894,6 +754,9 @@ cam_r20 = GradCAM(r20, r20.layer3)
 
 마지막으로 최댓값으로 나눠 0 ~ 1 로 맞추고, bilinear 보간으로 입력 크기까지 키워 원본 위에 겹친다.
 
+<<CODE 7-1 | GradCAM 클래스 — hook 으로 특징맵 · 기울기 저장 → CAM>>
+<<CODE 7-c1 | show_cams — CAM 을 사진 위에 겹쳐 그리기>>
+
 #### 개념 2 · CAM 해상도와 오답 분석
 CAM 은 마지막 특징맵 위의 지도라 그보다 정밀할 수 없다.
 
@@ -904,39 +767,8 @@ CAM 은 마지막 특징맵 위의 지도라 그보다 정밀할 수 없다.
 
 경량 모델은 빨리 줄여서 연산을 아끼므로 CAM 이 거칠다. 오답에서는 **예측 클래스** CAM 과 **정답 클래스** CAM(`cls=` 지정)을 나란히 본다. 예측 CAM 이 물체가 아니라 배경 · 가장자리에 몰려 있으면 맥락에 속은 것이다 → 다양한 배경의 데이터를 더한다.
 
-#### 코드로 확인
-```python
-class GradCAM:
-    def __init__(self, model, layer):
-        self.model, self.acts, self.grads = model, None, None
-        self.handle = layer.register_forward_hook(self._save)
-    def _save(self, module, inp, out):
-        self.acts = out
-        if out.requires_grad:                       # no_grad 안에서는 건너뜀
-            out.register_hook(self._save_grad)
-    def _save_grad(self, g):
-        self.grads = g
-```
-- **무엇을 하나**: 지정한 층이 실행될 때 출력 A 를 저장하고, 역전파 때 A 의 기울기를 가로채 저장하도록 hook 두 개를 건다.
-- **어떤 개념**: 개념 1 — forward hook 은 값, tensor hook 은 기울기.
-- **출력**: 없음 (준비 단계)
-
-```python
-def __call__(self, x, cls=None):
-    self.model.eval()
-    logits = self.model(x)
-    if cls is None:
-        cls = logits.argmax(1)
-    self.model.zero_grad()
-    logits[torch.arange(len(x)), cls].sum().backward()          # 클래스 c 점수만
-    alpha = self.grads.mean(dim=(2, 3), keepdim=True)           # (N, K, 1, 1)
-    cam = F.relu((alpha * self.acts).sum(dim=1))                 # (N, H, W)
-    cam = cam / (cam.amax(dim=(1, 2), keepdim=True) + 1e-8)
-    return cam.detach(), logits.argmax(1).detach()
-```
-- **무엇을 하나**: 클래스 점수만 역전파해 α 를 구하고, 가중합 → ReLU → 0 ~ 1 정규화.
-- **어떤 개념**: 개념 1.
-- **출력**: `GradCAM(r20, r20.layer3)` 에 16장 → CAM **(16, 8, 8)** · `GradCAM(ft, ft.features[-1])` 에 8장 → **(8, 3, 3)**
+<<CODE 7-3 | fine-tuning MobileNet 의 Grad-CAM (3×3 해상도)>>
+<<CODE 7-2 | 틀린 사진 — 예측 클래스 vs 정답 클래스의 CAM>>
 
 #### 한 번에 정리
 - Grad-CAM: α_k = 기울기의 공간 평균, CAM = ReLU(Σ α_k A^k) → 0 ~ 1 → 키워서 겹침.
@@ -1025,6 +857,9 @@ hist_mn = fit(model, mn_loader, test_mn_loader, EPOCHS, opt, sched, label="Mobil
 | 스케줄러 | OneCycleLR(max_lr 1e-3, 5 epoch, steps_per_epoch = 391) |
 | 학습 | 전체 fine-tuning 5 epoch → 목표 test ≥ 0.85 |
 
+<<CODE 8-1 | 과제 1 — 사전학습 모델 · AdamW · OneCycleLR 준비>>
+<<CODE 8-2 | 과제 2 — CIFAR-10 전체로 5 epoch fine-tuning · 저장>>
+
 #### 개념 2 · 비교표 읽기
 ![ResNet-20 vs MobileNetV3-S — 정확도는 MobileNet, CPU 지연시간은 ResNet-20](assets/fig/vb/d3-compare.svg)
 
@@ -1037,30 +872,8 @@ hist_mn = fit(model, mn_loader, test_mn_loader, EPOCHS, opt, sched, label="Mobil
 - **MAC 이 적은데 더 느리다** — 입력이 96 × 96(9배), depthwise · SE · 층 수가 많아 메모리 이동과 호출 오버헤드가 크다 (3교시와 같은 이야기).
 - 결론: 모델은 정확도 · 파라미터 · MAC · **실제 지연시간**을 함께 보고, 실제 장치에서 재서 고른다. 장치에서는 ONNX → TensorRT · int8 양자화가 더 필요하다.
 
-#### 코드로 확인
-```python
-model = torchvision.models.mobilenet_v3_small(weights=W_MNV3S)
-model.classifier[3] = nn.Linear(1024, 10)
-model = model.to(device)
-opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
-sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=1e-3, epochs=EPOCHS, steps_per_epoch=len(mn_loader))
-hist_mn = fit(model, mn_loader, test_mn_loader, EPOCHS, opt, sched, label="MobileNetV3-S")
-torch.save(model.state_dict(), "mnv3s_cifar10.pt")
-```
-- **무엇을 하나**: 사전학습 모델을 CIFAR-10 전체로 5 epoch fine-tuning 하고 저장한다.
-- **어떤 개념**: 개념 1 · 5교시 fine-tuning.
-- **출력**: `len(mn_loader)` = **391** · test **0.8842** (실행 예)
-
-```python
-compare = {
-    "ResNet-20 (scratch, 32)": (count_params(r20), count_macs(r20, (1, 3, 32, 32)), latency_ms(r20, (1, 3, 32, 32)), acc_r20),
-    "MobileNetV3-S (transfer, 96)": (count_params(model), count_macs(model, (1, 3, IMG, IMG)),
-                                     latency_ms(model, (1, 3, IMG, IMG)), mn_acc),
-}
-```
-- **무엇을 하나**: 두 모델을 각자의 입력 크기(32 · 96)로 같은 기준의 표에 담는다.
-- **어떤 개념**: 개념 2.
-- **출력**: MAC — ResNet-20 **40,813,184** · MobileNetV3-S **11,057,600** (채점 기준값) · 지연시간 2.87 vs 6.18 ms (실행 예)
+<<CODE 8-3 | 과제 3 — ResNet-20 vs MobileNetV3-S 비교표>>
+<<CODE 8-4 | 과제 4 — 틀린 사진 8장의 Grad-CAM>>
 
 #### 한 번에 정리
 - 사전학습 MobileNetV3-S 5 epoch fine-tuning (AdamW + OneCycle) → 0.8842 > ResNet-20 0.8587.

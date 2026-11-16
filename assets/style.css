@@ -678,3 +678,31 @@ details.fullnote[open] > summary { margin-bottom: 4px; }
   .nsec.study img { min-width: 520px; margin: 6px 0; }
   .nsec.study td, .nsec.study th { white-space: nowrap; }
 }
+
+/* 상세 학습의 코드 블록 (.ipynb 과목 — 노트의 <<CODE 키 | 제목>>) — 처음엔 접힘, 제목 = 코드가 하는 일 */
+details.cx { border: 1px solid var(--line); border-radius: 10px; margin: 10px 0 14px; background: var(--panel-2); }
+details.cx > summary { cursor: pointer; list-style: none; padding: 8px 12px; display: flex; gap: 8px; align-items: center; font-size: 14.5px; }
+details.cx > summary::-webkit-details-marker { display: none; }
+details.cx > summary::before { content: '▸'; color: var(--ink-3); font-size: 11px; transition: transform .15s; }
+details.cx[open] > summary::before { transform: rotate(90deg); }
+details.cx > summary:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); border-radius: 10px; }
+.cx-t { font-weight: 600; min-width: 0; }
+.cx-meta { margin-left: auto; color: var(--ink-3); font-size: 12px; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+.cx-g { color: var(--accent); }
+.cx-in { position: relative; padding: 2px 12px 10px; border-top: 1px solid var(--line); background: var(--panel); border-radius: 0 0 10px 10px; }
+.cx-q { margin: 8px 0 4px; font-size: 14px; color: var(--ink-2); }
+.cx-q b { font-size: 12px; background: var(--accent-soft); color: var(--accent); border-radius: 5px; padding: 1px 6px; margin-right: 4px; }
+.cx-hint { color: var(--ink-3); font-size: 11.5px; margin-left: 4px; }
+.cx pre { position: relative; }
+.cx pre.has-guide { padding-left: 24px; cursor: pointer; }
+.cx .fnk { border-bottom: 1px dotted var(--accent); cursor: help; }
+.cx .fnk:hover { background: var(--accent-soft); }
+.cx-expl { margin: 8px 0 2px; padding: 8px 12px; background: var(--ok-soft); border-radius: 8px; font-size: 14px; }
+.cx-expl > b { font-size: 13px; }
+.cx-expl p { margin: 4px 0; }
+.cx-rest { margin: 26px 0 6px; } .cx-rest small { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 6px; }
+.cxpop .gpop-d ul { margin: 4px 0; padding-left: 18px; }
+.fpop-sig, .fpop-flow { margin-top: 4px; font-size: 12.5px; color: var(--ink-3); }
+.fpop-args { margin-top: 6px; font-size: 12.5px; border-collapse: collapse; }
+.fpop-args td { padding: 2px 8px 2px 0; border: 0; vertical-align: top; }
+@media (max-width: 600px) { .cx-hint, .cx-ic { display: none; } details.cx > summary { font-size: 14px; flex-wrap: wrap; } .cx-meta { margin-left: 18px; } }

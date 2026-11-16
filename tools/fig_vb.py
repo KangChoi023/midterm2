@@ -363,7 +363,7 @@ def d3_dsconv():
     s.text(500, 150, 'pw: 1×1 × 128', 12, INK, 'middle'); s.text(500, 168, '(채널만) 64·128 = 8,192', 12, MUTED, 'middle')
     s.text(625, 100, '8,768', 15, GREEN, 'middle', True); s.text(625, 120, '(11.9%)', 12, MUTED, 'middle')
     s.text(350, 210, 'DS / 일반 = 1/Cout + 1/K² = 1/128 + 1/9 = 0.1189 — MAC 75,497,472 → 8,978,432 (32 × 32)', 13, INK, 'middle', True)
-    s.text(350, 234, '실제 속도는 덜 빨라진다: MAC 8.4배 ↓ → 실측 4.1배 (depthwise 는 계산 대비 메모리 이동이 많다)', 12, RED, 'middle')
+    s.text(350, 234, '실제 속도는 덜 빨라진다: MAC 8.4배 ↓ → 실측 3.4배 (depthwise 는 계산 대비 메모리 이동이 많다)', 12, RED, 'middle')
     s.save('d3-dsconv.svg')
 
 
