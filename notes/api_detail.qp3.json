@@ -1,0 +1,577 @@
+{
+ "export_onnx()": {
+  "role": "PyTorch 모델 → ONNX — batch=None 이면 배치 가변(ORT 용), 숫자면 고정(TensorRT 엔진용)",
+  "desc": [
+   "QP Day 3 데이터 셀이 제공하는 도우미 — 입력 이름 input · 출력 이름 logits · opset 17",
+   "가변이면 dynamic_axes={'input': {0: 'N'}, 'logits': {0: 'N'}}",
+   "TensorRT 용 rn20_b1.onnx 는 batch=1 로 고정"
+  ],
+  "args": [
+   [
+    "model",
+    "eval 모드 모델 (rn20 · bad)"
+   ],
+   [
+    "path",
+    "저장할 파일 이름"
+   ],
+   [
+    "batch",
+    "None = 가변 · 숫자 = 고정"
+   ]
+  ],
+  "flow": "torch.onnx.export(model, torch.zeros(batch or 1, 3, 32, 32), path, …)",
+  "ret": "path (문자열)",
+  "hdr": "import torch"
+ },
+ "ptq_ort()": {
+  "role": "Day 2 의 static PTQ 설정 그대로 INT8 ONNX 만들기 (제공 함수)",
+  "desc": [
+   "QDQ · 활성값 QUInt8 · weight QInt8 · per-channel · MinMax — x86 CPU 최적 설정",
+   "exclude → nodes_to_exclude (FP32 로 남길 노드) · quantize → nodes_to_quantize (이 노드만 양자화)",
+   "보정 데이터 기본값 X_cal 500장 · 양자화 로그는 quiet() 로 숨김"
+  ],
+  "args": [
+   [
+    "src",
+    "전처리된 ONNX (*_pre.onnx)"
+   ],
+   [
+    "dst",
+    "저장할 INT8 ONNX"
+   ],
+   [
+    "exclude",
+    "FP32 로 남길 노드 이름 목록"
+   ],
+   [
+    "quantize",
+    "양자화할 노드 이름 목록 (None = 전부)"
+   ],
+   [
+    "X",
+    "보정 데이터 (None = X_cal)"
+   ]
+  ],
+  "flow": "CifarReader(X) → quantize_static(…) → dst",
+  "ret": "dst (문자열)",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "register_forward_hook()": {
+  "role": "모듈이 실행될 때마다 (모듈, 입력, 출력) 을 받아 보는 함수를 단다",
+  "desc": [
+   "중간 텐서(여기서는 각 BasicBlock 의 bn1 출력)를 꺼낼 때 쓴다",
+   "lambda 의 기본 인자 name=name 으로 블록 이름을 고정 (안 하면 마지막 이름만 남음)",
+   "돌려받은 handle 의 .remove() 로 꼭 지운다"
+  ],
+  "args": [
+   [
+    "hook",
+    "fn(module, input, output) — 반환값 None 이면 출력은 그대로"
+   ]
+  ],
+  "flow": "모듈 forward → 출력 계산 → hook(module, inp, out) 호출",
+  "ret": "RemovableHandle (.remove() 로 해제)",
+  "hdr": "import torch.nn as nn"
+ },
+ "np.delete()": {
+  "role": "배열에서 지정한 위치(행 · 열 · 채널)를 뺀 새 배열",
+  "desc": [
+   "예제 1-A: outlier 채널 하나를 빼서 나머지 15채널만 남긴다",
+   "원본은 바뀌지 않는다 (새 배열을 돌려줌)"
+  ],
+  "args": [
+   [
+    "arr",
+    "배열 (100, 16, 32, 32)"
+   ],
+   [
+    "obj",
+    "뺄 위치 (채널 번호)"
+   ],
+   [
+    "axis",
+    "축 (채널 = 1)"
+   ]
+  ],
+  "flow": "axis 방향에서 obj 위치를 제외하고 복사",
+  "ret": "ndarray (100, 15, 32, 32)",
+  "hdr": "import numpy as np"
+ },
+ "sqnr()": {
+  "role": "SQNR (dB) — 20·log10(‖x‖ / ‖x − y‖), 클수록 두 텐서가 비슷",
+  "desc": [
+   "1차원 · float64 로 편 뒤 계산 · 분모에 1e-12",
+   "1% 오차 = 40 dB · 10% 노이즈 ≈ 20 dB · 20 dB 아래면 의심",
+   "누적 비교 · 단독 민감도 모두 이 함수로"
+  ],
+  "args": [
+   [
+    "x",
+    "기준 (FP32) 텐서"
+   ],
+   [
+    "y",
+    "비교 (INT8 → DQ) 텐서"
+   ]
+  ],
+  "flow": "ravel → float64 → norm(x) / norm(x − y) → 20·log10",
+  "ret": "float (dB)",
+  "hdr": "import numpy as np"
+ },
+ "cosine()": {
+  "role": "cosine similarity — 두 텐서의 방향이 같은 정도 (−1 ~ 1)",
+  "desc": [
+   "크기는 무시 — x 와 3x 는 1, x 와 −x 는 −1",
+   "0.99 아래면 의심 · SQNR 과 함께 본다"
+  ],
+  "args": [
+   [
+    "x",
+    "기준 텐서"
+   ],
+   [
+    "y",
+    "비교 텐서"
+   ]
+  ],
+  "flow": "ravel → float64 → x·y / (‖x‖‖y‖ + 1e-12)",
+  "ret": "float",
+  "hdr": "import numpy as np"
+ },
+ "modify_model_output_intermediate_tensors()": {
+  "role": "ONNX 의 모든 중간 텐서를 출력으로 꺼낸 모델을 새로 저장",
+  "desc": [
+   "qdq_loss_debug 의 첫 단계 — FP32 · INT8 모델에 각각 적용",
+   "INT8 모델에서는 '이름_DequantizeLinear_Output' 텐서가 다음 layer 가 실제로 받는 값"
+  ],
+  "args": [
+   [
+    "input_model_path",
+    "원래 ONNX"
+   ],
+   [
+    "output_model_path",
+    "중간 텐서까지 출력하는 ONNX"
+   ]
+  ],
+  "flow": "그래프의 모든 노드 출력을 graph.output 에 추가 → 저장",
+  "ret": "None (파일 생성)",
+  "hdr": "from onnxruntime.quantization.qdq_loss_debug import modify_model_output_intermediate_tensors"
+ },
+ "collect_activations()": {
+  "role": "중간 텐서를 꺼낸 모델에 데이터를 흘려 텐서 이름 → 배치별 값 목록을 모은다",
+  "desc": [
+   "reader 는 CalibrationDataReader (CifarReader(X_cal[:100]))",
+   "배치별 배열 목록 → np.concatenate([a.ravel() …]) 로 펴서 비교"
+  ],
+  "args": [
+   [
+    "augmented_model",
+    "modify_… 로 만든 ONNX"
+   ],
+   [
+    "input_reader",
+    "보정 데이터 reader"
+   ]
+  ],
+  "flow": "reader.get_next() 가 None 일 때까지 실행 → 출력마다 리스트에 추가",
+  "ret": "dict {텐서 이름: [배열, …]}",
+  "hdr": "from onnxruntime.quantization.qdq_loss_debug import collect_activations"
+ },
+ "nodes_to_quantize": {
+  "role": "quantize_static 인자 — 이 이름의 노드만 양자화하고 나머지는 FP32",
+  "desc": [
+   "단독 민감도: 블록 하나의 노드(이름이 /layer1/layer1.1/ 로 시작)만 넘긴다",
+   "블록마다 모델을 하나씩 만들어 최종 logits SQNR 비교"
+  ],
+  "args": [
+   [
+    "nodes_to_quantize",
+    "노드 이름 목록 (None = 전부)"
+   ]
+  ],
+  "flow": "목록에 없는 노드에는 Q/DQ 를 붙이지 않음",
+  "ret": "—",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "block_nodes()": {
+  "role": "블록 이름 → 그 블록의 conv1 · 첫 Relu · conv2 노드 이름 3개",
+  "desc": [
+   "접두사 /layer1/layer1.1/ + conv1/Conv · Relu · conv2/Conv",
+   "shortcut Conv 와 블록 끝 Relu_1 은 빼지 않는다 (outlier 가 지나지 않음)",
+   "그래프 순서대로 돌려준다"
+  ],
+  "args": [
+   [
+    "block",
+    "\"layer1.1\" 처럼"
+   ],
+   [
+    "graph",
+    "onnx 그래프 (기본 bad_pre.onnx)"
+   ]
+  ],
+  "flow": "접두사 만들기 → 찾을 이름 3개 → graph.node 를 돌며 일치하는 이름",
+  "ret": "list[str] (3개)",
+  "hdr": "import onnx"
+ },
+ "nodes_to_exclude": {
+  "role": "quantize_static 인자 — 이 이름의 노드는 양자화하지 않고 FP32 로 남긴다 (mixed precision)",
+  "desc": [
+   "범인 텐서의 생산자 · 소비자를 함께 넣는다 (conv1 · Relu · conv2)",
+   "BadQuantNet: 0 · 3 · 9노드 → 정확도 0.2965 · 0.6325 · 0.8465",
+   "TensorRT 에서는 뺀 노드가 FP16 으로 실행 (INT8 + FP16 플래그)"
+  ],
+  "args": [
+   [
+    "nodes_to_exclude",
+    "노드 이름 목록"
+   ]
+  ],
+  "flow": "목록의 노드 앞뒤에는 Q/DQ 를 붙이지 않음",
+  "ret": "—",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "trt_check()": {
+  "role": "ONNX 가 TensorRT INT8 조건(S8 · zero_point 0)에 맞는지 점검",
+  "desc": [
+   "Q/DQ 노드의 input[2] = zero_point initializer 를 모두 확인",
+   "Day 2 U8 모델 → uint8 68 · nonzero 26 → ok False",
+   "형식 점검일 뿐 — 결과가 맞는지는 따로 (6-1 사람 0명)"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ]
+  ],
+  "flow": "initializer 사전 → Q/DQ 목록 → zp 자료형 · 값 세기",
+  "ret": "dict {qdq, uint8, nonzero_zp, ok}",
+  "hdr": "import onnx"
+ },
+ "make_trt_int8()": {
+  "role": "TensorRT 용 INT8 QDQ ONNX — 활성값 · weight 모두 S8 · 대칭",
+  "desc": [
+   "QDQ · per-channel · QInt8/QInt8 + ActivationSymmetric · WeightSymmetric · QuantizeBias False",
+   "exclude 로 mixed precision (YOLOv8n head 24노드 · mixed 31노드)",
+   "ResNet-20 배치 1: 정확도 0.8435 · trt_check 합격"
+  ],
+  "args": [
+   [
+    "src",
+    "전처리된 ONNX"
+   ],
+   [
+    "dst",
+    "저장할 파일"
+   ],
+   [
+    "reader",
+    "보정 reader (CifarReader(X_cal, bs=1) · YoloReader)"
+   ],
+   [
+    "exclude",
+    "FP32/FP16 로 남길 노드"
+   ]
+  ],
+  "flow": "quantize_static(…, extra_options={…}) → dst",
+  "ret": "dst (문자열)",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "extra_options": {
+  "role": "quantize_static 의 세부 설정 사전",
+  "desc": [
+   "ActivationSymmetric: 활성값 zp = 0 · WeightSymmetric: weight zp = 0",
+   "QuantizeBias: False 면 bias 를 INT32 로 바꾸지 않고 FP32 로 둔다"
+  ],
+  "args": [
+   [
+    "ActivationSymmetric",
+    "True/False"
+   ],
+   [
+    "WeightSymmetric",
+    "True/False"
+   ],
+   [
+    "QuantizeBias",
+    "True/False"
+   ]
+  ],
+  "flow": "quantize_static 이 Q/DQ scale · zp 를 정할 때 반영",
+  "ret": "—",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "BuilderFlag.INT8": {
+  "role": "TensorRT 빌드 설정에서 INT8 커널 사용을 허락하는 플래그",
+  "desc": [
+   "QDQ ONNX 를 넣으면 Q/DQ 가 있는 곳만 INT8",
+   "FP16 플래그도 함께 켜면 나머지 layer 는 FP16 (trtexec --int8 --fp16)"
+  ],
+  "args": [
+   [
+    "flag",
+    "trt.BuilderFlag.INT8"
+   ]
+  ],
+  "flow": "config.set_flag(…) → build_serialized_network 에서 INT8 커널 후보 포함",
+  "ret": "None",
+  "hdr": "import tensorrt as trt"
+ },
+ "build_engine()": {
+  "role": "ONNX → TensorRT 엔진 파일 — OT D4 함수에 int8 인자를 더한 것",
+  "desc": [
+   "Builder → network → OnnxParser → config (WORKSPACE 1 GB · DETAILED) → 직렬화 → 저장",
+   "fp16 이면 BuilderFlag.FP16, int8 이면 BuilderFlag.INT8",
+   "GPU 가 없으면 정의만 하고 넘어간다"
+  ],
+  "args": [
+   [
+    "onnx_path",
+    "ONNX (INT8 이면 QDQ ONNX)"
+   ],
+   [
+    "engine_path",
+    "저장할 .engine"
+   ],
+   [
+    "fp16",
+    "FP16 허용"
+   ],
+   [
+    "int8",
+    "INT8 허용"
+   ]
+  ],
+  "flow": "parse_from_file → create_builder_config → set_flag → build_serialized_network → write",
+  "ret": "engine_path",
+  "hdr": "import tensorrt as trt"
+ },
+ "polygraphy run": {
+  "role": "같은 입력을 여러 런타임(ORT · TensorRT)에 넣어 출력을 허용 오차로 비교하는 명령",
+  "desc": [
+   "--onnxrt --trt: 두 런타임 · --int8 --fp16: 엔진 정밀도",
+   "--atol · --rtol: 절대 · 상대 허용 오차 (INT8 끼리도 똑같지 않다)",
+   "오늘은 같은 일을 Python(max_abs · agree)으로"
+  ],
+  "args": [
+   [
+    "model",
+    "ONNX 파일"
+   ],
+   [
+    "--onnxrt / --trt",
+    "비교할 런타임"
+   ],
+   [
+    "--atol / --rtol",
+    "허용 오차"
+   ]
+  ],
+  "flow": "입력 생성 → 런타임마다 실행 → 출력 비교 → PASSED / FAILED",
+  "ret": "터미널 출력",
+  "hdr": "pip install polygraphy",
+  "ex": ""
+ },
+ "run_acc()": {
+  "role": "추론기 하나로 배치 1 정확도 (한 장씩)",
+  "desc": [
+   "엔진 입력이 배치 1 고정이라 X[i:i+1] 로 2,000번",
+   "TRTInfer · ORT 함수 어느 쪽이든 x → logits 이면 된다"
+  ],
+  "args": [
+   [
+    "infer",
+    "x → logits 함수"
+   ],
+   [
+    "X / y",
+    "평가 데이터 · 라벨 (기본 X_ev · y_ev)"
+   ]
+  ],
+  "flow": "i 마다 infer(X[i:i+1]).argmax() == y[i] → 평균",
+  "ret": "float",
+  "hdr": "import numpy as np"
+ },
+ "layer_precisions()": {
+  "role": "TensorRT 엔진의 layer 마다 실제 실행 정밀도(INT8 · FP16 · FP32)를 센다",
+  "desc": [
+   "engine inspector JSON 의 'Layers' → 출력 정보 글자에 int8 · half · float",
+   "INT8 엔진의 FP16 layer = mixed precision 으로 뺀 곳",
+   "빌드 때 ProfilingVerbosity.DETAILED 가 필요"
+  ],
+  "args": [
+   [
+    "engine_path",
+    ".engine 파일"
+   ]
+  ],
+  "flow": "deserialize → create_engine_inspector → get_engine_information(JSON) → Counter",
+  "ret": "Counter",
+  "hdr": "import tensorrt as trt"
+ },
+ "YoloReader": {
+  "role": "YOLOv8n 보정 reader — 사진을 한 장씩 {\"images\": (1, 3, 640, 640)} 로",
+  "desc": [
+   "CifarReader 와 같은 구조 (get_next · rewind)",
+   "CAL_IDX = 인덱스가 4의 배수인 43장 — 평가 127장과 겹치지 않게",
+   "전처리는 OT D5 의 to_input (letterbox · RGB · CHW · /255)"
+  ],
+  "args": [
+   [
+    "idx",
+    "보정에 쓸 사진 인덱스 목록"
+   ]
+  ],
+  "flow": "get_next: 다음 인덱스 → to_input(imgs[i])[0] · 끝나면 None",
+  "ret": "CalibrationDataReader 객체",
+  "hdr": "from onnxruntime.quantization import CalibrationDataReader"
+ },
+ "ort_infer()": {
+  "role": "ONNX 파일 → x 를 받아 output0 을 돌려주는 함수 (TRTInfer 와 같은 모양)",
+  "desc": [
+   "detect(frame, infer) 에 그대로 꽂힌다",
+   "threads=0 이면 ORT 가 스레드 수를 정한다"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "threads",
+    "스레드 수 (0 = 자동)"
+   ]
+  ],
+  "flow": "make_session(path) → lambda x: s.run(None, {'images': x})[0]",
+  "ret": "함수 (x → (1, 84, 8400))",
+  "hdr": "import onnxruntime as ort"
+ },
+ "re.match()": {
+  "role": "문자열의 맨 앞이 정규식과 맞는지 — 노드 이름 고르기",
+  "desc": [
+   "r\"/model.22/cv[23]\\.\\d/\" = Detect head 의 무거운 Conv 갈래",
+   "맞지 않으면 None — head 후처리는 이 조건이 아닌 /model.22/ 노드"
+  ],
+  "args": [
+   [
+    "pattern",
+    "정규식"
+   ],
+   [
+    "string",
+    "검사할 문자열"
+   ]
+  ],
+  "flow": "앞에서부터 패턴 비교",
+  "ret": "Match 또는 None",
+  "hdr": "import re"
+ },
+ "eval_map()": {
+  "role": "추론기 + 사진 인덱스 → (AP50, mAP@0.5:0.95)",
+  "desc": [
+   "사진마다 detect(conf=0.01) → (N, 5) · 정답도 같은 인덱스로",
+   "YOLOv8n 평가 127장: FP32 0.9719 / 0.8375 · INT8 0.9656 / 0.8251"
+  ],
+  "args": [
+   [
+    "infer",
+    "x → output0 함수"
+   ],
+   [
+    "idx",
+    "EVAL_IDX 또는 CAL_IDX"
+   ]
+  ],
+  "flow": "detect → 박스·점수 합치기 → evaluate_ap · map_50_95",
+  "ret": "tuple (AP50, mAP)",
+  "hdr": "import numpy as np"
+ },
+ "make_infer()": {
+  "role": "정밀도 이름 + ONNX → 같은 모양의 추론기 (GPU 면 엔진, 아니면 ORT)",
+  "desc": [
+   "GPU: TRTInfer(build_once(onnx, f'yolov8n_{prec}.engine', fp16, int8))",
+   "CPU: FP16 이면 None (재지 않음) · 나머지는 ort_infer(onnx)",
+   "measure · 과제 5 가 모두 이 함수로 추론기를 만든다"
+  ],
+  "args": [
+   [
+    "prec",
+    "FP32 · FP16 · INT8 · INT8-mixed"
+   ],
+   [
+    "onnx_path",
+    "ONNX"
+   ],
+   [
+    "fp16 / int8",
+    "빌드 플래그"
+   ]
+  ],
+  "flow": "TRT_OK 확인 → 엔진 빌드(있으면 재사용) 또는 ORT 세션",
+  "ret": "함수 또는 None",
+  "hdr": "import tensorrt as trt"
+ },
+ "measure()": {
+  "role": "엔진 하나를 재서 심사표 한 행 — 지연 · FPS · AP50 · mAP · 크기",
+  "desc": [
+   "지연: 평가 첫 사진 입력으로 bench_fn (GPU n=200 · CPU n=10)",
+   "추론기가 None 이면 숫자는 모두 NaN",
+   "크기: GPU 면 엔진 파일 · CPU 면 ONNX 파일 MB"
+  ],
+  "args": [
+   [
+    "prec",
+    "정밀도 이름"
+   ],
+   [
+    "onnx_path",
+    "ONNX"
+   ],
+   [
+    "fp16 / int8",
+    "빌드 플래그"
+   ]
+  ],
+  "flow": "make_infer → bench_fn → eval_map → size",
+  "ret": "dict {prec, backend, latency_ms, fps, AP50, mAP, size_mb}",
+  "hdr": "import numpy as np"
+ },
+ "DataFrame.sort_values()": {
+  "role": "열 값 기준으로 행 정렬",
+  "desc": [
+   "규칙을 통과한 행만 고른 뒤 latency_ms 오름차순 → .iloc[0] = 가장 빠른 엔진",
+   "ascending=False 면 내림차순"
+  ],
+  "args": [
+   [
+    "by",
+    "기준 열 이름"
+   ],
+   [
+    "ascending",
+    "오름차순 여부 (기본 True)"
+   ]
+  ],
+  "flow": "기준 열로 정렬한 새 DataFrame",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.itertuples()": {
+  "role": "행을 하나씩 이름 붙은 튜플로 돌려주는 반복자",
+  "desc": [
+   "r.prec · r.AP50 처럼 열 이름으로 꺼낸다",
+   "qp_baseline.csv 에 넣을 사전(day · model · quant · acc …)을 행마다 만든다"
+  ],
+  "args": [
+   [
+    "index",
+    "인덱스 포함 여부 (기본 True)"
+   ]
+  ],
+  "flow": "for r in df.itertuples(): …",
+  "ret": "namedtuple 반복자",
+  "hdr": "import pandas as pd"
+ }
+}

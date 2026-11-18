@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="260" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">TensorRT INT8 두 길 — 오늘은 explicit (QDQ ONNX)</text>
+<text x="20.0" y="55.0" font-size="13" fill="#64748b" text-anchor="start" font-weight="700">implicit (TensorRT 10 deprecated)</text>
+<rect x="20.0" y="65.0" width="170.0" height="46.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="105.0" y="85.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">FP32 ONNX</text>
+<text x="105.0" y="103.0" font-size="12.5" fill="#64748b" text-anchor="middle">+ calibrator 클래스</text>
+<rect x="240.0" y="65.0" width="200.0" height="46.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="340.0" y="85.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">TensorRT 빌드 중 보정</text>
+<text x="340.0" y="103.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT8 위치도 TRT 가</text>
+<rect x="490.0" y="65.0" width="190.0" height="46.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="585.0" y="93.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">INT8 엔진</text>
+<line x1="190.0" y1="88.0" x2="238.0" y2="88.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="440.0" y1="88.0" x2="488.0" y2="88.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="20.0" y="145.0" font-size="13" fill="#16a34a" text-anchor="start" font-weight="700">explicit (권장)</text>
+<rect x="20.0" y="155.0" width="170.0" height="46.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="105.0" y="175.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">QDQ ONNX (S8 · 대칭)</text>
+<text x="105.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">ORT quantize_static</text>
+<rect x="240.0" y="155.0" width="200.0" height="46.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="340.0" y="175.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">BuilderFlag.INT8 + FP16</text>
+<text x="340.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">Q/DQ 있는 곳만 INT8</text>
+<rect x="490.0" y="155.0" width="190.0" height="46.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="585.0" y="175.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">INT8 엔진</text>
+<text x="585.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">뺀 곳은 FP16</text>
+<line x1="190.0" y1="178.0" x2="238.0" y2="178.0" stroke="#16a34a" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="440.0" y1="178.0" x2="488.0" y2="178.0" stroke="#16a34a" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="228.0" font-size="12" fill="#dc2626" text-anchor="middle">trt_check: Day 2 모델(활성값 U8) → uint8 zp 68개 · 0 아닌 zp 26개 → 불합격</text>
+<text x="350.0" y="248.0" font-size="12" fill="#16a34a" text-anchor="middle">make_trt_int8 (QInt8 · ActivationSymmetric · WeightSymmetric) → uint8 0 · nonzero 0 → 합격 · 정확도 0.8435</text>
+</svg>
