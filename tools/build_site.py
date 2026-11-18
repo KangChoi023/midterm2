@@ -240,10 +240,61 @@ def review_quiz(sid, d, n):
         if q.get('n') != n or q.get('a') is None: continue
         w = re.sub(r'^\s*(정답입니다\.|정답:\s*[①②③④⑤]?[^—]*—)\s*', '', q.get('w', ''))
         w = re.sub(r'\s*\[복습:[^\]]*\]\s*$', '', w).strip()
-        item = {'ty': 'mc', 'p': htmlmod.escape(q['p']), 'o': q['o'], 'a': q['a'], 'w': htmlmod.escape(w), 'src': 'review-wiki' if q.get('by') == 'wiki' else 'review'}
+        item = {'ty': 'mc', 'p': htmlmod.escape(q['p']), 'o': q['o'], 'a': q['a'], 'w': htmlmod.escape(w), 'src': {'wiki': 'review-wiki', 'final': 'review-final'}.get(q.get('by'), 'review')}
         if q.get('c'): item['c'] = q['c']
         out.append(item)
     return out
+
+
+# ---------------- 강사님 Google Form 퀴즈 (AI_CAMPUS/*/*_GoogleForm.gs) ----------------
+# 스크립트 안의 QUESTIONS 배열 = 문제 · 보기 · 공식 정답 · 해설 · anim("D2-3" = Day 2 · 3교시).
+# 복습 퀴즈(Day N 복습)와 최종 필기 퀴즈(30문항)를 그 교시의 "연관 문제" 에 붙인다. 교시 표시가 없는 파일(Python)은 건너뛴다.
+GS_SUBJ = [(r'^Neural Network', 'nn'), (r'^Vision 기본 모델', 'vb'), (r'^ONNX', 'ot'), (r'^양자화|^Quantization', 'qp')]
+GS_STAT = []
+# 해설의 anim("D2-7")은 애니메이션 장면 번호 — VB · OT 는 장면 = 교시지만, NN 은 장면이 교시와 어긋나는 Day 가 있다
+# (NN Day 2 는 장면 9개). 장면 제목과 교시 제목을 맞춰 본 표: {(과목, Day): {장면: 교시}} — 없는 장면은 그대로
+ANIM_LESSON = {('nn', 2): {7: 6, 8: 7, 9: 8},          # D2-7 손실 함수 → 6교시 출력층 · 손실, D2-8 선형 회귀 → 7, D2-9 로지스틱 → 8
+               ('nn', 5): {3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7}}   # D5-3 다채널 → 2교시 합성곱, D5-4 im2col → 3, … D5-8 비용 계산기 → 7
+
+def load_gs_quizzes():
+    import glob
+    got = {}
+    for path in sorted(glob.glob(os.path.join(CAMPUS, '*', '*GoogleForm.gs'))):
+        src = open(path, encoding='utf8').read()
+        head = re.search(r'^\s*\*\s*(.+?)\s*—', src, re.M)
+        title = head.group(1).strip() if head else ''
+        sid = next((s for pat, s in GS_SUBJ if re.search(pat, title)), None)
+        m = re.search(r'var\s+QUESTIONS\s*=\s*(\[.*?\]);', src, re.S)
+        if not sid or not m: continue
+        body = re.sub(r'(?m)^\s*//.*$', '', m.group(1))                 # 줄 주석 (// ── D4-1 … ──)
+        body = re.sub(r'(?<=[{,])(\s*)(title|options|answer|why|anim|code)\s*:', r'\1"\2":', body)
+        body = re.sub(r',(\s*[\]}])', r'\1', body)                   # 끝 쉼표
+        try: qs = json.loads(body)
+        except Exception as e: print(f'  ! 구글 폼 퀴즈를 못 읽음: {os.path.relpath(path, CAMPUS)} — {e}'); continue
+        final = '최종' in title
+        n_ok = 0
+        for q in qs:
+            a = re.match(r'D(\d+)-(\d+)', q.get('anim') or '')
+            if not a or not isinstance(q.get('answer'), int): continue
+            d, n = int(a.group(1)), int(a.group(2))
+            n = ANIM_LESSON.get((sid, d), {}).get(n, n)
+            got.setdefault(sid, {}).setdefault(str(d), []).append(
+                {'n': n, 'p': q['title'], 'c': q.get('code'), 'o': q['options'], 'a': q['answer'], 'w': q.get('why', ''),
+                 'by': 'final' if final else 'gs'})
+            n_ok += 1
+        GS_STAT.append(f'{sid} {os.path.basename(path).replace("_GoogleForm.gs", "")} {n_ok}/{len(qs)}')
+    return got
+
+def merge_review(review, gs):
+    """공식 정답이 있는 구글 폼 문항을 넣고, 같은 문제를 직접 푼 예전 풀이(by=wiki)는 뺀다"""
+    norm = lambda s: re.sub(r'\W+', '', s or '')
+    for sid, days in gs.items():
+        for d, qs in days.items():
+            have = review.setdefault(sid, {}).setdefault(d, [])
+            official = {norm(q['p']) for q in qs}
+            have[:] = [q for q in have if not (q.get('by') == 'wiki' and norm(q.get('p')) in official)]
+            have.extend(qs)
+    return review
 
 
 def load_json(name):
@@ -558,6 +609,7 @@ def main():
     global REVIEW
     rq = os.path.join(NOTES, 'review_quiz.json')
     REVIEW = json.load(open(rq, encoding='utf8')) if os.path.exists(rq) else {}
+    REVIEW = merge_review(REVIEW, load_gs_quizzes())
     want = [a.lower() for a in sys.argv[1:]]
     index = {'built': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'), 'subjects': [],
              'search': [], 'terms': [], 'funcs': [], 'links': [], 'code': []}
@@ -580,6 +632,7 @@ def main():
     html = re.sub(r'((?:src|href)="(?:assets|data)/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', r'\1?v=' + ver + '"', html)
     open(ip, 'w', encoding='utf8').write(html)
     print('  · 함수 예제 줄: ' + ' · '.join(f'{s} {h}/{t}' for s, h, t in EX_STAT))
+    if GS_STAT: print('  · 구글 폼 퀴즈: ' + ' · '.join(GS_STAT))
     if UNSUPPORTED_WS: print(f'  · 아직 문항을 못 읽는 워크시트 형식 {len(UNSUPPORTED_WS)}개: ' + ', '.join(UNSUPPORTED_WS))
     for k in GUIDE:
         if k not in GUIDE_HIT: print(f'  ! 코드 가이드 파일을 못 찾음: {k}')
