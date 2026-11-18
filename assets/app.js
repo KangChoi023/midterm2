@@ -1120,7 +1120,7 @@
   function quizCard(q, i, key) {
     const ty = q.ty || 'mc';
     const tag = { ox: '[O/X] ', multi: '[복수선택] ', match: '[짝짓기] ', order: '[순서] ', hot: '[그림 클릭] ', drop: '[빈칸] ', code: '[코드 빈칸] ', short: q.ro ? '[빈칸] ' : '[단답] ' }[ty] || '';
-    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
+    const src = q.src === 'review' ? '<span class="qsrc">복습</span>' : q.src === 'review-final' ? '<span class="qsrc" title="강사님 최종 필기 퀴즈 (Day 1~5, 30문항)">최종 퀴즈</span>' : q.src === 'review-wiki' ? '<span class="qsrc" title="정답이 없는 복습 퀴즈 — 노트를 근거로 직접 푼 정답·해설 (공식 아님)">복습 · 직접 풀이</span>' : '';
     // 문장 빈칸(drop): 빈칸 자리마다 보기 버튼 묶음 / 코드 빈칸(code): 코드 안 빈칸 자리마다 입력칸
     const body = ty === 'drop' ? q.parts.map((x, k) => x + (k < q.opts.length ? `<span class="dp" data-b="${k}">${q.opts[k].map((o, j) => `<button type="button" class="dp-o" data-b="${k}" data-j="${j}">${esc(o)}</button>`).join('')}</span>` : '')).join('') : q.p;
     let h = `<div class="q" id="q${i}" data-key="${esc(key)}"><div class="q-p"><span class="n">Q${i + 1}</span>${src}${tag}${body}</div>`;
@@ -1331,7 +1331,7 @@
       h += fills.map((f, i) => `<details class="box fillbox" id="F${i}"><summary><span class="fk ${f.k}">${{ blank: '빈칸', paren: '괄호', task: '과제' }[f.k] || '연습'}</span><span class="t">${esc(f.t)}</span></summary><div class="in fill-body">${f.q}${f.w ? `<div class="fill-w">${md(f.w)}</div>` : ''}</div></details>`).join('');
       h += '</section>';
     }
-    h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => /^review/.test(q.src || '')).length; return `worksheet ${L.quiz.length - r}문항${r ? ` · 복습 퀴즈 ${r}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
+    h += `<section class="part" id="quiz"><h2>연관 문제 <small>${(() => { const r = L.quiz.filter(q => /^review/.test(q.src || '')).length, f = L.quiz.filter(q => q.src === 'review-final').length; return `worksheet ${L.quiz.length - r}문항${r - f ? ` · 복습 퀴즈 ${r - f}문항` : ''}${f ? ` · 최종 퀴즈 ${f}문항` : ''}`; })()} — 보기를 누르면 채점</small></h2>
       <div class="tools-row"><button class="btn" data-reveal>정답 모두 보기</button></div>`;
     h += L.quiz.map((q, i) => quizCard(q, i, `${s}|${d}|${n}|${i}`)).join('') || '<div class="empty">문항이 없습니다.</div>';
     h += '</section>';
