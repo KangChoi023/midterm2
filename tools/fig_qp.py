@@ -381,6 +381,127 @@ def d2_grid():
     s.text(370, 276, '16개 정확도 0.8435 ~ 0.8465 (0.3%p = 6장) · 속도를 가르는 것은 활성값 U8 / S8', 12, MUTED, 'middle')
     s.save('d2-grid.svg')
 
+
+# ---------------- QP Day 3 ----------------
+# 숫자는 교안 노트북(QP-day3)을 정답 코드로 직접 실행한 값 (CPU · ORT 1.32 · 보정 = 교안 data/ 의 npz)
+D3_RATIO = [('layer1.0', 1.8), ('layer1.1', 247.9), ('layer1.2', 1.9), ('layer2.0', 1.5), ('layer2.1', 344.8),
+            ('layer2.2', 1.4), ('layer3.0', 1.6), ('layer3.1', 387.2), ('layer3.2', 1.8)]
+D3_CUM = [('stem', 37.85), ('layer1.0', 34.99), ('layer1.1', 9.57), ('layer1.2', 10.61), ('layer2.0', 9.54), ('layer2.1', 6.44),
+          ('layer2.2', 6.49), ('layer3.0', 5.03), ('layer3.1', 1.89), ('layer3.2', 1.82)]
+D3_SENS = [('stem', 43.87), ('layer1.0', 44.03), ('layer1.1', 10.35), ('layer1.2', 47.08), ('layer2.0', 44.61), ('layer2.1', 7.65),
+           ('layer2.2', 48.01), ('layer3.0', 42.94), ('layer3.1', 3.51), ('layer3.2', 51.08), ('fc', 32.04)]
+D3_MIX = [(0, 0.2965, 0.355, 322), (1, 0.6325, 0.436, 535), (3, 0.8465, 0.559, 598)]   # 블록 수, acc, ms, KB
+D3_REVIEW = [('FP32', 29.9, 0.9719, 0.8375, 12.26), ('FP16', None, None, None, None),
+             ('INT8', 79.2, 0.9656, 0.8251, 3.43), ('INT8-mixed', 90.1, 0.9727, 0.8301, 3.51)]
+
+
+def d3_outlier():
+    s = Svg(700, 260)
+    s.text(350, 22, '같은 FP32 함수 · 다른 INT8 — bn1 출력의 채널별 최댓값 비율 (최대 / 중앙값)', 14, INK, 'middle', True)
+    P = Plot(s, 90, 40, 330, 170, (0, 9), (0, 420))
+    P.axes(yt=(0, 100, 200, 300, 400), grid=True)
+    for i, (b, r) in enumerate(D3_RATIO):
+        c = RED if r > 100 else BLUE
+        s.rect(P.X(i) + 6, P.Y(r), 24, P.Y(0) - P.Y(r), c, None, 2, 1.2)
+        s.text(P.X(i) + 18, 228, b.replace('layer', 'L'), 10.5, INK, 'middle')
+        if r > 100: s.text(P.X(i) + 18, P.Y(r) - 5, f'{r:.0f}', 11, RED, 'middle', True)
+    s.text(255, 250, 'BadQuantNet (ResNet-20 은 9블록 모두 1.4 ~ 1.9)', 11.5, MUTED, 'middle')
+    s.text(570, 60, 'layer1.1 · UINT8 per-tensor', 13, INK, 'middle', True)
+    s.box(460, 72, 220, 50, 'outlier 포함 scale 1.81', RED, '나머지 15채널 → 2칸 / 256', 13)
+    s.box(460, 140, 220, 50, 'outlier 제외 scale 0.0104', GREEN, '나머지 15채널 → 228칸 / 256', 13)
+    s.text(570, 215, '채널 3 하나의 최댓값 ≈ 462 vs 나머지 ≈ 2.7', 11.5, MUTED, 'middle')
+    s.text(570, 235, 'INT8 정확도 0.846 → 0.2965', 12.5, RED, 'middle', True)
+    s.save('d3-outlier.svg')
+
+
+def d3_sens():
+    s = Svg(700, 320)
+    s.text(350, 22, 'SQNR (dB, 클수록 좋음) — 누적 비교 vs 단독 민감도 · 점선 = 20 dB', 14, INK, 'middle', True)
+    for k, (title, data, y0) in enumerate([('누적 (끝까지 INT8 · 블록 출력)', D3_CUM, 40), ('단독 (블록 하나만 INT8 · 최종 logits)', D3_SENS, 165)]):
+        s.text(20, y0 + 8, title, 12.5, BLUE if k == 0 else ORANGE, 'start', True)
+        P = Plot(s, 60, y0 + 15, 620, 85, (0, 11), (0, 55))
+        s.line(60, P.Y(20), 680, P.Y(20), MUTED, 1.2, dash='5 4')
+        for i, (b, v) in enumerate(data):
+            c = RED if v < 20 else (BLUE if k == 0 else GREEN)
+            s.rect(P.X(i) + 8, P.Y(v), 40, P.Y(0) - P.Y(v), c, None, 2, 1.1)
+            s.text(P.X(i) + 28, P.Y(v) - 4, f'{v:.1f}', 10.5, INK, 'middle')
+            s.text(P.X(i) + 28, y0 + 114, b.replace('layer', 'L'), 10.5, INK, 'middle')
+    s.text(350, 308, '누적: layer1.1 에서 35 → 9.6 dB 로 떨어진 뒤 계속 낮음 · 단독: 범인 3개(L1.1 · L2.1 · L3.1)만 20 dB 아래', 11.5, MUTED, 'middle')
+    s.save('d3-sens.svg')
+
+
+def d3_mixed():
+    s = Svg(700, 250)
+    s.text(350, 22, 'Mixed precision — 범인 블록의 conv1 · Relu · conv2 를 FP32 로 (CPU · 스레드 1 · 배치 1)', 13.5, INK, 'middle', True)
+    heads = [('정확도', 1, 1.0, '{:.4f}'), ('지연 ms', 2, 0.75, '{:.3f}'), ('크기 KB', 3, 1100, '{:.0f}')]
+    rows = [('FP32', 0.846, 0.679, 1074)] + [(f'제외 {k}블록 ({3 * k}노드)', a, m, kb) for k, a, m, kb in D3_MIX]
+    for j, (h, idx, mx, fmt) in enumerate(heads):
+        x0 = 200 + j * 165
+        s.text(x0 + 65, 52, h, 12.5, INK, 'middle', True)
+        for i, row in enumerate(rows):
+            y = 64 + i * 38
+            if j == 0: s.text(190, y + 18, row[0], 12.5, INK, 'end', True)
+            v = row[idx]; w = 105 * v / mx
+            c = ORANGE if i == 0 else [RED, PURPLE, GREEN][i - 1]
+            s.rect(x0, y + 4, max(w, 2), 20, c, None, 3, 1.2)
+            s.text(x0 + max(w, 2) + 5, y + 19, fmt.format(v), 11.5, INK)
+    s.text(350, 236, 'conv2 만 FP32 로 빼면 0.2905 — outlier 텐서(conv1 출력)가 여전히 양자화된다 → 생산자 · 소비자를 함께', 11.5, RED, 'middle')
+    s.save('d3-mixed.svg')
+
+
+def d3_trt():
+    s = Svg(700, 260)
+    s.text(350, 22, 'TensorRT INT8 두 길 — 오늘은 explicit (QDQ ONNX)', 14, INK, 'middle', True)
+    s.text(20, 55, 'implicit (TensorRT 10 deprecated)', 13, MUTED, 'start', True)
+    s.box(20, 65, 170, 46, 'FP32 ONNX', MUTED, '+ calibrator 클래스', 13)
+    s.box(240, 65, 200, 46, 'TensorRT 빌드 중 보정', MUTED, 'INT8 위치도 TRT 가', 13)
+    s.box(490, 65, 190, 46, 'INT8 엔진', MUTED, None, 14)
+    s.line(190, 88, 238, 88, MUTED, 2, True); s.line(440, 88, 488, 88, MUTED, 2, True)
+    s.text(20, 145, 'explicit (권장)', 13, GREEN, 'start', True)
+    s.box(20, 155, 170, 46, 'QDQ ONNX (S8 · 대칭)', GREEN, 'ORT quantize_static', 12.5)
+    s.box(240, 155, 200, 46, 'BuilderFlag.INT8 + FP16', GREEN, 'Q/DQ 있는 곳만 INT8', 13)
+    s.box(490, 155, 190, 46, 'INT8 엔진', GREEN, '뺀 곳은 FP16', 13)
+    s.line(190, 178, 238, 178, GREEN, 2, True); s.line(440, 178, 488, 178, GREEN, 2, True)
+    s.text(350, 228, 'trt_check: Day 2 모델(활성값 U8) → uint8 zp 68개 · 0 아닌 zp 26개 → 불합격', 12, RED, 'middle')
+    s.text(350, 248, 'make_trt_int8 (QInt8 · ActivationSymmetric · WeightSymmetric) → uint8 0 · nonzero 0 → 합격 · 정확도 0.8435', 12, GREEN, 'middle')
+    s.save('d3-trt.svg')
+
+
+def d3_head():
+    s = Svg(700, 250)
+    s.text(350, 22, 'YOLOv8n output0 (1, 84, 8400) — 박스 4줄(0 ~ 640) + 점수 80줄(0 ~ 1) 을 scale 하나로', 13.5, INK, 'middle', True)
+    s.rect(30, 45, 640, 26, BLUE, None, 3, 1.5)
+    s.text(350, 63, 'INT8 칸 하나 = scale 5.166 (픽셀)   ·   −127 ~ 127 칸 = −656 ~ 656', 12.5, INK, 'middle', True)
+    s.rect(30, 85, 640 * 1 / 656, 26, RED, None, 0, 2)
+    s.line(31, 86, 31, 128, RED, 2)
+    s.text(40, 125, '점수 0 ~ 1 은 칸 하나(5.166)의 0.19 배 → 0.9 / 5.166 = 0.17 → 반올림 0', 12.5, RED, 'start', True)
+    s.box(30, 150, 300, 56, '전체 양자화 (6-1)', RED, '사람 FP32 2명 → INT8 0명', 13.5)
+    s.box(370, 150, 300, 56, 'head 후처리 24노드 제외 (6-2)', GREEN, 'INT8 2명 · 짝 IoU 중앙값 0.981', 13.5)
+    s.text(350, 232, '제외 = /model.22/ 중 cv2 · cv3 Conv 가 아닌 것: DFL(Softmax · conv) · Sigmoid · 디코딩(Sub · Add · Div · Mul) · Concat · Reshape', 11, MUTED, 'middle')
+    s.save('d3-head.svg')
+
+
+def d3_review():
+    s = Svg(700, 280)
+    s.text(350, 22, '배포 심사표 — YOLOv8n 평가 127장 · ORT CPU (GPU 없음 → FP16 은 빈 칸)', 14, INK, 'middle', True)
+    heads = [('지연 ms', 1, 100, '{:.1f}'), ('AP50', 2, 1.0, '{:.4f}'), ('mAP', 3, 1.0, '{:.4f}'), ('크기 MB', 4, 13, '{:.2f}')]
+    for j, (h, idx, mx, fmt) in enumerate(heads):
+        x0 = 120 + j * 145
+        s.text(x0 + 55, 52, h, 12.5, INK, 'middle', True)
+        for i, row in enumerate(D3_REVIEW):
+            y = 64 + i * 40
+            if j == 0: s.text(110, y + 18, row[0], 12.5, INK, 'end', True)
+            v = row[idx]
+            if v is None:
+                s.text(x0 + 4, y + 19, '— (GPU 필요)', 11.5, MUTED); continue
+            w = 85 * v / mx
+            c = [ORANGE, GREEN, BLUE, PURPLE][i]
+            s.rect(x0, y + 4, max(w, 2), 20, c, None, 3, 1.2)
+            s.text(x0 + max(w, 2) + 5, y + 19, fmt.format(v), 11.5, INK)
+    s.text(350, 240, '규칙: AP50 ≥ FP32 − 0.01 · mAP ≥ FP32 − 0.02 중 가장 빠른 것 → 셋 다 통과, CPU 에서는 FP32 추천', 12, INK, 'middle', True)
+    s.text(350, 262, 'x86 CPU 는 활성값 S8 INT8 이 느리다 (QP D2·5교시) — TensorRT GPU 에서 다시 재야 하는 이유', 11.5, RED, 'middle')
+    s.save('d3-review.svg')
+
 if __name__ == '__main__':
     prefixes = tuple(sys.argv[1:]) or ('d1_',)
     for name, fn in list(globals().items()):

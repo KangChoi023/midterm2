@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">Mixed precision — 범인 블록의 conv1 · Relu · conv2 를 FP32 로 (CPU · 스레드 1 · 배치 1)</text>
+<text x="265.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">정확도</text>
+<text x="190.0" y="82.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">FP32</text>
+<rect x="200.0" y="68.0" width="88.8" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="293.8" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8460</text>
+<text x="190.0" y="120.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">제외 0블록 (0노드)</text>
+<rect x="200.0" y="106.0" width="31.1" height="20.0" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="236.1" y="121.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.2965</text>
+<text x="190.0" y="158.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">제외 1블록 (3노드)</text>
+<rect x="200.0" y="144.0" width="66.4" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="271.4" y="159.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.6325</text>
+<text x="190.0" y="196.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">제외 3블록 (9노드)</text>
+<rect x="200.0" y="182.0" width="88.9" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="293.9" y="197.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8465</text>
+<text x="430.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">지연 ms</text>
+<rect x="365.0" y="68.0" width="95.1" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="465.1" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.679</text>
+<rect x="365.0" y="106.0" width="49.7" height="20.0" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="419.7" y="121.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.355</text>
+<rect x="365.0" y="144.0" width="61.0" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="431.0" y="159.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.436</text>
+<rect x="365.0" y="182.0" width="78.3" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="448.3" y="197.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.559</text>
+<text x="595.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">크기 KB</text>
+<rect x="530.0" y="68.0" width="102.5" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="637.5" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">1074</text>
+<rect x="530.0" y="106.0" width="30.7" height="20.0" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="565.7" y="121.0" font-size="11.5" fill="#1e293b" text-anchor="start">322</text>
+<rect x="530.0" y="144.0" width="51.1" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="586.1" y="159.0" font-size="11.5" fill="#1e293b" text-anchor="start">535</text>
+<rect x="530.0" y="182.0" width="57.1" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="592.1" y="197.0" font-size="11.5" fill="#1e293b" text-anchor="start">598</text>
+<text x="350.0" y="236.0" font-size="11.5" fill="#dc2626" text-anchor="middle">conv2 만 FP32 로 빼면 0.2905 — outlier 텐서(conv1 출력)가 여전히 양자화된다 → 생산자 · 소비자를 함께</text>
+</svg>
