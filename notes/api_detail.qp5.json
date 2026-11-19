@@ -1,0 +1,477 @@
+{
+ "magnitude_mask()": {
+  "role": "|w| 가 작은 sparsity 비율을 0 으로 지우는 mask(남길 곳 1 · 지울 곳 0)를 만든다",
+  "desc": [
+   "QP Day 5 실습 1-1 — k = round(sparsity × 원소 수) 번째로 작은 |w| 가 임계값",
+   "임계값 이하는 0 → 정확히 k 개(같은 값이 있으면 조금 더)가 지워진다",
+   "k = 0 이면 kthvalue 를 부를 수 없으므로 torch.ones_like(w)"
+  ],
+  "args": [["w", "weight 텐서 (어떤 모양이든)"], ["sparsity", "지울 비율 0 ~ 1"]],
+  "flow": "k 계산 → |w|.flatten().kthvalue(k) = thr → (|w| > thr).float()",
+  "ret": "w 와 같은 모양의 0/1 float 텐서",
+  "hdr": "import torch",
+  "ex": "magnitude_mask(w1, s)"
+ },
+ "filter_l1()": {
+  "role": "Conv 의 filter(출력 채널)마다 weight 절댓값 합 Σ|w| — structured pruning 의 중요도",
+  "desc": [
+   "QP Day 5 실습 1-2 — weight (out, in, kh, kw) 의 축 1 · 2 · 3 을 더한다",
+   "layer1[0].conv1 의 16개 값: 최소 7.45 ~ 최대 11.37",
+   "4교시 prune_block 에서 남길 filter 를 고르는 점수 (torch-pruning MagnitudeImportance(p=1) 의 한 층 판)"
+  ],
+  "args": [["conv", "nn.Conv2d 모듈"]],
+  "flow": "conv.weight.detach().abs().sum(dim=(1, 2, 3))",
+  "ret": "(out_channels,) 텐서",
+  "hdr": "import torch"
+ },
+ "kthvalue()": {
+  "role": "텐서에서 k 번째로 작은 값과 그 위치",
+  "desc": [
+   "k 는 1 부터 센다 — kthvalue(1) = 최솟값, k = 0 은 오류",
+   "magnitude pruning 의 임계값: |w| 를 1차원으로 편 뒤 k 번째로 작은 값",
+   "정렬(sort) 전체보다 빠르다"
+  ],
+  "args": [["k", "몇 번째로 작은 값인가 (1 ~ 원소 수)"], ["dim", "기준 축 (생략하면 마지막 축)"]],
+  "flow": "x.kthvalue(k) → (values, indices)",
+  "ret": "namedtuple (values, indices) — .values 로 값",
+  "hdr": "import torch"
+ },
+ "convs()": {
+  "role": "모델에서 가지치기 대상인 Conv2d · Linear 의 (이름, 모듈) 목록 (QP Day 5 제공)",
+  "desc": [
+   "named_modules() 를 돌며 nn.Conv2d · nn.Linear 만 고른다",
+   "ResNet-20: stem.0 · 블록 conv 18개 · shortcut 2개 · fc = 22개",
+   "sparsity() · prune_unstructured() 가 이 목록을 대상으로 쓴다 (fc 포함)"
+  ],
+  "args": [["model", "nn.Module"]],
+  "flow": "[(n, m) for n, m in model.named_modules() if isinstance(m, (nn.Conv2d, nn.Linear))]",
+  "ret": "[(이름, 모듈), …]",
+  "hdr": "import torch.nn as nn"
+ },
+ "prune.l1_unstructured()": {
+  "role": "한 층의 weight 에서 |w| 가 작은 amount 비율을 mask 0 으로 (layer 별 unstructured)",
+  "desc": [
+   "weight 를 직접 바꾸지 않고 weight_orig(Parameter) + weight_mask(buffer) 로 나눈다",
+   "forward 직전 hook 이 weight = weight_orig × weight_mask 를 계산",
+   "amount 가 0 ~ 1 실수면 비율, 정수면 개수"
+  ],
+  "args": [["module", "nn.Conv2d · nn.Linear"], ["name", "\"weight\" (또는 \"bias\")"], ["amount", "지울 비율 · 개수"]],
+  "flow": "|w| 정렬 → 작은 amount 위치 mask 0 → weight_orig · weight_mask 등록 → forward pre-hook",
+  "ret": "module (같은 객체)",
+  "hdr": "import torch.nn.utils.prune as prune"
+ },
+ "prune.global_unstructured()": {
+  "role": "여러 층의 weight 를 한데 모아 |w| 가 작은 amount 비율을 지운다 (global)",
+  "desc": [
+   "층마다 지워지는 비율이 달라진다 — ResNet-20 50%: fc 5.8% · stem 12.5% · layer3.2.conv2 80.1%",
+   "같은 50% 에서 layer 별(0.789)보다 정확도가 높다(0.8125) — 중요한 층을 덜 지움",
+   "pruning_method=prune.L1Unstructured 로 기준을 정한다"
+  ],
+  "args": [["parameters", "[(모듈, \"weight\"), …]"], ["pruning_method", "prune.L1Unstructured"], ["amount", "전체에서 지울 비율"]],
+  "flow": "모든 weight 이어 붙이기 → 전체 임계값 → 층마다 mask 나눠 적용",
+  "ret": "None",
+  "hdr": "import torch.nn.utils.prune as prune"
+ },
+ "prune.remove()": {
+  "role": "mask 를 weight 에 곱해 영구 반영하고 weight_orig · weight_mask · hook 을 없앤다",
+  "desc": [
+   "적용 뒤 parameters ['weight_orig'] · buffers ['weight_mask'] → remove 뒤 ['weight'] 하나",
+   "0 은 그대로 남는다 — 모양도 그대로",
+   "저장 · ONNX 내보내기 전에 꼭 부른다"
+  ],
+  "args": [["module", "prune 이 적용된 모듈"], ["name", "\"weight\""]],
+  "flow": "weight = weight_orig × weight_mask → Parameter 로 등록 → orig · mask · hook 삭제",
+  "ret": "module",
+  "hdr": "import torch.nn.utils.prune as prune"
+ },
+ "named_buffers()": {
+  "role": "모듈의 buffer(저장은 되지만 학습하지 않는 텐서)를 (이름, 텐서) 로 돌려준다",
+  "desc": [
+   "prune 적용 뒤 weight_mask 가 여기 나타난다",
+   "BatchNorm 의 running_mean · running_var 도 buffer",
+   "named_parameters() 와 짝 — 이름만 정렬해 비교하면 구조 변화를 확인하기 쉽다"
+  ],
+  "args": [["recurse", "하위 모듈까지 (기본 True)"]],
+  "flow": "모듈 트리를 돌며 register_buffer 로 등록된 텐서",
+  "ret": "(이름, 텐서) 반복자",
+  "hdr": "import torch.nn as nn"
+ },
+ "sparsity()": {
+  "role": "convs() 전체 weight 중 0 의 비율 (QP Day 5 실습 2-2)",
+  "desc": [
+   "층마다 (w == 0) 개수와 원소 수를 더해 나눈다 (층 평균이 아니라 전체 비율)",
+   "원본 rn20 은 0.000 · global 50% 는 0.500 · 2:4 는 0.498 (stem 제외라 조금 작음)"
+  ],
+  "args": [["model", "nn.Module"]],
+  "flow": "Σ (w == 0).sum() / Σ w.numel()",
+  "ret": "float 0 ~ 1",
+  "hdr": "import torch"
+ },
+ "prune_unstructured()": {
+  "role": "모델 복사본에 global · layer 별 unstructured pruning 을 걸고 remove 까지 한 모델 (QP Day 5 실습 2-2)",
+  "desc": [
+   "copy.deepcopy 로 원본을 지킨다 — 비율을 바꿔 여러 번 부르기 위해",
+   "scope=\"global\" → global_unstructured, \"layer\" → 층마다 l1_unstructured",
+   "fine-tuning 없이 정확도: 30% 0.8415 · 50% 0.8125 · 70% 0.482 · 90% 0.10 (global)"
+  ],
+  "args": [["model", "원본 모델"], ["amount", "지울 비율"], ["scope", "\"global\" · \"layer\""]],
+  "flow": "deepcopy → targets = convs() → prune → prune.remove",
+  "ret": "가지치기된 새 모델",
+  "hdr": "import copy, torch.nn.utils.prune as prune"
+ },
+ "state_kb()": {
+  "role": "state_dict 를 메모리에 저장했을 때의 (원래 KB, gzip 압축 KB) (QP Day 5 실습 3-1)",
+  "desc": [
+   "io.BytesIO 에 torch.save → byte 열 길이 / 1024",
+   "dense 1,109.7 / 1,003.3 KB · 90% sparse 1,109.7 / 191.7 KB — 원래 크기는 같고 압축만 5.2배",
+   "0 도 FP32 4 byte 로 저장된다는 것을 보여 준다"
+  ],
+  "args": [["model", "nn.Module"]],
+  "flow": "BytesIO → torch.save(state_dict) → getvalue → len · len(gzip.compress)",
+  "ret": "(raw_kb, gzip_kb)",
+  "hdr": "import io, gzip, torch"
+ },
+ "io.BytesIO()": {
+  "role": "메모리 안의 byte 파일 — 디스크에 쓰지 않고 저장 크기를 잴 때",
+  "desc": [
+   "torch.save(obj, buf) 처럼 파일 자리에 넣을 수 있다",
+   "buf.getvalue() 로 쓴 byte 전체를 꺼낸다"
+  ],
+  "args": [["initial_bytes", "처음 내용 (생략 가능)"]],
+  "flow": "buf = io.BytesIO() → 쓰기 → buf.getvalue()",
+  "ret": "BytesIO 객체",
+  "hdr": "import io"
+ },
+ "gzip.compress()": {
+  "role": "byte 열을 gzip 으로 압축 — 반복이 많을수록 작아진다",
+  "desc": [
+   "0 이 90% 인 weight 는 1,109.7 → 191.7 KB, dense 는 1,003.3 KB 까지만",
+   "배포 · 다운로드 크기 이득이 unstructured pruning 의 실제 이득"
+  ],
+  "args": [["data", "bytes"], ["compresslevel", "1 ~ 9 (기본 9)"]],
+  "flow": "DEFLATE 압축",
+  "ret": "압축된 bytes",
+  "hdr": "import gzip"
+ },
+ "latency_torch()": {
+  "role": "PyTorch CPU · 배치 1 평균 지연(ms) (QP Day 5 제공)",
+  "desc": [
+   "모델을 CPU · eval 로 옮기고 torch.no_grad 안에서 bench_fn(warm 20 · n 200)",
+   "입력은 평가 이미지 1장 X_ev[:1]",
+   "dense · unstructured 50% · 90% 가 잡음 수준으로 같다 (강사 실측 1.80 · 1.81 · 1.78 ms)"
+  ],
+  "args": [["model", "nn.Module"], ["n", "잴 횟수"], ["warm", "버리는 횟수"]],
+  "flow": "model.cpu().eval() → bench_fn(lambda: model(x)) → mean",
+  "ret": "평균 ms (float)",
+  "hdr": "import torch, time"
+ },
+ "mask_2to4()": {
+  "role": "Conv weight 의 입력 채널 축으로 연속한 4개마다 |w| 큰 2개만 남기는 2:4 mask (QP Day 5 실습 3-2)",
+  "desc": [
+   "permute(0, 2, 3, 1) 로 입력 채널을 마지막 축 → reshape(−1, 4) 로 4개씩 한 행",
+   "행마다 topk(2) 위치에 1 → 원래 모양으로 되돌림",
+   "in_channels % 4 == 0 인 Conv 만 (stem 3채널 제외) → ResNet-20 sparsity 0.498 · 정확도 0.6485"
+  ],
+  "args": [["w", "Conv weight (out, in, kh, kw)"]],
+  "flow": "permute → |w|.reshape(−1, 4) → zeros.scatter_(1, topk(2).indices, 1) → reshape → permute(0, 3, 1, 2)",
+  "ret": "w 와 같은 모양의 0/1 텐서 (4개마다 정확히 2개가 1)",
+  "hdr": "import torch"
+ },
+ "topk()": {
+  "role": "축을 따라 큰 k 개의 값과 위치",
+  "desc": [
+   "2:4 mask: g.topk(2, dim=1).indices — 행마다 큰 2개 위치",
+   "largest=False 면 작은 k 개"
+  ],
+  "args": [["k", "몇 개"], ["dim", "기준 축"], ["largest", "True = 큰 것 (기본)"]],
+  "flow": "축마다 부분 정렬 → 상위 k",
+  "ret": "namedtuple (values, indices)",
+  "hdr": "import torch"
+ },
+ "scatter_()": {
+  "role": "지정한 위치(index)에 값을 써 넣는다 (제자리 연산)",
+  "desc": [
+   "torch.zeros_like(g).scatter_(1, idx, 1.0) — 행마다 idx 위치만 1",
+   "끝의 _ 는 자기 자신을 바꾼다는 뜻"
+  ],
+  "args": [["dim", "인덱스가 가리키는 축"], ["index", "위치 텐서 (LongTensor)"], ["value", "써 넣을 값"]],
+  "flow": "self[i][index[i][j]] = value (dim=1)",
+  "ret": "self",
+  "hdr": "import torch"
+ },
+ "prune_block()": {
+  "role": "BasicBlock 의 안쪽 채널(conv1 출력 = conv2 입력)을 L1 큰 순서로 (1 − ratio) 만 남긴다 (QP Day 5 실습 4-1)",
+  "desc": [
+   "n_keep = round(out × (1 − ratio)) · keep = filter_l1 큰 순서 n_keep 개를 오름차순으로",
+   "새 conv1 = weight[keep] · 새 bn1 = γ · β · running_mean · running_var[keep] · 새 conv2 = weight[:, keep]",
+   "블록 입출력 모양은 그대로 — layer2[1] 50%: conv1 (16, 32, 3, 3) · conv2 (32, 16, 3, 3)"
+  ],
+  "args": [["block", "BasicBlock (제자리 수정)"], ["ratio", "지울 비율"]],
+  "flow": "keep 고르기 → nn.Conv2d · nn.BatchNorm2d 새로 만들어 값 복사 → block 에 끼우기",
+  "ret": "keep (남긴 채널 인덱스, 오름차순)",
+  "hdr": "import torch.nn as nn"
+ },
+ "manual_prune()": {
+  "role": "모델 복사본의 9개 블록 모두에 prune_block (QP Day 5 실습 4-2)",
+  "desc": [
+   "layer1 · layer2 · layer3 의 블록마다 안쪽 채널만 자른다 (바깥쪽 · stem · fc 는 그대로)",
+   "params 272,474 → 25% 205,490 · 50% 138,506",
+   "정확도 (FT 전) 0.846 → 0.5025 → 0.168 · 지연 강사 실측 1.72 → 1.36 ms"
+  ],
+  "args": [["model", "원본 모델"], ["ratio", "지울 비율"]],
+  "flow": "deepcopy → for layer → for block → prune_block",
+  "ret": "가지치기된 새 모델",
+  "hdr": "import copy"
+ },
+ "argsort()": {
+  "role": "값을 정렬했을 때의 위치(인덱스) 순서",
+  "desc": [
+   "descending=True 면 큰 것부터 — filter_l1(c1).argsort(descending=True)[:n_keep]",
+   "뒤에 .sort().values 로 위치를 다시 오름차순 → 원래 채널 순서 유지"
+  ],
+  "args": [["dim", "기준 축"], ["descending", "True = 큰 것부터"]],
+  "flow": "정렬 순서의 인덱스",
+  "ret": "LongTensor",
+  "hdr": "import torch"
+ },
+ "n_params()": {
+  "role": "모델의 파라미터 수 합 (QP Day 5 제공)",
+  "desc": [
+   "sum(p.numel() for p in model.parameters()) — BN 의 γ · β 포함, running 통계(buffer) 제외",
+   "ResNet-20 272,474 · structured 50% 68,786"
+  ],
+  "args": [["model", "nn.Module"]],
+  "flow": "parameters() 의 원소 수 합",
+  "ret": "int",
+  "hdr": "import torch"
+ },
+ "tp.DependencyGraph()": {
+  "role": "예시 입력을 흘려 층 사이의 '채널을 같이 잘라야 하는' 관계를 기록하는 그래프",
+  "desc": [
+   ".build_dependency(model, example_inputs=x) 로 그래프 추적",
+   "residual 덧셈 · concat · BN 등을 따라가 묶음(group)을 찾는다",
+   "MetaPruner 가 안에서 자동으로 만든다"
+  ],
+  "args": [["model", "nn.Module (build_dependency 에)"], ["example_inputs", "예시 입력 (1, 3, 32, 32)"]],
+  "flow": "forward 추적 → 연산 그래프 → 층 · 축 사이 의존성",
+  "ret": "DependencyGraph (build_dependency 가 자기 자신을 돌려줌)",
+  "hdr": "import torch_pruning as tp"
+ },
+ "get_pruning_group()": {
+  "role": "한 층의 채널을 자를 때 함께 바뀌는 (층, 축, 인덱스) 묶음을 돌려준다",
+  "desc": [
+   "layer1[0].conv2 출력 [0, 1] → 20항목 · Conv 9개(stem · layer1 conv1 · conv2 · layer2[0] conv1 · shortcut) + BN 4개",
+   "두 번째 인자 = 자르는 방식: tp.prune_conv_out_channels · prune_conv_in_channels …",
+   "항목의 it.dep.target.name · .module 로 무엇이 바뀌는지 본다"
+  ],
+  "args": [["module", "기준 층"], ["pruning_fn", "tp.prune_conv_out_channels 등"], ["idxs", "자를 채널 번호 목록"]],
+  "flow": "기준 층에서 의존성을 따라가며 함께 바뀌는 곳 수집",
+  "ret": "Group (반복 가능 · .prune())",
+  "hdr": "import torch_pruning as tp"
+ },
+ "group.prune()": {
+  "role": "group 에 든 모든 층을 한 번에 잘라 텐서 모양을 실제로 줄인다",
+  "desc": [
+   "통로 채널 2개를 자르면 stem 출력 · layer1 conv2 출력 · layer2[0] 입력이 16 → 14",
+   "정확도 0.846 → 0.634 — 통로 채널은 모든 블록이 쓰는 중요한 채널"
+  ],
+  "args": [],
+  "flow": "각 항목의 pruning_fn(모듈, idxs) 실행 — weight · BN 값 · in/out_channels 수정",
+  "ret": "None",
+  "hdr": "import torch_pruning as tp"
+ },
+ "tp.pruner.MetaPruner()": {
+  "role": "모든 group 의 중요도를 매겨 pruning_ratio 만큼 자동으로 자르는 pruner",
+  "desc": [
+   "importance=MagnitudeImportance(p=1) 이면 group 안 weight 의 L1 합",
+   "ignored_layers=[model.fc] — 클래스 10개 출력은 자르지 않음",
+   "iterative_steps=3 이면 step() 마다 비율의 1/3 씩 · 50%: MACs 41.24M → 10.53M"
+  ],
+  "args": [["model", "nn.Module"], ["example_inputs", "예시 입력"], ["importance", "중요도 기준"], ["pruning_ratio", "채널 비율 (0.5 = 절반)"], ["iterative_steps", "나눠 자를 횟수 (기본 1)"], ["ignored_layers", "자르지 않을 층 목록"]],
+  "flow": "DependencyGraph 생성 → step() 때 group 중요도 계산 → 낮은 채널부터 비율만큼 group.prune()",
+  "ret": "MetaPruner (step() 으로 실행)",
+  "hdr": "import torch_pruning as tp"
+ },
+ "tp.importance.MagnitudeImportance()": {
+  "role": "group 안 weight 의 Lp-norm 합을 채널 중요도로 쓰는 기준",
+  "desc": [
+   "p=1 → L1 (4교시 filter_l1 의 group 판) · p=2 → L2",
+   "MetaPruner 의 importance 인자로 넣는다"
+  ],
+  "args": [["p", "norm 차수 (1 = L1)"]],
+  "flow": "group 의 각 층 weight 에서 채널별 |w|^p 합 → 더함",
+  "ret": "Importance 객체",
+  "hdr": "import torch_pruning as tp"
+ },
+ "tp.utils.count_ops_and_params()": {
+  "role": "모델의 MACs(곱셈-누산 횟수)와 params 를 센다",
+  "desc": [
+   "예시 입력 하나로 forward 해서 층마다 연산량을 더한다",
+   "ResNet-20 41,235,082 MACs · 272,474 params → 채널 50%: 10,525,002 · 68,786",
+   "백만 단위로 보려면 macs / 1e6"
+  ],
+  "args": [["model", "nn.Module (CPU)"], ["example_inputs", "예시 입력"]],
+  "flow": "hook 으로 층마다 MACs · params 집계",
+  "ret": "(macs, params)",
+  "hdr": "import torch_pruning as tp"
+ },
+ "make_pruner()": {
+  "role": "L1 MagnitudeImportance · ignored_layers=[fc] MetaPruner 를 만든다 (QP Day 5 실습 5-1)",
+  "desc": [
+   "steps=1 이면 one-shot (5교시) · steps=3 이면 iterative (6교시 실습 6-2)",
+   "예시 입력은 EX_IN = torch.randn(1, 3, 32, 32)"
+  ],
+  "args": [["model", "자를 모델 (제자리)"], ["ratio", "채널 비율"], ["steps", "나눠 자를 횟수"]],
+  "flow": "tp.pruner.MetaPruner(model, EX_IN, importance=…, pruning_ratio=ratio, iterative_steps=steps, ignored_layers=[model.fc])",
+  "ret": "MetaPruner",
+  "hdr": "import torch_pruning as tp"
+ },
+ "prune_channels()": {
+  "role": "모델 복사본을 MetaPruner step() 한 번으로 채널 ratio 만큼 자른다 (QP Day 5 실습 5-1)",
+  "desc": [
+   "copy.deepcopy(model).cpu().eval() → make_pruner(m, ratio).step()",
+   "ratio 0.2 · 0.4 · 0.6 → MACs 24.89 · 14.19 · 6.15 M, 정확도 (FT 전) 0.2415 · 0.101 · 0.100",
+   "8교시 비율 곡선에서 비율마다 부른다"
+  ],
+  "args": [["model", "원본 모델"], ["ratio", "채널 비율"]],
+  "flow": "deepcopy → make_pruner → step()",
+  "ret": "모양이 줄어든 새 모델",
+  "hdr": "import copy, torch_pruning as tp"
+ },
+ "finetune()": {
+  "role": "자른 모델을 짧게 다시 학습해 정확도를 되찾는다 — 걸린 초를 돌려줌 (QP Day 5 실습 6-1)",
+  "desc": [
+   "QP Day 4 train_qat 와 같은 구조 · lr 기본값만 1e-2 (크게 망가진 모델을 다시 세움)",
+   "SGD momentum 0.9 · weight_decay 5e-4 · step 마다 CosineAnnealingLR · epoch 마다 on_epoch(ep, model)",
+   "structured 50%: 0.10 → 0.632 → 0.712 → 0.7225 (3 epoch)"
+  ],
+  "args": [["model", "학습할 모델 (제자리)"], ["epochs", "기본 EPOCHS = 3"], ["lr", "기본 1e-2"], ["on_epoch", "epoch 끝마다 부를 함수 fn(ep, model)"]],
+  "flow": "model.to(DEV) → SGD · Cosine → for ep: train · batches(seed=ep) → eval → on_epoch",
+  "ret": "걸린 시간 (초)",
+  "hdr": "import torch, time"
+ },
+ "CosineAnnealingLR()": {
+  "role": "학습률을 cosine 곡선으로 처음 값 → 0 까지 줄이는 스케줄러",
+  "desc": [
+   "T_max = 총 step 수 = epochs × (10,000 // 128 + 1) — step 마다 sched.step()",
+   "처음엔 크게 움직이고 끝에선 살짝 다듬는다"
+  ],
+  "args": [["optimizer", "옵티마이저"], ["T_max", "0 까지 가는 데 걸리는 step 수"]],
+  "flow": "lr_t = lr_0 × (1 + cos(π t / T_max)) / 2",
+  "ret": "스케줄러 (step() 으로 진행)",
+  "hdr": "import torch"
+ },
+ "pruner.step()": {
+  "role": "MetaPruner 를 한 단계 실행 — 중요도가 낮은 채널을 비율만큼 잘라 낸다",
+  "desc": [
+   "iterative_steps=3 이면 부를 때마다 0.5 의 1/3 씩 더 자름 → MACs 27.67 → 17.34 → 10.53 M",
+   "모델을 CPU 로 옮긴 뒤 부른다 (예시 입력이 CPU)",
+   "iterative 3단계 × 1 epoch 회복: 0.8135 → 0.7465 → 0.68"
+  ],
+  "args": [],
+  "flow": "group 중요도 계산 → 낮은 채널부터 group.prune()",
+  "ret": "None",
+  "hdr": "import torch_pruning as tp"
+ },
+ "torch.save()": {
+  "role": "객체(모델 · state_dict)를 파일로 저장",
+  "desc": [
+   "모양이 바뀐 모델은 state_dict 만 저장하면 원래 클래스로 못 읽는다 → 모델 통째로 torch.save(model)",
+   "rn20_p50_ft.pth 323.6 KB — Day 6 KD 의 학생 모델"
+  ],
+  "args": [["obj", "저장할 객체"], ["f", "파일 이름 · BytesIO"]],
+  "flow": "pickle + 텐서 직렬화",
+  "ret": "None",
+  "hdr": "import torch"
+ },
+ "torch.load()": {
+  "role": "torch.save 로 저장한 파일 읽기",
+  "desc": [
+   "모델 통째로 저장한 파일은 weights_only=False 가 필요 (기본값 True 는 텐서 · 기본형만 허용)",
+   "믿을 수 있는 파일에만 — 통째로 읽기는 임의 코드를 실행할 수 있다"
+  ],
+  "args": [["f", "파일 이름"], ["map_location", "\"cpu\" 등"], ["weights_only", "False = 모델 객체까지"]],
+  "flow": "unpickle → 객체",
+  "ret": "저장했던 객체",
+  "hdr": "import torch"
+ },
+ "export_b1()": {
+  "role": "배치 1 고정 ONNX 로 내보내기 (TensorRT 엔진용, QP Day 5 제공)",
+  "desc": [
+   "모델을 CPU · eval 로 옮긴 뒤 torch.zeros(1, 3, 32, 32) 로 export",
+   "입력 이름 input · 출력 logits · opset 17",
+   "dense 1,070.8 KB · unstructured 50% 1,070.8 KB · structured 50% 276.6 KB"
+  ],
+  "args": [["model", "nn.Module"], ["path", "저장할 파일 이름"]],
+  "flow": "torch.onnx.export(model, zeros(1, 3, 32, 32), path, input_names=[\"input\"], output_names=[\"logits\"], opset_version=17)",
+  "ret": "path",
+  "hdr": "import torch"
+ },
+ "onnx_conv_stats()": {
+  "role": "ONNX 안 Conv weight 들의 원소 수 · 0 비율 (QP Day 5 제공)",
+  "desc": [
+   "그래프의 Conv 노드마다 input[1](weight initializer)을 numpy 로 꺼낸다",
+   "dense 270,256 · 0.0 / unstructured 270,256 · 0.501 / structured 67,672 · 0.0"
+  ],
+  "args": [["path", "ONNX 파일"]],
+  "flow": "onnx.load → initializer 사전 → Conv weight 모으기 → 원소 수 · 0 비율",
+  "ret": "{\"conv_params\": int, \"zero_frac\": float}",
+  "hdr": "import onnx; from onnx import numpy_helper"
+ },
+ "onnx_acc()": {
+  "role": "ONNX Runtime 으로 평가 2,000장 정확도 — 배치 1 로 한 장씩 (QP Day 5 제공)",
+  "desc": [
+   "배치 1 고정 ONNX 라 한 장씩 run",
+   "dense 0.846 · unstructured 50% 0.8125 · structured 50% + FT 0.7225 — PyTorch 와 같다"
+  ],
+  "args": [["path", "ONNX 파일"], ["X, y", "평가 데이터 (기본 X_ev, y_ev)"]],
+  "flow": "make_session → 장마다 run → argmax == y 평균",
+  "ret": "float 정확도",
+  "hdr": "import onnxruntime as ort"
+ },
+ "deploy_lat()": {
+  "role": "배포 지연 — GPU 면 TensorRT FP16 엔진, 아니면 ORT CPU, 배치 1 평균 ms (QP Day 5 제공)",
+  "desc": [
+   "TRT_OK 면 build_once(onnx, *_fp16.engine, fp16=True) → TRTInfer, 아니면 make_session",
+   "bench_fn(n=300, warm=30) 의 mean",
+   "Day 4 deploy_lat 의 FP16 판 — 모델 셋을 같은 자로 잰다"
+  ],
+  "args": [["onnx_path", "배치 1 ONNX"], ["n", "잴 횟수"]],
+  "flow": "엔진 · 세션 만들기 → f(X_ev[:1]) 반복 측정",
+  "ret": "평균 ms",
+  "hdr": "import tensorrt as trt, onnxruntime as ort"
+ },
+ "drop_duplicates()": {
+  "role": "pandas — 지정한 열이 같은 행 중 하나만 남긴다",
+  "desc": [
+   "qp_baseline.csv 갱신: pd.concat([old, new]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")",
+   "같은 셀을 다시 실행해도 행이 중복되지 않고 최신 값만 남는다"
+  ],
+  "args": [["subset", "비교할 열 목록"], ["keep", "\"first\" · \"last\" · False"]],
+  "flow": "subset 이 같은 행 묶음 → keep 에 따라 하나 남김",
+  "ret": "새 DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "ax.annotate()": {
+  "role": "matplotlib — 그래프의 점 옆에 글자를 단다",
+  "desc": [
+   "비율 곡선의 점마다 \"20%\" 같은 이름 — textcoords=\"offset points\", xytext=(5, 5) 로 살짝 비켜서",
+   "점 좌표 (x, y) 는 데이터 단위"
+  ],
+  "args": [["text", "표시할 글자"], ["xy", "점 좌표 (x, y)"], ["textcoords", "\"offset points\""], ["xytext", "글자 위치 (점에서 떨어진 거리)"]],
+  "flow": "축 위에 글자 객체 추가",
+  "ret": "Annotation",
+  "hdr": "import matplotlib.pyplot as plt"
+ },
+ "ax.axhline()": {
+  "role": "matplotlib — 가로 기준선을 긋는다",
+  "desc": [
+   "ax.axhline(FP32_ACC - 0.03, ls=\"--\") — FP32 대비 3%p 기준선",
+   "두 칸(MACs – 정확도 · 지연 – 정확도) 모두에 같은 기준선"
+  ],
+  "args": [["y", "선의 높이"], ["ls", "선 모양 (\"--\" 점선)"], ["c", "색"]],
+  "flow": "축 전체 폭에 가로선",
+  "ret": "Line2D",
+  "hdr": "import matplotlib.pyplot as plt"
+ }
+}

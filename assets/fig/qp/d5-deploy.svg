@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 250" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="250" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">배포 비교 — 배치 1 ONNX · ORT CPU (스레드 1 · GPU 없음)</text>
+<text x="275.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">ONNX KB</text>
+<text x="210.0" y="83.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">dense</text>
+<rect x="220.0" y="69.0" width="89.2" height="22.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="314.2" y="85.0" font-size="11.5" fill="#1e293b" text-anchor="start">1,070.8</text>
+<text x="210.0" y="127.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">unstructured 50%</text>
+<rect x="220.0" y="113.0" width="89.2" height="22.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="314.2" y="129.0" font-size="11.5" fill="#1e293b" text-anchor="start">1,070.8</text>
+<text x="210.0" y="171.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">structured 50% + FT</text>
+<rect x="220.0" y="157.0" width="23.1" height="22.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="248.1" y="173.0" font-size="11.5" fill="#1e293b" text-anchor="start">276.6</text>
+<text x="435.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">정확도</text>
+<rect x="380.0" y="69.0" width="84.6" height="22.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="469.6" y="85.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8460</text>
+<rect x="380.0" y="113.0" width="81.2" height="22.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="466.2" y="129.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8125</text>
+<rect x="380.0" y="157.0" width="72.2" height="22.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="457.2" y="173.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.7225</text>
+<text x="595.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">지연 ms</text>
+<rect x="540.0" y="69.0" width="87.9" height="22.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="632.9" y="85.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.703</text>
+<rect x="540.0" y="113.0" width="87.9" height="22.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="632.9" y="129.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.703</text>
+<rect x="540.0" y="157.0" width="42.6" height="22.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="587.6" y="173.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.341</text>
+<text x="350.0" y="212.0" font-size="11.5" fill="#1e293b" text-anchor="middle">unstructured: Conv weight 270,256개 그대로 (0 이 50.1%) → 크기 · 속도 dense 와 같음 (1.00배)</text>
+<text x="350.0" y="234.0" font-size="11.5" fill="#16a34a" text-anchor="middle" font-weight="700">structured + FT: Conv weight 67,672개 → 크기 1/4 · 2.06배 (MACs 비율 3.9배만큼은 아님)</text>
+</svg>
