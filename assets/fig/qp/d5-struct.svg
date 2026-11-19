@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 290" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="290" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Structured pruning — 같은 keep 으로 conv1 출력 · bn1 · conv2 입력을 함께</text>
+<rect x="20.0" y="50.0" width="130.0" height="56.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="85.0" y="75.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">conv1</text>
+<text x="85.0" y="93.0" font-size="12.5" fill="#64748b" text-anchor="middle">weight[keep]</text>
+<rect x="185.0" y="50.0" width="130.0" height="56.0" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="250.0" y="75.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">bn1</text>
+<text x="250.0" y="93.0" font-size="12.5" fill="#64748b" text-anchor="middle">γ β μ σ² [keep]</text>
+<rect x="350.0" y="50.0" width="90.0" height="56.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="395.0" y="83.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">ReLU</text>
+<rect x="475.0" y="50.0" width="150.0" height="56.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="550.0" y="75.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">conv2</text>
+<text x="550.0" y="93.0" font-size="12.5" fill="#64748b" text-anchor="middle">weight[:, keep]</text>
+<line x1="150.0" y1="78.0" x2="183.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="315.0" y1="78.0" x2="348.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="440.0" y1="78.0" x2="473.0" y2="78.0" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+<text x="85.0" y="124.0" font-size="11.5" fill="#16a34a" text-anchor="middle" font-weight="700">출력 32 → 16</text>
+<text x="250.0" y="124.0" font-size="11.5" fill="#16a34a" text-anchor="middle" font-weight="700">32 → 16</text>
+<text x="550.0" y="124.0" font-size="11.5" fill="#16a34a" text-anchor="middle" font-weight="700">입력 32 → 16 · 출력 32 그대로</text>
+<rect x="15.0" y="40.0" width="620.0" height="95.0" rx="8" fill="none" stroke="#16a34a" stroke-width="1.2"/>
+<text x="645.0" y="92.0" font-size="11.5" fill="#16a34a" text-anchor="start" font-weight="700">블록 안쪽</text>
+<text x="645.0" y="108.0" font-size="11.5" fill="#16a34a" text-anchor="start" font-weight="700">✅ 자유</text>
+<rect x="475.0" y="170.0" width="150.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="550.0" y="190.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">out (conv2 · bn2)</text>
+<text x="550.0" y="208.0" font-size="12.5" fill="#64748b" text-anchor="middle">채널 C</text>
+<rect x="260.0" y="170.0" width="150.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="335.0" y="190.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">shortcut(x)</text>
+<text x="335.0" y="208.0" font-size="12.5" fill="#64748b" text-anchor="middle">채널 C</text>
+<circle cx="442.0" cy="245.0" r="14" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="442.0" y="250.0" font-size="16" fill="#dc2626" text-anchor="middle" font-weight="700">+</text>
+<line x1="550.0" y1="216.0" x2="455.0" y2="240.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="335.0" y1="216.0" x2="430.0" y2="240.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="40.0" y="190.0" font-size="12.5" fill="#dc2626" text-anchor="start" font-weight="700">블록 바깥쪽 ⚠</text>
+<text x="40.0" y="208.0" font-size="11.5" fill="#1e293b" text-anchor="start">out + shortcut(x) 는</text>
+<text x="40.0" y="224.0" font-size="11.5" fill="#1e293b" text-anchor="start">채널 수가 같아야 한다</text>
+<text x="350.0" y="280.0" font-size="11.5" fill="#dc2626" text-anchor="middle">conv2 출력만 8채널로 → The size of tensor a (8) must match the size of tensor b (16)</text>
+</svg>

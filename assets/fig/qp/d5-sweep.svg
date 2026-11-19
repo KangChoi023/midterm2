@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">가지치기 비율 곡선 — FT 뒤 정확도 · 점선 = FP32 − 3%p (0.816)</text>
+<line x1="60.0" y1="45.0" x2="60.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="60.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">0</text>
+<line x1="120.0" y1="45.0" x2="120.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="120.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">10</text>
+<line x1="180.0" y1="45.0" x2="180.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="180.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">20</text>
+<line x1="240.0" y1="45.0" x2="240.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="240.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">30</text>
+<line x1="300.0" y1="45.0" x2="300.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="300.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">40</text>
+<line x1="60.0" y1="206.2" x2="330.0" y2="206.2" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="210.2" font-size="12" fill="#64748b" text-anchor="end">0.6</text>
+<line x1="60.0" y1="148.6" x2="330.0" y2="148.6" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="152.6" font-size="12" fill="#64748b" text-anchor="end">0.7</text>
+<line x1="60.0" y1="91.1" x2="330.0" y2="91.1" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="95.1" font-size="12" fill="#64748b" text-anchor="end">0.8</text>
+<line x1="60.0" y1="235.0" x2="330.0" y2="235.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="60.0" y1="45.0" x2="60.0" y2="235.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="330.0" y="229.0" font-size="13" fill="#1e293b" text-anchor="end">MACs (M)</text>
+<line x1="60.0" y1="81.8" x2="330.0" y2="81.8" stroke="#dc2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+<polyline points="307.4,66.9 209.3,79.8 145.1,114.4 96.9,204.5" fill="none" stroke="#0284c7" stroke-width="2.3" stroke-linejoin="round"/>
+<circle cx="307.4" cy="66.9" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="315.4" y="60.9" font-size="10.5" fill="#1e293b" text-anchor="start">0% · 0.842</text>
+<circle cx="209.3" cy="79.8" r="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="217.3" y="73.8" font-size="10.5" fill="#16a34a" text-anchor="start" font-weight="700">20% · 0.8195</text>
+<circle cx="145.1" cy="114.4" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="153.1" y="108.4" font-size="10.5" fill="#1e293b" text-anchor="start">40% · 0.7595</text>
+<circle cx="96.9" cy="204.5" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="104.9" y="198.5" font-size="10.5" fill="#1e293b" text-anchor="start">60% · 0.603</text>
+<line x1="400.0" y1="45.0" x2="400.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="400.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">0.3</text>
+<line x1="490.0" y1="45.0" x2="490.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="490.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">0.5</text>
+<line x1="580.0" y1="45.0" x2="580.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="580.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">0.7</text>
+<line x1="670.0" y1="45.0" x2="670.0" y2="235.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="670.0" y="251.0" font-size="12" fill="#64748b" text-anchor="middle">0.9</text>
+<line x1="400.0" y1="206.2" x2="670.0" y2="206.2" stroke="#e2e8f0" stroke-width="1"/>
+<text x="394.0" y="210.2" font-size="12" fill="#64748b" text-anchor="end">0.6</text>
+<line x1="400.0" y1="148.6" x2="670.0" y2="148.6" stroke="#e2e8f0" stroke-width="1"/>
+<text x="394.0" y="152.6" font-size="12" fill="#64748b" text-anchor="end">0.7</text>
+<line x1="400.0" y1="91.1" x2="670.0" y2="91.1" stroke="#e2e8f0" stroke-width="1"/>
+<text x="394.0" y="95.1" font-size="12" fill="#64748b" text-anchor="end">0.8</text>
+<line x1="400.0" y1="235.0" x2="670.0" y2="235.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="400.0" y1="45.0" x2="400.0" y2="235.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="670.0" y="229.0" font-size="13" fill="#1e293b" text-anchor="end">지연 ms (ORT CPU)</text>
+<line x1="400.0" y1="81.8" x2="670.0" y2="81.8" stroke="#dc2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+<polyline points="581.8,66.9 642.5,79.8 548.0,114.4 418.9,204.5" fill="none" stroke="#0284c7" stroke-width="2.3" stroke-linejoin="round"/>
+<circle cx="581.8" cy="66.9" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="589.8" y="60.9" font-size="10.5" fill="#1e293b" text-anchor="start">0% · 0.842</text>
+<circle cx="642.5" cy="79.8" r="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="634.5" y="97.8" font-size="10.5" fill="#16a34a" text-anchor="end" font-weight="700">20% · 0.8195</text>
+<circle cx="548.0" cy="114.4" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="556.0" y="130.4" font-size="10.5" fill="#1e293b" text-anchor="start">40% · 0.7595</text>
+<circle cx="418.9" cy="204.5" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="426.9" y="198.5" font-size="10.5" fill="#1e293b" text-anchor="start">60% · 0.603</text>
+<text x="350.0" y="270.0" font-size="11.5" fill="#1e293b" text-anchor="middle">best_ratio 0.2 — MACs 1.66배 ↓ · 하락 2.65%p · 그러나 ORT CPU 지연 0.704 → 0.839 ms (채널 12 · 25 · 51)</text>
+<text x="350.0" y="290.0" font-size="11.5" fill="#64748b" text-anchor="middle">40% · 60% 는 빨라지지만 (0.629 · 0.342 ms) 정확도 기준 밖</text>
+</svg>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="700">Unstructured pruning (fine-tuning 없음) — global vs layer 별</text>
+<line x1="60.0" y1="50.0" x2="60.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="60.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0</text>
+<line x1="153.3" y1="50.0" x2="153.3" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="153.3" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0.3</text>
+<line x1="215.6" y1="50.0" x2="215.6" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="215.6" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0.5</text>
+<line x1="277.8" y1="50.0" x2="277.8" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="277.8" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0.7</text>
+<line x1="340.0" y1="50.0" x2="340.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="340.0" y="256.0" font-size="12" fill="#64748b" text-anchor="middle">0.9</text>
+<line x1="60.0" y1="240.0" x2="340.0" y2="240.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="244.0" font-size="12" fill="#64748b" text-anchor="end">0</text>
+<line x1="60.0" y1="197.8" x2="340.0" y2="197.8" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="201.8" font-size="12" fill="#64748b" text-anchor="end">0.2</text>
+<line x1="60.0" y1="155.6" x2="340.0" y2="155.6" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="159.6" font-size="12" fill="#64748b" text-anchor="end">0.4</text>
+<line x1="60.0" y1="113.3" x2="340.0" y2="113.3" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="117.3" font-size="12" fill="#64748b" text-anchor="end">0.6</text>
+<line x1="60.0" y1="71.1" x2="340.0" y2="71.1" stroke="#e2e8f0" stroke-width="1"/>
+<text x="54.0" y="75.1" font-size="12" fill="#64748b" text-anchor="end">0.8</text>
+<line x1="60.0" y1="240.0" x2="340.0" y2="240.0" stroke="#1e293b" stroke-width="1.3"/>
+<line x1="60.0" y1="50.0" x2="60.0" y2="240.0" stroke="#1e293b" stroke-width="1.3"/>
+<text x="340.0" y="234.0" font-size="13" fill="#1e293b" text-anchor="end">sparsity</text>
+<text x="65.0" y="46.0" font-size="12" fill="#1e293b" text-anchor="start">정확도</text>
+<line x1="60.0" y1="218.9" x2="340.0" y2="218.9" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="252.9" y="213.9" font-size="10.5" fill="#64748b" text-anchor="middle">무작위 0.1</text>
+<polyline points="60.0,61.4 153.3,62.3 215.6,68.5 277.8,138.2 340.0,218.9" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="60.0" cy="61.4" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="153.3" cy="62.3" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="215.6" cy="68.5" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="277.8" cy="138.2" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<circle cx="340.0" cy="218.9" r="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<polyline points="60.0,61.4 153.3,63.1 215.6,73.4 277.8,177.8 340.0,218.9" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" stroke-linejoin="round"/>
+<circle cx="60.0" cy="61.4" r="4" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<circle cx="153.3" cy="63.1" r="4" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<circle cx="215.6" cy="73.4" r="4" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<circle cx="277.8" cy="177.8" r="4" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<circle cx="340.0" cy="218.9" r="4" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="223.6" y="62.5" font-size="11" fill="#0284c7" text-anchor="start" font-weight="700">0.8125</text>
+<text x="207.6" y="87.4" font-size="11" fill="#d97706" text-anchor="end" font-weight="700">0.789</text>
+<text x="285.8" y="138.2" font-size="11" fill="#0284c7" text-anchor="start">0.482</text>
+<text x="285.8" y="181.8" font-size="11" fill="#d97706" text-anchor="start">0.2945</text>
+<line x1="200.0" y1="268.0" x2="225.0" y2="268.0" stroke="#0284c7" stroke-width="2.5"/>
+<text x="230.0" y="272.0" font-size="12" fill="#1e293b" text-anchor="start">global</text>
+<line x1="285.0" y1="268.0" x2="310.0" y2="268.0" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4"/>
+<text x="315.0" y="272.0" font-size="12" fill="#1e293b" text-anchor="start">layer 별</text>
+<text x="530.0" y="50.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">global 50% — 층마다 지운 비율</text>
+<text x="440.0" y="75.0" font-size="11" fill="#1e293b" text-anchor="end">fc</text>
+<rect x="446.0" y="64.0" width="11.6" height="15.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="461.6" y="76.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.058</text>
+<text x="440.0" y="96.0" font-size="11" fill="#1e293b" text-anchor="end">stem.0</text>
+<rect x="446.0" y="85.0" width="25.0" height="15.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="475.0" y="97.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.125</text>
+<text x="440.0" y="117.0" font-size="11" fill="#1e293b" text-anchor="end">L2.0.sc</text>
+<rect x="446.0" y="106.0" width="27.0" height="15.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="477.0" y="118.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.135</text>
+<text x="440.0" y="138.0" font-size="11" fill="#1e293b" text-anchor="end">L3.0.sc</text>
+<rect x="446.0" y="127.0" width="45.2" height="15.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="495.2" y="139.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.226</text>
+<text x="440.0" y="159.0" font-size="11" fill="#1e293b" text-anchor="end">L1.0.c1</text>
+<rect x="446.0" y="148.0" width="53.6" height="15.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+<text x="503.6" y="160.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.268</text>
+<text x="440.0" y="180.0" font-size="11" fill="#1e293b" text-anchor="end">L2.1.c1</text>
+<rect x="446.0" y="169.0" width="70.0" height="15.0" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1"/>
+<text x="520.0" y="181.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.350</text>
+<text x="440.0" y="201.0" font-size="11" fill="#1e293b" text-anchor="end">L3.0.c1</text>
+<rect x="446.0" y="190.0" width="75.2" height="15.0" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1"/>
+<text x="525.2" y="202.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.376</text>
+<text x="440.0" y="222.0" font-size="11" fill="#1e293b" text-anchor="end">L3.1.c2</text>
+<rect x="446.0" y="211.0" width="113.4" height="15.0" rx="2" fill="#e0f2fe" stroke="#0284c7" stroke-width="1"/>
+<text x="563.4" y="223.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.567</text>
+<text x="440.0" y="243.0" font-size="11" fill="#1e293b" text-anchor="end">L3.2.c1</text>
+<rect x="446.0" y="232.0" width="129.6" height="15.0" rx="2" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+<text x="579.6" y="244.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.648</text>
+<text x="440.0" y="264.0" font-size="11" fill="#1e293b" text-anchor="end">L3.2.c2</text>
+<rect x="446.0" y="253.0" width="160.2" height="15.0" rx="2" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+<text x="610.2" y="265.0" font-size="10.5" fill="#1e293b" text-anchor="start">0.801</text>
+<text x="530.0" y="290.0" font-size="11.5" fill="#64748b" text-anchor="middle">중요한 fc · stem 은 덜, 마지막 블록은 더 지운다</text>
+</svg>
