@@ -42,5 +42,5 @@
 <text x="570.0" y="162.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">outlier 제외 scale 0.0104</text>
 <text x="570.0" y="180.0" font-size="12.5" fill="#64748b" text-anchor="middle">나머지 15채널 → 228칸 / 256</text>
 <text x="570.0" y="215.0" font-size="11.5" fill="#64748b" text-anchor="middle">채널 3 하나의 최댓값 ≈ 462 vs 나머지 ≈ 2.7</text>
-<text x="570.0" y="235.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">INT8 정확도 0.846 → 0.2965</text>
+<text x="570.0" y="235.0" font-size="12.5" fill="#dc2626" text-anchor="middle" font-weight="700">INT8 정확도 0.846 → 0.2955</text>
 </svg>

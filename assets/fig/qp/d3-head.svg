@@ -10,6 +10,6 @@
 <text x="180.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">사람 FP32 2명 → INT8 0명</text>
 <rect x="370.0" y="150.0" width="300.0" height="56.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
 <text x="520.0" y="175.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">head 후처리 24노드 제외 (6-2)</text>
-<text x="520.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT8 2명 · 짝 IoU 중앙값 0.981</text>
+<text x="520.0" y="193.0" font-size="12.5" fill="#64748b" text-anchor="middle">INT8 2명 · 짝 IoU 중앙값 0.966</text>
 <text x="350.0" y="232.0" font-size="11" fill="#64748b" text-anchor="middle">제외 = /model.22/ 중 cv2 · cv3 Conv 가 아닌 것: DFL(Softmax · conv) · Sigmoid · 디코딩(Sub · Add · Div · Mul) · Concat · Reshape</text>
 </svg>
