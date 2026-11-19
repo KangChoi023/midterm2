@@ -16,18 +16,18 @@
 <rect x="265.0" y="68.0" width="82.6" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
 <text x="352.6" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.9719</text>
 <text x="269.0" y="123.0" font-size="11.5" fill="#64748b" text-anchor="start">— (GPU 필요)</text>
-<rect x="265.0" y="148.0" width="82.1" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
-<text x="352.1" y="163.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.9656</text>
+<rect x="265.0" y="148.0" width="82.2" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="352.2" y="163.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.9666</text>
 <rect x="265.0" y="188.0" width="82.7" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
-<text x="352.7" y="203.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.9727</text>
+<text x="352.7" y="203.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.9734</text>
 <text x="465.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">mAP</text>
 <rect x="410.0" y="68.0" width="71.2" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
 <text x="486.2" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8375</text>
 <text x="414.0" y="123.0" font-size="11.5" fill="#64748b" text-anchor="start">— (GPU 필요)</text>
-<rect x="410.0" y="148.0" width="70.1" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
-<text x="485.1" y="163.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8251</text>
-<rect x="410.0" y="188.0" width="70.6" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
-<text x="485.6" y="203.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8301</text>
+<rect x="410.0" y="148.0" width="69.3" height="20.0" rx="3" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.2"/>
+<text x="484.3" y="163.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8149</text>
+<rect x="410.0" y="188.0" width="70.4" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
+<text x="485.4" y="203.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8279</text>
 <text x="610.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">크기 MB</text>
 <rect x="555.0" y="68.0" width="80.2" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
 <text x="640.2" y="83.0" font-size="11.5" fill="#1e293b" text-anchor="start">12.26</text>
@@ -36,6 +36,6 @@
 <text x="582.4" y="163.0" font-size="11.5" fill="#1e293b" text-anchor="start">3.43</text>
 <rect x="555.0" y="188.0" width="22.9" height="20.0" rx="3" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.2"/>
 <text x="583.0" y="203.0" font-size="11.5" fill="#1e293b" text-anchor="start">3.51</text>
-<text x="350.0" y="240.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">규칙: AP50 ≥ FP32 − 0.01 · mAP ≥ FP32 − 0.02 중 가장 빠른 것 → 셋 다 통과, CPU 에서는 FP32 추천</text>
+<text x="350.0" y="240.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">규칙: AP50 ≥ FP32 − 0.01 · mAP ≥ FP32 − 0.02 → INT8 은 mAP 0.8149 &lt; 0.8175 탈락 · 통과한 둘 중 FP32 추천</text>
 <text x="350.0" y="262.0" font-size="11.5" fill="#dc2626" text-anchor="middle">x86 CPU 는 활성값 S8 INT8 이 느리다 (QP D2·5교시) — TensorRT GPU 에서 다시 재야 하는 이유</text>
 </svg>

@@ -24,5 +24,5 @@
 <line x1="190.0" y1="178.0" x2="238.0" y2="178.0" stroke="#16a34a" stroke-width="2" marker-end="url(#arr)"/>
 <line x1="440.0" y1="178.0" x2="488.0" y2="178.0" stroke="#16a34a" stroke-width="2" marker-end="url(#arr)"/>
 <text x="350.0" y="228.0" font-size="12" fill="#dc2626" text-anchor="middle">trt_check: Day 2 모델(활성값 U8) → uint8 zp 68개 · 0 아닌 zp 26개 → 불합격</text>
-<text x="350.0" y="248.0" font-size="12" fill="#16a34a" text-anchor="middle">make_trt_int8 (QInt8 · ActivationSymmetric · WeightSymmetric) → uint8 0 · nonzero 0 → 합격 · 정확도 0.8435</text>
+<text x="350.0" y="248.0" font-size="12" fill="#16a34a" text-anchor="middle">make_trt_int8 (QInt8 · 대칭 · reduce_range) → uint8 0 · nonzero 0 → 합격 · 정확도 0.8420</text>
 </svg>
