@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">PTQ vs QAT 대결 — 같은 ResNet-20 · 같은 평가 2,000장 (지연 = ORT CPU · 배치 1)</text>
+<text x="195.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">INT8 정확도</text>
+<text x="130.0" y="80.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">FP32</text>
+<rect x="140.0" y="66.0" width="18.4" height="20.0" rx="3" fill="#fff" stroke="#64748b" stroke-width="1.2"/>
+<text x="163.4" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8460</text>
+<text x="130.0" y="118.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">ORT PTQ</text>
+<rect x="140.0" y="104.0" width="16.8" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="161.8" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8420</text>
+<text x="130.0" y="156.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">ModelOpt PTQ</text>
+<rect x="140.0" y="142.0" width="17.2" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="162.2" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8430</text>
+<text x="130.0" y="194.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">수작업 QAT</text>
+<rect x="140.0" y="180.0" width="19.6" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="164.6" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8490</text>
+<text x="130.0" y="232.0" font-size="12.5" fill="#1e293b" text-anchor="end" font-weight="700">ModelOpt QAT</text>
+<rect x="140.0" y="218.0" width="17.2" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="162.2" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8430</text>
+<text x="335.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">W3A8 정확도</text>
+<text x="284.0" y="81.0" font-size="12" fill="#64748b" text-anchor="start">—</text>
+<text x="284.0" y="119.0" font-size="12" fill="#64748b" text-anchor="start">—</text>
+<rect x="280.0" y="142.0" width="7.5" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="292.5" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.7280</text>
+<rect x="280.0" y="180.0" width="36.7" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="321.7" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8375</text>
+<rect x="280.0" y="218.0" width="35.2" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="320.2" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.8320</text>
+<text x="475.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">학습 분</text>
+<rect x="420.0" y="66.0" width="2.0" height="20.0" rx="3" fill="#fff" stroke="#64748b" stroke-width="1.2"/>
+<text x="427.0" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.0</text>
+<rect x="420.0" y="104.0" width="2.0" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="427.0" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.0</text>
+<rect x="420.0" y="142.0" width="2.0" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="427.0" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.0</text>
+<rect x="420.0" y="180.0" width="72.6" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="497.6" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="start">10.0</text>
+<rect x="420.0" y="218.0" width="14.3" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="439.3" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">2.0</text>
+<text x="615.0" y="52.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">지연 ms</text>
+<rect x="560.0" y="66.0" width="31.7" height="20.0" rx="3" fill="#fff" stroke="#64748b" stroke-width="1.2"/>
+<text x="596.7" y="81.0" font-size="11.5" fill="#1e293b" text-anchor="start">0.71</text>
+<rect x="560.0" y="104.0" width="52.4" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="617.4" y="119.0" font-size="11.5" fill="#1e293b" text-anchor="start">1.18</text>
+<rect x="560.0" y="142.0" width="74.4" height="20.0" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+<text x="639.4" y="157.0" font-size="11.5" fill="#1e293b" text-anchor="start">1.68</text>
+<text x="564.0" y="195.0" font-size="12" fill="#64748b" text-anchor="start">—</text>
+<rect x="560.0" y="218.0" width="70.4" height="20.0" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="635.4" y="233.0" font-size="11.5" fill="#1e293b" text-anchor="start">1.58</text>
+<text x="350.0" y="262.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">QAT 이득: INT8 +0.6%p → 필요 없음 · W3A8 +10.95%p → 필요 (기준 1%p)</text>
+<text x="350.0" y="284.0" font-size="11" fill="#64748b" text-anchor="middle">정확도 막대는 0.80 · 0.70 부터 · CPU 에서는 INT8 이 FP32 보다 느리다 — TensorRT GPU 에서 다시 잰다</text>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="280" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">mtq.quantize(model, INT8_DEFAULT_CFG, forward_loop) — 삽입 + 보정을 한 줄로</text>
+<rect x="30.0" y="45.0" width="300.0" height="165.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.6"/>
+<text x="180.0" y="66.0" font-size="12.5" fill="#1e293b" text-anchor="middle" font-weight="700">QuantConv2d (Conv 21개 · Linear 1개도)</text>
+<rect x="45.0" y="80.0" width="130.0" height="44.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="110.0" y="99.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">input_quantizer</text>
+<text x="110.0" y="117.0" font-size="12.5" fill="#64748b" text-anchor="middle">8비트 · 텐서 하나</text>
+<rect x="185.0" y="80.0" width="130.0" height="44.0" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="250.0" y="99.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">weight_quantizer</text>
+<text x="250.0" y="117.0" font-size="12.5" fill="#64748b" text-anchor="middle">8비트 · axis 0</text>
+<rect x="115.0" y="140.0" width="130.0" height="44.0" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
+<text x="180.0" y="159.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">output_quantizer</text>
+<text x="180.0" y="177.0" font-size="12.5" fill="#64748b" text-anchor="middle">꺼짐</text>
+<text x="180.0" y="202.0" font-size="11.5" fill="#64748b" text-anchor="middle">모두 대칭 (zero_point 0) · max 보정</text>
+<text x="510.0" y="60.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">삽입 110개 → 켜진 것 45개</text>
+<text x="470.0" y="92.0" font-size="11.5" fill="#1e293b" text-anchor="end">입력 (Conv · Linear)</text>
+<rect x="478.0" y="80.0" width="57.2" height="18.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="539.2" y="93.0" font-size="11.5" fill="#1e293b" text-anchor="start">22</text>
+<text x="470.0" y="122.0" font-size="11.5" fill="#1e293b" text-anchor="end">weight (Conv · Linear)</text>
+<rect x="478.0" y="110.0" width="57.2" height="18.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="539.2" y="123.0" font-size="11.5" fill="#1e293b" text-anchor="start">22</text>
+<text x="470.0" y="152.0" font-size="11.5" fill="#1e293b" text-anchor="end">pool 입력</text>
+<rect x="478.0" y="140.0" width="2.6" height="18.0" rx="2" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="484.6" y="153.0" font-size="11.5" fill="#1e293b" text-anchor="start">1</text>
+<text x="470.0" y="182.0" font-size="11.5" fill="#1e293b" text-anchor="end">output · BN 양자화기</text>
+<rect x="478.0" y="170.0" width="169.0" height="18.0" rx="2" fill="#fff" stroke="#64748b" stroke-width="1.2"/>
+<text x="651.0" y="183.0" font-size="11.5" fill="#1e293b" text-anchor="start">65</text>
+<text x="510.0" y="215.0" font-size="12.5" fill="#0284c7" text-anchor="middle" font-weight="700">INT8 PTQ 0.843 · W3A8 PTQ 0.728</text>
+<text x="350.0" y="245.0" font-size="12" fill="#64748b" text-anchor="middle">BN 은 접지 않고 QuantBatchNorm2d 로 남는다 → 배포 때 TensorRT 가 접는다</text>
+<text x="350.0" y="267.0" font-size="12" fill="#d97706" text-anchor="middle">make_cfg(3): config 를 깊은 복사 → "*weight_quantizer" 의 num_bits = 3</text>
+</svg>
