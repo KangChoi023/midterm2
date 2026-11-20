@@ -1,0 +1,337 @@
+{
+ "soft()": {
+  "role": "logits 를 temperature T 로 나눈 softmax — soft target 만들기",
+  "desc": [
+   "T=1 이면 보통 softmax · T 가 클수록 분포가 평평해진다",
+   "dim=1 (클래스 축) 으로 합이 1"
+  ],
+  "args": [
+   [
+    "logits",
+    "(N, C) 모델 출력"
+   ],
+   [
+    "T",
+    "temperature (기본 1.0)"
+   ]
+  ],
+  "flow": "F.softmax(logits / T, dim=1)",
+  "ret": "(N, C) 확률",
+  "hdr": "import torch.nn.functional as F"
+ },
+ "kd_loss()": {
+  "role": "KD loss — 정답(CE) 과 선생님 분포(KL) 를 α 로 섞는다",
+  "desc": [
+   "loss = α·CE + (1 − α)·T²·KL",
+   "T² 는 soft 항 기울기가 1/T² 로 작아지는 것을 되돌린다",
+   "선생님 logits 에는 기울기가 흐르지 않게 no_grad 로 만든다"
+  ],
+  "args": [
+   [
+    "s_logits",
+    "학생 logits"
+   ],
+   [
+    "t_logits",
+    "선생님 logits"
+   ],
+   [
+    "y",
+    "정답 라벨"
+   ],
+   [
+    "T",
+    "temperature (기본 4.0)"
+   ],
+   [
+    "alpha",
+    "CE 비중 (기본 0.5)"
+   ]
+  ],
+  "flow": "CE → log_softmax(학생/T) · softmax(선생님/T) → kl_div → 섞기",
+  "ret": "스칼라 loss",
+  "hdr": "import torch.nn.functional as F"
+ },
+ "F.kl_div()": {
+  "role": "두 분포의 KL 발산 — KD 의 soft 항",
+  "desc": [
+   "첫 인자는 확률이 아니라 log 확률 (학생 log_softmax)",
+   "둘째 인자는 확률 (선생님 softmax)",
+   "reduction='batchmean' 이어야 KL 정의(배치 평균)와 맞다"
+  ],
+  "args": [
+   [
+    "input",
+    "학생의 log 확률"
+   ],
+   [
+    "target",
+    "선생님의 확률"
+   ],
+   [
+    "reduction",
+    "'batchmean' = 배치 크기로 나눔"
+   ]
+  ],
+  "flow": "Σ target · (log target − input) / N",
+  "ret": "스칼라",
+  "hdr": "import torch.nn.functional as F"
+ },
+ "train_kd()": {
+  "role": "선생님을 두고 학생을 KD loss 로 학습 (finetune 의 KD 판)",
+  "desc": [
+   "선생님은 eval() + no_grad — 학습되지 않는다",
+   "step 마다 선생님 forward 가 한 번 더 — 시간이 조금 더 든다",
+   "on_epoch 로 epoch 마다 정확도를 기록"
+  ],
+  "args": [
+   [
+    "student",
+    "학습할 모델 (가지치기한 모델)"
+   ],
+   [
+    "teacher",
+    "선생님 (자르기 전 원본)"
+   ],
+   [
+    "epochs",
+    "epoch 수"
+   ],
+   [
+    "lr",
+    "학습률 (1e-2)"
+   ],
+   [
+    "T / alpha",
+    "temperature · CE 비중"
+   ],
+   [
+    "on_epoch",
+    "epoch 끝 콜백"
+   ]
+  ],
+  "flow": "선생님 logits (no_grad) → kd_loss(학생 logits, …) → backward → step",
+  "ret": "걸린 시간(초)",
+  "hdr": "# QP Day 6 데이터 셀의 도우미 위에 직접 구현"
+ },
+ "prune_channels()": {
+  "role": "채널을 비율만큼 structured pruning 한 새 모델을 돌려준다 (Day 5)",
+  "desc": [
+   "torch-pruning 의 MetaPruner 로 L1-norm 이 작은 채널을 제거",
+   "ratio=0.5 → MACs 41.2M → 10.5M · 정확도는 0.10 으로 급락(회복 필요)"
+  ],
+  "args": [
+   [
+    "model",
+    "원본 모델"
+   ],
+   [
+    "ratio",
+    "자를 채널 비율 (0.2 · 0.3 · 0.5)"
+   ]
+  ],
+  "flow": "복사 → MetaPruner.step() → 작아진 모델",
+  "ret": "가지치기된 모델",
+  "hdr": "# QP Day 5 에서 만든 함수"
+ },
+ "to_int8()": {
+  "role": "모델 복사본을 ModelOpt INT8 PTQ 로 양자화",
+  "desc": [
+   "원본은 그대로 두고 복사본에 적용 (원본에 quantizer 가 붙으면 안 된다)",
+   "보정 데이터는 forward_loop 로 흘려보낸다",
+   "양자화는 파이프라인의 마지막 — 이후 구조 변경 금지"
+  ],
+  "args": [
+   [
+    "model",
+    "양자화할 모델"
+   ]
+  ],
+  "flow": "deepcopy → mtq.quantize(m, INT8_DEFAULT_CFG, forward_loop)",
+  "ret": "양자화된 모델",
+  "hdr": "import modelopt.torch.quantization as mtq"
+ },
+ "compress()": {
+  "role": "Prune → KD → INT8 → QDQ ONNX 를 한 번에 (제공 함수)",
+  "desc": [
+   "① prune_channels ② train_kd ③ to_int8 ④ export_b1",
+   "결과 소스는 compress.py 로 저장된다"
+  ],
+  "args": [
+   [
+    "model",
+    "원본"
+   ],
+   [
+    "teacher",
+    "선생님"
+   ],
+   [
+    "ratio",
+    "가지치기 비율"
+   ],
+   [
+    "epochs",
+    "KD epoch"
+   ],
+   [
+    "out",
+    "저장할 QDQ ONNX 이름"
+   ]
+  ],
+  "flow": "prune → KD → INT8 → export_b1",
+  "ret": "(가지치기+KD 모델, INT8 모델)",
+  "hdr": "# 노트북 3교시 예제 3-A"
+ },
+ "export_b1()": {
+  "role": "batch=1 고정 ONNX 로 내보내기 (TensorRT 엔진용)",
+  "desc": [
+   "TensorRT 용은 배치를 고정해 빌드한다",
+   "양자화된 모델이면 QDQ 노드가 들어간 ONNX 가 된다"
+  ],
+  "args": [
+   [
+    "model",
+    "모델 (복사본을 넘긴다)"
+   ],
+   [
+    "path",
+    "저장할 .onnx"
+   ]
+  ],
+  "flow": "torch.onnx.export(model, zeros(1,3,32,32), path)",
+  "ret": "path",
+  "hdr": "import torch"
+ },
+ "read_frames()": {
+  "role": "영상에서 번호가 idx 인 프레임들을 리스트로 읽는다",
+  "desc": [
+   "VideoCapture 로 처음부터 읽으며 필요한 번호만 담는다",
+   "보정용 · 평가용 프레임을 나눠 뽑을 때 쓴다"
+  ],
+  "args": [
+   [
+    "idx",
+    "읽을 프레임 번호 목록"
+   ]
+  ],
+  "flow": "cap.read() 반복 → 번호가 idx 에 있으면 저장",
+  "ret": "프레임(BGR) 리스트",
+  "hdr": "import cv2"
+ },
+ "FrameReader": {
+  "role": "보정 프레임을 한 장씩 주는 CalibrationDataReader",
+  "desc": [
+   "__init__ 에서 {'images': 전처리 입력} 반복자를 만든다",
+   "get_next() 는 다음 한 장, 다 쓰면 None"
+  ],
+  "args": [
+   [
+    "frames",
+    "보정용 프레임 리스트"
+   ]
+  ],
+  "flow": "iter([{'images': to_input(f)[0]} …]) → next(it, None)",
+  "ret": "{'images': (1,3,640,640) float32} 또는 None",
+  "hdr": "from onnxruntime.quantization import CalibrationDataReader"
+ },
+ "make_yolo_int8()": {
+  "role": "YOLOv8n 전처리 ONNX 를 static PTQ(QDQ) 로 INT8 ONNX 로",
+  "desc": [
+   "exclude 로 넘긴 노드는 FP 로 남는다 (head · mixed)",
+   "보정은 FrameReader 가 주는 배포 영상 프레임"
+  ],
+  "args": [
+   [
+    "out",
+    "저장할 INT8 ONNX"
+   ],
+   [
+    "reader",
+    "CalibrationDataReader"
+   ],
+   [
+    "exclude",
+    "FP 로 남길 노드 이름 목록"
+   ]
+  ],
+  "flow": "quantize_static(yolov8n_pre.onnx, out, reader, nodes_to_exclude=exclude)",
+  "ret": "out",
+  "hdr": "from onnxruntime.quantization import quantize_static"
+ },
+ "agreement()": {
+  "role": "기준 로그와 비교 로그의 프레임 일치율",
+  "desc": [
+   "n_people · n_inside · alarm 각각 값이 같은 프레임의 비율",
+   "두 로그는 같은 길이 (같은 프레임 구간)"
+  ],
+  "args": [
+   [
+    "ref",
+    "기준(FP16) 로그 DataFrame"
+   ],
+   [
+    "log",
+    "비교할 로그 DataFrame"
+   ]
+  ],
+  "flow": "(ref[c] == log[c]).mean() for c in 세 열",
+  "ret": "{'n_people','n_inside','alarm': 0~1}",
+  "hdr": "import pandas as pd"
+ },
+ "match_events()": {
+  "role": "기준 이벤트마다 겹치는 비교 이벤트가 있는지 찾는다",
+  "desc": [
+   "겹침 판정에 tol 초 여유를 둔다",
+   "matched 여부와 시작 시각 차이(start_diff_s) 기록",
+   "matched 비율 = 이벤트 재현율"
+  ],
+  "args": [
+   [
+    "ref",
+    "기준 이벤트 (시작, 끝) 목록"
+   ],
+   [
+    "ev",
+    "비교 이벤트 목록"
+   ],
+   [
+    "tol",
+    "허용 오차(초, 0.5)"
+   ]
+  ],
+  "flow": "기준 이벤트마다 구간이 겹치는 ev 를 찾아 행으로",
+  "ret": "DataFrame(ref_start, ref_end, matched, start_diff_s)",
+  "hdr": "import pandas as pd"
+ },
+ "recommend()": {
+  "role": "장치 정보(GPU 유무 · RAM)로 런타임 · 정밀도 · pruning · KD 를 고른다",
+  "desc": [
+   "Jetson=TensorRT INT8 · Pi=CPU INT8 + pruning · MCU=전부 INT8 + 작은 모델 + pruning · KD"
+  ],
+  "args": [
+   [
+    "dev",
+    "{'device','nvidia_gpu','ram_mb'} 딕셔너리"
+   ]
+  ],
+  "flow": "if nvidia_gpu … elif ram_mb 큼 … else MCU",
+  "ret": "{'runtime','precision','pruning','kd'}",
+  "hdr": "# 직접 구현 7-2"
+ },
+ "pd.read_csv()": {
+  "role": "CSV 를 DataFrame 으로 읽기 — 누적 결과표 qp_baseline.csv 확인",
+  "desc": [
+   "day 열로 오늘 행만 걸러 볼 수 있다 (final_df[final_df.day == 'Day6'])"
+  ],
+  "args": [
+   [
+    "path",
+    "CSV 파일 이름"
+   ]
+  ],
+  "flow": "파일 → DataFrame",
+  "ret": "DataFrame",
+  "hdr": "import pandas as pd"
+ }
+}
