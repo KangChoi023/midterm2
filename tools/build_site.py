@@ -601,7 +601,7 @@ def build_subject(cfg, index):
                 index['search'].append(loc + ['term', f't{i}', t['name'], strip_md(t['def'])])
             for i, f in enumerate(funcs):
                 f['kind'] = func_kind(sid, f['name'], f.get('detail'))
-                index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i, f.get('detail')])
+                index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i, f.get('detail'), f['kind']])
                 fn_rows.append((d, n, f, index['funcs'][-1]))
                 index['search'].append(loc + ['func', f'f{i}', f['name'], strip_md(f['sig'] + ' ' + f['use'])])
             if kws: index['search'].append(loc + ['kw', 's-kw', '키워드', ' · '.join(kws)])

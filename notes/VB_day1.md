@@ -26,7 +26,7 @@ mynn → PyTorch — 손수 만든 부품을 한 줄로
 | 함수 | 기본형 | 용도 |
 |---|---|---|
 | `nn.Linear()` | `nn.Linear(in, out)` | 완전연결층 (NN 의 Affine) |
-| `nn.Conv2d()` | `nn.Conv2d(C_in, C_out, k)` | 합성곱 층 (NN 의 Convolution) |
+| `nn.Conv2d()` | `nn.Conv2d(C_in, C_out, k, stride=1, padding=0)` | 합성곱 층 (NN 의 Convolution) |
 | `nn.MaxPool2d()` | `nn.MaxPool2d(2)` | 최대 풀링 |
 | `nn.ReLU()` | `nn.ReLU()` | ReLU 활성화 |
 | `nn.Flatten()` | `nn.Flatten()` | (N, C, H, W) → (N, C·H·W) 로 펼치기 |
