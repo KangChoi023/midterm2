@@ -216,6 +216,47 @@ def attach_figs(topics, n, intro):
         ks = [k for k, f in enumerate(intro) if n in f['lessons']]
         if ks: tp['figRefs'] = [{'t': 'intro', 'k': k} for k in ks]
 
+# ---- 앞에서 만든 것: 노트북 코드가 같은 Day 의 앞 코드에서 만든 이름을 가져다 쓰면 그 위치 ----
+import ast as _ast, builtins as _bi
+DEP_SKIP = set(dir(_bi)) | {'np', 'torch', 'plt', 'nn', 'F', 'cv2', 'ort', 'onnx', 'trt', 'pd', 'time', 'math', 'os', 'json',
+                            'copy', 'random', 'display', 'IPython', 'importlib', 'mynn', 'my_quant', 'mtq', 'mto', 'tp', 'self'}
+
+def _dep_parse(src):
+    src = '\n'.join('' if re.match(r'\s*[%!]', l) else l for l in src.lstrip(' ').split('\n'))   # 셀 매직 · 셸 명령 줄은 빼고
+    try: return _ast.parse(src), src.split('\n')
+    except SyntaxError: return None, None
+
+def attach_deps(D):
+    """D['lessons'][*]['codes'][*]['deps'] = [[이름, 교시, 코드 번호(j), 만든 줄], …] — 같은 Day 안에서만 (다른 Day · 과목의 같은 이름과 섞이지 않게)"""
+    defs, n_dep = {}, 0
+    for L in D['lessons']:
+        for j, c in enumerate(L.get('codes') or []):
+            if c.get('lang') != 'python': continue
+            tree, lines = _dep_parse(c['code'])
+            if tree is None: continue
+            local = set()
+            for nd in _ast.walk(tree):
+                if isinstance(nd, _ast.Name) and isinstance(nd.ctx, (_ast.Store, _ast.Del)): local.add(nd.id)
+                elif isinstance(nd, (_ast.FunctionDef, _ast.ClassDef, _ast.AsyncFunctionDef)): local.add(nd.name)
+                elif isinstance(nd, (_ast.Import, _ast.ImportFrom)): local |= {(a.asname or a.name).split('.')[0] for a in nd.names}
+                elif isinstance(nd, _ast.arg): local.add(nd.arg)
+            used = []
+            for nd in _ast.walk(tree):
+                if isinstance(nd, _ast.Name) and isinstance(nd.ctx, _ast.Load) and nd.id in defs and nd.id not in local and nd.id not in DEP_SKIP and nd.id not in used:
+                    used.append(nd.id)
+            if used: c['deps'] = [[u] + defs[u] for u in used[:10]]; n_dep += 1
+            for nd in tree.body:                       # 이 코드가 맨 바깥에서 만든 이름 → 뒤 코드가 가져다 쓸 수 있다
+                names = []
+                if isinstance(nd, (_ast.FunctionDef, _ast.ClassDef, _ast.AsyncFunctionDef)): names = [nd.name]
+                elif isinstance(nd, (_ast.Assign, _ast.AnnAssign, _ast.AugAssign)):
+                    for t in (nd.targets if isinstance(nd, _ast.Assign) else [nd.target]):
+                        names += [x.id for x in _ast.walk(t) if isinstance(x, _ast.Name)]
+                elif isinstance(nd, (_ast.Import, _ast.ImportFrom)): continue
+                for nm in names:
+                    if not isinstance(nd, _ast.AugAssign) or nm not in defs:
+                        defs[nm] = [L['n'], j, lines[nd.lineno - 1].strip()[:90]]
+    return n_dep
+
 def code_index(sid, d, n, topics, sections):
     """오른쪽 💻 코드 목차용: 코드·명령이 있는 토픽마다 [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호]"""
     rows = {}
@@ -630,6 +671,7 @@ def build_subject(cfg, index):
                     tp['figRefs'] = [{'t': 'other', 'n': last[0], 'id': last[1]}]
         for ln, tps, secs in pending_code:
             index['code'] += code_index(sid, d, ln, tps, secs)
+        attach_deps(D)
         S['days'].append(D); meta['days'].append(dm)
     EX_STAT.append((sid,) + attach_examples(sid, S, fn_rows))
     return S, meta

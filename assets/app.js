@@ -45,6 +45,21 @@
         const r = lang ? hljs.highlight(c.textContent, { language: lang, ignoreIllegals: true }) : hljs.highlightAuto(c.textContent, ['c', 'bash', 'makefile', 'python']);
         c.innerHTML = r.value;
       } catch (e) { /* 그대로 둔다 */ }
+      if (c.dataset.deps) depMark(c);
+    });
+  }
+  // 앞에서 만든 이름(낱말 전체 일치)에 밑줄 — 주석 · 문자열 안은 건드리지 않는다
+  function depMark(code) {
+    let deps; try { deps = JSON.parse(code.dataset.deps); } catch (e) { return; }
+    const by = new Map(deps.map(x => [x[0], x])), re = new RegExp(`\\b(${deps.map(x => x[0]).join('|')})\\b`, 'g');
+    const tw = document.createTreeWalker(code, NodeFilter.SHOW_TEXT), nodes = [];
+    while (tw.nextNode()) { const nd = tw.currentNode; if (!nd.parentElement.closest('.hljs-comment, .hljs-string')) nodes.push(nd); }
+    nodes.forEach(nd => {
+      if (!re.test(nd.data)) return; re.lastIndex = 0;
+      const f = document.createDocumentFragment(); let p = 0;
+      nd.data.replace(re, (m, w, at) => { f.append(nd.data.slice(p, at)); const x = by.get(w), s = document.createElement('span');
+        s.className = 'depv'; s.textContent = w; s.title = `${w} — ${CX && x[1] === CX.n ? '이 교시 앞 코드' : x[1] + '교시'}에서 만듦\n${x[2]}`; f.append(s); p = at + m.length; return m; });
+      f.append(nd.data.slice(p)); nd.replaceWith(f);
     });
   }
   const loc = (s, d, n) => `${sById(s).short} D${d}·${n}교시`;
@@ -860,15 +875,23 @@
    * 마커가 없는 코드는 교시 끝 "이 교시의 다른 강의 코드" 에 모두 모은다 — 교안 코드가 빠지지 않게.
    * 블록 안: 함수 이름(점선 밑줄)을 누르면 함수 설명, 색칠된 줄(🧭)을 누르면 그 부분 설명 — 둘 다 그 줄 바로 아래 작은 상자. */
   const cxTitle = s => { const i = String(s).indexOf(' — '); return i < 0 ? `<b>${esc(s)}</b>` : `<b>${esc(s.slice(0, i))}</b><small>${esc(s.slice(i + 3))}</small>`; };
+  // 앞에서 만든 것: 같은 Day 의 앞 코드에서 만든 이름 (빌드가 계산: [이름, 교시, 코드 번호, 만든 줄])
+  function depsHtml(c) {
+    if (!(c.deps || []).length || !CX) return '';
+    const by = {}; c.deps.forEach(x => (by[x[1]] = by[x[1]] || []).push(x));
+    const rows = Object.keys(by).sort((a, b) => a - b).map(n => `<div class="dep-r"><span class="dep-w">${+n === CX.n ? '이 교시 앞 코드' : n + '교시'}</span><span>${by[n].map(x =>
+      `<a class="dep" href="${href(CX.s, CX.d, x[1], 'K' + x[2])}" title="${esc(x[3])}">${esc(x[0])}</a>`).join('')}</span></div>`).join('');
+    return `<div class="deps"><div class="dep-h">🔗 앞에서 만든 것 <small>이 코드가 새로 만들지 않고 가져다 쓰는 이름 · 마우스를 올리면 만든 줄, 누르면 그 코드로</small></div>${rows}</div>`;
+  }
   function codeBox(c, j) {
     const n = c.code.replace(/\n+$/, '').split('\n').length;
     const g = c.guide || [];
     const outs = (c.outs || []).map(o => codeBlock({ kind: 'out', lang: 'text', text: o.text, run: o.run || undefined })).join('');
     return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${cxTitle(c.t)}</span>`
       + `<span class="cx-meta">${g.length ? `<span class="cx-g" title="색칠된 줄을 누르면 설명">🧭 ${g.length}</span>` : ''}${n}줄 · ${c.from === 'md' ? '강의 글' : '강의 ' + esc(c.k)}</span></summary>`
-      + `<div class="cx-in">${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
+      + `<div class="cx-in">${depsHtml(c)}${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
       + (c.qp === 'solved' ? `<p class="cx-own" title="QP 교안의 정답은 강사 잠금 코드로 잠겨 있어, 직접 작성한 풀이를 교안의 확인 셀(assert)로 실행해 확인했습니다">✍️ 직접 작성한 풀이 · 교안 확인 셀 통과 (공식 정답 아님)</p>` : c.qp === 'todo' ? `<p class="cx-own">✍️ 아직 풀이가 없어 빈칸(TODO) 그대로</p>` : '')
-      + `<div class="cb code cx-cb"><div class="cb-h"><span class="k code">코드</span><span class="cx-hint">${g.length ? '색칠된 줄 · ' : ''}점선 함수 이름을 누르면 설명</span><button type="button" data-copy>복사</button></div><pre${g.length ? ' class="has-guide"' : ''}><code data-lang="${esc(c.lang)}">${esc(c.code.replace(/\n+$/, ''))}</code></pre></div>`
+      + `<div class="cb code cx-cb"><div class="cb-h"><span class="k code">코드</span><span class="cx-hint">${g.length ? '색칠된 줄 · ' : ''}점선 함수 이름을 누르면 설명</span><button type="button" data-copy>복사</button></div><pre${g.length ? ' class="has-guide"' : ''}><code data-lang="${esc(c.lang)}"${(c.deps || []).length ? ` data-deps="${esc(JSON.stringify(c.deps.map(x => [x[0], x[1], x[3]])))}"` : ''}>${esc(c.code.replace(/\n+$/, ''))}</code></pre></div>`
       + outs + (c.expl ? `<div class="cx-expl"><b>💡 ${c.qp ? '강사님 힌트' : '해설'}</b>${md(c.expl)}</div>` : '') + `</div></details>`;
   }
   function studyWithCode(text, L) {
@@ -1509,6 +1532,7 @@
       if (el && CX.LK.byId[id]) openPeek('c', id);                        // 정의는 옆 패널에
       if (!el) { renderNotesBody('study'); el = document.getElementById(anchor); }
     }
+    if (!el && /^K\d+$/.test(anchor)) { el = document.getElementById('G' + anchor.slice(1)); if (!el) { renderNotesBody('study'); el = document.getElementById(anchor); } }
     if (!el) { window.scrollTo(0, 0); return; }
     let p = el; while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }
     if (q) markText(el, q);
