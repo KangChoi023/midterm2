@@ -1,0 +1,176 @@
+{
+  "_설명": "OT Day 5 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "ot/5/1-1": [
+    {
+      "at": "def __init__(self, engine_path):",
+      "to": "self.outputs = [",
+      "t": "준비 ① — 엔진 읽기 · 입출력 이름 나누기",
+      "d": "Day 4 trt_runner 의 앞부분과 같은 일. 클래스로 만들면 엔진 · 버퍼를 객체가 붙잡고 있다."
+    },
+    {
+      "at": "self.buf = {",
+      "to": "self.input_shape =",
+      "t": "준비 ② — 텐서마다 GPU 버퍼 · 주소 등록 (한 번만)",
+      "d": "출력이 여러 개인 엔진도 다룰 수 있게 모든 텐서에 버퍼를 만든다."
+    },
+    {
+      "at": "def __call__(self, x):",
+      "to": "return self.buf[self.outputs[0]].cpu().numpy()",
+      "t": "실행 — infer(x) 처럼 함수로 부르기",
+      "d": "`__call__` 이 있으면 객체를 함수처럼 쓸 수 있다 → ORT 의 lambda 와 같은 모양."
+    },
+    {
+      "at": "def __repr__(self):",
+      "t": "print 했을 때 보일 글",
+      "d": "입력 · 출력 이름과 shape 를 보여 준다."
+    }
+  ],
+  "ot/5/2-2": [
+    {
+      "at": "lb, r, (pl, pt) = letterbox(frame)",
+      "to": "out = infer(x)",
+      "t": "앞 — letterbox · BGR→RGB · CHW · 0 ~ 1 → 가운데 — 추론",
+      "d": "VB Day 5 전처리 그대로. infer 만 바꿔 끼우면 ORT 든 TensorRT 든 같다."
+    },
+    {
+      "at": "boxes, scores = decode_yolo(",
+      "to": "return boxes, scores",
+      "t": "뒤 — 박스 해석 · NMS · 원래 좌표로",
+      "d": "letterbox 로 늘리고 덧댄 만큼 빼고 나눠 되돌린 뒤 사진 밖은 자른다."
+    },
+    {
+      "at": "sess_cpu = ort.InferenceSession(",
+      "to": "print(f\"ORT CPU",
+      "t": "ORT CPU vs TensorRT FP16 — 같은 사진",
+      "d": "짝 IoU 가 1 에 가까우면 같은 사람을 같은 자리에 찾았다."
+    }
+  ],
+  "ot/5/3-1": [
+    {
+      "at": "build_once(YOLO_ONNX, \"yolov8n_fp32.engine\", fp16=False)",
+      "to": "imgs = [",
+      "t": "FP32 엔진 · 실행기 3개 · 사진 170장",
+      "d": "ORT CPU · TRT FP32 · TRT FP16 을 같은 detect 로."
+    },
+    {
+      "at": "for name, f in INFERS.items():",
+      "to": "\"n_det\":",
+      "t": "실행기마다 탐지 → AP",
+      "d": "AP 를 잴 때는 conf 를 0.01 로 낮춰 박스를 넉넉히 — 순위별 정밀도 · 재현율을 다 봐야 하므로."
+    }
+  ],
+  "ot/5/4-1": [
+    {
+      "at": "t0 = time.perf_counter()",
+      "to": "t4 = time.perf_counter()",
+      "t": "조각 사이마다 시계 찍기",
+      "d": "전처리 → 추론 → 후처리(decode · 구역 판정) → 그리기."
+    },
+    {
+      "at": "T[\"pre\"], T[\"infer\"]",
+      "to": "return T",
+      "t": "구간별 ms",
+      "d": "초 → ms."
+    },
+    {
+      "at": "cap = cv2.VideoCapture(VIDEO)",
+      "to": "df_st[\"fps\"] = 1000 / df_st[\"total\"]",
+      "t": "50프레임 평균 (warm-up 5)",
+      "d": "추론이 빨라지면 다른 조각(전처리 · 그리기)이 새 병목이 된다."
+    }
+  ],
+  "ot/5/과제 1": [
+    {
+      "at": "boxes, scores = detect(frame, infer, conf=conf)",
+      "to": "inside = np.array(",
+      "t": "사람 찾기 · 발 위치가 구역 안인가",
+      "d": "박스 아래 가운데 = 발 위치."
+    },
+    {
+      "at": "streak = streak + 1 if inside.any() else 0",
+      "to": "alarm = int(streak >= n_consec)",
+      "t": "연속 n 프레임이면 경보",
+      "d": "한 프레임만 잘못 탐지해도 울리지 않게."
+    },
+    {
+      "at": "vis = draw_result(",
+      "to": "return vis, info, streak",
+      "t": "그리기 · 정보 · 다음 streak 돌려주기",
+      "d": "경보면 빨간 테두리 · 화면 FPS 표시."
+    }
+  ],
+  "ot/5/과제 2": [
+    {
+      "at": "cap = cv2.VideoCapture(source)",
+      "to": "log, ms, streak, i = [], [], 0, 0",
+      "t": "영상 열기 · 저장기 준비",
+      "d": "원본과 같은 FPS · 크기로 저장."
+    },
+    {
+      "at": "while max_frames is None or i < max_frames:",
+      "to": "i += 1",
+      "t": "프레임마다 처리 · 저장 · 시간 기록",
+      "d": "화면 FPS 는 최근 30프레임 평균."
+    },
+    {
+      "at": "cap.release(); writer.release()",
+      "to": "return log",
+      "t": "닫기 · 로그 CSV",
+      "d": "프레임마다 사람 수 · 구역 안 수 · 경보 · ms."
+    },
+    {
+      "at": "t_start = time.perf_counter()",
+      "to": "wall_trt =",
+      "t": "TensorRT FP16 으로 영상 전체",
+      "d": "wall 시간 = 읽기 · 저장까지 포함한 프레임당 시간."
+    }
+  ],
+  "ot/5/6-c1": [
+    {
+      "at": "def to_h264(src, dst):",
+      "to": "return HTML(",
+      "t": "브라우저에서 재생되게 H.264 로 바꾸기",
+      "d": "OpenCV 의 mp4v 는 브라우저가 못 튼다."
+    },
+    {
+      "at": "to_h264(\"intrusion_trt.mp4\"",
+      "to": "display(play(",
+      "t": "구역 안 인원 · 경보 구간 그래프와 영상",
+      "d": "경보가 켜진 구간을 빨갛게 칠한다."
+    }
+  ],
+  "ot/5/과제 3": [
+    {
+      "at": "def find_events(alarm, fps):",
+      "to": "return events",
+      "t": "0 → 1 에서 시작, 1 → 0 에서 끝",
+      "d": "영상이 경보 중에 끝나면 마지막 프레임까지를 한 이벤트로."
+    },
+    {
+      "at": "events = find_events(alarm, V_FPS)",
+      "to": "display(pd.read_csv(",
+      "t": "이벤트 표 CSV",
+      "d": "길이 = 끝 − 시작 + 한 프레임."
+    }
+  ],
+  "ot/5/과제 4": [
+    {
+      "at": "lb, _, _ = letterbox(frame200)",
+      "to": "rows.append({\"model\": \"yolov8n (추론만)\"",
+      "t": "추론만 — 실행기 3가지",
+      "d": "같은 640×640 입력으로 bench_fn."
+    },
+    {
+      "at": "t_start = time.perf_counter()",
+      "to": "\"mean\": w_ms,",
+      "t": "파이프라인 전체 — ORT CPU 200프레임 vs TensorRT",
+      "d": "추론만 빨라진 배수보다 전체 배수가 작다 — 나머지 조각은 그대로라서."
+    },
+    {
+      "at": "final = pd.DataFrame(rows)",
+      "to": "pd.concat([old, final]",
+      "t": "기준선 CSV 에 이어 저장",
+      "d": "Day 3 · 4 · 5 결과가 한 표에."
+    }
+  ]
+}

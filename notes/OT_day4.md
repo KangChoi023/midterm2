@@ -67,24 +67,15 @@ Day 3 에서 ONNX Runtime 의 손잡이로 CPU 속도를 끌어올렸다. 오늘
 | 어디서나? | CPU · GPU · 여러 OS | **이 GPU 세대 · 이 TensorRT 버전 전용** |
 | 정밀도 | FP32 | FP32 · **FP16** · INT8 |
 
+<<CODE 1-1 | TensorRT 버전 · GPU · compute capability 확인>>
+
 #### 개념 2 · 엔진은 다시 빌드한다
 엔진은 GPU 세대(**compute capability** — T4 = `(7, 5)` → `sm_75`) 와 TensorRT 버전(강의 10.x)에 묶인다. 다른 Colab GPU(A100) · Jetson 으로 엔진을 복사하면 읽지 못한다 → **배포할 것은 `.onnx`**, 그 장치에서 빌드한다.
 
 #### 개념 3 · 오늘은 배치 1 고정 ONNX
 배치가 자유로운 ONNX(`['batch', …]`)를 그대로 빌드하면 "optimization profile 이 없다" 는 오류가 난다 (어떤 배치 범위로 최적화할지 알려 줘야 함). 오늘은 `dynamic_axes` 없이 내보낸 `mnv3s_b1.onnx` · `mnist_cnn_b1.onnx` (입력 `[1, 3, 224, 224]` · `[1, 1, 28, 28]`) 를 쓴다. 오늘의 "정답" 은 ORT CPU 출력 `ref (1, 1000)`.
 
-#### 코드로 확인
-```python
-print("TensorRT 버전:", trt.__version__)
-print("GPU 이름:", torch.cuda.get_device_name(0))
-cc = torch.cuda.get_device_capability(0)
-print("compute capability:", cc, "→", f"sm_{cc[0]}{cc[1]}")
-torch.onnx.export(mnv3s, torch.randn(1, 3, 224, 224), "mnv3s_b1.onnx",
-                  input_names=["input"], output_names=["logits"], opset_version=17, **EXPORT_KW)
-```
-- **무엇을 하나**: 버전 · GPU 세대 확인, 배치 1 고정 ONNX 만들기 (dynamic_axes 없음).
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: TensorRT `10.x`, T4 → `(7, 5) → sm_75`, 입력 `[1, 3, 224, 224]`, ref `(1, 1000)` (교안 기대값)
+<<CODE 1-2 | 배치 1 고정 ONNX 두 개 · 오늘의 기준 출력 (ORT CPU)>>
 
 #### 한 번에 정리
 - ONNX = 설계도, ORT = 읽어서 바로 돌리는 기계, TensorRT 엔진 = 이 GPU 전용 완성품.
@@ -151,6 +142,9 @@ print("경고", len(warn), "오류", len(err))
 
 노트북에서는 `sh("명령", log="파일")` 로 실행해 마지막 몇 줄만 보고 전체 로그는 파일에 남긴다 (`!polygraphy …` 도 된다).
 
+<<CODE 2-1 | polygraphy convert 로 FP32 엔진 만들기>>
+<<CODE 2-2 | 빌드 로그에서 경고 · 오류 · 시간, 파일 크기 비교>>
+
 #### 개념 2 · 빌드 = 오래 걸리는 한 번의 작업
 | 단계 | 하는 일 |
 |---|---|
@@ -161,18 +155,7 @@ print("경고", len(warn), "오류", len(err))
 
 로그 읽는 법: `[E]` = 오류, `[W]` = 경고 (읽어 보고 넘어감), 마지막의 빌드 시간. **종료 코드 0 = 성공** — `[W]` 가 있어도 성공이다.
 
-#### 코드로 확인
-```python
-rc = sh("polygraphy convert mnv3s_b1.onnx -o mnv3s_fp32_cli.engine", log="build_fp32.log")
-log = open("build_fp32.log").read().splitlines()
-warn = [l for l in log if l.startswith("[W]")]
-err = [l for l in log if l.startswith("[E]")]
-print("종료 코드", rc, "| 경고", len(warn), "줄 · 오류", len(err), "줄")
-print({f: f"{os.path.getsize(f) / 1e6:.1f} MB" for f in ["mnv3s_b1.onnx", "mnv3s_fp32_cli.engine"]})
-```
-- **무엇을 하나**: 명령 한 줄로 엔진을 만들고 로그 · 파일 크기를 확인.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 종료 코드 `0`, 오류 `0` 줄, 엔진 파일 생성 (교안 기대값)
+<<CODE 2-c1 | --fp16 엔진도 만들어 크기 비교>>
 
 #### 한 번에 정리
 - `polygraphy convert 모델.onnx -o 엔진.engine` (+ `--fp16`).
@@ -241,6 +224,8 @@ print("PASSED" if re.search(r"\bPASSED \| Runtime", text) else "FAILED")
 
 예: b = 10, atol = rtol = 1e-3 → 허용 1e-3 + 0.01 = 0.011.
 
+<<CODE 3-1 | polygraphy run --onnxrt --trt — FP32 엔진 비교>>
+
 #### 개념 2 · FP16 에는 FP16 의 기준
 | 비교 | 기준 | 결과 |
 |---|---|---|
@@ -250,18 +235,7 @@ print("PASSED" if re.search(r"\bPASSED \| Runtime", text) else "FAILED")
 
 FP16 은 느슨한 기준 + **실제 데이터의 정확도**로 판단한다 (6교시 MNIST). 무작위 입력 한 번의 PASSED 로 "완벽" 이라 결론 내지 않는다.
 
-#### 코드로 확인
-```python
-rc32 = sh("polygraphy run mnv3s_b1.onnx --onnxrt --trt --atol 1e-3 --rtol 1e-3", log="cmp_fp32.log", tail=6)
-def verdict(log_path):
-    text = open(log_path).read()
-    result = "PASSED" if re.search(r"\bPASSED \| Runtime", text) else "FAILED"
-    m = re.findall(r"Absolute Difference.*?max=([0-9.eE+-]+)", text)
-    return result, (float(m[-1]) if m else None)
-```
-- **무엇을 하나**: ORT 와 TensorRT 를 같은 입력으로 비교하고, 로그에서 판정 · 최대 차이를 꺼낸다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: FP32 `PASSED`, FP16 엄격 `FAILED` (또는 아슬아슬), FP16 느슨 `PASSED` (교안 기대값)
+<<CODE 3-2 | verdict — 로그에서 PASSED/FAILED · 최대 차이, FP16 은 기준을 바꿔서>>
 
 #### 한 번에 정리
 - `polygraphy run 모델.onnx --onnxrt --trt [--fp16] --atol … --rtol …` → PASSED / FAILED.
@@ -349,6 +323,9 @@ open("mnv3s_fp32.engine", "wb").write(blob)
 | ⑤ Config | `builder.create_builder_config()` | 작업 지시서 |
 | ⑥ 빌드 | `builder.build_serialized_network(network, config)` → 파일 | 완성품 찍어 내기 (수십 초) |
 
+<<CODE 4-c1 | ① Logger ② Builder ③ 빈 Network>>
+<<CODE 4-1 | ④ OnnxParser 로 설계판 채우기>>
+
 #### 개념 2 · Config 의 세 줄
 | 설정 | 뜻 |
 |---|---|
@@ -356,28 +333,8 @@ open("mnv3s_fp32.engine", "wb").write(blob)
 | `profiling_verbosity = DETAILED` | 7교시에 엔진 레이어 정보를 자세히 보려고 |
 | `set_flag(trt.BuilderFlag.FP16)` | FP16 엔진 (6교시) — `build_engine(…, fp16=True)` |
 
-#### 코드로 확인
-```python
-def build_engine(onnx_path, engine_path, fp16=False):
-    builder = trt.Builder(LOGGER)
-    network = builder.create_network(0)
-    parser = trt.OnnxParser(network, LOGGER)
-    if not parser.parse_from_file(onnx_path):
-        raise RuntimeError("\n".join(str(parser.get_error(i)) for i in range(parser.num_errors)))
-    config = builder.create_builder_config()
-    config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
-    config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
-    if fp16:
-        config.set_flag(trt.BuilderFlag.FP16)
-    blob = builder.build_serialized_network(network, config)
-    if blob is None:
-        raise RuntimeError("빌드 실패 — 위 로그를 확인하세요")
-    open(engine_path, "wb").write(blob)
-    return engine_path
-```
-- **무엇을 하나**: 여섯 단계를 함수 하나로 — 빌드마다 Builder · Network · Config 를 새로 만든다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 파싱 성공 · 입력 `input (1, 3, 224, 224)` · 출력 `logits`, `mnv3s_fp32.engine` 생성 (> 1 MB), `cnn_fp32.engine` 생성 (교안 기대값)
+<<CODE 4-2 | ⑤ Config (작업 메모리 · 상세 기록) ⑥ 빌드 · 저장>>
+<<CODE 4-3 | build_engine — 여섯 단계를 함수로>>
 
 #### 한 번에 정리
 - ① Logger ② Builder ③ Network ④ OnnxParser ⑤ Config (WORKSPACE · DETAILED · FP16) ⑥ build_serialized_network → 파일.
@@ -467,50 +424,21 @@ torch.cuda.synchronize()
 | ⑤ 주소 · 실행 | `set_tensor_address(name, t.data_ptr())` → `execute_async_v3(stream)` | 주소 알려 주기 → 비동기 실행 |
 | ⑥ 기다리기 · 꺼내기 | `torch.cuda.synchronize()` → `d_out.cpu().numpy()` | 끝날 때까지 기다린 뒤 GPU → CPU |
 
+<<CODE 5-c1 | ① Runtime 으로 엔진 읽기 ② Context>>
+<<CODE 5-1 | ③ 입출력 텐서 이름 · shape>>
+
 #### 개념 2 · 왜 GPU 주소인가, 왜 기다리나
 - TensorRT 는 GPU 위에서만 계산한다 → 데이터가 GPU 메모리 어디에 있는지(주소)만 알면 된다.
 - `execute_async_v3` 는 **비동기** — "시작해" 라고 맡기고 바로 돌아온다. `synchronize` 없이 시간을 재면 실행이 끝나기 전 시간이라 엄청 빠르게 보인다.
 - `trt_runner(engine_path)` 는 버퍼와 주소를 **한 번만** 준비하고, `run(x)` 마다 같은 자리에 `copy_` 로 덮어쓴다. 실행마다 `torch.empty` 를 새로 만들면 느리다.
 
+<<CODE 5-2 | ④ GPU 버퍼 ⑤ 주소 알려 주고 실행 · 기다리기 ⑥ 결과 꺼내 비교>>
+<<CODE 5-3 | trt_runner — 실행 여섯 단계를 함수로>>
+
 #### 개념 3 · 실행기 3가지 비교
 같은 입력 `x1` 로 ORT CPU · ORT CUDA · TRT FP32 를 재서 `speedup = ORT CPU 평균 ÷ 각 평균` 을 낸다. GPU 쪽은 `bench_fn(lambda: run32(x1))` — 복사까지 포함한 시간이다. TRT FP32 와 ORT CPU 의 최대 차이는 1e-3 미만, top-1 같음 (3교시 PASSED 를 코드로 재현).
 
-#### 코드로 확인
-```python
-d_in = torch.from_numpy(x1).to("cuda")                                       # ④ CPU → GPU
-d_out = torch.empty(tuple(engine.get_tensor_shape(out_name)), dtype=torch.float32, device="cuda")
-context.set_tensor_address(in_name, d_in.data_ptr())                         # ⑤ 주소
-context.set_tensor_address(out_name, d_out.data_ptr())
-context.execute_async_v3(torch.cuda.current_stream().cuda_stream)            # ⑤ 실행 (비동기)
-torch.cuda.synchronize()                                                     # ⑥ 기다리기
-y_trt = d_out.cpu().numpy()
-print(np.abs(y_trt - ref).max(), y_trt.argmax() == ref.argmax())
-```
-- **무엇을 하나**: 엔진을 한 번 실행하고 ORT CPU 출력과 비교.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 최대 차이 `< 1e-3`, top-1 같음 (교안 기대값)
-
-```python
-def trt_runner(engine_path):
-    eng = RUNTIME.deserialize_cuda_engine(open(engine_path, "rb").read())
-    ctx = eng.create_execution_context()
-    names = [eng.get_tensor_name(i) for i in range(eng.num_io_tensors)]
-    i_name = [n for n in names if eng.get_tensor_mode(n) == trt.TensorIOMode.INPUT][0]
-    o_name = [n for n in names if eng.get_tensor_mode(n) == trt.TensorIOMode.OUTPUT][0]
-    d_i = torch.empty(tuple(eng.get_tensor_shape(i_name)), dtype=torch.float32, device="cuda")
-    d_o = torch.empty(tuple(eng.get_tensor_shape(o_name)), dtype=torch.float32, device="cuda")
-    ctx.set_tensor_address(i_name, d_i.data_ptr()); ctx.set_tensor_address(o_name, d_o.data_ptr())
-    def run(x):
-        d_i.copy_(torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32)))
-        ctx.execute_async_v3(torch.cuda.current_stream().cuda_stream)
-        torch.cuda.synchronize()
-        return d_o.cpu().numpy()
-    run.engine, run.context = eng, ctx          # 엔진이 사라지지 않게 붙잡아 두기
-    return run
-```
-- **무엇을 하나**: 준비는 한 번, 실행은 여러 번 — Day 5 의 `TRTInfer` 클래스로 발전한다.
-- **어떤 개념**: 개념 2.
-- **출력**: 새 입력 `x2` 에서도 ORT CPU 와 같은 답 (교안 기대값)
+<<CODE 5-4 | ORT CPU · ORT CUDA · TensorRT 속도 비교>>
 
 #### 한 번에 정리
 - ① Runtime → 엔진 ② Context ③ 이름 · shape ④ CUDA 텐서 버퍼 ⑤ 주소 · `execute_async_v3` ⑥ 기다리기 · CPU 로.
@@ -593,6 +521,8 @@ TensorRT 의 큰 장점 하나는 **FP16** 이다. 숫자 하나를 16비트(2�
 | 1000.3 | 1000.5 |
 | 70000.0 | **inf** (65,504 초과) |
 
+<<CODE 6-1 | 숫자 몇 개를 FP16 으로 — 범위 · 간격>>
+
 #### 개념 2 · 신경망은 왜 견디나
 - 가중치 · 활성값은 대부분 작은 수라 범위(65,504)를 넘지 않는다. 정규화 · BN 덕분.
 - 분류 결과는 **argmax** 로 본다 — 끝자리가 조금 달라도 1등이 바뀌지 않으면 같은 답.
@@ -600,29 +530,8 @@ TensorRT 의 큰 장점 하나는 **FP16** 이다. 숫자 하나를 16비트(2�
 
 판단 순서: 파일 크기 ↓ · 속도 ↑ · 최대 차이 ↑ → **실제 데이터 정확도**로 결정. MNIST 100장을 ORT CPU · TRT FP32 · TRT FP16 으로 분류해 정확도가 같은지 본다.
 
-#### 코드로 확인
-```python
-for v in [0.1, 3.14159265, 1000.3, 70000.0]:
-    print(f"{v:>12} → FP16 {float(np.float16(v))!r}")
-fi = np.finfo(np.float16)
-print("FP16 최대:", fi.max, "| eps:", fi.eps, "| FP32 eps:", np.finfo(np.float32).eps)
-```
-- **무엇을 하나**: FP16 의 반올림 · 범위를 숫자로 확인.
-- **어떤 개념**: 개념 1.
-- **출력**: `0.1 → 0.0999755859375`, `3.14159265 → 3.140625`, `1000.3 → 1000.5`, `70000.0 → inf`, `FP16 최대: 6.55e+04 | eps: 0.000977 | FP32 eps: 1.1920929e-07` (직접 실행)
-
-```python
-build_engine("mnv3s_b1.onnx", "mnv3s_fp16.engine", fp16=True)
-run16 = trt_runner("mnv3s_fp16.engine")
-diff16 = float(np.abs(run16(x1) - ref).max())
-runners = {"ORT CPU": lambda x: cnn_cpu.run(None, {"input": x})[0],
-           "TRT FP32": trt_runner("cnn_fp32.engine"), "TRT FP16": trt_runner("cnn_fp16.engine")}
-acc = {n: float((np.array([f(X[i:i + 1]).argmax() for i in range(len(X))]) == Y).mean())
-       for n, f in runners.items()}
-```
-- **무엇을 하나**: FP16 엔진의 크기 · 속도 · 최대 차이, MNIST 100장 정확도를 세 실행기로.
-- **어떤 개념**: 개념 2.
-- **출력**: FP16 엔진 파일이 FP32 보다 작고, 최대 차이는 FP32 보다 크며, top-1 같음 · ORT CPU 정확도 ≥ 0.95 와 FP16 정확도 비교 (교안 기대값)
+<<CODE 6-2 | FP16 엔진 — 크기 · 속도 · 차이 · top-1>>
+<<CODE 6-3 | MNIST 100장 정확도 — ORT CPU vs TRT FP32 vs FP16>>
 
 #### 한 번에 정리
 - FP16 = 2바이트 · 최대 65,504 · 유효숫자 약 3자리. T4 Tensor Core 로 빠름.
@@ -693,6 +602,9 @@ TensorRT 는 왜 빨라졌을까? 빌드할 때 `profiling_verbosity = DETAILED`
 | 이름 · 종류 | 레이어마다 `Name` · `LayerType` (DETAILED 가 아니면 이름만) |
 | 명령으로 | `polygraphy inspect model mnv3s_fp32.engine --show layers` |
 
+<<CODE 7-1 | 엔진 인스펙터로 레이어 목록 꺼내기>>
+<<CODE 7-3 | 레이어 종류 세기 · polygraphy inspect>>
+
 #### 개념 2 · 레이어 합치기 — 메모리 왕복이 줄어든다
 ![ONNX 노드 여러 개가 엔진 레이어 하나로 합쳐지는 모습 — 이름의 " + " 와 Reformat](assets/fig/ot/d4-fusion.svg)
 
@@ -706,18 +618,7 @@ TensorRT 는 왜 빨라졌을까? 빌드할 때 `profiling_verbosity = DETAILED`
 | ② 커널 선택 | 레이어마다 후보를 이 GPU 에서 재 보고 가장 빠른 것 |
 | ③ FP16 | Tensor Core |
 
-#### 코드로 확인
-```python
-insp = run32.engine.create_engine_inspector()
-layers = json.loads(insp.get_engine_information(trt.LayerInformationFormat.JSON))["Layers"]
-names = [l["Name"] if isinstance(l, dict) else l for l in layers]
-fused = [n for n in names if " + " in n]
-print(f"ONNX 노드 {len(onnx.load('mnv3s_b1.onnx').graph.node)}개 → 엔진 레이어 {len(names)}개")
-print("합쳐진 레이어", len(fused), "개 · 들어간 ONNX 노드", sum(len(n.split(" + ")) for n in fused), "개")
-```
-- **무엇을 하나**: 엔진 레이어 목록에서 합쳐진 레이어를 센다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: ONNX 노드 수보다 엔진 레이어 수가 적고, " + " 로 합쳐진 레이어들 · `LayerType` 별 개수 (교안 기대값)
+<<CODE 7-2 | 합쳐진 레이어(이름에 ' + ') 세기>>
 
 #### 한 번에 정리
 - 엔진 인스펙터 → JSON → 레이어 이름 · 종류. 이름의 " + " = 합쳐진 레이어.
@@ -795,6 +696,9 @@ cmp["speedup"] = cmp.loc[cmp.provider == "ORT CPU", "mean"].iloc[0] / cmp["mean"
 | TRT FP32 | `trt_runner("mnv3s_fp32.engine")` | FP32 |
 | TRT FP16 | `trt_runner("mnv3s_fp16.engine")` | FP16 |
 
+<<CODE 8-c1 | 엔진 4개 확인 · 같은 모양의 실행 함수 4개 (RUN)>>
+<<CODE 8-1 | 실행기 4가지 속도 표>>
+
 #### 개념 2 · 성능표의 세 부분
 | 부분 | 열 |
 |---|---|
@@ -813,26 +717,16 @@ Day 3 표와 같은 열 이름이라 `pd.concat` 으로 이어 붙인다. Day 3 
 | 5 | `ot_baseline.csv` 이어 붙이기 · p95 그래프 | 10 |
 | 6 | 정리 · 추천 | 10 |
 
+<<CODE 8-2 | 기준 출력과 최대 차이 · top-1 같은지>>
+<<CODE 8-3 | MNIST 정확도 — 실행기 4가지>>
+
 #### 개념 3 · p95 로 고르는 이유와 추천의 근거
 - 현장 카메라는 실시간 — 평균이 아니라 **p95** (가끔 튀는 지연) 로 고른다.
 - 추천은 속도(p95 · speedup) 와 정확도(max_diff · mnist_acc) 를 **함께** 근거로. TRT FP16 의 max_diff 가 FP32 보다 커도 top-1 · MNIST 정확도가 같으면 쓸 수 있다.
 - 오늘 만든 `.engine` 을 Jetson 에 복사해 쓰면 안 된다 — GPU 세대 · TensorRT 버전이 다르다. `.onnx` 를 옮겨 Jetson 에서 다시 빌드.
 
-#### 코드로 확인
-```python
-rows = []
-for name, f in RUN.items():
-    r = bench_fn(lambda: f(x1), n=100, warm=10)
-    rows.append({"model": "mnv3s_b1.onnx", "provider": name, "precision": PREC[name],
-                 "threads": 0, "level": "ALL", "batch": 1, **r})
-cmp = pd.DataFrame(rows)
-outs = {name: f(x1) for name, f in RUN.items()}
-cmp["max_diff"] = [float(np.abs(outs[n] - ref).max()) for n in cmp.provider]
-cmp["top1_same"] = [bool(outs[n].argmax() == ref.argmax()) for n in cmp.provider]
-```
-- **무엇을 하나**: 네 실행기를 같은 입력 · 같은 bench 로 재서 속도 · 정확도 · speedup 표를 만든다.
-- **어떤 개념**: 개념 1 · 2 · 3.
-- **출력**: 4행 표 — TRT 가 ORT CPU 보다 빠르고 FP16 이 가장 빠른 경향, max_diff 는 FP16 이 가장 큼, top-1 모두 같음 (교안 기대값 — 숫자는 GPU 마다 다름)
+<<CODE 8-4 | CPU 대비 speedup · p95 최선>>
+<<CODE 8-5 | Day 3 기준선 CSV 에 이어 저장 · p95 막대그래프>>
 
 #### 한 번에 정리
 - 실행기를 `f(x) → 점수` 로 맞추면 한 반복문으로 속도 · 정확도를 비교한다.

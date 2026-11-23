@@ -841,7 +841,7 @@
   }
   function studyWithCode(text, L) {
     const used = new Set(), slots = [];
-    const src = text.replace(/^<<CODE\s+([\w-]+)\s*(?:\|[^>\n]*)?>>\s*$/gm, (m, k) => {
+    const src = text.replace(/^<<CODE\s+([\w-]+(?: \d+)?)\s*(?:\|[^>\n]*)?>>\s*$/gm, (m, k) => {
       const j = L.codes.findIndex(c => c.k === k); if (j < 0) return '';
       used.add(j); slots.push(j); return `\n\nCODESLOT${slots.length - 1}\n\n`;
     });
