@@ -1,0 +1,117 @@
+{
+  "_설명": "QP Day 3 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "qp/3/1-2": [
+    {
+      "at": "with torch.no_grad():",
+      "to": "fp32_diff = float(",
+      "t": "FP32 출력은 같다",
+      "d": ""
+    },
+    {
+      "at": "hooks = [",
+      "to": "h.remove()",
+      "t": "forward hook 으로 bn1 출력 잡기",
+      "d": "블록마다 bn1 의 출력을 acts 에 저장하고, 다 쓴 hook 은 꼭 지운다."
+    },
+    {
+      "at": "rows_ = []",
+      "to": "ratio_df = pd.DataFrame(rows_)",
+      "t": "채널별 최댓값의 최대 / 중앙값",
+      "d": "100 이 넘으면 채널 하나가 범위를 독차지 — BadQuantNet 의 범인."
+    }
+  ],
+  "qp/3/2-c1": [
+    {
+      "at": "modify_model_output_intermediate_tensors(",
+      "to": "q_acts = collect_activations(",
+      "t": "중간 텐서까지 출력하게 바꿔 활성값 모으기",
+      "d": "FP32 · INT8 모델 둘 다."
+    },
+    {
+      "at": "BLK = [",
+      "to": "return \"/stem/stem.2/Relu_output_0\"",
+      "t": "블록 이름 → 블록 출력 텐서 이름",
+      "d": ""
+    },
+    {
+      "at": "rows = []",
+      "to": "first_drop =",
+      "t": "블록마다 SQNR · cosine (누적)",
+      "d": "앞 블록 오차가 쌓이므로 '어디서 처음 크게 떨어지나' 를 본다."
+    }
+  ],
+  "qp/3/2-2": [
+    {
+      "at": "ref = make_session(",
+      "to": "ref = make_session(",
+      "t": "기준 = FP32 logits",
+      "d": ""
+    },
+    {
+      "at": "for b in BLK + [\"fc\"]:",
+      "to": "rows_.append({\"block\": b",
+      "t": "블록 하나만 양자화 → logits SQNR",
+      "d": "다른 블록은 FP32 라서 그 블록 탓인 오차만 보인다 (단독 민감도)."
+    },
+    {
+      "at": "suspects = list(",
+      "to": "suspects = list(",
+      "t": "20 dB 미만 = 범인 후보",
+      "d": ""
+    }
+  ],
+  "qp/3/3-2": [
+    {
+      "at": "s0 = make_session(\"bad_pre.onnx\")",
+      "to": "fp32_ms =",
+      "t": "FP32 지연",
+      "d": ""
+    },
+    {
+      "at": "order = list(",
+      "to": "order = list(",
+      "t": "범인을 나쁜 순서로",
+      "d": ""
+    },
+    {
+      "at": "excl = [",
+      "to": "\"mean_ms\":",
+      "t": "k 개 블록을 FP32 로 남긴 모델 · 정확도 · 지연 · 크기",
+      "d": "9개 노드만 빼도 정확도가 FP32 근처로 돌아온다."
+    }
+  ],
+  "qp/3/5-1": [
+    {
+      "at": "for prec, src, f16, i8 in ENG:",
+      "to": "INFER5[prec] = infer",
+      "t": "정밀도마다 추론기 만들기",
+      "d": "GPU 면 TensorRT 엔진, 아니면 ORT CPU (FP16 은 NaN)."
+    },
+    {
+      "at": "if infer is None:",
+      "to": "\"mean_ms\": bench_fn(",
+      "t": "정확도 · 지연 · 크기 한 행",
+      "d": ""
+    }
+  ],
+  "qp/3/7-1": [
+    {
+      "at": "dets = []",
+      "to": "dets.append(",
+      "t": "사진마다 탐지 (conf 0.01)",
+      "d": "AP 는 순위 전체를 보므로 점수가 낮은 박스까지 넉넉히."
+    },
+    {
+      "at": "g = [gts[i] for i in idx]",
+      "to": "return evaluate_ap(",
+      "t": "AP50 · mAP50-95",
+      "d": ""
+    },
+    {
+      "at": "for model, f, split, idx in [",
+      "to": "rows.append({\"model\": model",
+      "t": "FP32 · INT8 × 평가 · 보정 세트",
+      "d": "보정 사진으로 재면 INT8 이 실제보다 좋아 보일 수 있다 — 평가는 평가 세트로."
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+ "1-1": {
+  "text": "  model   fp32    int8\n0  rn20  0.846  0.8445\n1   bad  0.846  0.2955\n✅ FP32 는 둘 다 0.846 — INT8 은 ResNet-20 0.845 · BadQuantNet 0.295",
+  "check": true
+ },
+ "1-2": {
+  "text": "FP32 출력 최대 차이 3.8e-06\n      block  ratio  channel\n0  layer1.0    1.8        3\n1  layer1.1  247.9        3\n2  layer1.2    1.9       10\n3  layer2.0    1.5       18\n4  layer2.1  344.8        3\n5  layer2.2    1.4       27\n6  layer3.0    1.6       60\n7  layer3.1  387.2        3\n8  layer3.2    1.8       36\n✅ FP32 함수는 같다 — 블록 3개에 다른 채널보다 수백 배 큰 outlier 채널 ( ['layer1.1', 'layer2.1', 'layer3.1'] )",
+  "check": true
+ },
+ "2-1": {
+  "text": "오차 1% → SQNR 40.0 dB | 노이즈 10% → 20.2 dB | 부호 반대 cos -1.00\n✅ 1% 오차 = 40 dB · 크기만 다르면 cos = 1 · 반대 방향이면 −1",
+  "check": true
+ },
+ "2-2": {
+  "text": "            0         1         2   ...        8         9      10\nblock     stem  layer1.0  layer1.1  ...  layer3.1  layer3.2     fc\nn_nodes      2         5         5  ...         5         5      1\nsqnr     43.99     41.74     10.36  ...      3.57     49.17  31.95\n[3 rows x 11 columns]\n범인 후보: ['layer1.1', 'layer2.1', 'layer3.1']\n✅ 단독 민감도로 보면 범인 3개가 또렷하다: ['layer1.1', 'layer2.1', 'layer3.1']",
+  "check": true
+ },
+ "3-1": {
+  "text": "layer1.1 ['/layer1/layer1.1/conv1/Conv', '/layer1/layer1.1/Relu', '/layer1/layer1.1/conv2/Conv']\nlayer2.1 ['/layer2/layer2.1/conv1/Conv', '/layer2/layer2.1/Relu', '/layer2/layer2.1/conv2/Conv']\nlayer3.1 ['/layer3/layer3.1/conv1/Conv', '/layer3/layer3.1/Relu', '/layer3/layer3.1/conv2/Conv']\n✅ 범인 블록마다 conv1 · Relu · conv2 — 3개씩",
+  "check": true
+ },
+ "3-2": {
+  "text": "   n_blocks  n_nodes     acc  mean_ms   size_kb\n0         0        0  0.2955   0.3980  321.8252\n1         1        3  0.6290   0.4948  534.6094\n2         3        9  0.8440   0.9198  597.7246\nFP32 0.938 ms · 정확도 0.8460\n✅ 제외 0 → 1 → 3 블록: 정확도 0.295 → 0.629 → 0.844",
+  "check": true
+ },
+ "4-1": {
+  "text": "{'qdq': 128, 'uint8': 0, 'nonzero_zp': 0, 'ok': True} | ORT 정확도 0.8420\n✅ TensorRT 조건 합격 · 정확도 0.8420 (FP32 0.846)",
+  "check": true
+ },
+ "4-2": {
+  "text": "✅ build_engine(…, fp16, int8) 완성 (GPU 없음 — 빌드 생략)",
+  "check": true
+ },
+ "5-1": {
+  "text": "  precision  backend    acc  mean_ms  size_mb\n0      FP32  ORT CPU  0.846   0.8873   1.0489\n1      FP16  ORT CPU    NaN      NaN      NaN\n2      INT8  ORT CPU  0.842   1.1481   0.3159\n✅ ORT CPU: INT8 정확도 0.8420 (FP32 0.8460) · 크기 1.05 → 0.32 MB",
+  "check": true
+ },
+ "5-2": {
+  "text": "ORT CPU INT8 vs ORT INT8 — 최대 차이 0.0000 · 예측 일치 1.000 · logits 크기 19.5\n✅ 예측 일치 100% (GPU 없음 — 같은 ORT 끼리 비교)",
+  "check": true
+ },
+ "6-1": {
+  "text": "사람 FP32 2명 · INT8(전체) 0명 | output0 scale 5.166 → 점수 0~1 에 쓸 수 있는 칸 0.19 개\n✅ 마지막 Concat 까지 양자화하면 점수가 모두 0 칸 → 사람 0명 (scale 5.17)",
+  "check": true
+ },
+ "6-2": {
+  "text": "head 제외 노드 24개 | 사람 FP32 2명 · INT8 2명 | 짝 IoU 중앙값 0.966 | {'qdq': 499, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}\n✅ Detect head 후처리만 빼니 사람을 다시 찾는다 (IoU 0.966)",
+  "check": true
+ },
+ "7-1": {
+  "text": "  model  split    AP50     mAP\n0  FP32   eval  0.9719  0.8375\n1  INT8   eval  0.9666  0.8149\n2  INT8  calib  0.9422  0.8086\n3  FP32  calib  0.9571  0.8233\n✅ 평가 127장 — AP50 0.972 → 0.967 · mAP 0.838 → 0.815",
+  "check": true
+ },
+ "7-2": {
+  "text": "   prec    AP50     mAP\n0  FP16     NaN     NaN\n1  INT8  0.9666  0.8149\n✅ ORT CPU INT8 AP50 0.967 (GPU 없음 — FP16 생략)",
+  "check": true
+ },
+ "과제 1": {
+  "text": "제외 노드 31개 | {'qdq': 478, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}",
+  "check": false
+ },
+ "과제 2": {
+  "text": "{'prec': 'INT8', 'backend': 'ORT CPU', 'latency_ms': 107.19720289994257, 'fps': 9.328601614105509, 'AP50': 0.966589791339427, 'mAP': 0.8149264161098826, 'size_mb': 3.4252758026123047}",
+  "check": false
+ },
+ "과제 3": {
+  "text": "         prec  backend  latency_ms      fps    AP50     mAP  size_mb\n0        FP32  ORT CPU     47.1000  21.2314  0.9719  0.8375  12.2558\n1        FP16  ORT CPU         NaN      NaN     NaN     NaN      NaN\n2        INT8  ORT CPU    108.7453   9.1958  0.9666  0.8149   3.4253\n3  INT8-mixed  ORT CPU    343.0854   2.9147  0.9734  0.8279   3.5079",
+  "check": false
+ },
+ "과제 4": {
+  "text": "추천: FP32\n         prec  backend  latency_ms      fps  ...     mAP  size_mb   pass  recommend\n0        FP32  ORT CPU     47.1000  21.2314  ...  0.8375  12.2558   True       True\n1        FP16  ORT CPU         NaN      NaN  ...     NaN      NaN  False      False\n2        INT8  ORT CPU    108.7453   9.1958  ...  0.8149   3.4253  False      False\n3  INT8-mixed  ORT CPU    343.0854   2.9147  ...  0.8279   3.5079   True      False\n[4 rows x 9 columns]",
+  "check": false
+ },
+ "과제 5": {
+  "text": "추천 FP32 vs FP32 — 짝 IoU 중앙값 1.000 · 사람 수 차이 합 0\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점) | 측정: ORT CPU\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}

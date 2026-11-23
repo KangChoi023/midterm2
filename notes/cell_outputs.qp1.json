@@ -1,0 +1,114 @@
+{
+ "1-1": {
+  "text": "파라미터 433,890 개 → FP32 1.736 MB\n✅ 1.736 MB",
+  "check": true
+ },
+ "1-2": {
+  "text": "모델                          파라미터      FP32      FP16      INT8\nSimpleConvNet            433,890    1.74MB    0.87MB    0.43MB\nMobileNetV3-Small      2,542,856   10.17MB    5.09MB    2.54MB\nYOLOv8n                3,193,934   12.78MB    6.39MB    3.19MB\n✅ INT8 = FP32 의 1/4",
+  "check": true
+ },
+ "1-3": {
+  "text": "4.0 배 작아진다\n✅ 4.0 배",
+  "check": true
+ },
+ "2-1": {
+  "text": "INT8 : -128 ~ 127 | UINT8: 0 ~ 255 | 서로 다른 값 256 개\n✅ 둘 다 256 개의 값",
+  "check": true
+ },
+ "2-2": {
+  "text": "FP32 0.10000000149011612 → FP16 0.0999755859375   차이 -2.4415552616119385e-05\nFP32        1.0 → FP16        1.0   차이 0.0\nFP32 1000.0999755859375 → FP16     1000.0   차이 -0.0999755859375\nFP32    70000.0 → FP16        inf   차이 inf\nFP16 최댓값: 65504.0\n✅ 70000 은 FP16 범위를 넘어 inf",
+  "check": true
+ },
+ "2-3": {
+  "text": "round → clip → int8: [   0    2   -2  127 -128]\n✅ [   0    2   -2  127 -128]",
+  "check": true
+ },
+ "3-1": {
+  "text": "scale = 0.015686  zero_point = 64\n✅ scale 0.015686 zp 64",
+  "check": true
+ },
+ "3-2": {
+  "text": "x : [-1.     0.     0.5    1.234  3.   ]\nq : [  0  64  96 143 255]\n✅ [0, 64, 96, 143, 255]",
+  "check": true
+ },
+ "3-3": {
+  "text": "최대 오차 0.00784  ≤  scale/2 = 0.00784 ?  True\n0.0 → 0.0\n✅ 범위 안 오차 ≤ scale/2, 0 은 정확히 0",
+  "check": true
+ },
+ "3-4": {
+  "text": "되돌린 값: [ 2.9961  2.9961 -1.0039] | 오차: [1.0039 2.0039 0.9961]\n✅ 범위 밖 오차는 scale/2 의 127 배 이상",
+  "check": true
+ },
+ "4-1": {
+  "text": "scale 0.015748031496062992 | q [-127  -32    0   64] | 되돌리면 [-2.     -0.5039  0.      1.0079]\n✅ zp 없이 q × scale",
+  "check": true
+ },
+ "4-2": {
+  "text": "비대칭 scale 0.00838 MSE 2.49e-06\n대칭   scale 0.01683 MSE 1.26e-05  → 5.1 배\n✅ ReLU 출력에는 비대칭이 약 5.1 배 정확",
+  "check": true
+ },
+ "4-3": {
+  "text": "W 범위 -0.482 ~ 0.387\n비대칭 MSE 9.35e-07 | 대칭 MSE 1.12e-06 → 1.20 배\n✅ weight 는 대칭도 거의 손해가 없다",
+  "check": true
+ },
+ "5-1": {
+  "text": "per-tensor scale = 0.003798\n✅ 0.003798",
+  "check": true
+ },
+ "5-2": {
+  "text": "shape (30,) | 가장 작은 scale 0.001612 | 가장 큰 scale 0.003798\n✅ 가장 큰 scale = per-tensor scale",
+  "check": true
+ },
+ "5-3": {
+  "text": "per-tensor MSE 1.12e-06 | per-channel MSE 5.86e-07 → per-channel 이 1.91 배 정확\n✅ 1.91 배",
+  "check": true
+ },
+ "5-4": {
+  "text": "fc1 scale shape (100, 1) | per-channel 이 2.63 배 정확\n✅ 2.63 배",
+  "check": true
+ },
+ "6-1": {
+  "text": "MinMax max = 2.137 | 99.9% = 1.607 | 넘는 값 0.10% (432 개)\n✅ 범위를 25% 줄이면 잘리는 값은 0.1%",
+  "check": true
+ },
+ "6-2": {
+  "text": "✅ 최적 clip — 8bit: 0.97 × max | 4bit: 0.71 × max",
+  "check": true
+ },
+ "6-3": {
+  "text": "범위   MinMax 42.7 | Percentile 1.607\nall  : MinMax 1.10e-03 | Percentile 3.94e-03\nrest : MinMax 1.10e-03 | Percentile 2.63e-05 → 나머지 값은 Percentile 이 42 배 정확\noutlier 하나: 원래 42.7 → MinMax 42.7 | Percentile 1.61\n✅ 전체 MSE 는 MinMax 가 낮지만, 나머지 431,999 개는 Percentile 이 42 배 정확",
+  "check": true
+ },
+ "7-1": {
+  "text": "acc (100, 10) int32 | 범위 -64612 ~ 65677 | INT16 최대 32,767\n✅ INT32 누적 — 넘침 없음",
+  "check": true
+ },
+ "7-2": {
+  "text": "b2 : [ 0.0486 -0.029   0.0372 -0.0636 -0.0318  0.1103  0.0443  0.0021  0.0223\n -0.0188]\nbq : [ 209 -124  160 -273 -137  473  190    9   96  -81]\n✅ bias 는 INT32 — 8비트로 줄이지 않는다",
+  "check": true
+ },
+ "7-3": {
+  "text": "logits 범위 -15.04 ~ 15.39 | 최대 차이 0.1006 | 예측 일치율 1.00\n✅ 정수 연산만으로 FP32 와 같은 예측",
+  "check": true
+ },
+ "7-4": {
+  "text": "M = 0.001924 | yq int8 (100, 10) | yq × sy 와 FP32 최대 차이 0.1389\n✅ requantize 완료",
+  "check": true
+ },
+ "8-2": {
+  "text": "8 bit: per-tensor MSE 1.12e-06 | per-channel MSE 5.86e-07 | 서로 다른 값 195 개\n4 bit: per-tensor MSE 3.99e-04 | per-channel MSE 1.90e-04 | 서로 다른 값 14 개\n2 bit: per-tensor MSE 1.98e-02 | per-channel MSE 9.38e-03 | 서로 다른 값 3 개",
+  "check": false
+ },
+ "8-3": {
+  "text": "{'bits': 8, 'per_channel': False, 'acc': 1.0, 'agree': 1.0, 'max_diff': 0.06708145141601562}\n{'bits': 8, 'per_channel': True, 'acc': 1.0, 'agree': 1.0, 'max_diff': 0.06721250712871552}\n{'bits': 4, 'per_channel': False, 'acc': 1.0, 'agree': 1.0, 'max_diff': 1.5853965282440186}\n{'bits': 4, 'per_channel': True, 'acc': 0.99, 'agree': 0.99, 'max_diff': 1.3221501111984253}\n{'bits': 2, 'per_channel': False, 'acc': 0.25, 'agree': 0.25, 'max_diff': 15.614273071289062}\n{'bits': 2, 'per_channel': True, 'acc': 0.52, 'agree': 0.52, 'max_diff': 13.39259147644043}",
+  "check": false
+ },
+ "8-4": {
+  "text": "per_channel=False: 434,322 B (0.434 MB) | FP32 1,735,560 B 의 1/3.996\nper_channel=True : 434,870 B (0.435 MB) | FP32 1,735,560 B 의 1/3.991",
+  "check": false
+ },
+ "8-5": {
+  "text": "   bits  per_channel   acc  agree  max_diff\n0     8        False  1.00   1.00    0.0671\n1     8         True  1.00   1.00    0.0672\n2     4        False  1.00   1.00    1.5854\n3     4         True  0.99   0.99    1.3222\n4     2        False  0.25   0.25   15.6143\n5     2         True  0.52   0.52   13.3926\nFP32 정확도 1.0 → 선택: 4 bit, per_channel=True\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20 (434,870 B)\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}

@@ -77,6 +77,9 @@ Day 2 · 3 의 결론은 "ResNet-20 은 8비트 PTQ 로 충분" 이었다. 그�
 
 (layer1.0.conv1 의 채널 0 = weight 144개 · 직접 실행.) 2비트면 weight 가 −s · 0 · +s 셋 중 하나 — 정보가 거의 남지 않는다.
 
+<<CODE 1-c1 | QAT 의 흐름>>
+<<CODE 1-1 | quant_weight — 채널별 대칭 weight 양자화>>
+
 #### 개념 2 · 비트 다이얼 결과
 ![weight-only PTQ 정확도 — 8 · 6 · 4비트는 거의 그대로, 3비트 0.730, 2비트 0.12 로 붕괴](assets/fig/qp/d4-bits.svg)
 
@@ -89,33 +92,8 @@ Day 2 · 3 의 결론은 "ResNet-20 은 8비트 PTQ 로 충분" 이었다. 그�
 
 (직접 실행 · 평가용 2,000장.) 교안 해설은 "8비트 PTQ 손실 0.3%p 정도" — 이 실행은 0.4%p (Day 3 교안 수정으로 `reduce_range=True` · weight 7비트 ±64 가 들어간 설정).
 
-#### 코드로 확인
-```python
-rows = []
-for b in [8, 6, 4, 3, 2]:
-    m = copy.deepcopy(rn20)
-    with torch.no_grad():
-        for mod in m.modules():
-            if isinstance(mod, (nn.Conv2d, nn.Linear)):
-                mod.weight.copy_(quant_weight(mod.weight, b))
-    rows.append({"bits": b, "acc": acc_torch(m)})
-wq_df = pd.DataFrame(rows)
-```
-- **무엇을 하나**: 비트마다 새 복사본을 만들어 Conv · Linear weight 만 양자화하고 정확도를 잰다 (실습 1-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `8비트 0.844 · 4비트 0.836 · 3비트 0.730 · 2비트 0.120 — 4비트 아래에서 급격히 무너진다` (직접 실행)
-
-```python
-export_b1(copy.deepcopy(rn20), "rn20_b1.onnx")
-with quiet():
-    quant_pre_process("rn20_b1.onnx", "rn20_b1_pre.onnx")
-make_trt_int8("rn20_b1_pre.onnx", "rn20_ptq8.onnx")
-base_df = pd.DataFrame([{"model": "FP32", "acc": onnx_acc("rn20_b1_pre.onnx"), "size_kb": size_kb("rn20_b1_pre.onnx")},
-                        {"model": "ORT PTQ INT8", "acc": onnx_acc("rn20_ptq8.onnx"), "size_kb": size_kb("rn20_ptq8.onnx")}])
-```
-- **무엇을 하나**: 오늘 내내 쓸 8비트 PTQ 기준선을 만든다 (예제 1-A).
-- **어떤 개념**: 개념 2 · 8비트는 PTQ 로 충분.
-- **출력**: `FP32 0.846 · 1074.0 KB` · `ORT PTQ INT8 0.842 · 323.5 KB` · `trt_check ok True (qdq 128)` (직접 실행)
+<<CODE 1-2 | weight-only PTQ 를 8 · 6 · 4 · 3 · 2비트로>>
+<<CODE 1-c2 | Day 3 방식 ORT PTQ INT8 기준선>>
 
 #### 한 번에 정리
 - 칸 수 = 2^bits — 3비트 대칭이면 채널당 값 7개.
@@ -212,32 +190,16 @@ class FakeQuant(nn.Module):
 
 x = linspace(−1.2, 1.2, 9) → x̂ = [−1.0, −1.0, −0.5, −0.25, 0, 0.25, 0.5, 0.75, 0.75] (직접 실행 · −0.6/0.25 = −2.4 → −2).
 
+<<CODE 2-c1 | fake quant 의 식>>
+<<CODE 2-1 | fake_quant — 양자화 → 역양자화를 한 번에>>
+
 #### 개념 2 · 보정 범위로 정하는 활성값 scale
 - 보정 데이터로 lo = −0.5, hi = 2.0 → s = 2.5 / 255 = 0.0098, zp = round(0.5 / 0.0098) = 51.
 - 입력 [−0.5, 0, 1.0, 3.0] → [−0.5, 0.0, 1.0, 2.0] — 0 은 정확히 0 (zp 가 정수), 범위 밖 3.0 은 2.0.
 - 범위는 0 을 꼭 포함(min(lo, 0) · max(hi, 0)) — ReLU 출력의 0 을 오차 없이 표현하려고 (QP D1·4교시).
 
-#### 코드로 확인
-```python
-fq = FakeQuant(8); fq.calib = True
-fq(torch.tensor([-0.5, 2.0]))                  # 보정: 범위만 기록
-fq.calib = False
-fq(torch.tensor([-0.5, 0.0, 1.0, 3.0]))
-FakeQuant(3, True)(torch.randn(4, 3, 3, 3))    # weight: 채널당 7개 값 이하
-```
-- **무엇을 하나**: 활성값 모드(보정 → 고정 범위)와 weight 모드를 확인한다 (실습 2-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `범위 -0.5 2.0 | 출력 [-0.5  0.   1.   2. ]` (직접 실행)
-
-```python
-w = torch.tensor([0.31, -0.77, 0.20], requires_grad=True)
-target = torch.tensor([0.5, -0.5, 0.5])
-loss = ((fake_quant(w, 0.25, 0, -4, 3) - target) ** 2).sum()
-loss.backward()
-```
-- **무엇을 하나**: round 를 지난 기울기를 직접 본다 (예제 2-A).
-- **어떤 개념**: 개념 1 · round 의 기울기.
-- **출력**: `loss 0.1875 | w.grad [0. 0. 0.]` (직접 실행 — x̂ = [0.25, −0.75, 0.25], 차이 0.25 씩 3개 → 3 × 0.0625)
+<<CODE 2-2 | FakeQuant 모듈 — weight 는 채널별, 활성값은 보정 범위>>
+<<CODE 2-c2 | round 의 기울기는 0 — w 가 움직이지 않는다>>
 
 #### 한 번에 정리
 - fake quant = quantize → dequantize — 값은 FP32, 칸은 2^bits 개.
@@ -316,36 +278,17 @@ def fake_quant(x, scale, zp, qmin, qmax):                     # STE 버전 (같�
 | STE round | 계단 | 1 (그대로) | 학습됨 |
 | clamp 범위 밖 | 끝 칸 | 0 | 잘린 값은 학습 안 됨 |
 
+<<CODE 3-c1 | STE 의 forward · backward>>
+<<CODE 3-1 | RoundSTE — 반올림 · 기울기는 그대로>>
+<<CODE 3-2 | STE 버전 fake_quant — 범위 밖만 기울기 0>>
+
 #### 개념 2 · toy 실험 — w 3개를 목표 칸으로
 - 설정: w0 = [0.31, −0.77, 0.20], 3비트 fake quant(s 0.25), target [0.5, −0.5, 0.5], SGD lr 0.1 · 50번.
 - 처음 x̂ = [0.25, −0.75, 0.25] → 칸 하나씩 어긋남 → loss 3 × 0.25² = 0.1875.
 - STE: 기울기 2(x̂ − target) 가 w 로 그대로 흘러 w 가 칸 경계를 넘는다 → w [0.41, −0.62, 0.40] → x̂ = [0.5, −0.5, 0.5] (0.41/0.25 = 1.64 → 2).
 - 칸에 들어가면 x̂ = target 이라 기울기 0 → 거기서 멈춘다. QAT 는 이것을 수만 개 weight 에 대해 cross-entropy 로 하는 것.
 
-#### 코드로 확인
-```python
-x = torch.tensor([-2.0, -0.4, 0.3, 0.6, 2.0], requires_grad=True)
-fake_quant(x, 0.25, 0, -4, 3).sum().backward()
-g_ste = x.grad
-```
-- **무엇을 하나**: STE 버전 fake quant 의 기울기를 본다 (실습 3-2).
-- **어떤 개념**: 개념 1 · clamp 범위 밖 0.
-- **출력**: `기울기 tensor([0., 1., 1., 1., 0.])` (직접 실행)
-
-```python
-def toy_train(fq, steps=50):
-    w = torch.tensor([0.31, -0.77, 0.20], requires_grad=True)
-    opt = torch.optim.SGD([w], lr=0.1)
-    for _ in range(steps):
-        loss = ((fq(w, 0.25, 0, -4, 3) - target) ** 2).sum()
-        opt.zero_grad(); loss.backward(); opt.step()
-    return float(((fq(w, 0.25, 0, -4, 3) - target) ** 2).sum()), w.detach()
-loss_round, w_round = toy_train(fake_quant_round)
-loss_ste, w_ste = toy_train(fake_quant)
-```
-- **무엇을 하나**: round 버전 · STE 버전으로 같은 학습을 해 최종 loss 를 비교한다 (예제 3-A).
-- **어떤 개념**: 개념 2.
-- **출력**: `round: loss 0.1875 w [0.31 -0.77 0.2] | STE: loss 0.0000 w [0.41 -0.62 0.4]` (직접 실행)
+<<CODE 3-c2 | toy 실험 — w 3개를 목표 칸으로 학습>>
 
 #### 한 번에 정리
 - STE = forward 는 round, backward 는 기울기 1 (`torch.autograd.Function`).
@@ -447,6 +390,10 @@ def calibrate(model):
 | 3 보정 | 활성값 22개 lo · hi ← 보정 500장 | W3A8 PTQ 0.728 |
 | 4 fine-tuning | 학습 10,000장 · 3 epoch · lr 1e-3 cosine | W3A8 QAT 0.8375 |
 
+<<CODE 4-c1 | QConv2d · QLinear — FakeQuant 를 붙인 계층>>
+<<CODE 4-c2 | fold_all — BN 을 Conv 에 접기>>
+<<CODE 4-1 | quantize_model · calibrate — 계층 바꾸기와 보정>>
+
 #### 개념 2 · 학습 설정의 이유
 | 설정 | 값 | 이유 |
 |---|---|---|
@@ -463,37 +410,7 @@ def calibrate(model):
 
 (직접 실행 · 평가 2,000장.)
 
-#### 코드로 확인
-```python
-def fold(conv, bn):
-    k = bn.weight / torch.sqrt(bn.running_var + bn.eps)
-    c = nn.Conv2d(conv.in_channels, conv.out_channels, conv.kernel_size, conv.stride, conv.padding, bias=True)
-    c.weight.data = conv.weight.data * k.view(-1, 1, 1, 1)
-    c.bias.data = bn.bias.data - bn.running_mean * k + (conv.bias.data * k if conv.bias is not None else 0)
-    return c
-rn20_f = fold_all(rn20)
-```
-- **무엇을 하나**: Conv + BN 을 bias 있는 Conv 하나로 접고, 모델 전체를 접은 복사본을 만든다 (예제 4-A).
-- **어떤 개념**: 개념 1 · 단계 1.
-- **출력**: `BN 개수 0 | 정확도 0.846` · 출력 최대 차이 4.8e-06 (직접 실행)
-
-```python
-def train_qat(model, epochs=EPOCHS, lr=1e-3, on_epoch=None):
-    t0 = time.time()
-    opt = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * ((len(Xtr_u8) + 127) // 128))
-    for ep in range(epochs):
-        model.train()
-        for xb, yb in batches(seed=ep):
-            loss = F.cross_entropy(model(xb), yb)
-            opt.zero_grad(); loss.backward(); opt.step(); sched.step()
-        model.eval()
-        if on_epoch: on_epoch(ep, model)
-    return time.time() - t0
-```
-- **무엇을 하나**: QAT 학습 루프 — 평소 학습과 똑같고, 모델 안에 FakeQuant(STE) 가 있을 뿐이다 (실습 4-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `epoch 1: 0.8215 · epoch 2: 0.8335 · epoch 3: 0.8375` · `W3A8 PTQ 0.7280 → QAT 0.8375 (555초)` (직접 실행 · CPU)
+<<CODE 4-2 | train_qat — SGD · cosine 로 짧게 재학습>>
 
 #### 한 번에 정리
 - 순서: BN folding → QConv2d · QLinear → 보정(= PTQ) → 짧은 fine-tuning(= QAT).
@@ -591,6 +508,9 @@ mo3 = mtq.quantize(copy.deepcopy(rn20).to(DEV), make_cfg(3), forward_loop=forwar
 | 활성값 비대칭 (zp ≠ 0) | 모두 대칭 (zp 0) |
 | 범위 · 비트 = 생성자 인자 | config (`INT8_DEFAULT_CFG`) |
 
+<<CODE 5-c1 | ModelOpt 두 줄 사용법>>
+<<CODE 5-1 | ModelOpt INT8 PTQ · 켜진 양자화기 수>>
+
 #### 개념 2 · 양자화기 110개 중 45개
 - `QuantConv2d` 21 · `QuantLinear` 1 · `QuantBatchNorm2d` 21 · pool 1 개마다 input · output 양자화기 (+ Conv · Linear 는 weight).
 - 기본 설정은 `"*"` 를 먼저 끄고(`enable: False`) weight · input 양자화기만 켠다 → output 양자화기 · BN 양자화기는 꺼짐.
@@ -603,25 +523,8 @@ mo3 = mtq.quantize(copy.deepcopy(rn20).to(DEV), make_cfg(3), forward_loop=forwar
 
 (직접 실행.) W3A8 이 같은 0.728 — weight 는 둘 다 채널별 대칭 max 이고, 활성값 8비트 오차는 작기 때문.
 
-#### 코드로 확인
-```python
-mo8 = mtq.quantize(copy.deepcopy(rn20).to(DEV), mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)
-acc_mo_ptq8 = acc_torch(mo8)
-n_on = sum(m.is_enabled for n, m in mo8.named_modules() if n.endswith("_quantizer"))
-print("\n".join(str(mo8).split("\n")[:12]))
-```
-- **무엇을 하나**: ModelOpt 로 INT8 PTQ 를 하고 켜진 양자화기를 센다 (실습 5-1).
-- **어떤 개념**: 개념 2.
-- **출력**: `Inserted 110 quantizers` · `켜진 양자화기 45개 | ModelOpt INT8 PTQ 0.8430` · `(input_quantizer): TensorQuantizer(8 bit fake per-tensor amax=2.13e+00 calibrator=MaxCalibrator quant)` (직접 실행)
-
-```python
-mo3 = mtq.quantize(copy.deepcopy(rn20).to(DEV), make_cfg(3), forward_loop=forward_loop)
-acc_mo_ptq3 = acc_torch(mo3)
-str(mo3.layer1[0].conv1.weight_quantizer)
-```
-- **무엇을 하나**: weight 비트만 3 으로 바꾼 config 로 W3A8 PTQ 를 한다 (실습 5-2).
-- **어떤 개념**: 개념 1 · config.
-- **출력**: `TensorQuantizer(3 bit fake axis=0 amax=[1.93e-01, 3.54e-01](16) …)` · `ModelOpt W3A8 PTQ 0.7280 (직접 만든 W3A8 PTQ 0.7280)` (직접 실행)
+<<CODE 5-c2 | 양자화기 요약 보기>>
+<<CODE 5-2 | make_cfg — weight 비트만 바꾼 config (W3A8)>>
 
 #### 한 번에 정리
 - `mtq.quantize(model, config, forward_loop)` = 양자화기 삽입 + 보정 — 실습 4-1 과 같은 일.
@@ -708,31 +611,15 @@ acc_torch(restored)                                           # 0.843 = acc_torc
 
 (직접 실행 · CPU · 학습 시간 W3A8 75초 · INT8 42초.)
 
+<<CODE 6-1 | ModelOpt QAT W3A8 정확도 곡선>>
+
 #### 개념 2 · 양자화 모델 저장
 | 방법 | 저장되는 것 | 복원 |
 |---|---|---|
 | `torch.save(model.state_dict())` | weight · 버퍼 값만 | 같은 구조의 모델이 먼저 있어야 함 — 양자화기 없는 FP32 모델엔 안 맞음 |
 | `mto.save(model, path)` | 값 + ModelOpt 변환 기록(양자화 config · 위치) | `mto.restore(빈 FP32 모델, path)` 가 구조까지 다시 만든다 |
 
-#### 코드로 확인
-```python
-hist = [{"epoch": 0, "acc": acc_mo_ptq3}]
-t_mo_qat3 = train_qat(mo3, on_epoch=lambda ep, m: hist.append({"epoch": ep + 1, "acc": acc_torch(m)}))
-hist_df = pd.DataFrame(hist)
-acc_mo_qat3 = hist_df.acc.iloc[-1]
-```
-- **무엇을 하나**: ModelOpt W3A8 모델을 4교시 루프로 QAT 하며 곡선을 기록한다 (실습 6-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `epoch 0 1 2 3 / acc 0.728 0.8185 0.8245 0.832` · `ModelOpt QAT W3A8 0.728 → 0.832 (75초)` (직접 실행 · CPU)
-
-```python
-t_mo_qat8 = train_qat(mo8); acc_mo_qat8 = acc_torch(mo8)
-mto.save(mo8, "rn20_mo_qat8.pth")
-acc_restored = acc_torch(mto.restore(load_rn20().to(DEV), "rn20_mo_qat8.pth"))
-```
-- **무엇을 하나**: INT8 모델도 QAT 하고 저장 → 새 모델에 복원해 정확도를 비교한다 (실습 6-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `QAT 0.8430 | 복원 0.8430` · `INT8 에서 QAT 이득 +0.0%p — 8비트는 PTQ 로 충분` (직접 실행)
+<<CODE 6-2 | INT8 QAT · 체크포인트 저장 · 복원>>
 
 #### 한 번에 정리
 - ModelOpt QAT = PTQ 모델을 평소처럼 학습 (양자화기 안에 STE).
@@ -815,6 +702,8 @@ mean_ms = bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)["mean"]
 | zero_point | 모두 0 (int8) → `trt_check` ok |
 | 파일 크기 | 1,135 KB (FP32 1,074 KB) |
 
+<<CODE 7-1 | QAT 모델을 QDQ ONNX 로 · Q/DQ 수 · 정확도>>
+
 #### 개념 2 · Day 3 PTQ 경로와 비교
 | | Day 3 PTQ (`make_trt_int8`) | Day 4 QAT (ModelOpt) |
 |---|---|---|
@@ -826,26 +715,7 @@ mean_ms = bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)["mean"]
 
 엔진 크기 · 지연은 GPU(TensorRT)에서만 잴 수 있다 — 이 실행은 GPU 가 없어 ORT CPU 값(0.843 · 1.60 ms · 1,135 KB).
 
-#### 코드로 확인
-```python
-export_b1(copy.deepcopy(mo8), "rn20_qat.onnx")
-cnt = Counter(n.op_type for n in onnx.load("rn20_qat.onnx").graph.node)
-n_q, n_dq = cnt["QuantizeLinear"], cnt["DequantizeLinear"]
-acc_qat_onnx = onnx_acc("rn20_qat.onnx")
-```
-- **무엇을 하나**: QAT 모델을 QDQ ONNX 로 내보내고 노드 · 조건 · 정확도를 확인한다 (실습 7-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `Q 45 · DQ 45 | {'qdq': 90, 'uint8': 0, 'nonzero_zp': 0, 'ok': True} | ORT 0.8430` (직접 실행)
-
-```python
-s = make_session("rn20_qat.onnx"); infer = lambda x, s=s: s.run(None, {"input": x})[0]
-deploy_row = {"model": "rn20_qat", "backend": BACKEND, "acc": acc_qat_onnx,
-              "mean_ms": bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)["mean"],
-              "size_kb": size_kb("rn20_qat.onnx")}
-```
-- **무엇을 하나**: GPU 가 없을 때의 7-2 — 같은 ONNX 를 ORT CPU 로 재서 배포 행을 만든다 (GPU 면 `TRTInfer(build_once(…, fp16=True, int8=True))`).
-- **어떤 개념**: 개념 2.
-- **출력**: `{'model': 'rn20_qat', 'backend': 'ORT CPU', 'acc': 0.843, 'mean_ms': 1.60, 'size_kb': 1135.4}` (직접 실행 · GPU 엔진 값은 이 실행에서 못 잼)
+<<CODE 7-2 | 보정 없이 INT8 엔진 — 정확도 · 지연 · 크기>>
 
 #### 한 번에 정리
 - ModelOpt 모델 → `torch.onnx.export` → QDQ ONNX (scale 포함 · zero_point 0).
@@ -937,6 +807,8 @@ need_qat = {k: bool(v > 0.01) for k, v in gain.items()}
 
 정답 보기 셀 없음 · 채점 셀이 자동 점수와 정답 열람 기록을 보여 준다.
 
+<<CODE 과제 1 | 과제 1 — 수작업 QAT INT8 · ModelOpt PTQ INT8 ONNX>>
+
 #### 개념 2 · 대결 표 (이 실행)
 ![PTQ vs QAT 대결 — INT8 은 다섯 방법이 0.84 대로 비슷, W3A8 은 QAT 가 PTQ 보다 +10%p · CPU 에서는 INT8 이 느림](assets/fig/qp/d4-duel.svg)
 
@@ -950,33 +822,16 @@ need_qat = {k: bool(v > 0.01) for k, v in gain.items()}
 
 (직접 실행 · CPU · 배치 1 · n=300.) QAT 이득: INT8 **+0.6%p** (False) · W3A8 **+10.95%p** (True). 교안의 의도는 T4 GPU + TensorRT — 거기서는 INT8 엔진이 FP32 보다 빠르다. 이 표의 지연은 "x86 CPU 에서는 S8 활성값 QDQ 가 느리다(QP D2·5교시)" 만 보여 준다.
 
+<<CODE 과제 2 | 과제 2 — PTQ vs QAT 대결 표>>
+<<CODE 과제 3 | 과제 3 — QAT 이득과 판정>>
+<<CODE 과제 4 | 과제 4 — CSV 저장>>
+<<CODE 과제 5 | 과제 5 — QAT 정확도 곡선 그림>>
+
 #### 개념 3 · 과제 6 의 생각할 거리
 - **QAT 가 필요한 경우 / PTQ 로 충분한 경우**: W3A8 처럼 PTQ 손실이 큰 저비트 → QAT (+10.95%p) · INT8 → PTQ (+0.6%p 는 잡음 수준).
 - **수작업 vs ModelOpt**: 정확도는 비슷(0.8375 vs 0.832) — 배포에는 ModelOpt (대칭 QDQ ONNX · `mto` 체크포인트 · TensorRT 연결).
 - **outlier 모델에 QAT**: 강사 실험 0.25 → 0.50 — 원인이 범위(outlier)면 학습으로 잘 안 풀린다 → 범인 layer FP32 · 채널 균등화.
 - **W3A8 을 빠르게**: 3비트 weight 를 실제로 계산하는 커널(저비트 GEMM) · 장치 지원이 있어야 한다.
-
-#### 코드로 확인
-```python
-q8 = calibrate(quantize_model(rn20, 8, 8)); t_qat8 = train_qat(q8); acc_qat8 = acc_torch(q8)
-m_ = mtq.quantize(copy.deepcopy(rn20).to(DEV), mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)
-export_b1(m_, "rn20_mo_ptq8.onnx")
-acc_mo_ptq8_onnx = onnx_acc("rn20_mo_ptq8.onnx")
-```
-- **무엇을 하나**: 대결 표에 필요한 나머지 두 모델(수작업 QAT INT8 · ModelOpt PTQ INT8 ONNX)을 만든다 (과제 1).
-- **어떤 개념**: 개념 2.
-- **출력**: `수작업 QAT INT8 0.8490 (44초) | ModelOpt PTQ INT8 ONNX 0.8430` (직접 실행 · CPU)
-
-```python
-plt.plot(hist_df.epoch, hist_df.acc, "o-", label="ModelOpt QAT W3A8")
-plt.axhline(acc_mo_ptq3, ls="--", label="PTQ W3A8")
-plt.axhline(0.846, ls="--", c="gray", label="FP32")
-plt.title("W3A8 QAT accuracy"); plt.xlabel("epoch"); plt.ylabel("accuracy"); plt.legend()
-plt.savefig("qat_curve.png", dpi=120)
-```
-- **무엇을 하나**: 6-1 의 곡선에 PTQ · FP32 기준선을 그려 저장한다 (과제 5).
-- **어떤 개념**: 6교시 개념 1.
-- **출력**: `qat_curve.png` — 0.728 에서 시작해 0.832 로, FP32 0.846 아래 1.4%p
 
 #### 한 번에 정리
 - 같은 모델 · 같은 자로 5가지 방법을 비교 — INT8 은 PTQ 로 충분(+0.6%p), W3A8 은 QAT 필요(+10.95%p).

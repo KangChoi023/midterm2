@@ -59,6 +59,8 @@ Day 1 · 2 에서 ONNX 파일을 만들고 고쳤다. 오늘은 **파일은 그�
 | `mnv3s.onnx` | `['batch', 3, 224, 224]` | MobileNetV3-Small 구조, opset 17, 10.2 MB, 노드 127 (Conv 52 · HardSwish 19 · Relu 14 · GlobalAveragePool 10 …) |
 | `mnist_cnn_dyn.onnx` | `['batch', 1, 28, 28]` | SimpleConvNet, 노드 7 |
 
+<<CODE 1-1 | 오늘 잴 모델 두 개 내보내기 — MobileNetV3-Small · SimpleConvNet>>
+
 #### 개념 2 · providers 는 희망 목록
 `providers=["CUDAExecutionProvider", "CPUExecutionProvider"]` 는 "되면 GPU, 안 되면 CPU" 라는 **우선순위**다. 라이브러리가 안 맞거나 GPU 가 없으면 **조용히** CPU 로 돌아간다.
 
@@ -67,23 +69,12 @@ Day 1 · 2 에서 ONNX 파일을 만들고 고쳤다. 오늘은 **파일은 그�
 | 설치된 실행기 | `ort.get_available_providers()` | `['AzureExecutionProvider', 'CPUExecutionProvider']` |
 | 실제 쓰는 실행기 | `sess.get_providers()` | `['CPUExecutionProvider']` → `GPU_OK = False` |
 
+<<CODE 1-2 | CUDA 를 희망해도 실제로 쓰는 실행기 확인>>
+
 #### 개념 3 · 실험 원칙 3가지
 1. **한 번에 하나만 바꾼다** — 스레드와 레벨을 동시에 바꾸면 무엇 때문에 빨라졌는지 모른다.
 2. **조건을 함께 적는다** — 모델 · 실행기 · 스레드 · 레벨 · 배치 · 장치를 표의 열로.
 3. **바꾼 뒤에도 결과는 같아야 한다** — 빨라졌는데 답이 달라지면 소용없다 (`allclose`).
-
-#### 코드로 확인
-```python
-probe = ort.InferenceSession("mnist_cnn_dyn.onnx",
-                             providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-used = probe.get_providers()
-GPU_OK = used[0] == "CUDAExecutionProvider"
-print("설치됨:", ort.get_available_providers())
-print("실제 사용:", used)
-```
-- **무엇을 하나**: GPU 를 앞에 둔 세션을 만들고 실제 실행기를 확인.
-- **어떤 개념**: 개념 2.
-- **출력**: `설치됨: ['AzureExecutionProvider', 'CPUExecutionProvider']`, `실제 사용: ['CPUExecutionProvider']` → GPU 없음 (5교시만 영향) (직접 실행)
 
 #### 한 번에 정리
 - 오늘의 모델: `mnv3s.onnx` (opset 17 · 배치 자유) · `mnist_cnn_dyn.onnx`.
@@ -165,6 +156,8 @@ def bench(sess, x, n=100, warm=10):
 #### 개념 1 · warm-up — 첫 실행은 버린다
 첫 `run` 에는 메모리 할당 · 커널 준비 같은 **한 번만 드는 비용**이 섞인다. 이 환경에서 처음 5번은 `[2.48, 2.54, 2.24, 1.89, 1.75]` ms — 첫 실행이 나머지 평균의 1.2배 (Colab 에서는 더 뚜렷). 그래서 10번은 재지 않고 버린다.
 
+<<CODE 2-1 | 한 번씩 다섯 번 재기 — 첫 실행이 느리다>>
+
 #### 개념 2 · 평균 · p50 · p95 · FPS
 ![100번 중 80번 10 ms, 20번 40 ms 인 분포에서 평균 · p50 · p95 의 위치 — 평균만 보면 꼬리를 놓친다](assets/fig/vb/d5-latency.svg)
 
@@ -178,6 +171,9 @@ def bench(sess, x, n=100, warm=10):
 
 30 FPS 카메라는 한 장 예산이 1000 ÷ 30 ≈ **33.3 ms**. 평균이 예산 안이어도 p95 가 넘으면 가끔 프레임을 놓친다 → 실시간 판단은 p95.
 
+<<CODE 2-2 | warm-up 10번 버리고 100번 — 평균 · p50 · p95 · FPS>>
+<<CODE 2-c1 | 100번의 시간 그래프 · 분포 (오른쪽 꼬리)>>
+
 #### 개념 3 · bench() — 오늘의 측정 함수
 | 인자 · 반환 | 뜻 |
 |---|---|
@@ -187,24 +183,8 @@ def bench(sess, x, n=100, warm=10):
 
 MobileNetV3 평균 1.95 ms vs SimpleConvNet 0.079 ms → **25배**. 같은 방식으로 PyTorch 를 재면 VB Day 5 에서 본 "ORT 가 더 빠르다" 를 다시 확인할 수 있다.
 
-#### 코드로 확인
-```python
-def bench(sess, x, n=100, warm=10):
-    name = sess.get_inputs()[0].name
-    for _ in range(warm):
-        sess.run(None, {name: x})                     # 버린다
-    t = []
-    for _ in range(n):
-        t0 = time.perf_counter()
-        sess.run(None, {name: x})
-        t.append((time.perf_counter() - t0) * 1000)
-    t = np.array(t)
-    return {"mean": t.mean(), "p50": np.percentile(t, 50), "p95": np.percentile(t, 95),
-            "fps": 1000 / t.mean() * x.shape[0]}      # 배치 b 장이면 × b
-```
-- **무엇을 하나**: warm-up → 100번 측정 → 네 지표.
-- **어떤 개념**: 개념 1 · 2 · 3.
-- **출력**: MobileNetV3 `mean 1.95 · p50 1.7 · p95 3.5 · fps 513`, SimpleConvNet `mean 0.079 · fps 12,680` — 25배 차이 (직접 실행)
+<<CODE 2-3 | bench() — 오늘의 측정 함수>>
+<<CODE 2-c2 | 같은 방법으로 PyTorch 시간 재기>>
 
 #### 한 번에 정리
 - warm-up 10번 버리기 → 100번 재기 → 평균 · p50 · p95 · FPS.
@@ -282,25 +262,15 @@ print(bench(s, x1))
 
 1 → 2 는 빨라지지만 2 → 4 는 거의 그대로다. MobileNetV3 의 연산 하나하나가 작아 **나누고 모으는 비용**이 이득을 먹는다. 코어 수보다 많이 주면(과다 할당) p95 부터 나빠진다. 기본값 0 = 자동 (보통 코어 수).
 
+<<CODE 3-1 | 스레드 1 · 2 · 4 로 세션 만들어 표로 비교>>
+<<CODE 3-2 | p95 기준 최선 스레드 · 코어보다 많을 때>>
+
 #### 개념 2 · 옵션 → 세션 순서
 `so = ort.SessionOptions()` → `so.intra_op_num_threads = th` → `ort.InferenceSession(path, so, providers=CPU)`. 세션을 만든 **뒤에** 옵션을 바꾸면 적용되지 않는다.
 
 `make_session(path, threads=0, level="ALL", providers=None, save_opt=None, profile=False)` — 오늘의 손잡이를 한 곳에 모은 함수. level 은 4교시, providers 는 5교시, profile 은 7교시에 쓴다.
 
-#### 코드로 확인
-```python
-rows = []
-for th in [1, 2, 4]:
-    so = ort.SessionOptions()
-    so.intra_op_num_threads = th
-    s = ort.InferenceSession("mnv3s.onnx", so, providers=CPU)
-    rows.append({"threads": th, **bench(s, x1)})
-df_th = pd.DataFrame(rows)
-best_threads = int(df_th.loc[df_th["p95"].idxmin(), "threads"])
-```
-- **무엇을 하나**: 스레드만 바꿔 세 번 재고 p95 가 가장 작은 설정을 고른다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 위 표, p95 기준 최선 4 스레드 (2 스레드와 0.01 ms 차이 — 사실상 같음) (직접 실행)
+<<CODE 3-c1 | make_session — 스레드 · 최적화 레벨 · 저장 · profiling 옵션을 한 번에>>
 
 #### 한 번에 정리
 - `SessionOptions` → `intra_op_num_threads` → `InferenceSession(path, so, providers)`.
@@ -377,6 +347,9 @@ ONNX Runtime 은 세션을 만들 때 **그래프를 스스로 고친다**. 어�
 
 `optimized_model_filepath` 로 고친 그래프를 저장해 볼 수 있다. Fused* · Reorder* 는 `com.microsoft` 도메인 — ORT 전용 연산이다.
 
+<<CODE 4-1 | SimpleConvNet 을 네 레벨로 — ORT 가 고친 그래프의 노드 비교>>
+<<CODE 4-c1 | EXTENDED 레벨 그래프 표 (합쳐진 노드)>>
+
 #### 개념 2 · 왜 빨라지나 — speedup
 - **합치기**: Conv 결과를 메모리에 쓰고 Relu 가 다시 읽는 왕복이 사라진다.
 - **레이아웃**: CPU 의 벡터 명령이 한 번에 여러 채널을 처리하기 좋은 순서로 데이터를 다시 놓는다.
@@ -390,26 +363,8 @@ ONNX Runtime 은 세션을 만들 때 **그래프를 스스로 고친다**. 어�
 
 레벨을 낮춘다고 "원래 모델 그대로라 더 정확" 하지 않다 — 네 레벨의 출력은 allclose 로 같다. 속도만 다르다.
 
-#### 코드로 확인
-```python
-for lv in ["DISABLE", "BASIC", "EXTENDED", "ALL"]:
-    make_session("mnist_cnn_dyn.onnx", level=lv, save_opt=f"cnn_opt_{lv}.onnx")
-    ops = [n.op_type for n in onnx.load(f"cnn_opt_{lv}.onnx").graph.node]
-    print(lv.ljust(9), len(ops), "개:", ops)
-```
-- **무엇을 하나**: 레벨마다 ORT 가 고친 그래프를 저장해 노드를 본다.
-- **어떤 개념**: 개념 1.
-- **출력**: `DISABLE 7`, `BASIC 7`, `EXTENDED 5 ['FusedConv', 'MaxPool', 'Flatten', 'FusedGemm', 'Gemm']`, `ALL 6 ['Conv', 'ReorderOutput', …]` (직접 실행)
-
-```python
-rows = [{"level": lv, **bench(make_session("mnv3s.onnx", level=lv), x1)}
-        for lv in ["DISABLE", "BASIC", "EXTENDED", "ALL"]]
-df_lv = pd.DataFrame(rows)
-df_lv["speedup"] = df_lv["mean"].iloc[0] / df_lv["mean"]
-```
-- **무엇을 하나**: 레벨만 바꿔 mnv3s 를 재고 DISABLE 대비 배수.
-- **어떤 개념**: 개념 2.
-- **출력**: speedup `1.00 · 1.13 · 1.21 · 2.14` — ALL 은 DISABLE 보다 2.1배 (직접 실행)
+<<CODE 4-2 | MobileNetV3 를 레벨별로 bench — speedup>>
+<<CODE 4-c2 | 레벨이 바뀌어도 결과는 같은지>>
 
 #### 한 번에 정리
 - DISABLE → BASIC (상수 접기) → EXTENDED (FusedConv · FusedGemm) → ALL (레이아웃, 기본값).
@@ -478,6 +433,8 @@ print(gpu_sess.get_providers()[0])      # CUDAExecutionProvider 여야 진짜 GP
 | ③ 결과 복사 (GPU → CPU) | 출력 크기에 비례 |
 | 첫 실행 | 커널 준비 — 수백 배 느리게 보일 수 있어 warm-up 필수 |
 
+<<CODE 5-1 | GPU 세션 첫 5번 — 준비 시간>>
+
 #### 개념 2 · 배치별 GPU 의 입장
 - **배치 1**: 계산이 작아 복사 · 준비 비중이 크다 → 이득이 작다 (CPU 와 비슷하거나 느릴 수도).
 - **배치 32**: 계산이 커져 GPU 의 병렬성이 살아난다 → 크게 유리.
@@ -489,6 +446,8 @@ print(gpu_sess.get_providers()[0])      # CUDAExecutionProvider 여야 진짜 GP
 
 CPU 에서도 배치를 키우면 장당 시간이 줄어든다 (6교시에서 자세히).
 
+<<CODE 5-2 | CPU vs GPU × 배치 1 · 32 표>>
+
 #### 개념 3 · 장치가 바뀌어도 같은 모델
 GPU 와 CPU 는 계산 순서 · 라이브러리가 달라 끝자리가 다를 수 있다 → `atol=1e-3` 정도로 비교하고 예측(argmax) 일치율을 본다.
 
@@ -499,20 +458,7 @@ GPU 와 CPU 는 계산 순서 · 라이브러리가 달라 끝자리가 다를 �
 | GPU warm-up 없이 첫 실행을 기록 | 수백 배 느리게 보임 |
 | 배치 1 만 재고 "GPU 별로" | GPU 는 일이 많을수록 유리 |
 
-#### 코드로 확인
-```python
-x32 = np.random.rand(32, 3, 224, 224).astype(np.float32)
-cpu_sess = make_session("mnv3s.onnx")
-rows = []
-for dev, s_ in [("CPU", cpu_sess), ("GPU", gpu_sess)]:
-    if s_ is None:
-        continue                                   # GPU 없으면 건너뜀
-    for x_ in [x1, x32]:
-        rows.append({"device": dev, "batch": x_.shape[0], **bench(s_, x_, n=30, warm=5)})
-```
-- **무엇을 하나**: 장치 × 배치(1 · 32) 표.
-- **어떤 개념**: 개념 2.
-- **출력**: CPU 배치 1 `1.66 ms · 602 장/초`, 배치 32 `20.33 ms · 1,574 장/초` — GPU 줄은 T4 런타임에서 (직접 실행)
+<<CODE 5-3 | GPU 결과 = CPU 결과?>>
 
 #### 한 번에 정리
 - `providers=["CUDAExecutionProvider", "CPUExecutionProvider"]` → `get_providers()` 로 실제 확인.
@@ -595,6 +541,9 @@ for b in [1, 4, 16, 64]:
 
 지연은 배치와 함께 늘고, 처리량은 배치 16 에서 멈췄다가 64 에서는 오히려 줄었다 (캐시 · 메모리에 다 안 들어감). 배치 64 의 지연 43.9 ms 는 30 FPS 예산 33.3 ms 를 넘는다.
 
+<<CODE 6-1 | 배치 1 · 4 · 16 · 64 — 지연과 처리량 표>>
+<<CODE 6-2 | 지연 · 처리량 그래프 · 처리량 최대 배치>>
+
 #### 개념 2 · 카메라 몇 대?
 감당 카메라 수 = 처리량 ÷ 카메라 FPS (`//` 몫).
 
@@ -603,19 +552,7 @@ for b in [1, 4, 16, 64]:
 | 배치 1 | 611 // 30 | 20대 |
 | 배치 16 | 1,737 // 30 | 57대 (지연 9 ms) |
 
-#### 코드로 확인
-```python
-rows = []
-for b in [1, 4, 16, 64]:
-    xb = np.random.rand(b, 3, 224, 224).astype(np.float32)
-    r = bench(cpu_sess, xb, n=20, warm=3)
-    rows.append({"batch": b, "latency_ms": r["mean"], "imgs_per_s": r["fps"], "ms_per_img": r["mean"] / b})
-df_b = pd.DataFrame(rows)
-best_batch = int(df_b.loc[df_b.imgs_per_s.idxmax(), "batch"])
-```
-- **무엇을 하나**: 배치별 지연 · 처리량 · 장당 시간, 처리량이 가장 큰 배치.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 위 표, `처리량 최대 배치: 16 → 1737 장/초`, `배치 1: 20대 | 배치 16: 57대 (지연 9 ms)` (직접 실행)
+<<CODE 6-3 | 30 FPS 카메라 몇 대까지?>>
 
 #### 한 번에 정리
 - 지연 = 한 번 run 시간, 처리량 = 배치 × 1000 ÷ 지연, 장당 = 지연 ÷ 배치.
@@ -689,6 +626,9 @@ node_ev = [e for e in events if e.get("cat") == "Node" and e["name"].endswith("_
 
 노드 기록 2,840개 = 노드 142개 × 20번. 예: `Conv 120 µs [{'float': [1, 16, 112, 112]}]`. **dur 단위는 µs** (1000 µs = 1 ms).
 
+<<CODE 7-1 | profiling 켜고 20번 실행 → JSON 기록 읽기>>
+<<CODE 7-2 | 연산 종류별 시간 비율 표>>
+
 #### 개념 2 · 병목은 모델마다 다르다
 ![MobileNetV3 와 SimpleConvNet 의 연산별 시간 비율](assets/fig/ot/d3-profile.svg)
 
@@ -704,21 +644,7 @@ node_ev = [e for e in events if e.get("cat") == "Node" and e["name"].endswith("_
 
 어디를 손댈지 정해진다 → Conv 가 병목이면 TensorRT(Day 4) · INT8 양자화(다음 과목).
 
-#### 코드로 확인
-```python
-ps = make_session("mnv3s.onnx", profile=True)
-for _ in range(20):
-    ps.run(None, {"input": x1})
-events = json.load(open(ps.end_profiling()))
-node_ev = [e for e in events if e.get("cat") == "Node" and e["name"].endswith("_kernel_time")]
-agg = collections.Counter()
-for e in node_ev:
-    agg[e["args"]["op_name"]] += e["dur"]
-total = sum(agg.values())
-```
-- **무엇을 하나**: 20번 실행의 노드 기록을 연산 종류별로 합친다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `전체 기록 2882 | 노드 기록 2840`, 1위 `Conv 1.02 ms/회 · 42%` (직접 실행)
+<<CODE 7-3 | profile_top — 모델별 상위 k 연산>>
 
 #### 한 번에 정리
 - `enable_profiling=True` → run → `end_profiling()` → JSON → `cat == "Node"` · op_name 별 dur 합.
@@ -803,6 +729,8 @@ def bench_config(path, threads=0, level="ALL", batch=1, n=50):
 | 요구 처리량 | 초당 120장 |
 | 한 장 예산 (배치 1) | 1000 ÷ 120 ≈ **8.3 ms** |
 
+<<CODE 8-1 | bench_config — 설정 하나를 재서 한 행으로>>
+
 #### 개념 2 · 실험 설계 — 조건 열 + 결과 열
 `bench_config(path, threads, level, batch)` 가 세션을 만들고 bench 한 뒤 `model · provider · threads · level · batch · mean · p50 · p95 · fps` 한 줄을 돌려준다.
 
@@ -814,6 +742,9 @@ def bench_config(path, threads=0, level="ALL", batch=1, n=50):
 | 4 | 최선 설정의 profiling Top 3 | 20 |
 | 5 | `ot_baseline.csv` 저장 · p95 막대그래프 | 10 |
 | 6 | 추천 설정과 근거 | 10 |
+
+<<CODE 8-2 | 스레드 × 최적화 레벨 4가지 조합>>
+<<CODE 8-3 | 최선 설정으로 배치별 — 120 FPS 넘는 배치 고르기>>
 
 #### 개념 3 · 실험 결과 (직접 실행)
 | 스레드 | 레벨 | 평균 ms | p95 ms | FPS |
@@ -834,32 +765,8 @@ def bench_config(path, threads=0, level="ALL", batch=1, n=50):
 - **Top 3**: Conv 46% · Mul 16% · HardSigmoid 13% → 더 빠르게 하려면 Conv (TensorRT · INT8).
 - 아슬아슬하다면: CPU 한 대로는 ① 배치를 키워 처리량 확보 ② 입력 크기 줄이기 · 프레임 건너뛰기, 장치를 바꾸면 ③ GPU · Jetson + TensorRT.
 
-#### 코드로 확인
-```python
-def bench_config(path, threads=0, level="ALL", batch=1, n=50):
-    s_ = make_session(path, threads=threads, level=level)
-    x_ = np.random.rand(batch, 3, 224, 224).astype(np.float32)
-    r = bench(s_, x_, n=n, warm=5)
-    return {"model": os.path.basename(path), "provider": s_.get_providers()[0], "threads": threads,
-            "level": level, "batch": batch, **r}
-grid = pd.DataFrame([bench_config("mnv3s.onnx", threads=th, level=lv)
-                     for th in [1, 2] for lv in ["DISABLE", "ALL"]])
-best = grid.loc[grid["p95"].idxmin()]
-```
-- **무엇을 하나**: 설정 한 줄 = 측정 한 줄, 4가지 조합 표에서 p95 최선 고르기.
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: 위 표, `최선: 2 스레드 · ALL · p95 2.09 ms` (직접 실행)
-
-```python
-batch_tbl = pd.DataFrame([bench_config("mnv3s.onnx", threads=int(best.threads), level=best.level,
-                                       batch=b, n=30) for b in [1, 4, 8]])
-ok = batch_tbl[batch_tbl["fps"] >= 120]                     # 카메라 4대 × 30 FPS
-chosen_batch = int(ok.loc[ok["mean"].idxmin(), "batch"]) if len(ok) else None
-pd.concat([grid, batch_tbl], ignore_index=True).to_csv("ot_baseline.csv", index=False)
-```
-- **무엇을 하나**: 120 장/초를 넘는 배치 중 지연이 가장 짧은 것을 고르고 성능표를 저장.
-- **어떤 개념**: 개념 1 · 3.
-- **출력**: `카메라 4대 감당 · 지연 최소 배치: 1`, `ot_baseline.csv` 7줄 — 내일 TensorRT 결과를 같은 열로 이어 붙인다 (직접 실행)
+<<CODE 8-4 | 최선 설정의 상위 3 연산>>
+<<CODE 8-5 | 결과 표 합치기 · CSV 저장 · p95 막대그래프>>
 
 #### 한 번에 정리
 - 설정 = 조건 열 + 결과 열 한 줄 — 표가 쌓이면 결정의 근거가 된다.

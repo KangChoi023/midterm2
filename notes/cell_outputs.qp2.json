@@ -1,0 +1,78 @@
+{
+ "1-1": {
+  "text": "rn20.onnx 1071 KB | 입력 ['N', 3, 32, 32] | PyTorch 와 최대 차이 3.10e-06\n✅ 배치 크기 가변 · 출력 일치",
+  "check": true
+ },
+ "1-2": {
+  "text": "ONNX FP32 정확도 0.8460\n✅ ONNX 정확도 = PyTorch 정확도",
+  "check": true
+ },
+ "2-1": {
+  "text": "크기 1071 KB → 310 KB (1/3.5) | 정확도 0.8460 → 0.8445\n✅ 크기 약 1/3.5 · 정확도 거의 그대로",
+  "check": true
+ },
+ "2-2": {
+  "text": "FP32    {'mean': 2.124, 'p95': 8.929, 'fps': 470.807}\ndynamic {'mean': 11.312, 'p95': 17.347, 'fps': 88.403}\n✅ bench 완성 — dynamic 이 FP32 보다 5.3 배 느림 (이 컴퓨터 기준)",
+  "check": true
+ },
+ "3-1": {
+  "text": "W' (16, 3, 3, 3) | b' (16,) | Conv+BN 과 최대 차이 9.54e-07\n✅ Conv + BN = Conv(W', b')",
+  "check": true
+ },
+ "3-2": {
+  "text": "value_info 0 → 52 | 노드 52 → 52\n✅ 모양 정보가 채워졌고 정확도는 그대로",
+  "check": true
+ },
+ "4-1": {
+  "text": "배치 10 개 | 배치 모양 (50, 3, 32, 32)\n✅ 50장 × 10 배치",
+  "check": true
+ },
+ "4-2": {
+  "text": "정확도 0.8460 → 0.8450 (-0.10%p) | 크기 1071 → 322 KB\n✅ static INT8 — 정확도 손실 1%p 이내",
+  "check": true
+ },
+ "5-1": {
+  "text": "QDQ      : 145 개 {'DequantizeLinear': 78, 'QuantizeLinear': 34, 'Conv': 21, 'Add': 9, 'GlobalAveragePool': 1}\nQOperator: 35 개 {'QLinearConv': 21, 'QLinearAdd': 9, 'QuantizeLinear': 1, 'QLinearGlobalAveragePool': 1, 'Flatten': 1} | 정확도 0.8450\n✅ QDQ 145개 vs QOperator 35개 — 정확도는 같다",
+  "check": true
+ },
+ "5-2": {
+  "text": "FP32             2.941 ms  (1.00× FP32 속도)\nQDQ U8/S8        1.036 ms  (2.84× FP32 속도)\nQDQ S8/S8        2.991 ms  (0.98× FP32 속도)\nQOperator U8/S8  1.018 ms  (2.89× FP32 속도)\n✅ 측정 완료 — 이 컴퓨터에서 S8/S8 이 U8/S8 보다 2.9 배 느림",
+  "check": true
+ },
+ "6-1": {
+  "text": "       method  per_channel     acc\n0      MinMax        False  0.8460\n1      MinMax         True  0.8450\n2     Entropy        False  0.8460\n3     Entropy         True  0.8450\n4  Percentile        False  0.8465\n5  Percentile         True  0.8440\n✅ 6개 모두 손실 1%p 이내 — 가장 좋은 것과 나쁜 것의 차이 0.25%p",
+  "check": true
+ },
+ "6-2": {
+  "text": "활성값 34개 | Percentile/MinMax 평균 0.819 최소 0.665 | Entropy/MinMax 평균 1.000 최소 1.000\n가장 많이 잘린 텐서: /layer1/layer1.2/Relu_output_0 (범위 67% 로 축소)\n✅ Percentile 은 범위를 평균 18% 줄였는데도 정확도는 그대로",
+  "check": true
+ },
+ "7-1": {
+  "text": "            model            quant  size_kb     acc  mean_ms  p95_ms  fps_b32\n0       rn20.onnx             FP32   1070.8  0.8460    1.206   1.647   1029.9\n1   rn20_dyn.onnx          dynamic    310.1  0.8445    7.256  13.656    138.7\n2  rn20_int8.onnx        QDQ U8/S8    321.8  0.8450    1.030   4.629   1856.4\n3    rn20_s8.onnx        QDQ S8/S8    322.1  0.8450    1.545   2.095    674.6\n4   rn20_qop.onnx  QOperator U8/S8    296.9  0.8450    0.646   0.715   2407.4\n✅ 성능표 완성",
+  "check": true
+ },
+ "7-2": {
+  "text": "    day           model            quant  ...  mean_ms  p95_ms  fps_b32\n0  Day2       rn20.onnx             FP32  ...    1.206   1.647   1029.9\n1  Day2   rn20_dyn.onnx          dynamic  ...    7.256  13.656    138.7\n2  Day2  rn20_int8.onnx        QDQ U8/S8  ...    1.030   4.629   1856.4\n3  Day2    rn20_s8.onnx        QDQ S8/S8  ...    1.545   2.095    674.6\n4  Day2   rn20_qop.onnx  QOperator U8/S8  ...    0.646   0.715   2407.4\n[5 rows x 8 columns]\n✅ qp_baseline.csv 저장 — 5 행",
+  "check": true
+ },
+ "과제 1": {
+  "text": "pj_QOperator_U8_MinMax_pc.onnx [('QLinearConv', 21), ('QLinearAdd', 9), ('QuantizeLinear', 1)]",
+  "check": false
+ },
+ "과제 2": {
+  "text": "{'acc': 0.845, 'size_kb': 296.873046875, 'mean_ms': 0.6241760199986857, 'p95_ms': 0.6769057499468545}",
+  "check": false
+ },
+ "과제 3": {
+  "text": "          fmt act      method  per_channel  ...     acc   size_kb  mean_ms   p95_ms\n3         QDQ  U8  Percentile         True  ...  0.8440  321.8320   0.3985   0.4446\n0         QDQ  U8      MinMax        False  ...  0.8460  311.1895   0.4357   0.5984\n1         QDQ  U8      MinMax         True  ...  0.8450  321.8252   0.4450   0.6236\n10  QOperator  U8  Percentile        False  ...  0.8465  292.9971   0.4645   0.5883\n8   QOperator  U8      MinMax        False  ...  0.8460  292.9902   0.5151   0.7082\n11  QOperator  U8  Percentile         True  ...  0.8440  296.8799   0.5267   0.6648\n9   QOperator  U8      MinMax         True  ...  0.8450  296.8730   0.6485   0.7250\n2         QDQ  U8  Percentile        False  ...  0.8465  311.1963   0.7772   0.7321\n7         QDQ  S8  Percentile         True  ...  0.8440  322.0342   0.9526   0.9975\n6         QDQ  S8  Percentile        False  ...  0.8465  311.3984   1.2722   1.6749\n5         QDQ  S8      MinMax         True  ...  0.8450  322.0957   1.4902   1.9874\n4         QDQ  S8      MinMax        False  ...  0.8455  311.4600   2.2146   5.8345\n15  QOperator  S8  Percentile         True  ...  0.8440  297.0820   5.0472   8.3750\n14  QOperator  S8  Percentile        False  ...  0.8465  293.1992   5.6925   9.2642\n12  QOperator  S8      MinMax        False  ...  0.8460  293.2607   6.0387   9.0952\n13  QOperator  S8      MinMax         True  ...  0.8450  297.1436   6.6421  13.7977\n[16 rows x 9 columns]",
+  "check": false
+ },
+ "과제 4": {
+  "text": "선택: QDQ U8 Percentile True | 정확도 0.8440 | 0.399 ms",
+  "check": false
+ },
+ "과제 5": {
+  "text": "        class   FP32   best  diff(%p)\n0    airplane  0.870  0.870       0.0\n1  automobile  0.945  0.945       0.0\n2        bird  0.790  0.790       0.0\n3         cat  0.695  0.700       0.5\n4        deer  0.825  0.810      -1.5\n5         dog  0.765  0.760      -0.5\n6        frog  0.870  0.870       0.0\n7       horse  0.875  0.865      -1.0\n8        ship  0.930  0.930       0.0\n9       truck  0.895  0.900       0.5\n가장 많이 떨어진 클래스: deer (1.5%p 하락)\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점)\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}

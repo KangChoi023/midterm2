@@ -75,16 +75,10 @@ Day 1 은 양자화 식(scale · zp · per-channel · clipping)을 NumPy 로 하
 - 전처리: uint8 (N, 32, 32, 3) → /255 → (x − MEAN) / STD → (N, 3, 32, 32) — VB Day 2 와 같다. 보정 · 평가 · 배포가 모두 **같은 `preprocess()`** 를 써야 한다.
 - 평가용 2,000장 정확도 0.846 은 VB Day 2 의 전체 테스트 정확도와 이미지가 달라 조금 다를 수 있다.
 
-#### 코드로 확인
-```python
-sess = ort.InferenceSession("rn20.onnx", providers=CPU)
-export_diff = float(np.abs(sess.run(None, {"input": X_ev[:8]})[0] - logits[:8]).max())
-print(f"rn20.onnx {size_kb('rn20.onnx'):.0f} KB | 입력 {sess.get_inputs()[0].shape} | 최대 차이 {export_diff:.2e}")
-fp32_acc = ort_acc("rn20.onnx")
-```
-- **무엇을 하나**: 내보낸 ONNX 를 ORT 로 실행해 PyTorch 출력과 비교하고 정확도를 잰다.
-- **어떤 개념**: 개념 2 · 기준 정확도.
-- **출력**: `rn20.onnx 1071 KB | 입력 ['N', 3, 32, 32] | 최대 차이 3.10e-06` · `ONNX FP32 정확도 0.8460` (직접 실행)
+<<CODE 1-c1 | ResNet-20 정의 · CIFAR-10 데이터 준비>>
+<<CODE 1-c2 | PyTorch 기준 정확도 0.846>>
+<<CODE 1-1 | rn20.onnx 로 내보내기 (배치 축 열기) · 출력 비교>>
+<<CODE 1-2 | ort_acc — ONNX 모델 정확도 함수>>
 
 #### 한 번에 정리
 - PTQ = 학습 없이 양자화. dynamic(실행 중 scale) vs static(보정 데이터로 미리 scale).
@@ -171,6 +165,9 @@ def bench(sess, x, n=100, warm=10):
 - 노드 하나마다 실행 준비 비용이 있다. ResNet-20 처럼 Conv 하나의 계산량이 작은 모델은 그 비용이 계산 절약보다 크다.
 - LSTM · Transformer 의 큰 MatMul 은 계산량이 커서 절약이 비용을 이긴다 → dynamic 이 맞는 곳.
 
+<<CODE 2-1 | quantize_dynamic 한 줄 — 크기 1/3 · 정확도>>
+<<CODE 2-c1 | op_count — Conv 가 ConvInteger + 변환 노드로>>
+
 #### 개념 2 · 지연 시간과 처리량
 | 모델 | 배치 1 mean | 배치 1 p95 | 배치 1 fps | 배치 32 fps |
 |---|---|---|---|---|
@@ -179,26 +176,8 @@ def bench(sess, x, n=100, warm=10):
 
 지연 시간은 컴퓨터 · 실행할 때마다 달라진다 — 비율(약 9배)을 기억한다.
 
-#### 코드로 확인
-```python
-def op_count(path):
-    return Counter(n.op_type for n in onnx.load(path).graph.node)
-
-c_fp32, c_dyn = op_count("rn20.onnx"), op_count("rn20_dyn.onnx")
-print("FP32   :", sum(c_fp32.values()), "개", dict(c_fp32))
-print("dynamic:", sum(c_dyn.values()), "개", dict(c_dyn.most_common(6)))
-```
-- **무엇을 하나**: 두 ONNX 그래프의 노드를 종류별로 센다.
-- **어떤 개념**: 개념 1 · 노드가 늘어 느려진다.
-- **출력**: `FP32 : 52 개 {'Conv': 21, 'Relu': 19, 'Add': 9, ...}` · `dynamic: 181 개 {'Mul': 44, 'Add': 31, 'Cast': 22, 'Reshape': 21, 'ConvInteger': 21, 'DynamicQuantizeLinear': 20}` (직접 실행)
-
-```python
-r_fp32, r_dyn = bench(make_session("rn20.onnx"), x1), bench(make_session("rn20_dyn.onnx"), x1)
-print(r_dyn["mean"] / r_fp32["mean"])
-```
-- **무엇을 하나**: 배치 1 지연 시간을 스레드 1개로 비교한다.
-- **어떤 개념**: 개념 2.
-- **출력**: `FP32 {'mean': 0.676, 'p95': 0.71, 'fps': 1480.3}` · `dynamic {'mean': 6.077, 'p95': 9.093, 'fps': 164.6}` → 약 9.0배 (직접 실행)
+<<CODE 2-2 | bench — warm-up · 평균 · p95 · FPS>>
+<<CODE 2-c2 | 배치 크기를 바꿔 dynamic 이 왜 느린지 보기>>
 
 #### 한 번에 정리
 - `quantize_dynamic` = weight INT8 + 활성값 실행 중 양자화. 보정 데이터 불필요.
@@ -279,31 +258,15 @@ $$\text{BN}(Wx) = \gamma \frac{Wx - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta = \
 | ε | 0 으로 나누기 방지 | `bn.eps` (1e-5) |
 | k | 채널마다 곱할 값 γ/√(σ²+ε) | 모양 (out_ch,) |
 
+<<CODE 3-1 | fold_bn — BN 을 Conv 의 W' · b' 로 접기>>
+<<CODE 3-c1 | ONNX 에는 이미 BN 노드가 없다>>
+
 #### 개념 2 · quant_pre_process 가 하는 일
 - 양자화 도구는 텐서마다 모양을 알아야 per-channel 축 · 노드 묶기를 정할 수 있다. 내보낸 직후의 `rn20.onnx` 는 value_info 가 0개.
 - `quant_pre_process` 는 shape inference + 그래프 단순화를 해서 `rn20_pre.onnx` 로 저장 → value_info 52개.
 - 이 모델은 BN 이 이미 접혀 노드 수는 52 그대로. 정확도도 그대로(0.846).
 
-#### 코드로 확인
-```python
-Wf, bf = fold_bn(model.stem[0], model.stem[1])
-xt = torch.from_numpy(X_ev[:4])
-with torch.no_grad():
-    ref = model.stem[1](model.stem[0](xt)).numpy()
-fold_diff = float(np.abs(F.conv2d(xt, torch.from_numpy(Wf), torch.from_numpy(bf), padding=1).numpy() - ref).max())
-```
-- **무엇을 하나**: 접은 (W', b') 로 Conv 한 결과와 원래 Conv → BN 결과를 비교한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `W' (16, 3, 3, 3) | b' (16,) | Conv+BN 과 최대 차이 9.54e-07` (직접 실행)
-
-```python
-first_conv = [n for n in g.node if n.op_type == "Conv"][0]
-print(op_count("rn20.onnx")["BatchNormalization"], float(np.abs(inits[first_conv.input[1]] - Wf).max()))
-quant_pre_process("rn20.onnx", "rn20_pre.onnx")
-```
-- **무엇을 하나**: ONNX 에 BN 노드가 남았는지, 첫 Conv weight 가 직접 접은 W' 와 같은지 보고 전처리한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `BatchNormalization 노드: 0 개` · `최대 차이: 0.0` · `value_info 0 → 52 | 노드 52 → 52` (직접 실행)
+<<CODE 3-2 | quant_pre_process — 중간 shape 정보 채우기>>
 
 #### 한 번에 정리
 - BN folding: W' = W·γ/√(σ²+ε), b' = β − μ·γ/√(σ²+ε).
@@ -389,6 +352,10 @@ quantize_static("rn20_pre.onnx", "rn20_int8.onnx", CifarReader(X_cal),
 3. 텐서마다 본 값의 min · max(MinMax 보정)로 scale · zp 계산 → QuantizeLinear 노드의 initializer 로 저장.
 4. weight 는 보정 없이 바로 per-channel 대칭 INT8.
 
+<<CODE 4-1 | CifarReader — 보정 데이터를 50장씩 내주는 리더>>
+<<CODE 4-2 | quantize_static — QDQ · U8/S8 · per-channel>>
+<<CODE 4-c1 | 입력 scale · zp 를 Day 1 my_quant 로 검산>>
+
 #### 개념 2 · 보정 데이터의 분포가 정확도를 정한다
 | 보정 데이터 | 정확도 | 차이 |
 |---|---|---|
@@ -398,28 +365,8 @@ quantize_static("rn20_pre.onnx", "rn20_int8.onnx", CifarReader(X_cal),
 
 장수보다 **분포**가 중요하다. 어두운 보정은 범위를 좁게 잡아 실제 밝은 입력을 잘라 버린다 (Day 1 6교시의 잘림 오차).
 
-#### 코드로 확인
-```python
-g8 = onnx.load("rn20_int8.onnx").graph
-init8 = {i.name: numpy_helper.to_array(i) for i in g8.initializer}
-qn = [n for n in g8.node if n.op_type == "QuantizeLinear" and n.input[0] == "input"][0]
-ort_scale, ort_zp = float(init8[qn.input[1]]), int(init8[qn.input[2]])
-my_scale, my_zp = my_quant.calc_scale_zp(X_cal.min(), X_cal.max(), 0, 255)
-```
-- **무엇을 하나**: 입력을 양자화하는 Q 노드의 scale · zp 를 꺼내 Day 1 함수의 계산과 비교한다.
-- **어떤 개념**: 개념 1 · MinMax 보정.
-- **출력**: `보정 데이터 범위 [-1.9895, 2.1265]` · `ONNX Runtime : scale 0.016141 zp 123` · `my_quant : scale 0.016141 zp 123` (직접 실행)
-
-```python
-X_dark = preprocess((cal["images"] * 0.2).astype(np.uint8))
-quantize_static("rn20_pre.onnx", "rn20_dark.onnx", CifarReader(X_dark),
-                quant_format=QuantFormat.QDQ, activation_type=QuantType.QUInt8,
-                weight_type=QuantType.QInt8, per_channel=True)
-acc_dark = ort_acc("rn20_dark.onnx")
-```
-- **무엇을 하나**: reader 에 넣는 데이터만 어둡게 바꿔 보정하고, 원래 밝기의 평가 이미지로 잰다.
-- **어떤 개념**: 개념 2.
-- **출력**: `정상 보정 0.8450 | 어두운 이미지로 보정 0.6840 (-16.2%p)` (직접 실행)
+<<CODE 4-c2 | 어두운 사진으로 보정하면 정확도가 무너진다>>
+<<CODE 4-c3 | 보정 장수를 바꿔 정확도 보기>>
 
 #### 한 번에 정리
 - static = 보정 데이터로 활성값 범위를 미리 재서 scale 고정 — CNN 의 표준.
@@ -504,6 +451,9 @@ c_qdq, c_qop = op_count("rn20_int8.onnx"), op_count("rn20_qop.onnx")
 | 장점 | 원래 그래프가 보여 읽기 쉬움 · TensorRT 등의 표준 입력 | 노드가 적고 ORT CPU 에서 바로 빠름 |
 | 실행 | 런타임이 Q-Conv-DQ 를 묶어 정수 연산으로 | 그대로 실행 |
 
+<<CODE 5-1 | QOperator 형식으로 만들어 노드 구성 비교>>
+<<CODE 5-c1 | weight 를 DQ 의 scale 로 되돌려 오차 확인>>
+
 #### 개념 2 · 자료형 조합과 속도
 | 모델 | 배치 1 mean | FP32 대비 |
 |---|---|---|
@@ -514,27 +464,7 @@ c_qdq, c_qop = op_count("rn20_int8.onnx"), op_count("rn20_qop.onnx")
 
 지연 시간은 잴 때마다 흔들린다 — 7교시 표에서는 QOperator 가 0.342 ms 로 QDQ U8/S8(0.480 ms)보다 빨랐다. 흔들리지 않는 결론은 "U8/S8 ≫ S8/S8".
 
-#### 코드로 확인
-```python
-dq_out = {n.output[0]: n for n in g8.node if n.op_type == "DequantizeLinear"}
-conv0 = [n for n in g8.node if n.op_type == "Conv"][0]
-dqw = dq_out[conv0.input[1]]                                  # Conv 의 두 번째 입력 = weight
-wq, ws = init8[dqw.input[0]], init8[dqw.input[1]]
-w_hat = wq.astype(np.float32) * ws[:, None, None, None]       # 대칭 → zp = 0
-w_err = float(np.abs(w_hat - Wf).max())
-```
-- **무엇을 하나**: 첫 Conv 로 들어가는 INT8 weight 와 채널별 scale 을 꺼내 역양자화하고 3교시 W' 와 비교한다.
-- **어떤 개념**: 개념 1 · QDQ 의 weight 저장 방식.
-- **출력**: `wq (16, 3, 3, 3) int8 | scale (16,) | 최대 오차 0.00146 ≤ 채널 scale/2 최대 0.00148` (직접 실행)
-
-```python
-c_qdq, c_qop = op_count("rn20_int8.onnx"), op_count("rn20_qop.onnx")
-print(sum(c_qdq.values()), dict(c_qdq.most_common(5)))
-print(sum(c_qop.values()), dict(c_qop.most_common(5)))
-```
-- **무엇을 하나**: 두 형식의 노드 구성을 센다.
-- **어떤 개념**: 개념 1.
-- **출력**: `145 {'DequantizeLinear': 78, 'QuantizeLinear': 34, 'Conv': 21, 'Add': 9, 'GlobalAveragePool': 1}` · `35 {'QLinearConv': 21, 'QLinearAdd': 9, 'QuantizeLinear': 1, ...}` · 정확도 0.8450 (직접 실행)
+<<CODE 5-2 | 활성값 S8 모델 · 형식별 배치 1 지연 비교>>
 
 #### 한 번에 정리
 - QDQ = 원래 그래프 + Q/DQ (TensorRT 등의 표준 입력), QOperator = QLinearConv 같은 정수 연산자 (ORT CPU 용).
@@ -617,6 +547,8 @@ def act_scales(path):
 
 모두 손실 1%p 이내, 최고 − 최저 = 0.30%p. 평가 1장 = 0.05%p 라 이 차이는 몇 장의 우연일 수 있다.
 
+<<CODE 6-1 | MinMax · Entropy · Percentile × per-channel 6개 모델 정확도>>
+
 #### 개념 2 · 고른 범위는 다르다
 ![Percentile 이 활성값 34개의 범위를 얼마나 줄였나 — 평균 0.819, 최소 0.665](assets/fig/qp/d2-scales.svg)
 
@@ -624,17 +556,7 @@ def act_scales(path):
 - 그래도 정확도는 그대로 — ResNet-20 은 양자화에 강한 모델. 방법 차이가 큰 모델(YOLOv8n 등)은 Day 3 에서.
 - Entropy 는 이 실행에서 MinMax 와 scale 이 똑같았다 → "Entropy 를 썼다" 는 이름만 믿지 말고 결과 scale 을 확인.
 
-#### 코드로 확인
-```python
-s_mm, s_en, s_pc = (act_scales(f"rn20_{m}_pc.onnx") for m in ("MinMax", "Entropy", "Percentile"))
-r_pc = np.array([s_pc[k] / s_mm[k] for k in s_mm])
-r_en = np.array([s_en[k] / s_mm[k] for k in s_mm])
-most_clipped = min(s_mm, key=lambda k: s_pc[k] / s_mm[k])
-print(len(s_mm), r_pc.mean(), r_pc.min(), r_en.mean(), most_clipped)
-```
-- **무엇을 하나**: 세 모델의 활성값 scale 을 텐서 이름으로 맞춰 비율을 구한다.
-- **어떤 개념**: 개념 2.
-- **출력**: `활성값 34개 | Percentile/MinMax 평균 0.819 최소 0.665 | Entropy/MinMax 평균 1.000 최소 1.000` · `가장 많이 잘린 텐서: /layer1/layer1.2/Relu_output_0 (범위 67% 로 축소)` (직접 실행)
+<<CODE 6-2 | act_scales — 방법마다 고른 활성값 scale 비교>>
 
 #### 한 번에 정리
 - `calibrate_method` = Day 1 의 clipping 선택 (MinMax · Percentile · Entropy).
@@ -719,21 +641,14 @@ out.to_csv("qp_baseline.csv", index=False)
 
 (직접 실행 · CPU 스레드 1 — 컴퓨터마다 ms 는 다르고 비율이 비슷하다)
 
+<<CODE 7-1 | 5개 모델 성능표 — 크기 · 정확도 · 지연 · 처리량>>
+<<CODE 7-2 | qp_baseline.csv 에 쌓기>>
+
 #### 개념 2 · 지연 시간과 처리량을 따로
 - 배치 1 은 "한 장이 얼마나 빨리 나오나"(현장 카메라 실시간 판정), 배치 32 는 "한꺼번에 얼마나 많이"(저장된 영상 일괄 처리).
 - 배치를 키우면 노드 준비 비용이 여러 장에 나눠져 처리량이 오른다 — INT8 의 이점은 배치 32 처리량에서 더 또렷했다(2.2 ~ 2.4배).
 
-#### 코드로 확인
-```python
-out = perf_df.copy(); out.insert(0, "day", "Day2")
-if os.path.exists("qp_baseline.csv"):
-    out = pd.concat([pd.read_csv("qp_baseline.csv"), out]).drop_duplicates(subset=["day", "model"], keep="last")
-out.to_csv("qp_baseline.csv", index=False)
-base = pd.read_csv("qp_baseline.csv")
-```
-- **무엇을 하나**: 성능표에 day 열을 붙여 기록 파일에 쌓는다 (여러 번 실행해도 같은 행은 하나).
-- **어떤 개념**: 개념 1 · 기록 원칙.
-- **출력**: `✅ qp_baseline.csv 저장 — 5 행` (직접 실행, 첫 저장)
+<<CODE 7-c1 | 정확도 vs 처리량 그림>>
 
 #### 한 번에 정리
 - 비교는 같은 조건 (스레드 1 · 같은 입력 · warm-up) 으로.
@@ -817,6 +732,9 @@ best = ok.sort_values("mean_ms").iloc[0]
 
 정답 보기 셀 없음 — 힌트만 보고 완성. 채점 셀이 자동 채점 점수와 정답 열람 기록을 보여 준다. 과제 4 의 csv 행: `quant` = `"{fmt} {act}/S8 {method} {pc|pt}"`, `fps_b32` 는 배치 32 로 bench.
 
+<<CODE 과제 1 | 과제 1 — make_ptq: 설정 4가지로 INT8 모델 만들기>>
+<<CODE 과제 2 | 과제 2 — evaluate: 정확도 · 크기 · 지연>>
+
 #### 개념 2 · 16가지 결과
 ![16가지 PTQ 설정의 배치 1 지연 시간 — 활성값 U8 이 빠르다](assets/fig/qp/d2-grid.svg)
 
@@ -828,24 +746,16 @@ best = ok.sort_values("mean_ms").iloc[0]
 
 (직접 실행 · 이 컴퓨터 기준. U8 8개 안의 순위는 다시 재면 바뀔 수 있다)
 
+<<CODE 과제 3 | 과제 3 — 16가지 조합 그리드>>
+<<CODE 과제 4 | 과제 4 — 손실 1%p 안에서 가장 빠른 설정 · 저장>>
+
 #### 개념 3 · 과제 6 의 생각할 거리
 - **왜 빨랐나**: 5교시 — x86 INT8 명령은 U8 × S8 조합이 빠른 경로. 형식은 QDQ · QOperator 모두 ORT CPU 에서 정수 연산으로 실행된다.
 - **정확도 차이를 믿을 수 있나**: 16개 차이 0.30%p = 6장. 1장 = 0.05%p 라 순위를 정하기엔 표본이 작다 → 손실 한도를 넘는지만 본다.
 - **Jetson(ARM CPU · TensorRT)에 그대로?**: 안 된다. CPU 명령 · 런타임이 다르다 — TensorRT 는 QDQ 형식을 읽어 자기 방식으로 실행 → 배포 장치에서 지연 시간 · 정확도를 다시 잰다 (Day 3).
 - **밤에도 쓰는 카메라**: 예제 4-B — 어두운 이미지만으로 보정하면 0.684. 낮 · 밤 이미지를 현장 비율대로 섞어 보정 데이터를 만든다.
 
-#### 코드로 확인
-```python
-grid_df = pd.DataFrame([{"fmt": f, "act": a, "method": m, "per_channel": pc,
-                         "path": (p := make_ptq(f, a, m, pc)), **evaluate(p)}
-                        for f, a, m, pc in itertools.product(["QDQ", "QOperator"], ["U8", "S8"],
-                                                             ["MinMax", "Percentile"], [False, True])])
-best = grid_df[grid_df.acc >= fp32_acc - 0.01 - 1e-9].sort_values("mean_ms").iloc[0]
-shutil.copy(best.path, "rn20_best.onnx")
-```
-- **무엇을 하나**: 16가지 설정을 만들고 재서, 손실 1%p 이내 중 가장 빠른 것을 고른다.
-- **어떤 개념**: 개념 2 · 선택 규칙.
-- **출력**: `선택: QDQ U8 MinMax False | 정확도 0.8460 | 0.341 ms` (직접 실행 — 컴퓨터마다 U8 안의 순위는 달라질 수 있다)
+<<CODE 과제 5 | 과제 5 — 클래스별 정확도 비교>>
 
 #### 한 번에 정리
 - PTQ 설정 = 형식 · 활성값 자료형 · 보정 방법 · granularity 4가지.

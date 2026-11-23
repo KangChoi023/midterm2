@@ -836,12 +836,13 @@
     return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${esc(c.t)}</span>`
       + `<span class="cx-meta">${g.length ? `<span class="cx-g" title="색칠된 줄을 누르면 설명">🧭 ${g.length}</span>` : ''}${n}줄 · ${c.from === 'md' ? '강의 글' : '강의 ' + esc(c.k)}</span></summary>`
       + `<div class="cx-in">${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
+      + (c.qp === 'solved' ? `<p class="cx-own" title="QP 교안의 정답은 강사 잠금 코드로 잠겨 있어, 직접 작성한 풀이를 교안의 확인 셀(assert)로 실행해 확인했습니다">✍️ 직접 작성한 풀이 · 교안 확인 셀 통과 (공식 정답 아님)</p>` : c.qp === 'todo' ? `<p class="cx-own">✍️ 아직 풀이가 없어 빈칸(TODO) 그대로</p>` : '')
       + `<div class="cb code cx-cb"><div class="cb-h"><span class="k code">코드</span><span class="cx-hint">${g.length ? '색칠된 줄 · ' : ''}점선 함수 이름을 누르면 설명</span><button type="button" data-copy>복사</button></div><pre${g.length ? ' class="has-guide"' : ''}><code data-lang="${esc(c.lang)}">${esc(c.code.replace(/\n+$/, ''))}</code></pre></div>`
-      + outs + (c.expl ? `<div class="cx-expl"><b>💡 해설</b>${md(c.expl)}</div>` : '') + `</div></details>`;
+      + outs + (c.expl ? `<div class="cx-expl"><b>💡 ${c.qp ? '강사님 힌트' : '해설'}</b>${md(c.expl)}</div>` : '') + `</div></details>`;
   }
   function studyWithCode(text, L) {
     const used = new Set(), slots = [];
-    const src = text.replace(/^<<CODE\s+([\w-]+)\s*(?:\|[^>\n]*)?>>\s*$/gm, (m, k) => {
+    const src = text.replace(/^<<CODE\s+([\w-]+(?: \d+)?)\s*(?:\|[^>\n]*)?>>\s*$/gm, (m, k) => {
       const j = L.codes.findIndex(c => c.k === k); if (j < 0) return '';
       used.add(j); slots.push(j); return `\n\nCODESLOT${slots.length - 1}\n\n`;
     });
@@ -951,6 +952,21 @@
   });
   window.addEventListener('resize', () => $$('details.cx[open]', main).forEach(cxBands));
 
+  // 상세 학습: "#### 제목" 하나부터 다음 "####" 앞까지를 큰 상자 하나로 (개념별 묶어 보기 카드처럼)
+  function studyBoxes(html) {
+    const t = document.createElement('template'); t.innerHTML = html;
+    const out = document.createElement('div'); let box = null;
+    [...t.content.childNodes].forEach(n => {
+      if (n.nodeType === 1 && n.tagName === 'H4') {
+        const s = n.textContent.trim();
+        const kind = /^개념\s*\d/.test(s) ? 'con' : /한 번에 정리|정리$/.test(s) ? 'sum' : n.classList.contains('cx-rest') ? 'rest' : 'intro';
+        box = document.createElement('section'); box.className = 'scard sc-' + kind; out.appendChild(box);
+      }
+      (box || out).appendChild(n);
+    });
+    return out.innerHTML;
+  }
+
   function notesHtml(view) {
     const { L } = CX;
     if (!L.sections.length) return '';
@@ -958,7 +974,7 @@
       // 상세 학습: 노트의 "상세 학습" 섹션(공부용 풀어 쓴 설명)을 먼저, 표까지 있는 전체 노트는 접어서 아래에.
       // 상세 학습 섹션이 없는 교시는 예전 "노트 순서" 그대로.
       const flow = L.sections.map((x, i) => x.key === 'kw' || x.key === 'study' ? '' : noteSection(x, i, L)).join('');
-      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${(L.codes || []).length ? studyWithCode(x.md, L) : md(x.md)}</section>` : '').join('');
+      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${studyBoxes((L.codes || []).length ? studyWithCode(x.md, L) : md(x.md))}</section>` : '').join('');
       return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
     }
     let h = '', placed = false;

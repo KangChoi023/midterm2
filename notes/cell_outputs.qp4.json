@@ -1,0 +1,74 @@
+{
+ "1-1": {
+  "text": "8비트: 서로 다른 값  98개 · 상대 오차 0.0072\n4비트: 서로 다른 값  12개 · 상대 오차 0.1275\n3비트: 서로 다른 값   6개 · 상대 오차 0.3022\n2비트: 서로 다른 값   3개 · 상대 오차 0.7822\n✅ 채널별 대칭 양자화 — 3비트면 한 채널에 값이 7개뿐",
+  "check": true
+ },
+ "1-2": {
+  "text": "   bits     acc\n0     8  0.8435\n1     6  0.8440\n2     4  0.8355\n3     3  0.7300\n4     2  0.1205\n✅ 8비트 0.844 · 4비트 0.836 · 3비트 0.730 · 2비트 0.120 — 4비트 아래에서 급격히 무너진다",
+  "check": true
+ },
+ "2-1": {
+  "text": "[-1.2 -0.9 -0.6 -0.3  0.   0.3  0.6  0.9  1.2]\n[-1.   -1.   -0.5  -0.25  0.    0.25  0.5   0.75  0.75]\n✅ 계단 모양 FP32 — 범위 밖은 끝 칸으로, 범위 안은 가장 가까운 칸으로",
+  "check": true
+ },
+ "2-2": {
+  "text": "범위 -0.5 2.0 | 출력 [-0.5  0.   1.   2. ]\n✅ 활성값: 보정 범위 [−0.5, 2.0] 고정 · 0 은 정확히 0 · 범위 밖 3.0 → 2.0 | weight: 3비트면 채널당 7개 값",
+  "check": true
+ },
+ "3-1": {
+  "text": "forward [0. 1. 2.] | backward [1. 1. 1.]\n✅ forward 는 반올림, backward 는 위에서 온 기울기 그대로",
+  "check": true
+ },
+ "3-2": {
+  "text": "기울기 tensor([0., 1., 1., 1., 0.])\n✅ 범위 안 기울기 1 · 범위 밖 (−2.0 · 2.0) 기울기 0 — clamp 가 잘린 값의 학습을 막는다",
+  "check": true
+ },
+ "4-1": {
+  "text": "QConv2d 21개 | W3A8 PTQ 0.7280\n✅ W3A8 PTQ 0.728 (W8A8 PTQ 는 0.84 대) — QAT 로 되살릴 출발점",
+  "check": true
+ },
+ "4-2": {
+  "text": "  epoch 1: 0.8215\n  epoch 2: 0.8335\n  epoch 3: 0.8375\nW3A8 PTQ 0.7280 → QAT 0.8375 (238초)\n✅ QAT 로 +11.0%p 회복 — FP32 0.846 과의 차이 0.8%p",
+  "check": true
+ },
+ "5-1": {
+  "text": "Inserted 110 quantizers\n켜진 양자화기 45개 | ModelOpt INT8 PTQ 0.8430\n✅ Conv · Linear 의 입력 · weight (+ pool 입력) = 45개 양자화기 · INT8 PTQ 0.8430",
+  "check": true
+ },
+ "5-2": {
+  "text": "Inserted 110 quantizers\nModelOpt W3A8 PTQ 0.7280 (직접 만든 W3A8 PTQ 0.7280)\n✅ ModelOpt W3A8 PTQ 0.728 — 직접 만든 것과 거의 같다 (같은 원리)",
+  "check": true
+ },
+ "6-1": {
+  "text": "           0       1       2      3\nepoch  0.000  1.0000  2.0000  3.000\nacc    0.728  0.8185  0.8245  0.832\n✅ ModelOpt QAT W3A8 0.728 → 0.832 (64초)",
+  "check": true
+ },
+ "6-2": {
+  "text": "Inserted 110 quantizers\nQAT 0.8430 | 복원 0.8430\n✅ 체크포인트 복원 그대로 · INT8 에서 QAT 이득 +0.0%p — 8비트는 PTQ 로 충분",
+  "check": true
+ },
+ "7-1": {
+  "text": "Q 45 · DQ 45 | {'qdq': 90, 'uint8': 0, 'nonzero_zp': 0, 'ok': True} | ORT 0.8430\n✅ QDQ ONNX — Q/DQ 45쌍 · zero_point 모두 0 · ORT 정확도 0.8430 (PyTorch 0.8430)",
+  "check": true
+ },
+ "7-2": {
+  "text": "{'model': 'rn20_qat.onnx', 'backend': 'ORT CPU', 'acc': 0.843, 'mean_ms': 1.9274736633277219, 'size_kb': 1135.4443359375}\n✅ ORT CPU: QAT INT8 정확도 0.8430 · 1.927 ms · 1135 KB",
+  "check": true
+ },
+ "과제 1": {
+  "text": "Inserted 110 quantizers\n수작업 QAT INT8 0.8490 (67초) | ModelOpt PTQ INT8 ONNX 0.8430",
+  "check": false
+ },
+ "과제 2": {
+  "text": "         method  acc_int8  acc_w3a8  train_min  latency_ms\n0          FP32     0.846       NaN     0.0000      0.9600\n1       ORT PTQ     0.842       NaN     0.0000      1.8263\n2  ModelOpt PTQ     0.843    0.7280     0.0000      1.8435\n3       수작업 QAT     0.849    0.8375     5.0809         NaN\n4  ModelOpt QAT     0.843    0.8320     2.0274      2.2712",
+  "check": false
+ },
+ "과제 3": {
+  "text": "{'INT8': np.float64(0.006000000000000005), 'W3A8': np.float64(0.10950000000000004)} {'INT8': False, 'W3A8': True}",
+  "check": false
+ },
+ "과제 5": {
+  "text": "✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점) | 장치: cpu · 측정: ORT CPU\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}

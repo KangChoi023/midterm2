@@ -1,0 +1,78 @@
+{
+  "_설명": "QP Day 2 직접 구현 풀이 — 교안 정답이 강사 잠금 코드로 잠겨 있어 직접 작성 (TODO 줄 순서대로 바꿔 끼움). tools/cell_outputs.py 로 실행해 교안의 assert 통과를 확인한 것만 둔다.",
+  "1-1": [
+    "torch.onnx.export(model, torch.zeros(1, 3, 32, 32), \"rn20.onnx\", input_names=[\"input\"], output_names=[\"logits\"],\n                  dynamic_axes={\"input\": {0: \"N\"}, \"logits\": {0: \"N\"}}, opset_version=17, **EXPORT_KW)",
+    "sess = ort.InferenceSession(\"rn20.onnx\", providers=CPU)",
+    "export_diff = float(np.abs(sess.run(None, {\"input\": X_ev[:8]})[0] - logits[:8]).max())"
+  ],
+  "1-2": [
+    "X = X_ev if X is None else X\ny = y_ev if y is None else y\ns = ort.InferenceSession(path, providers=CPU)\npred = np.concatenate([s.run(None, {\"input\": X[i:i + bs]})[0].argmax(1) for i in range(0, len(X), bs)])\nreturn float((pred == y).mean())"
+  ],
+  "2-1": [
+    "with quiet():\n    quantize_dynamic(\"rn20.onnx\", \"rn20_dyn.onnx\", weight_type=QuantType.QInt8)",
+    "kb_fp32, kb_dyn = size_kb(\"rn20.onnx\"), size_kb(\"rn20_dyn.onnx\")",
+    "acc_dyn = ort_acc(\"rn20_dyn.onnx\")"
+  ],
+  "2-2": [
+    "name = sess.get_inputs()[0].name\nfor _ in range(warm):\n    sess.run(None, {name: x})\nt = []\nfor _ in range(n):\n    t0 = time.perf_counter()\n    sess.run(None, {name: x})\n    t.append((time.perf_counter() - t0) * 1000)\nt = np.array(t)\nreturn {\"mean\": float(t.mean()), \"p95\": float(np.percentile(t, 95)), \"fps\": 1000 / float(t.mean()) * x.shape[0]}"
+  ],
+  "3-1": [
+    "k = (bn.weight / torch.sqrt(bn.running_var + bn.eps)).detach()\nW = conv.weight.detach() * k[:, None, None, None]\nb = bn.bias.detach() - bn.running_mean * k\nif conv.bias is not None:\n    b = b + conv.bias.detach() * k\nreturn W.numpy().astype(np.float32), b.numpy().astype(np.float32)"
+  ],
+  "3-2": [
+    "with quiet():\n    quant_pre_process(\"rn20.onnx\", \"rn20_pre.onnx\")",
+    "vi_before = len(onnx.load(\"rn20.onnx\").graph.value_info)",
+    "vi_after = len(onnx.load(\"rn20_pre.onnx\").graph.value_info)"
+  ],
+  "4-1": [
+    "self.X, self.bs, self.i = X, bs, 0",
+    "if self.i >= len(self.X):\n    return None\nbatch = self.X[self.i:self.i + self.bs]\nself.i += self.bs\nreturn {\"input\": batch}",
+    "self.i = 0"
+  ],
+  "4-2": [
+    "with quiet():\n    quantize_static(\"rn20_pre.onnx\", \"rn20_int8.onnx\", CifarReader(X_cal), quant_format=QuantFormat.QDQ,\n                    activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8, per_channel=True)",
+    "acc_int8, kb_int8 = ort_acc(\"rn20_int8.onnx\"), size_kb(\"rn20_int8.onnx\")"
+  ],
+  "5-1": [
+    "with quiet():\n    quantize_static(\"rn20_pre.onnx\", \"rn20_qop.onnx\", CifarReader(X_cal), quant_format=QuantFormat.QOperator,\n                    activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8, per_channel=True)",
+    "c_qdq, c_qop = op_count(\"rn20_int8.onnx\"), op_count(\"rn20_qop.onnx\")",
+    "acc_qop = ort_acc(\"rn20_qop.onnx\")"
+  ],
+  "5-2": [
+    "with quiet():\n    quantize_static(\"rn20_pre.onnx\", \"rn20_s8.onnx\", CifarReader(X_cal), quant_format=QuantFormat.QDQ,\n                    activation_type=QuantType.QInt8, weight_type=QuantType.QInt8, per_channel=True)",
+    "lat = {name: bench(make_session(p), x1, n=200, warm=20)[\"mean\"]\n       for name, p in [(\"FP32\", \"rn20_pre.onnx\"), (\"QDQ U8/S8\", \"rn20_int8.onnx\"),\n                       (\"QDQ S8/S8\", \"rn20_s8.onnx\"), (\"QOperator U8/S8\", \"rn20_qop.onnx\")]}"
+  ],
+  "6-1": [
+    "rows = []\nfor meth in [CalibrationMethod.MinMax, CalibrationMethod.Entropy, CalibrationMethod.Percentile]:\n    for pc in [False, True]:\n        path = f\"rn20_{meth.name}_{'pc' if pc else 'pt'}.onnx\"\n        with quiet():\n            quantize_static(\"rn20_pre.onnx\", path, CifarReader(X_cal), quant_format=QuantFormat.QDQ,\n                            activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8,\n                            per_channel=pc, calibrate_method=meth)\n        rows.append({\"method\": meth.name, \"per_channel\": pc, \"acc\": ort_acc(path)})\ncalib_df = pd.DataFrame(rows)"
+  ],
+  "6-2": [
+    "g = onnx.load(path).graph\ninit = {i.name: numpy_helper.to_array(i) for i in g.initializer}\nreturn {n.input[0]: float(init[n.input[1]]) for n in g.node\n        if n.op_type == \"QuantizeLinear\" and n.input[1] in init and init[n.input[1]].size == 1}",
+    "s_mm, s_en, s_pc = (act_scales(f\"rn20_{m}_pc.onnx\") for m in [\"MinMax\", \"Entropy\", \"Percentile\"])",
+    "r_pc = np.array([s_pc[k] / s_mm[k] for k in s_mm])",
+    "r_en = np.array([s_en[k] / s_mm[k] for k in s_mm])",
+    "most_clipped = min(s_mm, key=lambda k: s_pc[k] / s_mm[k])"
+  ],
+  "7-1": [
+    "rows = []\nfor path, quant in MODELS:\n    s = make_session(path)\n    r1 = bench(s, X_ev[:1], n=200, warm=20)\n    r32 = bench(s, X_ev[:32], n=30, warm=5)\n    rows.append({\"model\": path, \"quant\": quant, \"size_kb\": round(size_kb(path), 1), \"acc\": ort_acc(path),\n                 \"mean_ms\": round(r1[\"mean\"], 3), \"p95_ms\": round(r1[\"p95\"], 3), \"fps_b32\": round(r32[\"fps\"], 1)})\nperf_df = pd.DataFrame(rows)"
+  ],
+  "7-2": [
+    "out = perf_df.copy()\nout.insert(0, \"day\", \"Day2\")\nif os.path.exists(\"qp_baseline.csv\"):\n    out = pd.concat([pd.read_csv(\"qp_baseline.csv\"), out]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nout.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 1": [
+    "path = f\"pj_{fmt}_{act}_{method}_{'pc' if pc else 'pt'}.onnx\"\nwith quiet():\n    quantize_static(\"rn20_pre.onnx\", path, CifarReader(X_cal),\n                    quant_format=QuantFormat.QDQ if fmt == \"QDQ\" else QuantFormat.QOperator,\n                    activation_type=QuantType.QUInt8 if act == \"U8\" else QuantType.QInt8,\n                    weight_type=QuantType.QInt8, per_channel=pc,\n                    calibrate_method=CalibrationMethod.MinMax if method == \"MinMax\" else CalibrationMethod.Percentile)\nreturn path"
+  ],
+  "과제 2": [
+    "r = bench(make_session(path), X_ev[:1], n=100, warm=10)\nreturn {\"acc\": ort_acc(path), \"size_kb\": size_kb(path), \"mean_ms\": r[\"mean\"], \"p95_ms\": r[\"p95\"]}"
+  ],
+  "과제 3": [
+    "rows = []\nfor fmt, act, method, pc in itertools.product([\"QDQ\", \"QOperator\"], [\"U8\", \"S8\"], [\"MinMax\", \"Percentile\"], [False, True]):\n    path = make_ptq(fmt, act, method, pc)\n    rows.append({\"fmt\": fmt, \"act\": act, \"method\": method, \"per_channel\": pc, \"path\": path, **evaluate(path)})\ngrid_df = pd.DataFrame(rows)"
+  ],
+  "과제 4": [
+    "best = grid_df[grid_df.acc >= fp32_acc - 0.01 - 1e-9].sort_values(\"mean_ms\").iloc[0]",
+    "shutil.copy(best.path, \"rn20_best.onnx\")\nrow = {\"day\": \"Day2\", \"model\": \"rn20_best.onnx\",\n       \"quant\": f\"{best.fmt} {best.act}/S8 {best.method} {'pc' if best.per_channel else 'pt'}\",\n       \"size_kb\": round(best.size_kb, 1), \"acc\": best.acc, \"mean_ms\": round(best.mean_ms, 3), \"p95_ms\": round(best.p95_ms, 3),\n       \"fps_b32\": round(bench(make_session(\"rn20_best.onnx\"), X_ev[:32], n=30, warm=5)[\"fps\"], 1)}\nbase = pd.concat([pd.read_csv(\"qp_baseline.csv\"), pd.DataFrame([row])]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nbase.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 5": [
+    "s = ort.InferenceSession(path, providers=CPU)\npred = np.concatenate([s.run(None, {\"input\": X_ev[i:i + 250]})[0].argmax(1) for i in range(0, len(X_ev), 250)])\nreturn np.array([(pred[y_ev == k] == k).mean() for k in range(10)])",
+    "k = int(np.argmax(cls_fp32 - cls_best))\nworst_cls, worst_drop = CLASSES[k], float((cls_fp32 - cls_best)[k] * 100)"
+  ]
+}

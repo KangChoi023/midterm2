@@ -81,6 +81,9 @@ def filter_l1(conv):
 | 0.02 | 0.4002 |
 | 0.05 | 0.7619 |
 
+<<CODE 1-c1 | weight 절댓값 분포 — 작은 값이 많다>>
+<<CODE 1-1 | magnitude_mask — 작은 |w| 를 0 으로>>
+
 #### 개념 2 · 단위 — 하나 지울 때 사라지는 양
 ![가지치기 단위 — weight 1개 · filter 144개 · 입력 채널 288개 · layer 4,608개, 단위가 클수록 실제 속도 이득](assets/fig/qp/d5-units.svg)
 
@@ -94,26 +97,7 @@ def filter_l1(conv):
 
 - filter L1-norm 은 "filter 하나 = weight 144개" 의 \|w\| 합 — 4교시 structured pruning 에서 지울 filter 를 고르는 점수.
 
-#### 코드로 확인
-```python
-w_all = torch.cat([m.weight.detach().abs().flatten()
-                   for n, m in convs(rn20) if isinstance(m, nn.Conv2d)])
-small = {t: float((w_all < t).float().mean()) for t in [0.01, 0.02, 0.05]}
-plt.hist(w_all.numpy(), bins=100, log=True)
-```
-- **무엇을 하나**: 모든 Conv2d weight 의 \|w\| 를 한 줄로 이어 붙여 작은 값 비율을 센다 (예제 1-A).
-- **어떤 개념**: 개념 1.
-- **출력**: `conv weight 270,256개 | {0.01: 0.211, 0.02: 0.4, 0.05: 0.762}` (직접 실행)
-
-```python
-_m = magnitude_mask(torch.tensor([0.1, -0.5, 0.3, 0.05, -0.2, 0.4]), 0.5)
-w2 = rn20.layer2[0].conv1.weight                         # (32, 16, 3, 3)
-units_df = pd.DataFrame({"unit": ["weight", "filter", "in_channel", "layer"],
-                         "removed": [1, w2[0].numel(), w2[:, 0].numel(), w2.numel()]})
-```
-- **무엇을 하나**: 6개 중 작은 절반을 지우는 mask 를 확인하고, 단위별로 사라지는 weight 수를 센다 (실습 1-1 · 1-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `[0, 1, 1, 0, 0, 1]` · removed `[1, 144, 288, 4608]` (직접 실행)
+<<CODE 1-2 | filter_l1 · 단위별로 사라지는 weight 수>>
 
 #### 한 번에 정리
 - 가지치기 = 기준 × 단위 × 방식 × 회복 — 오늘은 magnitude(L1) 기준.
@@ -209,6 +193,9 @@ def prune_unstructured(model, amount, scope="global"):
 
 - buffer = 모델에 저장되지만 학습(gradient)은 안 하는 텐서 — BatchNorm 의 running_mean 과 같은 종류.
 
+<<CODE 2-c1 | prune 이 weight 를 weight_orig × weight_mask 로>>
+<<CODE 2-1 | l1_unstructured 직후 parameter · buffer · remove>>
+
 #### 개념 2 · layer 별 vs global
 ![같은 50% — global 은 fc 5.8% · stem 12.5% 만 지우고 마지막 블록은 80% 를 지운다 · sparsity 별 정확도](assets/fig/qp/d5-us.svg)
 
@@ -222,29 +209,8 @@ def prune_unstructured(model, amount, scope="global"):
 
 (fine-tuning 없음 · 평가 2,000장 · 직접 실행 — 교안 강사 실측과 같다.)
 
-#### 코드로 확인
-```python
-m = copy.deepcopy(rn20); conv = m.layer1[0].conv1
-prune.l1_unstructured(conv, "weight", amount=0.5)
-params_before = sorted(n for n, _ in conv.named_parameters())
-buffers = sorted(n for n, _ in conv.named_buffers())
-sp_masked = float((conv.weight == 0).float().mean())
-prune.remove(conv, "weight")
-params_after = sorted(n for n, _ in conv.named_parameters())
-```
-- **무엇을 하나**: 한 층에 50% pruning 을 걸고 이름이 어떻게 바뀌는지 본 뒤 remove 한다 (실습 2-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `적용 직후 parameters: ['weight_orig'] | buffers: ['weight_mask'] | 0 비율 0.500` · `prune.remove 뒤 parameters: ['weight'] | 0 비율 0.500` (직접 실행)
-
-```python
-g50 = prune_unstructured(rn20, 0.5, "global")
-per_layer = pd.DataFrame([{"layer": n, "global_sp": float((m.weight == 0).float().mean())}
-                          for n, m in convs(g50)])
-per_layer.nsmallest(3, "global_sp")
-```
-- **무엇을 하나**: global 50% 에서 층마다 실제로 몇 % 가 지워졌는지 센다 (실습 2-2).
-- **어떤 개념**: 개념 2.
-- **출력**: 가장 적게 — `fc 0.058 · stem.0 0.125 · layer2.0.shortcut.0 0.135` · 가장 많이 `layer3.2.conv2 0.801` (직접 실행)
+<<CODE 2-2 | sparsity · prune_unstructured (global / layer)>>
+<<CODE 2-c2 | sparsity 별 정확도 — global vs layer>>
 
 #### 한 번에 정리
 - `prune.*` = weight_orig × weight_mask (hook) → `prune.remove` 로 굳힘 — 모양은 그대로, 0 만 생긴다.
@@ -333,6 +299,9 @@ with torch.no_grad():
 
 - dense 는 gzip 해도 1,109.7 → 1,003.3 KB 로 조금만 준다(실수의 bit 는 무작위에 가까움). 90% sparse 는 191.7 KB.
 
+<<CODE 3-1 | state_kb — 저장 크기 vs gzip 크기>>
+<<CODE 3-c2 | 0 이 많아도 PyTorch 지연은 그대로>>
+
 #### 개념 2 · 2:4 규칙
 | 기호 | 뜻 |
 |---|---|
@@ -342,27 +311,8 @@ with torch.no_grad():
 
 - 하드웨어는 남은 2개 값 + 위치 정보(2bit)만 읽어 절반만 곱한다 → 이론상 2배, 실제로는 그보다 작다.
 
-#### 코드로 확인
-```python
-m90 = prune_unstructured(rn20, 0.9, "global")
-size_df = pd.DataFrame([{"model": n, "raw_kb": r, "gzip_kb": z}
-                        for n, (r, z) in [("FP32", state_kb(rn20)), ("global 90%", state_kb(m90))]])
-```
-- **무엇을 하나**: 원본과 90% sparse 모델의 저장 · 압축 크기를 비교한다 (실습 3-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `원래 크기는 같고 (1110 KB), 압축하면 1003 → 192 KB (5.2배)` (직접 실행)
-
-```python
-m24 = copy.deepcopy(rn20)
-with torch.no_grad():
-    for n, c in m24.named_modules():
-        if isinstance(c, nn.Conv2d) and c.in_channels % 4 == 0:
-            c.weight.mul_(mask_2to4(c.weight))
-acc_24 = acc_torch(m24)
-```
-- **무엇을 하나**: stem 을 뺀 모든 Conv 에 2:4 mask 를 곱하고 정확도를 잰다 (실습 3-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `2:4 적용 — sparsity 0.498 · 정확도 0.6485 (global 50% unstructured 0.8125)` (직접 실행)
+<<CODE 3-c1 | 2:4 규칙 예>>
+<<CODE 3-2 | mask_2to4 — 입력 채널 4개마다 큰 2개>>
 
 #### 한 번에 정리
 - unstructured 0 → 저장 크기 · 지연 그대로, 압축 크기만 준다 (192 KB, 5.2배).
@@ -454,6 +404,9 @@ def prune_block(block, ratio):
 - keep (layer2[1], 50%) = `[1, 2, 3, 4, 6, 7, 15, 17, 18, 21, 23, 25, 27, 28, 30, 31]` — L1 이 큰 16개를 오름차순으로.
 - ratio 0 이면 모든 채널을 남기므로 출력이 원래와 같아야 한다 (확인 셀의 atol 1e-5 검사).
 
+<<CODE 4-c1 | 채널을 빼면 고쳐야 하는 사슬>>
+<<CODE 4-1 | prune_block — conv1 · bn1 · conv2 를 keep 만>>
+
 #### 개념 2 · 9개 블록 모두
 | ratio | params | 정확도 (FT 전) | 지연 (강사 실측 CPU) | 지연 (이 실행 · CPU 1스레드) |
 |---|---|---|---|---|
@@ -463,28 +416,8 @@ def prune_block(block, ratio):
 
 - 블록 안쪽 50% → 블록마다 conv1 · conv2 weight 가 각각 절반. stem · shortcut · fc 는 그대로라 전체는 51% (272,474 − 138,506 = 133,968 줄어듦).
 
-#### 코드로 확인
-```python
-blk = copy.deepcopy(rn20.layer2[1]).eval()
-x_ = torch.randn(2, 32, 16, 16); y0 = blk(x_)
-keep = prune_block(blk, 0.5)
-tuple(blk.conv1.weight.shape), tuple(blk.conv2.weight.shape), tuple(blk(x_).shape)
-```
-- **무엇을 하나**: 블록 하나의 안쪽 채널을 32 → 16 으로 줄이고 입출력 모양을 확인한다 (실습 4-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `conv1 (16, 32, 3, 3) | conv2 (32, 16, 3, 3) | 출력 (2, 32, 16, 16)` (직접 실행)
-
-```python
-b_ = copy.deepcopy(rn20.layer1[0])
-b_.conv2 = nn.Conv2d(16, 8, 3, padding=1, bias=False); b_.bn2 = nn.BatchNorm2d(8)
-try:
-    b_.eval()(torch.randn(1, 16, 32, 32)); err = None
-except RuntimeError as e:
-    err = str(e)
-```
-- **무엇을 하나**: 블록 바깥쪽(conv2 출력)을 자르면 residual 덧셈에서 무슨 일이 나는지 본다 (예제 4-A).
-- **어떤 개념**: 개념 1 · 바깥쪽 제약.
-- **출력**: `The size of tensor a (8) must match the size of tensor b (16) at non-singleton dimension 1` (직접 실행)
+<<CODE 4-2 | manual_prune — 9개 블록 모두 · params · 정확도 · 지연>>
+<<CODE 4-c2 | 블록 출력 채널까지 자르면 residual 이 깨진다>>
 
 #### 한 번에 정리
 - filter 제거 = conv(출력 축) → BN(4가지 값) → 다음 conv(입력 축)를 같은 keep 으로.
@@ -581,6 +514,9 @@ macs, params = tp.utils.count_ops_and_params(prune_channels(rn20, 0.5), EX_IN)
 
 - BN 4개 = stem.1 · layer1.0~2 bn2 (통로 채널을 정규화하는 BN).
 
+<<CODE 5-c1 | DependencyGraph — residual 로 묶인 그룹>>
+<<CODE 5-1 | MetaPruner · prune_channels · MACs>>
+
 #### 개념 2 · MACs 계산
 | 기호 | 뜻 | 예 (layer3.1.conv1, 원본 → 50%) |
 |---|---|---|
@@ -600,30 +536,7 @@ macs, params = tp.utils.count_ops_and_params(prune_channels(rn20, 0.5), EX_IN)
 
 (직접 실행 · 지연은 7 · 8교시 표에.)
 
-#### 코드로 확인
-```python
-m_dg = copy.deepcopy(rn20).eval()
-DG = tp.DependencyGraph().build_dependency(m_dg, example_inputs=EX_IN)
-group = DG.get_pruning_group(m_dg.layer1[0].conv2, tp.prune_conv_out_channels, idxs=[0, 1])
-group_convs = sorted({it.dep.target.name.split(" ")[0] for it in group
-                      if isinstance(it.dep.target.module, nn.Conv2d)})
-group.prune(); acc_dg = acc_torch(m_dg)
-```
-- **무엇을 하나**: 통로 채널 2개를 자르는 group 을 구해 함께 바뀌는 Conv 를 보고 자른다 (예제 5-A).
-- **어떤 개념**: 개념 1.
-- **출력**: `group 항목 20개 · 그중 Conv2d 9개` · `자른 뒤 — stem 출력 14 · layer1[2].conv2 출력 14 · layer2[0].conv1 입력 14 · 정확도 0.6340` (직접 실행)
-
-```python
-p50 = prune_channels(rn20, 0.5)
-rows = []
-for name, m in [("FP32", rn20), ("structured 50%", p50)]:
-    macs, params = tp.utils.count_ops_and_params(m, EX_IN)
-    rows.append({"model": name, "macs_m": macs / 1e6, "params": int(params)})
-count_df = pd.DataFrame(rows)
-```
-- **무엇을 하나**: MetaPruner 로 채널 50% 를 자르고 MACs · params 를 원본과 비교한다 (실습 5-1).
-- **어떤 개념**: 개념 2.
-- **출력**: `채널 50% → MACs 41.2M → 10.5M (26%) · params 25%` (직접 실행)
+<<CODE 5-2 | 비율 0 · 0.2 · 0.4 · 0.6 — MACs · 정확도 · 지연>>
 
 #### 한 번에 정리
 - DependencyGraph = residual 로 묶인 채널을 찾아 함께 자른다 (통로 채널 = Conv 9개 + BN 4개).
@@ -709,6 +622,8 @@ for st in range(3):
 - 이 실행: CPU 에서 3 epoch 95초(다른 작업과 CPU 공유) · 교안 기준 GPU 십여 초 · CPU 40 ~ 60초.
 - 저장 `rn20_p50_ft.pth` 323.6 KB — 모양이 바뀐 모델이라 state_dict 가 아니라 모델 통째로 저장(읽을 때 `weights_only=False`).
 
+<<CODE 6-1 | finetune — 50% 모델 회복 곡선 · 저장>>
+
 #### 개념 2 · 같은 예산 비교
 | 방식 | 자르기 | 학습 | 최종 MACs | 최종 정확도 |
 |---|---|---|---|---|
@@ -723,29 +638,7 @@ for st in range(3):
 
 - 마지막 단계에서 크게 자른 직후 회복이 1 epoch 뿐 → one-shot 의 3 epoch 회복보다 짧다.
 
-#### 코드로 확인
-```python
-p50_ft = copy.deepcopy(p50)
-hist = [{"epoch": 0, "acc": acc_torch(p50_ft)}]
-t_ft = finetune(p50_ft, on_epoch=lambda ep, m: hist.append({"epoch": ep + 1, "acc": acc_torch(m)}))
-hist_df = pd.DataFrame(hist)
-torch.save(p50_ft.cpu(), "rn20_p50_ft.pth")
-```
-- **무엇을 하나**: structured 50% 모델을 3 epoch fine-tuning 하며 epoch 별 정확도를 기록하고 저장한다 (실습 6-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `50% 모델 0.10 → 0.723 — FP32 와의 차이 12.3%p (MACs 25%)` (직접 실행 · CPU)
-
-```python
-m_it = copy.deepcopy(rn20).eval(); pruner = make_pruner(m_it, 0.5, steps=3); rows = []
-for st in range(3):
-    m_it.cpu(); pruner.step()
-    macs, _ = tp.utils.count_ops_and_params(m_it, EX_IN)
-    finetune(m_it, epochs=1)
-    rows.append({"step": st + 1, "macs_m": macs / 1e6, "acc": acc_torch(m_it)})
-```
-- **무엇을 하나**: 1/3 씩 자르고 1 epoch 회복을 3번 반복한다 (실습 6-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `같은 MACs (10.5M) · 같은 총 3 epoch — one-shot 0.723 vs iterative 0.680` (직접 실행 · CPU)
+<<CODE 6-2 | iterative pruning 3단계 × 1 epoch>>
 
 #### 한 번에 정리
 - structured 뒤 fine-tuning(lr 1e-2 · 3 epoch) → 50% 모델 0.10 → 0.72.
@@ -838,34 +731,15 @@ deploy_df["speedup"] = deploy_df.latency_ms[0] / deploy_df.latency_ms
 
 - ONNX 크기 비율 276.6 / 1,070.8 = 25.8% ≈ Conv weight 비율 67,672 / 270,256 = 25.0%.
 
+<<CODE 7-c1 | deploy_lat 사용법>>
+<<CODE 7-c2 | deploy_lat · onnx_conv_stats>>
+<<CODE 7-1 | dense · unstructured · structured 를 ONNX 로>>
+
 #### 개념 2 · 왜 MACs 비율(4배)만큼은 안 빨라지나
 - MACs 41.24 → 10.53M 은 이론상 3.9배. 실제 지연에는 연산마다 붙는 고정 비용(커널 실행 · 메모리 이동)이 있어 작은 모델일수록 비율이 줄어든다.
 - 채널 수가 묶음 단위(8 · 16)와 맞지 않으면 더 손해 — 20% 모델(12 · 25 · 51)은 MACs 가 줄어도 dense 보다 느릴 수 있다.
 
-#### 코드로 확인
-```python
-def onnx_conv_stats(path):
-    g = onnx.load(path).graph
-    init = {i.name: numpy_helper.to_array(i) for i in g.initializer}
-    ws = [init[n.input[1]] for n in g.node if n.op_type == "Conv" and n.input[1] in init]
-    total = sum(w.size for w in ws)
-    return {"conv_params": int(total), "zero_frac": float(sum((w == 0).sum() for w in ws) / total)}
-```
-- **무엇을 하나**: ONNX 그래프의 Conv 노드마다 두 번째 입력(weight initializer)을 꺼내 원소 수와 0 비율을 센다 (제공 도구).
-- **어떤 개념**: 개념 1.
-- **출력**: dense `{'conv_params': 270256, 'zero_frac': 0.0}` · unstructured `{'conv_params': 270256, 'zero_frac': 0.501}` · structured `{'conv_params': 67672, 'zero_frac': 0.0}` (직접 실행)
-
-```python
-tags = {"dense": "rn20_dense", "unstructured 50%": "rn20_us50", "structured 50% + FT": "rn20_p50"}
-new = pd.DataFrame([{"day": "Day5", "model": tags[r.model], "quant": f"FP32 ({tags[r.model]})",
-                     "size_kb": d_.size_kb[r.model], "acc": r.acc, "mean_ms": r.latency_ms,
-                     "p95_ms": np.nan, "fps_b32": np.nan} for r in deploy_df.itertuples()])
-old = pd.read_csv("qp_baseline.csv") if os.path.exists("qp_baseline.csv") else None
-pd.concat([old, new]).drop_duplicates(subset=["day", "model"], keep="last").to_csv("qp_baseline.csv", index=False)
-```
-- **무엇을 하나**: 세 모델 결과를 qp_baseline.csv 에 Day5 로 추가한다 (실습 7-2).
-- **어떤 개념**: 한 표에 모으기.
-- **출력**: `ORT CPU — unstructured 1.00배 · structured 2.06배 — 속도는 structured 에서만` (직접 실행)
+<<CODE 7-2 | 세 ONNX 지연 · speedup · 기준선 저장>>
 
 #### 한 번에 정리
 - unstructured 50% → ONNX 크기 · Conv 모양 · 엔진 속도 모두 dense 와 같다 (0 만 50%).
@@ -956,6 +830,8 @@ best_row = sweep_df.set_index("ratio").loc[best_ratio]
 
 정답 보기 셀 없음 · 예상 시간 GPU 1 ~ 2분, CPU 약 4분 (fine-tuning 4번).
 
+<<CODE 과제 1 | 과제 1 — 비율 4개 × (자르기 → 재학습 → 측정)>>
+
 #### 개념 2 · 이 실행의 곡선
 ![가지치기 비율 곡선 — FT 뒤 정확도 0.842 · 0.8195 · 0.7595 · 0.603, 3%p 기준선 안의 가장 큰 비율 20% · 지연은 20% 에서 오히려 늘어남](assets/fig/qp/d5-sweep.svg)
 
@@ -975,36 +851,16 @@ best_row = sweep_df.set_index("ratio").loc[best_ratio]
 | speedup | 0.704 / 0.839 | 0.84 (느려짐) |
 | acc_drop_pp | (0.846 − 0.8195) × 100 | 2.65 |
 
+<<CODE 과제 2 | 과제 2 — MACs · 지연 vs 정확도 곡선>>
+<<CODE 과제 3 | 과제 3 — 3%p 안에서 가장 큰 비율>>
+<<CODE 과제 4 | 과제 4 — CSV · ONNX 저장>>
+<<CODE 과제 5 | 과제 5 — 이득 요약>>
+
 #### 개념 3 · 과제 6 의 생각할 거리
 - **1%p 기준이면**: 0.836 이상은 비율 0 뿐 → 자를 수 없다. 전체 50,000장 · 수십 epoch fine-tuning, Day 6 지식 증류(KD)로 회복 폭을 키우면 1%p 안에 들 수 있다.
 - **T4 배포: unstructured 70% vs structured 20%**: unstructured 는 T4 에서 속도 이득 0(2:4 도 T4 미지원) · 70% 는 FT 없이 0.482 → structured 20% + FT 가 낫다 (단 채널 수를 8 배수로).
 - **MACs ↓ 지연 ↑ (이 실행의 20%)**: 층별 채널 수(12 · 25 · 51) 확인 → `round_to=8` 로 다시 자르기 · profiling 으로 느린 층 찾기.
 - **INT8 과 합치는 순서**: prune → fine-tuning → (PTQ 또는 QAT) — 모양을 먼저 정하고, 그 모양에서 scale 을 잡는다. 반대로 하면 자른 뒤 scale 을 다시 보정해야 한다.
-
-#### 코드로 확인
-```python
-fig_, axs = plt.subplots(1, 2, figsize=(10, 3.6))
-for ax, col, xl in [(axs[0], "macs_m", "MACs (M)"), (axs[1], "latency_ms", "latency (ms)")]:
-    ax.plot(sweep_df[col], sweep_df.acc, "o-")
-    for r in sweep_df.itertuples():
-        ax.annotate(f"{int(r.ratio * 100)}%", (getattr(r, col), r.acc), textcoords="offset points", xytext=(5, 5))
-    ax.axhline(FP32_ACC - 0.03, ls="--", c="tab:red"); ax.set_xlabel(xl); ax.set_ylabel("accuracy")
-fig_.savefig("prune_curve.png", dpi=120)
-```
-- **무엇을 하나**: 두 칸짜리 곡선에 점마다 비율 · 3%p 기준선을 그려 저장한다 (과제 2).
-- **어떤 개념**: 개념 2.
-- **출력**: `prune_curve.png` — 왼쪽 MACs 가 줄수록 정확도 하락 · 오른쪽 20% 점이 0% 보다 오른쪽(느림)
-
-```python
-b0 = sweep_df.set_index("ratio").loc[0.0]
-summary = {"best_ratio": best_ratio,
-           "macs_x": b0.macs_m / best_row.macs_m, "params_x": b0.params / best_row.params,
-           "speedup": b0.latency_ms / best_row.latency_ms,
-           "acc_drop_pp": (FP32_ACC - best_row.acc) * 100}
-```
-- **무엇을 하나**: 고른 모델의 이득을 비율 0(fine-tuning 한 dense) 대비 배수로 요약한다 (과제 5).
-- **어떤 개념**: 개념 2.
-- **출력**: `{'best_ratio': 0.2, 'macs_x': 1.657, 'params_x': 1.596, 'speedup': 0.839, 'acc_drop_pp': 2.65}` (직접 실행 · ORT CPU)
 
 #### 한 번에 정리
 - 비율 하나가 아니라 곡선(MACs – 정확도 – 지연)에서 무릎을 찾는다.

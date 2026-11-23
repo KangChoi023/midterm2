@@ -427,7 +427,7 @@ def attach_guides(sid, d, topics, n=0):
             if out: tp['guide'] = out; GUIDE_HIT.add(key)
             if miss: GUIDE_MISS.setdefault(key, miss)
 
-CODE_MARK = re.compile(r'^<<CODE\s+([\w-]+)\s*(?:\|\s*(.*?))?\s*>>\s*$', re.M)
+CODE_MARK = re.compile(r'^<<CODE\s+([\w-]+(?: \d+)?)\s*(?:\|\s*(.*?))?\s*>>\s*$', re.M)
 CODE_WARN = []
 
 def code_title(c):

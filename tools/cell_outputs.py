@@ -150,10 +150,13 @@ def run(sid, day, timeout, root, force_thread=False):
     for f in os.listdir(os.path.dirname(nb_path)):                      # mynn_day4.py 같은 동봉 파일
         p = os.path.join(os.path.dirname(nb_path), f)
         if os.path.isfile(p): shutil.copy(p, work)
+        elif f == 'data' and os.path.isdir(p): shutil.copytree(p, os.path.join(work, 'data'))   # QP: 교안의 data 폴더 (내려받지 않게)
     os.chdir(work); sys.path.insert(0, work)
     os.environ.setdefault('MPLBACKEND', 'Agg')
     _stub_ipython()
-    g = {'__name__': '__main__'}
+    nb_main = types.ModuleType('__main__')                             # 셀에서 정의한 클래스를 torch.save(모델) 이 찾을 수 있게
+    sys.modules['__main__'] = nb_main                                  # (pickle 은 __main__ 모듈에서 클래스를 찾는다)
+    g = nb_main.__dict__
     try:                                                                # Colab 처럼 display 를 import 없이 쓸 수 있게
         from IPython.display import display as _disp
         g['display'] = _disp
@@ -211,11 +214,29 @@ def run(sid, day, timeout, root, force_thread=False):
             return True
         return False
 
+    qp_next = None
     for i, c in enumerate(nb['cells']):
+        if c['cell_type'] == 'markdown':
+            m = nbparse.qp_md(nbparse._src(c))
+            if m: qp_next = m[0]
+            continue
         if c['cell_type'] != 'code': continue
         src = nbparse._src(c).strip('\n')
         if not src.strip(): continue
         first = src.split('\n', 1)[0]
+        qt = nbparse.QP_TODO.match(first)
+        nxt = None if nbparse.QP_HINT.match(first) else qp_next
+        if not nbparse.QP_HINT.match(first): qp_next = None
+        if qt or (nxt and 'TODO' in src):                               # QP 직접 구현: 풀이(notes/qp_solutions)로 채워 실행
+            num = qt.group(1) if qt else nxt
+            sol = nbparse.qp_fill(src, nbparse.qp_solutions(nb_path).get(num))
+            if sol is None:
+                print(f'  [{num}] 풀이 없음 — TODO 그대로라 건너뜀', file=sys.__stderr__); last = None; continue
+            out, err = execute(sol, f'풀이 {num}')
+            res[num] = {'text': out, 'err': err, 'check': False}; last = num
+            continue
+        if nbparse.QP_HINT.match(first) or (first.startswith('#@title') and '🔒' in first and 'show_answer' in src):
+            continue                                                    # QP 힌트 · 잠긴 정답 셀
         if '정답 보기' in first or ('b64decode' in src and '@title' in first):
             num, sol = nbparse._solution(nbparse._answer(src))
             if num and sol and pending:
@@ -268,7 +289,7 @@ def save(sid, day, final):
     for k, v in old.items():                                            # 손으로 고친 항목(fixed)은 지키고, 이번에 실패한 것은 이전 값 유지
         if v.get('fixed') or k not in final: final[k] = v
     with open(path, 'w', encoding='utf8') as f:
-        json.dump(dict(sorted(final.items(), key=lambda kv: [int(x) if x.isdigit() else x for x in re.split(r'[-·]', kv[0])])),
+        json.dump(dict(sorted(final.items(), key=lambda kv: [(0, int(x)) if x.isdigit() else (1, x) for x in re.split(r'[-· ]', kv[0])])),
                   f, ensure_ascii=False, indent=1)
         f.write('\n')
     print(f'→ {path}  {len(final)}개', file=sys.__stderr__)

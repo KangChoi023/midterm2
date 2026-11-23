@@ -70,6 +70,11 @@ SimpleConvNet 의 파라미터를 층별로 세면:
 
 fc1 하나가 99.6% 를 차지한다 — 크기를 줄이려면 큰 층이 중요하다. 비트별 크기: 16비트 0.868 · 8비트 0.434 · 4비트 0.217 · 2비트 0.108 MB.
 
+<<CODE 1-c1 | SimpleConvNet 정의 · 학습된 가중치 불러오기>>
+<<CODE 1-1 | 파라미터 수와 FP32 크기 (MB)>>
+<<CODE 1-2 | 세 모델 × FP32 · FP16 · INT8 크기 표>>
+<<CODE 1-3 | INT8 이면 몇 배 작아지나>>
+
 #### 개념 2 · 경량화 4가지
 | 방법 | 무엇을 줄이나 | 이 과목 |
 |---|---|---|
@@ -78,17 +83,7 @@ fc1 하나가 99.6% 를 차지한다 — 크기를 줄이려면 큰 층이 중�
 | 지식 증류 | 큰 모델 → 작은 모델로 지식 옮기기 | Day 6 |
 | 효율 구조 | 처음부터 가볍게 설계 (MobileNet) | 다루지 않음 |
 
-#### 코드로 확인
-```python
-n_params = sum(p.numel() for p in cnn.parameters())
-fp32_mb = n_params * 4 / 1e6
-BYTES = {"FP32": 4, "FP16": 2, "INT8": 1}
-size_mb = {m: {dt: PARAMS[m] * b / 1e6 for dt, b in BYTES.items()} for m in PARAMS}
-ratio = size_mb["SimpleConvNet"]["FP32"] / size_mb["SimpleConvNet"]["INT8"]
-```
-- **무엇을 하나**: 파라미터 수를 세고 자료형별 크기 표와 압축률을 만든다.
-- **어떤 개념**: 개념 1.
-- **출력**: `파라미터 433,890 개 → FP32 1.736 MB` · MobileNetV3-Small INT8 `2.54MB` · `4.0 배 작아진다` (직접 실행)
+<<CODE 1-c2 | 비트 수를 바꿔 크기 · 서로 다른 값 개수 보기>>
 
 #### 한 번에 정리
 - 크기 = 파라미터 수 × byte. FP32 4 · FP16 2 · INT8 1 → INT8 은 정확히 1/4.
@@ -166,6 +161,10 @@ safe = np.clip(np.round(v), -128, 127).astype(np.int8)
 
 FP16 의 가수 10비트 → 유효숫자 약 3자리. 그래서 1000.1 을 담으면 1000 이 된다(1000 근처 간격이 0.5).
 
+<<CODE 2-c1 | np.finfo · np.iinfo 로 자료형 범위 · 간격>>
+<<CODE 2-1 | INT8 · UINT8 범위>>
+<<CODE 2-2 | FP32 → FP16 — 1000.1 의 오차, 70000 은 inf>>
+
 #### 개념 2 · 정수 변환의 두 가지 사고
 | 입력 | `astype(np.int8)` 만 | round → clip → astype |
 |---|---|---|
@@ -175,17 +174,9 @@ FP16 의 가수 10비트 → 유효숫자 약 3자리. 그래서 1000.1 을 담�
 | 200 | **−56** (200 − 256) | 127 |
 | −300 | **−44** (−300 + 256) | −128 |
 
-#### 코드로 확인
-```python
-x = np.array([0.1, 1.0, 1000.1, 70000.0], np.float32)
-x16 = x.astype(np.float16)
-err = x16.astype(np.float32) - x
-fp16_max = float(np.finfo(np.float16).max)
-safe = np.clip(np.round(v), -128, 127).astype(np.int8)
-```
-- **무엇을 하나**: FP16 으로 바꿨을 때의 차이와 안전한 INT8 변환.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `1000.1 → 1000` (차이 −0.0998) · `70000 → inf` · `FP16 최댓값: 65504.0` · `[0, 2, −2, 127, −128]` (직접 실행)
+<<CODE 2-c2 | astype(np.int8) 만 하면 — 소수 버림 · wrap-around>>
+<<CODE 2-3 | round → clip → astype 순서로 안전하게>>
+<<CODE 2-c3 | INT8 × INT8 은 넘친다 — INT32 로 곱하기>>
 
 #### 한 번에 정리
 - 부동소수점은 범위 넓고 0 근처 촘촘, 정수는 256 칸 간격 1.
@@ -271,6 +262,9 @@ def dequantize(q, scale, zp):
 | scale | 한 칸의 실수 크기 | 4/255 = 0.015686 |
 | zp | 0.0 의 칸 번호 | 64 |
 
+<<CODE 3-1 | calc_scale_zp — 범위 → scale · zero-point>>
+<<CODE 3-2 | quantize — 실수 → 정수 (INT32 로 계산)>>
+
 #### 개념 2 · 왕복 오차 = 반올림 + 잘림
 - 범위 안: round 는 많아야 **반 칸** 틀린다 → |x − x̂| ≤ scale/2.
 - 범위 밖: clip 이 끝 칸에 붙인다 → 잘린 거리만큼 틀린다 (4.0 → 2.996, 오차 1.004).
@@ -283,18 +277,9 @@ def dequantize(q, scale, zp):
 | 4 | 16 | 0.2667 | 4 | 0.1333 |
 | 2 | 4 | 1.3333 | 1 | 0.6666 |
 
-#### 코드로 확인
-```python
-s, zp = calc_scale_zp(-1.0, 3.0)
-q = quantize(np.array([-1.0, 0.0, 0.5, 1.234, 3.0]), s, zp)
-x_rand = np.random.uniform(-1, 3, 10_000)
-x_hat = dequantize(quantize(x_rand, s, zp), s, zp)
-max_err = np.abs(x_hat - x_rand).max()
-x_out_hat = dequantize(quantize(np.array([4.0, 5.0, -2.0]), s, zp), s, zp)
-```
-- **무엇을 하나**: scale · zp 를 구하고 범위 안 · 밖 값을 왕복시켜 오차를 잰다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `scale = 0.015686  zero_point = 64` · `q : [0 64 96 143 255]` · `최대 오차 0.00784 ≤ scale/2 = 0.00784 ? True` · `0.0 → 0.0` · 되돌린 값 `[2.9961 2.9961 −1.0039]` (직접 실행)
+<<CODE 3-3 | dequantize · 범위 안 최대 오차 ≤ scale/2>>
+<<CODE 3-4 | 범위 밖 값 — 잘림(clipping) 오차>>
+<<CODE 3-c1 | 비트 수에 따라 최대 오차가 어떻게 커지나>>
 
 #### 한 번에 정리
 - scale = 범위 / 칸 수, zp = 0.0 이 놓이는 정수 칸 (항상 정수).
@@ -365,6 +350,9 @@ st = sym_scale(W); W_hat = sym_quantize(W, st) * st        # 대칭 왕복
 | 비대칭 | xmin ~ xmax | 데이터에 따라 | UINT8 0 ~ 255 | 활성값 (ONNX Runtime U8) |
 | 대칭 | −max\|x\| ~ +max\|x\| | 항상 0 | INT8 −127 ~ 127 | weight (TensorRT 는 활성값도) |
 
+<<CODE 4-1 | 대칭 양자화 — sym_scale · sym_quantize (zp 없음)>>
+<<CODE 4-c1 | ReLU 뒤 활성값 A 꺼내기 — 0 이상만>>
+
 #### 개념 2 · ReLU 출력에 대칭을 쓰면 칸 절반이 빈다
 활성값은 모두 0 이상이다. 대칭으로 잡으면 −2.137 ~ 0 의 127칸에는 값이 하나도 없고, 실제 값은 나머지 절반 칸에만 놓인다 → scale 이 2배(0.01683 vs 0.00838) → MSE 약 4~5배.
 
@@ -375,18 +363,9 @@ st = sym_scale(W); W_hat = sym_quantize(W, st) * st        # 대칭 왕복
 | ReLU 뒤 활성값 A (432,000 개) | 0 ~ 2.137 | 2.49e-06 | 1.26e-05 | **5.07** |
 | conv weight W (750 개) | −0.482 ~ 0.387 | 9.35e-07 | 1.12e-06 | **1.20** |
 
-#### 코드로 확인
-```python
-with torch.no_grad():
-    A = cnn.pool(F.relu(cnn.conv(X))).numpy().ravel()     # (432,000,)
-s_a, zp_a = calc_scale_zp(A.min(), A.max())
-mse_asym = mse(dequantize(quantize(A, s_a, zp_a), s_a, zp_a), A)
-s_s = sym_scale(A)
-mse_sym = mse(sym_quantize(A, s_s) * s_s, A)
-```
-- **무엇을 하나**: 같은 활성값을 두 방식으로 왕복해 MSE 를 비교한다.
-- **어떤 개념**: 개념 2.
-- **출력**: `0 인 비율 51.8%` · `비대칭 scale 0.00838 MSE 2.49e-06` · `대칭 scale 0.01683 MSE 1.26e-05 → 5.1 배` (직접 실행)
+<<CODE 4-2 | 활성값 A — 비대칭 UINT8 vs 대칭 INT8 MSE>>
+<<CODE 4-3 | conv weight W — 같은 비교>>
+<<CODE 4-c2 | weight 를 한쪽으로 밀면 대칭이 손해>>
 
 #### 한 번에 정리
 - 비대칭: 범위 그대로 · zp 있음 · 치우친 값(ReLU 출력)에 유리.
@@ -462,6 +441,11 @@ W_pc = np.clip(np.round(W / sc), -127, 127) * sc                  # per-channel 
 | conv MSE | 1.12e-06 | 5.86e-07 (1.91배 ↓) |
 | fc1 정확도 비 | 1 | 2.63배 |
 
+<<CODE 5-1 | per-tensor 대칭 scale>>
+<<CODE 5-2 | 필터마다 scale (30,)>>
+<<CODE 5-3 | per-channel vs per-tensor 왕복 MSE — broadcast (30, 1, 1, 1)>>
+<<CODE 5-4 | per_channel_scale — Conv · Linear 공용 함수>>
+
 #### 개념 2 · 튀는 채널 하나의 피해
 필터 0 만 K 배로 키운 실험:
 
@@ -472,18 +456,7 @@ W_pc = np.clip(np.round(W / sc), -127, 127) * sc                  # per-channel 
 | 10 | 4.43e-05 | 2.47e-06 | 18.0배 |
 | 30 | 4.11e-04 | 1.77e-05 | 23.3배 |
 
-#### 코드로 확인
-```python
-st_w = sym_scale(W)                                       # per-tensor
-sc_w = np.abs(W.reshape(30, -1)).max(1) / 127             # (30,)
-sc4 = sc_w.reshape(30, 1, 1, 1)
-W_pc = np.clip(np.round(W / sc4), -127, 127) * sc4
-W_pt = np.clip(np.round(W / st_w), -127, 127) * st_w
-print(mse(W_pt, W) / mse(W_pc, W))
-```
-- **무엇을 하나**: 두 granularity 로 왕복해 MSE 를 비교한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `shape (30,) | 가장 작은 scale 0.001612 | 가장 큰 scale 0.003798` · `per-channel 이 1.91 배 정확` · fc1 `2.63 배` (직접 실행)
+<<CODE 5-c1 | 채널 하나를 K 배 키우면 per-tensor 만 망가진다>>
 
 #### 한 번에 정리
 - per-tensor: scale 1개, 가장 큰 채널에 맞춰져 작은 채널이 손해.
@@ -565,6 +538,9 @@ best8 = clips[np.argmin([mse_clip(A, c, 8) for c in clips])]
 | 99.99 | 1.867 | 3.26e-06 | 6.37e-04 |
 | 100 (MinMax) | 2.137 | **2.49e-06** | 7.99e-04 |
 
+<<CODE 6-1 | 99.9 백분위수와 넘는 값의 비율>>
+<<CODE 6-2 | clip 을 바꿔 가며 MSE — 비트별 최적 clip>>
+
 #### 개념 2 · 보정 방법 (Day 2 미리 보기)
 | 방법 | 범위 정하는 법 | 오늘의 실험 |
 |---|---|---|
@@ -575,19 +551,8 @@ best8 = clips[np.argmin([mse_clip(A, c, 8) for c in clips])]
 
 보정 데이터는 실제 현장 이미지와 비슷한 것을 **수백 장** — 너무 적거나 한쪽으로 치우치면 실제 범위를 못 본다.
 
-#### 코드로 확인
-```python
-A_out = A.copy(); A_out[0] = A.max() * 20
-def roundtrip(x, clip):
-    s = clip / 255
-    return np.clip(np.round(x / s), 0, 255) * s
-r_mm = roundtrip(A_out, A_out.max())
-r_pc = roundtrip(A_out, np.percentile(A_out, 99.9))
-print(mse(r_mm[1:], A_out[1:]) / mse(r_pc[1:], A_out[1:]))
-```
-- **무엇을 하나**: outlier 하나를 넣고 MinMax · Percentile 범위의 MSE 를 "전체" 와 "나머지" 로 나눠 잰다.
-- **어떤 개념**: 개념 1 · outlier.
-- **출력**: `범위 MinMax 42.7 | Percentile 1.607` · `all : MinMax 1.10e-03 | Percentile 3.94e-03` · `rest : … 나머지 값은 Percentile 이 42 배 정확` (직접 실행)
+<<CODE 6-3 | outlier 하나 — MinMax vs Percentile>>
+<<CODE 6-c1 | 백분위수를 바꿔 MSE 비교>>
 
 #### 한 번에 정리
 - 오차 = 반올림(범위 안) + 잘림(범위 밖). 좁히면 앞 ↓ 뒤 ↑.
@@ -669,20 +634,16 @@ y ≈ (s_w W_q)(s_x x_q) + b = s_w s_x (W_q x_q + b / (s_w s_x))
 
 ![INT8 곱 → INT32 누적 → + INT32 bias → × scale, 또는 × M 으로 INT8 출력](assets/fig/qp/d1-intmm.svg)
 
+<<CODE 7-c1 | fc2 하나를 정수 연산으로 — 입력 · weight 양자화>>
+<<CODE 7-1 | INT32 로 넓혀 행렬곱 누적>>
+<<CODE 7-2 | bias 도 같은 단위의 INT32 로>>
+<<CODE 7-3 | 정수 결과를 실수로 — FP32 와 비교>>
+
 #### 개념 2 · 왜 INT32 인가
 INT8 곱 하나는 최대 127 × 127 = 16,129. 100개를 더하면 최대 약 161만 — INT16(32,767)로도 부족하다. 실제 acc 최댓값 65,677 이 이를 보여 준다. INT32(약 21억)면 충분하다.
 
-#### 코드로 확인
-```python
-acc = xq.astype(np.int32) @ Wq.astype(np.int32).T
-bq = np.round(b2 / (sx * sw)).astype(np.int32)
-y_int = (acc + bq) * sx * sw
-max_err = np.abs(y_int - y_fp).max()
-agree = (y_int.argmax(1) == y_fp.argmax(1)).mean()
-```
-- **무엇을 하나**: fc2 를 정수로 계산하고 FP32 결과와 비교한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `acc (100, 10) int32 | 범위 −64612 ~ 65677 | INT16 최대 32,767` · `logits 범위 −15.04 ~ 15.39 | 최대 차이 0.1006 | 예측 일치율 1.00` · `M = 0.001924` (직접 실행)
+<<CODE 7-4 | requantize — INT32 결과를 출력 scale 의 INT8 로>>
+<<CODE 7-c2 | zero-point 가 있으면 보정 항이 필요>>
 
 #### 한 번에 정리
 - 대칭이면 y = s_w s_x (W_q x_q + b_q) — 괄호 안은 전부 정수.
@@ -763,6 +724,12 @@ acc = (logits.argmax(1) == labels).mean()
 
 `my_quant.py` 는 Day 2 에서 ONNX Runtime 결과와 숫자를 비교할 때 `import my_quant` 로 다시 쓴다. 제출은 채점 셀 결과가 보이는 상태로 노트북 공유.
 
+<<CODE 8-1 | 과제 1 — my_quant.py 에 함수 4개 저장>>
+<<CODE 8-c1 | my_quant 다시 읽어 확인>>
+<<CODE 8-2 | 과제 2 — fake_quant_weight (대칭 · per-tensor / per-channel)>>
+<<CODE 8-3 | 과제 3 — 비트 3 × granularity 2 평가>>
+<<CODE 8-4 | 과제 4 — INT8 파일 크기 (weight + scale + bias)>>
+
 #### 개념 2 · 결과표
 ![6가지 조합의 정확도 막대와 max_diff](assets/fig/qp/d1-results.svg)
 
@@ -776,6 +743,8 @@ acc = (logits.argmax(1) == labels).mean()
 | 2 | per-channel | 0.52 | 0.52 | 13.39 | |
 
 conv weight MSE (per-tensor → per-channel): 8비트 1.12e-06 → 5.86e-07 · 4비트 3.99e-04 → 1.90e-04 · 2비트 1.98e-02 → 9.38e-03.
+
+<<CODE 8-5 | 과제 5 — 결과표 · 손실 1%p 안에서 가장 적은 비트 고르기>>
 
 #### 개념 3 · 과제 6 의 생각할 거리
 - 8비트는 per-tensor 도 칸이 촘촘해 차이가 없지만, 2비트는 칸이 3개뿐이라 scale 하나가 큰 필터에 맞춰지면 작은 필터의 값이 거의 전부 0 이 된다.

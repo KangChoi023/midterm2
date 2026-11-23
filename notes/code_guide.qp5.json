@@ -1,0 +1,103 @@
+{
+  "_설명": "QP Day 5 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "qp/5/2-2": [
+    {
+      "at": "ws = [mod.weight for _, mod in convs(model)]",
+      "to": "return sum((w == 0).sum().item()",
+      "t": "sparsity — 0 의 비율",
+      "d": ""
+    },
+    {
+      "at": "m = copy.deepcopy(model)",
+      "to": "prune.l1_unstructured(mod, name, amount=amount)",
+      "t": "global (전체에서 작은 순) vs layer (층마다 같은 비율)",
+      "d": ""
+    },
+    {
+      "at": "for mod, name in targets:",
+      "to": "return m",
+      "t": "mask 를 weight 에 굳히기",
+      "d": "remove 하면 weight_orig · weight_mask 가 사라지고 0 이 남은 weight 하나."
+    }
+  ],
+  "qp/5/4-1": [
+    {
+      "at": "n_keep = int(round(",
+      "to": "keep = filter_l1(c1)",
+      "t": "L1-norm 이 큰 filter 만 남기기",
+      "d": ""
+    },
+    {
+      "at": "nc1 = nn.Conv2d(",
+      "to": "getattr(nb1, k).data = getattr(b1, k).data[keep].clone()",
+      "t": "conv1 출력 · bn1 을 keep 만",
+      "d": "BN 도 같은 채널만 — 사슬을 함께 고친다."
+    },
+    {
+      "at": "nc2 = nn.Conv2d(",
+      "to": "return keep",
+      "t": "conv2 의 입력 채널도 keep 만",
+      "d": "블록 출력 채널은 그대로라 residual 이 깨지지 않는다."
+    }
+  ],
+  "qp/5/5-1": [
+    {
+      "at": "return tp.pruner.MetaPruner(",
+      "to": "pruning_ratio=ratio",
+      "t": "MetaPruner — L1 중요도 · fc 는 제외",
+      "d": "residual 로 묶인 채널 그룹을 의존 그래프로 함께 자른다."
+    },
+    {
+      "at": "m = copy.deepcopy(model).cpu().eval()",
+      "to": "return m",
+      "t": "복사본을 한 번에 자르기",
+      "d": ""
+    },
+    {
+      "at": "for name, m in [(\"FP32\", rn20)",
+      "to": "rows.append({\"model\": name",
+      "t": "MACs · params 비교",
+      "d": "채널 50% → MACs 는 약 1/4 (입력 · 출력 채널이 둘 다 줄어서)."
+    }
+  ],
+  "qp/5/6-1": [
+    {
+      "at": "model.to(DEV); t0 = time.time()",
+      "to": "sched = torch.optim.lr_scheduler.CosineAnnealingLR(",
+      "t": "SGD · cosine (lr 1e-2)",
+      "d": "QAT 보다 lr 이 큰 이유 — 잘린 모델은 많이 고쳐야 한다."
+    },
+    {
+      "at": "for ep in range(epochs):",
+      "to": "return time.time() - t0",
+      "t": "epoch 마다 학습 · 평가",
+      "d": ""
+    },
+    {
+      "at": "t_ft = finetune(",
+      "to": "torch.save(p50_ft.cpu()",
+      "t": "회복 곡선 기록 · 모델 통째로 저장",
+      "d": "구조가 바뀐 모델이라 state_dict 만으로는 다시 못 만든다."
+    }
+  ],
+  "qp/5/과제 1": [
+    {
+      "at": "for r in RATIOS:",
+      "to": "acc_before = acc_torch(m)",
+      "t": "자르기 · MACs (재학습 전)",
+      "d": ""
+    },
+    {
+      "at": "t = finetune(m)",
+      "to": "sweep_models[r] = m",
+      "t": "재학습 · ONNX 지연",
+      "d": ""
+    },
+    {
+      "at": "rows.append({\"ratio\": r",
+      "to": "\"acc\": acc, \"latency_ms\": lat",
+      "t": "한 행",
+      "d": ""
+    }
+  ]
+}
