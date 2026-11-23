@@ -154,7 +154,9 @@ def run(sid, day, timeout, root, force_thread=False):
     os.chdir(work); sys.path.insert(0, work)
     os.environ.setdefault('MPLBACKEND', 'Agg')
     _stub_ipython()
-    g = {'__name__': '__main__'}
+    nb_main = types.ModuleType('__main__')                             # 셀에서 정의한 클래스를 torch.save(모델) 이 찾을 수 있게
+    sys.modules['__main__'] = nb_main                                  # (pickle 은 __main__ 모듈에서 클래스를 찾는다)
+    g = nb_main.__dict__
     try:                                                                # Colab 처럼 display 를 import 없이 쓸 수 있게
         from IPython.display import display as _disp
         g['display'] = _disp

@@ -1,0 +1,99 @@
+{
+  "_설명": "QP Day 2 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "qp/2/1-c1": [
+    {
+      "at": "class BasicBlock(nn.Module):",
+      "to": "return F.relu(out + self.shortcut(x))",
+      "t": "BasicBlock — Conv-BN-ReLU 두 번 + 지름길",
+      "d": "채널 · 크기가 바뀌면 지름길도 1×1 Conv 로 맞춘다."
+    },
+    {
+      "at": "class ResNet(nn.Module):",
+      "to": "return self.fc(self.pool(x).flatten(1))",
+      "t": "ResNet-20 — 블록 3개씩 세 층",
+      "d": "16 → 32 → 64 채널, 32 → 16 → 8 크기."
+    },
+    {
+      "at": "model = ResNet()",
+      "to": "model.eval()",
+      "t": "학습된 가중치 · 추론 모드",
+      "d": "PyTorch 정확도 0.846 이 오늘의 기준."
+    }
+  ],
+  "qp/2/2-2": [
+    {
+      "at": "name = sess.get_inputs()[0].name",
+      "to": "sess.run(None, {name: x})",
+      "t": "warm-up — 재지 않고 버린다",
+      "d": ""
+    },
+    {
+      "at": "t = []",
+      "to": "t.append((time.perf_counter() - t0) * 1000)",
+      "t": "n 번 ms 로 재기",
+      "d": ""
+    },
+    {
+      "at": "t = np.array(t)",
+      "to": "return {\"mean\":",
+      "t": "평균 · p95 · FPS (× 배치)",
+      "d": "p95 = 느린 5% 를 뺀 최악 — 실시간에서는 평균보다 중요."
+    }
+  ],
+  "qp/2/3-1": [
+    {
+      "at": "k = (bn.weight / torch.sqrt(bn.running_var + bn.eps)).detach()",
+      "to": "k = (bn.weight",
+      "t": "채널마다 곱할 값 k = γ / √(σ² + ε)",
+      "d": ""
+    },
+    {
+      "at": "W = conv.weight.detach() * k[:, None, None, None]",
+      "to": "b = b + conv.bias.detach() * k",
+      "t": "W' = W·k, b' = β − μ·k",
+      "d": "추론 때 BN 은 곱하고 더하기라 Conv 에 합칠 수 있다."
+    }
+  ],
+  "qp/2/4-1": [
+    {
+      "at": "self.X, self.bs, self.i = X, bs, 0",
+      "to": "self.X, self.bs, self.i",
+      "t": "데이터 · 배치 크기 · 현재 위치",
+      "d": ""
+    },
+    {
+      "at": "if self.i >= len(self.X):",
+      "to": "return {\"input\": batch}",
+      "t": "get_next — {입력 이름: 배치} 를 하나씩, 끝나면 None",
+      "d": "quantize_static 이 None 이 나올 때까지 불러 범위를 모은다."
+    }
+  ],
+  "qp/2/6-1": [
+    {
+      "at": "for meth in [",
+      "to": "per_channel=pc, calibrate_method=meth)",
+      "t": "방법 3 × per-channel 2 = 6개 모델",
+      "d": "보정 방법만 바꾸고 나머지 설정은 그대로."
+    },
+    {
+      "at": "rows.append({\"method\": meth.name",
+      "to": "calib_df = pd.DataFrame(rows)",
+      "t": "정확도 표",
+      "d": "6개 모두 손실 1%p 이내 — ResNet-20 은 범위에 둔감하다."
+    }
+  ],
+  "qp/2/7-1": [
+    {
+      "at": "for path, quant in MODELS:",
+      "to": "r32 = bench(s, X_ev[:32], n=30, warm=5)",
+      "t": "모델마다 배치 1 · 배치 32 측정",
+      "d": "지연(배치 1)과 처리량(배치 32)은 따로 잰다."
+    },
+    {
+      "at": "rows.append({\"model\": path",
+      "to": "perf_df = pd.DataFrame(rows)",
+      "t": "크기 · 정확도 · 지연 · p95 · 처리량 한 행",
+      "d": ""
+    }
+  ]
+}
