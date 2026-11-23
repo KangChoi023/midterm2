@@ -447,6 +447,8 @@
       pre.appendChild(band);
     });
   }
+  // 줄 설명 끝의 '→ 개념 N …' 은 상세 학습의 어느 식인지 — 아랫줄에 따로
+  const gDesc = d => { const m = String(d || '').match(/^(.*?)\s*→\s*(개념 \d.*)$/); return `<div class="gpop-d">${mdInline(m ? m[1] : d)}${m ? `<div class="gcon">🔗 ${mdInline(m[2])}</div>` : ''}</div>`; };
   function guidePopClose() {
     GPOP = -1;
     $$('.gpop', sideCode).forEach(x => x.remove());
@@ -462,7 +464,7 @@
     const st = $(`.gstep[data-gi="${i}"]`, sideCode); if (st) st.classList.add('on');
     const pop = document.createElement('div'); pop.className = 'gpop'; pop.setAttribute('role', 'dialog');
     pop.innerHTML = `<div class="gpop-h"><b>${i + 1}. ${esc(g.t)}</b><span class="gl">${guideLines(CODECTX && CODECTX.L.topics[CODE.tid] || { blocks: [] }, g)}</span><span class="sp"></span>
-      <button type="button" class="icon-btn sm" data-gpop="-1" aria-label="이전 단계" ${i ? '' : 'disabled'}>‹</button><span class="gpos">${i + 1}/${CODEGUIDE.length}</span><button type="button" class="icon-btn sm" data-gpop="1" aria-label="다음 단계" ${i < CODEGUIDE.length - 1 ? '' : 'disabled'}>›</button><button type="button" class="icon-btn sm" data-gpop="0" aria-label="닫기">✕</button></div>${g.d ? `<div class="gpop-d">${mdInline(g.d)}</div>` : ''}`;
+      <button type="button" class="icon-btn sm" data-gpop="-1" aria-label="이전 단계" ${i ? '' : 'disabled'}>‹</button><span class="gpos">${i + 1}/${CODEGUIDE.length}</span><button type="button" class="icon-btn sm" data-gpop="1" aria-label="다음 단계" ${i < CODEGUIDE.length - 1 ? '' : 'disabled'}>›</button><button type="button" class="icon-btn sm" data-gpop="0" aria-label="닫기">✕</button></div>${g.d ? gDesc(g.d) : ''}`;
     cb.classList.add('pop-on');
     pop.style.top = (pre.offsetTop + band.offsetTop + band.offsetHeight + 6) + 'px';   // 그 단계 마지막 줄 바로 아래
     cb.appendChild(pop);
@@ -975,7 +977,7 @@
     cxPop(box, g.to, `<div class="gpop-h"><b>🧭 ${i + 1}. ${esc(g.t)}</b><span class="gl">${g.from + 1}${g.to > g.from ? '–' + (g.to + 1) : ''}줄</span><span class="sp"></span>`
       + `<button type="button" class="icon-btn sm" data-cxg="${i - 1}" aria-label="이전" ${i ? '' : 'disabled'}>‹</button><span class="gpos">${i + 1}/${c.guide.length}</span>`
       + `<button type="button" class="icon-btn sm" data-cxg="${i + 1}" aria-label="다음" ${i < c.guide.length - 1 ? '' : 'disabled'}>›</button><button type="button" class="icon-btn sm" data-cxg="x" aria-label="닫기">✕</button></div>`
-      + `<div class="gpop-d">${mdInline(g.d)}</div>`);
+      + gDesc(g.d));
     const band = $(`.gband[data-gi="${i}"]`, box); if (band) band.classList.add('on');
   }
   function cxFn(box, sp) {
@@ -1012,8 +1014,14 @@
   // 상세 학습: "#### 제목" 하나부터 다음 "####" 앞까지를 큰 상자 하나로 (개념별 묶어 보기 카드처럼)
   function studyBoxes(html) {
     const t = document.createElement('template'); t.innerHTML = html;
-    const out = document.createElement('div'); let box = null;
+    const out = document.createElement('div'); let box = null, fold = null;
     [...t.content.childNodes].forEach(n => {
+      if (n.nodeType === 1 && (n.tagName === 'H4' || n.tagName === 'H5' || (n.tagName === 'DETAILS' && n.classList.contains('cx')))) fold = null;
+      if (n.nodeType === 1 && n.tagName === 'H5' && box) {   // '##### 🔎 왜 이렇게 되나' — 평소엔 접어 두는 원리 설명
+        fold = document.createElement('details'); fold.className = 'why';
+        fold.innerHTML = `<summary>${n.innerHTML}</summary>`; box.appendChild(fold); return;
+      }
+      if (fold) { fold.appendChild(n); return; }
       if (n.nodeType === 1 && n.tagName === 'H4') {
         const s = n.textContent.trim();
         const kind = /^개념\s*\d/.test(s) ? 'con' : /한 번에 정리|정리$/.test(s) ? 'sum' : n.classList.contains('cx-rest') ? 'rest' : 'intro';

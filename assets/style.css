@@ -843,3 +843,11 @@ details.dent > summary .dp-o { margin-left: auto; } details.dent > summary .dp-o
 .scard .stbl td:first-child { font-weight: 600; white-space: nowrap; }
 .scard .stbl tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ink) 3%, var(--panel)); }
 .scard .stbl th + th, .scard .stbl td + td { border-left: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+/* 상세 학습 — 접힌 원리 설명 (##### 🔎 왜 이렇게 되나) */
+.scard details.why { margin: 12px 0; border: 1px solid color-mix(in srgb, #7c3aed 30%, var(--line)); border-radius: 10px; background: color-mix(in srgb, #7c3aed 5%, var(--panel)); }
+.scard details.why > summary { cursor: pointer; padding: 8px 12px; font-weight: 700; color: #6d28d9; list-style: none; }
+.scard details.why > summary::-webkit-details-marker { display: none; }
+.scard details.why > summary::before { content: '▸ '; } .scard details.why[open] > summary::before { content: '▾ '; }
+.scard details.why > :not(summary) { margin: 0 14px 10px; }
+.scard details.why ul { padding-left: 18px; } .scard details.why li { margin: 4px 0; }
+.gpop-d .gcon { margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--line); color: #6d28d9; font-weight: 600; font-size: .95em; }
