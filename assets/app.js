@@ -639,10 +639,12 @@
     det = det || {};
     const args = (det.args || []).length ? `<ul class="apid-args">${det.args.map(a => `<li><code>${esc(a[0])}</code><span>${mdInline(a[1])}</span></li>`).join('')}</ul>` : '';
     const sec = (k, v) => v ? `<div class="apid-k">${k}</div>${v}` : '';
+    const box = s => s ? `<div class="apid-box">${s}</div>` : '';   // 같은 성격끼리 한 상자: 쓰는 법 · 입출력 · 핵심
     const desc = (det.desc || []).length ? `<ul class="apid-desc">${det.desc.map(x => `<li>${mdInline(x)}</li>`).join('')}</ul>` : '';
     const body = (noRole || !det.role ? '' : `<div class="drole">${esc(det.role)}</div>`)
-      + sec('기본형', sigCode(sig) + args) + sec('입력 → 출력', det.flow && ioHtml(det.flow))
-      + sec('반환', det.ret && `<div>${mdInline(det.ret)}</div>`) + sec('핵심', desc) + sec('준비', det.hdr && `<div class="apid-hdr">${mdInline(det.hdr)}</div>`);
+      + box(sec('기본형', sigCode(sig) + args) + sec('준비', det.hdr && `<div class="apid-hdr">${mdInline(det.hdr)}</div>`))
+      + box(sec('입력 → 출력', det.flow && ioHtml(det.flow)) + sec('반환', det.ret && `<div>${mdInline(det.ret)}</div>`))
+      + box(sec('핵심', desc));
     return body ? `<div class="apid">${body}</div>` : '';
   }
   /* 강의 교안에서 이 함수가 실제로 쓰인 한 줄 (빌드가 고름: [day, 교시, 토픽 id, 줄, 토픽 제목, 강조할 낱말])
