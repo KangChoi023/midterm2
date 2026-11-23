@@ -634,7 +634,7 @@
   const KIND_CLS = { '클래스': 'cls', '메서드': 'mth', '속성': 'att', '인자 · 옵션': 'arg', '상수': 'con', '상수 · 매크로': 'con', '명령': 'cmd' };
   const sigCode = sig => sig ? `<code class="fsig">${esc(String(sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : '';
   // 'A → B — 설명' 이면 설명은 다음 줄 일반 글씨로
-  const ioHtml = f => { const i = f.indexOf(' — '); return `<div class="apid-io">${mdInline(i < 0 ? f : f.slice(0, i))}</div>` + (i < 0 ? '' : `<div class="apid-ion">${mdInline(f.slice(i + 3))}</div>`); };
+  const ioHtml = f => { const i = f.indexOf(' — '); const h = i < 0 ? f : f.slice(0, i); return `<div class="${/→/.test(h) ? 'apid-io' : 'apid-iot'}">${mdInline(h)}</div>` + (i < 0 ? '' : `<div class="apid-ion">${mdInline(f.slice(i + 3))}</div>`); };
   function detailHtml(det, noRole, sig) {
     det = det || {};
     const args = (det.args || []).length ? `<ul class="apid-args">${det.args.map(a => `<li><code>${esc(a[0])}</code><span>${mdInline(a[1])}</span></li>`).join('')}</ul>` : '';
