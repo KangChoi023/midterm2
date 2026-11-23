@@ -978,12 +978,50 @@
       return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
     }
     let h = '', placed = false;
+    const gl = L.sections.find(x => x.key === 'glance');
+    if (gl) {                                                              // 한눈에 보기가 있으면 그것만 — 카드 · 개요는 상세 학습(전체 노트)에
+      h = glanceCard(gl, L);
+      const chip = (id, name, kind) => `<button type="button" class="cchip ${kind}" data-peek-c="${cid(id)}">${esc(name)}</button>`;
+      const fs = (L.funcs || []).map((f, i) => chip('f' + i, f.name, 'func')).join('');
+      const ts = (L.terms || []).map((x, i) => chip('t' + i, x.name.replace(/\*\*/g, ''), 'term')).join('');
+      const lk = L.sections.find(x => x.key === 'links');
+      if (fs || ts) h += `<div class="gl-ref">${fs ? `<div><span class="gl-ref-l">함수</span>${fs}</div>` : ''}${ts ? `<div><span class="gl-ref-l">용어</span>${ts}</div>` : ''}</div>`;
+      if (lk) h += `<div class="gl-links"><span class="gl-ref-l">연결</span>${md(lk.md)}</div>`;
+      h += `<p class="gl-more">정의 · 사용형태 · 예제 코드 · 함정까지 자세히는 <button type="button" class="linklike" data-view="study">상세 학습</button> 에서</p>`;
+      return h;
+    }
     L.sections.forEach((x, i) => {
       if (x.key === 'study') return;                                       // 공부용 설명은 상세 학습 탭에만
       if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { const grouped = CX.LK.sections.some(y => y.groups && y.groups.length); h += `<div class="cards-h">개념별 정리 <small>${grouped ? '큰 개념마다 정의 · 핵심 · 함수 · 사용형태 · 함정을 한 카드에' : '정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에'}</small></div>` + (grouped ? `<nav class="gtoc">${CX.LK.sections.filter(y => y.groups).flatMap(y => y.groups).map((g, gi) => `<button type="button" data-go="gc${gi}">${mdInline(g.title)}</button>`).join('')}</nav>` : '') + conceptCards(); placed = true; } return; }
       if (x.key !== 'kw') h += noteSection(x, i, L);
     });
     return h;
+  }
+
+  // 한눈에 보기: 노트의 "**한눈에 보기**" 섹션
+  //   첫 줄 = 메인 개념 이름 · "> " = 그 개념이 무엇을 · 왜 하는지 한 줄 · "- **소제목**: 설명" = 중요한 점 (⚠ 로 시작하면 함정)
+  //   (예전 표 형식 | 항목 | 내용 | 도 읽는다)
+  function glanceCard(x, L) {
+    const lines = x.md.split('\n');
+    let title = '', lead = '';
+    const items = [];
+    lines.forEach(l => {
+      const s = l.trim(); if (!s) return;
+      let m;
+      if ((m = s.match(/^-\s*\*\*(.+?)\*\*\s*[:：]?\s*(.*)$/))) items.push({ t: m[1], d: m[2] });
+      else if (/^\|/.test(s)) {
+        if (/^\|\s*:?-{2,}/.test(s)) return;
+        const c = s.replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map(v => v.trim());
+        if (c.length >= 2 && !/^(항목|구분)$/.test(c[0])) items.push({ t: c[0], d: c.slice(1).join(' | ') });
+      }
+      else if (s.startsWith('>')) lead += (lead ? ' ' : '') + s.replace(/^>\s?/, '');
+      else if (/^\s{2,}\S/.test(l) && items.length) items[items.length - 1].d += ' ' + s;      // 설명 이어 쓰기
+      else if (!title) title = s;
+    });
+    const li = items.map(it => `<li class="${/^⚠/.test(it.t) ? 'warn' : ''}"><div class="gl-t">${mdInline(it.t)}</div>${it.d ? `<div class="gl-d">${mdInline(it.d)}</div>` : ''}</li>`).join('');
+    return `<section class="glance"><div class="gl-tag">🎯 ${L.n}교시 한눈에 보기</div>`
+      + (title ? `<h3 class="gl-main">${mdInline(title)}</h3>` : '') + (lead ? `<p class="gl-lead">${mdInline(lead)}</p>` : '')
+      + (li ? `<ul class="gl-list">${li}</ul>` : '') + `</section>`;
   }
 
   /* 옆 패널 */
