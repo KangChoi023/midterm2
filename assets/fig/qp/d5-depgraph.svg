@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" font-family="IBM Plex Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs><rect width="700" height="300" fill="#fff"/>
+<text x="350.0" y="22.0" font-size="13.5" fill="#1e293b" text-anchor="middle" font-weight="700">DependencyGraph — layer1 통로 채널 하나를 자르면 함께 잘리는 곳 (Conv 9 + BN 4)</text>
+<rect x="20.0" y="120.0" width="660.0" height="26.0" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+<text x="350.0" y="138.0" font-size="12" fill="#1e293b" text-anchor="middle" font-weight="700">residual 통로 (stem 출력 16채널) — 덧셈으로 이어져 채널 번호가 모두 같다</text>
+<rect x="25.0" y="50.0" width="90.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="70.0" y="70.0" font-size="13" fill="#1e293b" text-anchor="middle" font-weight="700">stem.0</text>
+<text x="70.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">출력</text>
+<line x1="70.0" y1="96.0" x2="70.0" y2="118.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="150.0" y="50.0" width="120.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="210.0" y="70.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.0.conv1</text>
+<text x="210.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">입력 (통로 읽기)</text>
+<line x1="180.0" y1="118.0" x2="180.0" y2="98.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="150.0" y="175.0" width="120.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="210.0" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.0.conv2</text>
+<text x="210.0" y="213.0" font-size="12.5" fill="#64748b" text-anchor="middle">출력 (+ 통로)</text>
+<line x1="210.0" y1="175.0" x2="210.0" y2="148.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="295.0" y="50.0" width="120.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="355.0" y="70.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.1.conv1</text>
+<text x="355.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">입력 (통로 읽기)</text>
+<line x1="325.0" y1="118.0" x2="325.0" y2="98.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="295.0" y="175.0" width="120.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="355.0" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.1.conv2</text>
+<text x="355.0" y="213.0" font-size="12.5" fill="#64748b" text-anchor="middle">출력 (+ 통로)</text>
+<line x1="355.0" y1="175.0" x2="355.0" y2="148.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="440.0" y="50.0" width="120.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="500.0" y="70.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.2.conv1</text>
+<text x="500.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">입력 (통로 읽기)</text>
+<line x1="470.0" y1="118.0" x2="470.0" y2="98.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="440.0" y="175.0" width="120.0" height="46.0" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="500.0" y="195.0" font-size="11.5" fill="#1e293b" text-anchor="middle" font-weight="700">layer1.2.conv2</text>
+<text x="500.0" y="213.0" font-size="12.5" fill="#64748b" text-anchor="middle">출력 (+ 통로)</text>
+<line x1="500.0" y1="175.0" x2="500.0" y2="148.0" stroke="#dc2626" stroke-width="2" marker-end="url(#arr)"/>
+<rect x="590.0" y="50.0" width="90.0" height="46.0" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="635.0" y="70.0" font-size="11" fill="#1e293b" text-anchor="middle" font-weight="700">layer2.0</text>
+<text x="635.0" y="88.0" font-size="12.5" fill="#64748b" text-anchor="middle">conv1 · sc 입력</text>
+<line x1="635.0" y1="118.0" x2="635.0" y2="98.0" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+<text x="350.0" y="248.0" font-size="12" fill="#7c3aed" text-anchor="middle">BN 4개 = stem.1 · layer1.0~2 bn2 (통로 채널을 정규화)</text>
+<text x="350.0" y="270.0" font-size="12" fill="#dc2626" text-anchor="middle" font-weight="700">idxs=[0, 1] 자르면 → stem 출력 14 · layer2[0] 입력 14 · 정확도 0.846 → 0.634</text>
+<text x="350.0" y="290.0" font-size="11" fill="#64748b" text-anchor="middle">빨강 = 출력 채널을 자름 · 파랑 = 입력 채널을 자름</text>
+</svg>
