@@ -669,6 +669,15 @@ mark.fa { background: color-mix(in srgb, #facc15 45%, transparent); color: inher
 .nsec.study table { margin: 10px 0; }
 .nsec.study img { display: block; max-width: 100%; height: auto; margin: 14px auto; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
 .nsec.study pre { margin: 10px 0 6px; }
+/* 상세 학습 — 개념마다 큰 상자 (개념별 묶어 보기 카드와 같은 모양) */
+.nsec.study:has(> .scard) { background: none; border: 0; padding: 0; }
+.scard { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 16px 22px; margin: 14px 0; }
+.scard.sc-con { border-left-color: var(--accent); }
+.scard.sc-sum { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok-soft) 35%, var(--panel)); }
+.nsec.study .scard > h4:first-child { margin: 0 0 10px; }
+.scard > :last-child { margin-bottom: 0; }
+.scard .cx-rest { margin-top: 0; }
+@media (max-width: 600px) { .scard { padding: 12px 14px; } }
 .nsec.study pre + ul { margin-top: 4px; padding: 8px 12px 8px 2em; background: var(--panel-2); border-radius: 8px; font-size: 14.5px; }
 details.fullnote { margin: 16px 0; }
 details.fullnote > summary { cursor: pointer; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); font-size: 14px; }

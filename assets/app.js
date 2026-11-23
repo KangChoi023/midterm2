@@ -951,6 +951,21 @@
   });
   window.addEventListener('resize', () => $$('details.cx[open]', main).forEach(cxBands));
 
+  // 상세 학습: "#### 제목" 하나부터 다음 "####" 앞까지를 큰 상자 하나로 (개념별 묶어 보기 카드처럼)
+  function studyBoxes(html) {
+    const t = document.createElement('template'); t.innerHTML = html;
+    const out = document.createElement('div'); let box = null;
+    [...t.content.childNodes].forEach(n => {
+      if (n.nodeType === 1 && n.tagName === 'H4') {
+        const s = n.textContent.trim();
+        const kind = /^개념\s*\d/.test(s) ? 'con' : /한 번에 정리|정리$/.test(s) ? 'sum' : n.classList.contains('cx-rest') ? 'rest' : 'intro';
+        box = document.createElement('section'); box.className = 'scard sc-' + kind; out.appendChild(box);
+      }
+      (box || out).appendChild(n);
+    });
+    return out.innerHTML;
+  }
+
   function notesHtml(view) {
     const { L } = CX;
     if (!L.sections.length) return '';
@@ -958,7 +973,7 @@
       // 상세 학습: 노트의 "상세 학습" 섹션(공부용 풀어 쓴 설명)을 먼저, 표까지 있는 전체 노트는 접어서 아래에.
       // 상세 학습 섹션이 없는 교시는 예전 "노트 순서" 그대로.
       const flow = L.sections.map((x, i) => x.key === 'kw' || x.key === 'study' ? '' : noteSection(x, i, L)).join('');
-      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${(L.codes || []).length ? studyWithCode(x.md, L) : md(x.md)}</section>` : '').join('');
+      const study = L.sections.map((x, i) => x.key === 'study' ? `<section class="nsec study" id="s${i}">${studyBoxes((L.codes || []).length ? studyWithCode(x.md, L) : md(x.md))}</section>` : '').join('');
       return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
     }
     let h = '', placed = false;
