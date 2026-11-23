@@ -1,0 +1,714 @@
+{
+ "quant_weight()": {
+  "role": "weight 를 출력 채널별 대칭 bits 비트로 양자화했다가 되돌린 FP32 텐서 (실습 1-1)",
+  "desc": [
+   "qmax = 2^(bits−1) − 1 · scale = 채널별 |w| 최댓값 / qmax (0 나눗셈 막으려고 clamp(min=1e-8))",
+   "amax 를 (-1, 1, 1, 1) 모양으로 펴야 채널마다 나뉜다 — view(-1, *[1] * (w.dim() − 1))",
+   "3비트면 한 채널이 쓰는 값이 7개(−3 ~ 3) 이하"
+  ],
+  "args": [
+   [
+    "w",
+    "weight 텐서 (Conv (out, in, k, k) · Linear (out, in))"
+   ],
+   [
+    "bits",
+    "비트 수 (8 · 6 · 4 · 3 · 2)"
+   ]
+  ],
+  "flow": "amax = |w|.flatten(1).amax(1) → scale = amax/qmax → clamp(round(w/scale), −qmax, qmax) · scale",
+  "ret": "w 와 같은 모양의 FP32 텐서 (값은 2·qmax+1 칸 위)",
+  "hdr": "import torch"
+ },
+ "torch.unique()": {
+  "role": "텐서에서 서로 다른 값만 골라 정렬한 텐서",
+  "desc": [
+   "`len(torch.unique(q[0]))` — 채널 0 이 실제로 쓰는 양자화 값 개수 세기",
+   "layer1.0.conv1 채널 0: 8 · 4 · 3 · 2비트 → 98 · 12 · 6 · 3개"
+  ],
+  "args": [
+   [
+    "input",
+    "텐서"
+   ]
+  ],
+  "flow": "값을 정렬 → 중복 제거",
+  "ret": "1차원 텐서 (서로 다른 값)",
+  "hdr": "import torch"
+ },
+ "export_b1()": {
+  "role": "모델을 배치 1 고정 ONNX 로 내보내기 (TensorRT 엔진용, QP Day 4 제공 함수)",
+  "desc": [
+   "모델을 CPU · eval 로 옮긴 뒤 torch.onnx.export(입력 (1, 3, 32, 32), 이름 input / logits, opset 17)",
+   "ModelOpt 로 양자화한 모델을 넣으면 TensorQuantizer 가 QuantizeLinear · DequantizeLinear 로 바뀐 QDQ ONNX 가 나온다",
+   "모델을 CPU 로 옮기므로 원본을 지키려면 copy.deepcopy 로 넘긴다"
+  ],
+  "args": [
+   [
+    "model",
+    "PyTorch 모델 (FP32 · ModelOpt 양자화 모델)"
+   ],
+   [
+    "path",
+    "저장할 .onnx 파일 이름"
+   ]
+  ],
+  "flow": "model.cpu().eval() → torch.onnx.export(model, torch.zeros(1, 3, 32, 32), path, …)",
+  "ret": "path (문자열)",
+  "hdr": "import torch"
+ },
+ "onnx_acc()": {
+  "role": "ONNX 모델의 평가용 2,000장 정확도 (한 장씩 ORT 로, 제공)",
+  "desc": [
+   "배치 1 고정 모델도 돌도록 X[i:i+1] 로 한 장씩 실행",
+   "make_session(path, 0) — 스레드 자동"
+  ],
+  "args": [
+   [
+    "path",
+    "ONNX 파일"
+   ],
+   [
+    "X, y",
+    "평가 데이터 (기본 X_ev · y_ev)"
+   ]
+  ],
+  "flow": "세션 → 장마다 run → argmax == 정답 → 평균",
+  "ret": "float (0 ~ 1)",
+  "hdr": "import onnxruntime as ort"
+ },
+ "fake_quant()": {
+  "role": "quantize → dequantize 를 한 번에 하는 FP32 연산 (실습 2-1 · 3-2)",
+  "desc": [
+   "x̂ = (clamp(round(x/scale) + zp, qmin, qmax) − zp) · scale — 값은 FP32, 칸은 qmax − qmin + 1 개",
+   "2-1 은 torch.round → 기울기 0 · 3-2 는 RoundSTE.apply → 범위 안 기울기 1",
+   "예: s 0.25 · −4 ~ 3 → [−1.2, −0.3, 0, 0.13, 0.9, 5.0] → [−1, −0.25, 0, 0.25, 0.75, 0.75]"
+  ],
+  "args": [
+   [
+    "x",
+    "입력 텐서"
+   ],
+   [
+    "scale",
+    "칸 간격"
+   ],
+   [
+    "zp",
+    "zero-point"
+   ],
+   [
+    "qmin, qmax",
+    "정수 범위"
+   ]
+  ],
+  "flow": "x/scale → round(STE) → + zp → clamp → − zp → × scale",
+  "ret": "x 와 같은 모양의 FP32 텐서",
+  "hdr": "import torch"
+ },
+ "FakeQuant": {
+  "role": "weight · 활성값용 fake quant 모듈 (실습 2-2) — QConv2d · QLinear 안에 2개씩",
+  "desc": [
+   "per_channel=True (weight): 채널별 |x| 최댓값으로 대칭 scale 을 매 forward 마다 계산",
+   "calib=True: lo · hi 만 갱신하고 x 를 그대로 돌려준다 (보정 모드)",
+   "활성값: 범위 min(lo, 0) ~ max(hi, 0) · 비대칭 0 ~ 2^bits − 1 · s = (hi − lo)/qmax · zp = round(−lo/s)"
+  ],
+  "args": [
+   [
+    "bits",
+    "비트 수 (기본 8)"
+   ],
+   [
+    "per_channel",
+    "True = weight (채널별 대칭) · False = 활성값"
+   ]
+  ],
+  "flow": "per_channel → 대칭 fake_quant / calib → 범위 기록 / 그 외 → 비대칭 fake_quant",
+  "ret": "모듈 (forward 결과는 FP32 텐서)",
+  "hdr": "import torch.nn as nn"
+ },
+ "register_buffer()": {
+  "role": "학습되지 않지만 모델과 함께 저장 · 이동하는 텐서를 등록",
+  "desc": [
+   "FakeQuant 의 lo · hi (보정 범위) — optimizer 가 건드리지 않는다",
+   "state_dict 에 들어가고 model.to(DEV) 로 같이 옮겨진다 (그냥 속성이면 안 옮겨짐)"
+  ],
+  "args": [
+   [
+    "name",
+    "속성 이름 (\"lo\")"
+   ],
+   [
+    "tensor",
+    "초기값 텐서"
+   ]
+  ],
+  "flow": "self.name 으로 접근 · buffers() 에 포함",
+  "ret": "None",
+  "hdr": "import torch.nn as nn"
+ },
+ "torch.clamp()": {
+  "role": "값을 min ~ max 범위로 자르기 — 범위 밖은 끝 값",
+  "desc": [
+   "fake quant 에서 정수 칸 범위(qmin ~ qmax) 밖을 끝 칸으로",
+   "backward: 범위 안 1 · 범위 밖 0 → 잘린 값은 학습 안 됨",
+   "`.clamp(min=1e-8)` 처럼 한쪽만도 가능"
+  ],
+  "args": [
+   [
+    "input",
+    "텐서"
+   ],
+   [
+    "min",
+    "아래 끝"
+   ],
+   [
+    "max",
+    "위 끝"
+   ]
+  ],
+  "flow": "각 원소를 min(max(x, min), max)",
+  "ret": "같은 모양 텐서",
+  "hdr": "import torch"
+ },
+ "torch.minimum()": {
+  "role": "두 텐서의 원소별 작은 값 (torch.maximum 은 큰 값)",
+  "desc": [
+   "보정 중 `self.lo = torch.minimum(self.lo, x.detach().min())` 로 지금까지의 최솟값 갱신"
+  ],
+  "args": [
+   [
+    "input, other",
+    "비교할 두 텐서"
+   ]
+  ],
+  "flow": "원소별 min",
+  "ret": "텐서",
+  "hdr": "import torch"
+ },
+ "torch.autograd.Function": {
+  "role": "forward · backward 를 직접 정의하는 PyTorch 연산의 바탕 클래스",
+  "desc": [
+   "@staticmethod forward(ctx, x) · backward(ctx, g) 두 개를 정의하고 `.apply(x)` 로 부른다",
+   "ctx.save_for_backward 로 forward 값을 backward 에 넘길 수 있다 (STE 는 필요 없음)",
+   "backward 는 입력 개수만큼 기울기를 돌려준다"
+  ],
+  "args": [
+   [
+    "ctx",
+    "forward → backward 로 값을 넘기는 상자"
+   ],
+   [
+    "g",
+    "위에서 온 기울기 ∂L/∂y"
+   ]
+  ],
+  "flow": "y = Cls.apply(x) → 역전파 때 Cls.backward(ctx, ∂L/∂y) 호출",
+  "ret": "클래스 (.apply 로 사용)",
+  "hdr": "import torch"
+ },
+ "RoundSTE.apply()": {
+  "role": "forward 는 round, backward 는 기울기를 그대로 통과시키는 STE (실습 3-1)",
+  "desc": [
+   "forward(ctx, x) → torch.round(x) · backward(ctx, g) → g",
+   "[0.2, 0.7, −1.6] → [0, 1, −2] · 위 기울기 [1, 2, 3] → x.grad [1, 2, 3]",
+   "fake_quant 의 torch.round 를 이것으로 바꾸면 QAT 가 학습된다"
+  ],
+  "args": [
+   [
+    "x",
+    "반올림할 텐서"
+   ]
+  ],
+  "flow": "forward: round · backward: ∂L/∂x = ∂L/∂y",
+  "ret": "반올림된 텐서",
+  "hdr": "import torch"
+ },
+ "toy_train()": {
+  "role": "w 3개를 3비트 fake quant 결과가 target 에 가까워지도록 SGD 로 학습 (예제 3-A, 제공)",
+  "desc": [
+   "w0 [0.31, −0.77, 0.20] · target [0.5, −0.5, 0.5] · lr 0.1 · 50번",
+   "round 버전 → loss 0.1875 그대로 · STE 버전 → loss 0, w [0.41, −0.62, 0.40]"
+  ],
+  "args": [
+   [
+    "fq",
+    "fake quant 함수 (fake_quant_round 또는 STE 버전)"
+   ],
+   [
+    "steps",
+    "반복 수 (50)"
+   ]
+  ],
+  "flow": "loss = Σ(fq(w) − target)² → backward → SGD step 반복",
+  "ret": "(최종 loss, 최종 w)",
+  "hdr": "import torch"
+ },
+ "fold()": {
+  "role": "Conv 와 뒤따르는 BN 을 bias 있는 Conv 하나로 접기 (예제 4-A, 제공)",
+  "desc": [
+   "k = γ/√(running_var + ε) · W' = W · k (채널별) · b' = β − running_mean · k (+ b · k)",
+   "Day 2 3교시 BN folding 의 PyTorch 판 — 접어도 eval 출력은 같다 (차이 4.8e-06)"
+  ],
+  "args": [
+   [
+    "conv",
+    "nn.Conv2d"
+   ],
+   [
+    "bn",
+    "nn.BatchNorm2d (학습된 running 통계)"
+   ]
+  ],
+  "flow": "k 계산 → 새 Conv(bias=True) 에 W·k, b' 복사",
+  "ret": "nn.Conv2d (bias 있음)",
+  "hdr": "import torch.nn as nn"
+ },
+ "fold_all()": {
+  "role": "ResNet-20 의 stem · 모든 블록 conv1/bn1 · conv2/bn2 · shortcut 을 접은 복사본 (제공)",
+  "desc": [
+   "BN 자리는 nn.Identity() — BN 21개 → 0 · 정확도 0.846 그대로",
+   "원본은 그대로 두고 copy.deepcopy 한 CPU · eval 모델을 접는다",
+   "QAT 전에 접어야 fake quant 가 본 weight = 배포 때 양자화되는 weight"
+  ],
+  "args": [
+   [
+    "model",
+    "학습된 ResNet-20"
+   ]
+  ],
+  "flow": "deepcopy → stem · 블록마다 fold → BN 을 Identity 로",
+  "ret": "접힌 ResNet (BN 없음)",
+  "hdr": "import copy"
+ },
+ "QConv2d": {
+  "role": "입력(활성값) FakeQuant + weight FakeQuant 를 붙인 Conv (제공 — QLinear 도 같은 모양)",
+  "desc": [
+   "setup(wbits, abits) 로 self.wq = FakeQuant(wbits, per_channel=True) · self.aq = FakeQuant(abits) 를 붙인다",
+   "forward: F.conv2d(self.aq(x), self.wq(self.weight), self.bias, stride, padding)",
+   "ONNX QDQ 에서 Conv 입력 쪽 · weight 쪽 Q/DQ 위치와 같다"
+  ],
+  "args": [
+   [
+    "in, out, kernel, stride, padding",
+    "nn.Conv2d 와 같은 인자 (bias=True)"
+   ],
+   [
+    "wbits, abits",
+    "setup 의 weight · 활성값 비트"
+   ]
+  ],
+  "flow": "입력 fake quant → weight fake quant → conv",
+  "ret": "nn.Conv2d 를 상속한 모듈",
+  "hdr": "import torch.nn.functional as F"
+ },
+ "quantize_model()": {
+  "role": "fold_all 한 복사본의 모든 Conv2d · Linear 를 QConv2d · QLinear 로 바꾸기 (실습 4-1)",
+  "desc": [
+   "named_children() 를 재귀로 돌며 Conv2d / Linear 면 같은 모양의 Q 층을 만들어 weight · bias 를 .data.clone() 으로 복사",
+   "setattr(parent, name, q) 로 바꿔 끼우고, 둘 다 아니면 자식으로 더 들어간다",
+   "ResNet-20 → QConv2d 21개 · QLinear 1개 · 끝에 .to(DEV)"
+  ],
+  "args": [
+   [
+    "model",
+    "학습된 FP32 모델"
+   ],
+   [
+    "wbits",
+    "weight 비트 (기본 8)"
+   ],
+   [
+    "abits",
+    "활성값 비트 (기본 8)"
+   ]
+  ],
+  "flow": "fold_all → swap(재귀) → .to(DEV)",
+  "ret": "QConv2d · QLinear 가 들어간 모델 (아직 보정 전)",
+  "hdr": "import torch.nn as nn"
+ },
+ "calibrate()": {
+  "role": "활성값 FakeQuant 의 범위(lo · hi)를 보정용 500장으로 정하기 (실습 4-1) — 이 상태가 PTQ",
+  "desc": [
+   "per_channel 이 아닌 FakeQuant 만 calib=True · lo.fill_(1e9) · hi.fill_(−1e9) → forward_loop → calib=False",
+   "W3A8 0.728 · W4A8 0.8345 · W8A8 0.844 (직접 실행)"
+  ],
+  "args": [
+   [
+    "model",
+    "quantize_model 결과"
+   ]
+  ],
+  "flow": "범위 초기화 → 보정 데이터 흘리기 → 고정",
+  "ret": "같은 model (범위가 잡힘)",
+  "hdr": "import torch"
+ },
+ "train_qat()": {
+  "role": "QAT fine-tuning 루프 — 걸린 시간(초)을 돌려준다 (실습 4-2, 6교시 · 8교시에서도 재사용)",
+  "desc": [
+   "SGD (momentum 0.9 · weight decay 5e-4) + CosineAnnealingLR(전체 step 수) · lr 1e-3",
+   "epoch 마다 train() → batches(seed=epoch) → cross_entropy · zero_grad · backward · step · sched.step() → eval() → on_epoch",
+   "W3A8: 0.728 → 0.8215 · 0.8335 · 0.8375 (3 epoch)"
+  ],
+  "args": [
+   [
+    "model",
+    "보정된 QAT 모델 (직접 만든 것 · ModelOpt 모두)"
+   ],
+   [
+    "epochs",
+    "기본 EPOCHS = 3"
+   ],
+   [
+    "lr",
+    "기본 1e-3"
+   ],
+   [
+    "on_epoch",
+    "fn(ep, model) — epoch 끝마다 (곡선 기록)"
+   ]
+  ],
+  "flow": "optimizer · scheduler 만들기 → epoch 반복 → time.time() 차이",
+  "ret": "float (초)",
+  "hdr": "import torch"
+ },
+ "CosineAnnealingLR()": {
+  "role": "learning rate 를 cos 곡선으로 처음 값 → 0 까지 줄이는 스케줄러",
+  "desc": [
+   "T_max = 전체 step 수 (epochs × 배치 수 = 3 × 79 = 237) — step 마다 sched.step()",
+   "끝으로 갈수록 작은 보폭 → 이미 학습된 weight 를 조금만 옮기는 QAT 에 맞다"
+  ],
+  "args": [
+   [
+    "optimizer",
+    "SGD 등"
+   ],
+   [
+    "T_max",
+    "lr 이 0 이 되는 step 수"
+   ]
+  ],
+  "flow": "lr_t = lr₀ · (1 + cos(π t / T_max)) / 2",
+  "ret": "스케줄러 객체",
+  "hdr": "from torch.optim.lr_scheduler import CosineAnnealingLR"
+ },
+ "setattr()": {
+  "role": "객체의 속성을 이름(문자열)으로 바꾸기 — 모듈 바꿔 끼우기",
+  "desc": [
+   "`setattr(parent, name, q)` — named_children() 의 이름 그대로 새 층을 넣는다",
+   "Sequential 안의 \"0\" 같은 이름도 된다"
+  ],
+  "args": [
+   [
+    "obj",
+    "부모 모듈"
+   ],
+   [
+    "name",
+    "속성 이름"
+   ],
+   [
+    "value",
+    "새 값 (새 층)"
+   ]
+  ],
+  "flow": "obj.name = value 와 같음",
+  "ret": "None",
+  "hdr": "파이썬 내장"
+ },
+ "mtq.quantize()": {
+  "role": "PyTorch 모델에 양자화기(TensorQuantizer)를 넣고 forward_loop 로 보정까지 (ModelOpt PTQ)",
+  "desc": [
+   "Conv2d · Linear → QuantConv2d · QuantLinear (input · weight · output 양자화기) · BN · pool 에도 양자화기 — ResNet-20 110개 삽입",
+   "INT8_DEFAULT_CFG 면 켜진 것 45개 (Conv · Linear 입력 · weight + pool 입력) · INT8 PTQ 0.843",
+   "모델을 제자리에서 바꾸므로 copy.deepcopy(rn20).to(DEV) 를 넘긴다 · BN 은 접지 않는다",
+   "이 모델을 그대로 학습하면 QAT (양자화기 안에 STE)"
+  ],
+  "args": [
+   [
+    "model",
+    "FP32 PyTorch 모델"
+   ],
+   [
+    "config",
+    "양자화 설정 (INT8_DEFAULT_CFG · make_cfg(3))"
+   ],
+   [
+    "forward_loop",
+    "fn(model) — 보정 데이터를 흘리는 함수"
+   ]
+  ],
+  "flow": "양자화기 삽입 → forward_loop 로 amax(max) 보정 → 켠 상태로 반환",
+  "ret": "양자화된 모델 (fake quant)",
+  "hdr": "import modelopt.torch.quantization as mtq"
+ },
+ "mtq.INT8_DEFAULT_CFG": {
+  "role": "ModelOpt 의 기본 INT8 설정 — weight 채널별 8비트 · 입력 텐서별 8비트 · 대칭",
+  "desc": [
+   "0.48 형식: quant_cfg 가 목록 — {\"quantizer_name\": \"*\", \"enable\": False} 로 먼저 다 끄고 *weight_quantizer {num_bits 8, axis 0} · *input_quantizer {num_bits 8, axis None} 만 켬",
+   "옛 버전은 이름 → 설정 사전",
+   "바꾸려면 꼭 copy.deepcopy — 원본이 바뀌면 이후 양자화가 모두 바뀐다"
+  ],
+  "args": [
+   [
+    "quant_cfg",
+    "양자화기 이름 패턴별 설정"
+   ],
+   [
+    "algorithm",
+    "보정 방법 (max)"
+   ]
+  ],
+  "flow": "mtq.quantize 의 두 번째 인자로",
+  "ret": "dict",
+  "hdr": "import modelopt.torch.quantization as mtq"
+ },
+ "forward_loop()": {
+  "role": "보정용 500장을 100장씩 모델에 흘리기 (제공 — ModelOpt 보정 · 직접 만든 calibrate 공용)",
+  "desc": [
+   "torch.no_grad() 안에서 실행 · 모델이 있는 장치로 옮겨서",
+   "ModelOpt 는 이 사이에 각 양자화기의 amax 를 잰다"
+  ],
+  "args": [
+   [
+    "model",
+    "보정할 모델"
+   ]
+  ],
+  "flow": "for i in range(0, 500, 100): model(X_cal[i:i+100])",
+  "ret": "None",
+  "hdr": "import torch"
+ },
+ "make_cfg()": {
+  "role": "INT8_DEFAULT_CFG 를 깊은 복사해 weight 양자화기의 비트만 바꾼 config (실습 5-2)",
+  "desc": [
+   "quant_cfg 가 목록이면 quantizer_name == \"*weight_quantizer\" 항목의 cfg[\"num_bits\"] 를, 사전이면 qc[\"*weight_quantizer\"][\"num_bits\"] 를 바꾼다",
+   "make_cfg(3) → W3A8 · weight_quantizer 표시 \"3 bit fake axis=0\" · PTQ 0.728"
+  ],
+  "args": [
+   [
+    "wbits",
+    "weight 비트 (기본 8)"
+   ]
+  ],
+  "flow": "deepcopy → num_bits 교체",
+  "ret": "dict (새 config)",
+  "hdr": "import copy"
+ },
+ "Module.named_modules()": {
+  "role": "모델의 모든 하위 모듈(자기 자신 포함)을 (이름, 모듈) 로 하나씩",
+  "desc": [
+   "이름 끝이 \"_quantizer\" 인 것 = ModelOpt TensorQuantizer (\"layer1.0.conv1.weight_quantizer\")",
+   "named_children() 은 바로 아래 자식만 — 재귀 없이 전부 보려면 named_modules()"
+  ],
+  "args": [
+   [
+    "(없음)",
+    ""
+   ]
+  ],
+  "flow": "깊이 우선으로 모든 모듈",
+  "ret": "(이름, 모듈) 이터레이터",
+  "hdr": "import torch.nn as nn"
+ },
+ "TensorQuantizer.is_enabled": {
+  "role": "ModelOpt 양자화기가 켜져 있는지 (True / False)",
+  "desc": [
+   "INT8_DEFAULT_CFG: input · weight 양자화기만 켜짐 → ResNet-20 45개",
+   "꺼진 양자화기는 값을 그대로 통과시킨다 (output · BN)"
+  ],
+  "args": [
+   [
+    "(속성)",
+    ""
+   ]
+  ],
+  "flow": "quantizer.is_enabled",
+  "ret": "bool",
+  "hdr": "import modelopt.torch.quantization as mtq"
+ },
+ "mto.save()": {
+  "role": "ModelOpt 로 변환한 모델을 변환 기록(양자화 구조)과 weight 까지 함께 저장",
+  "desc": [
+   "torch.save(state_dict) 만으로는 \"어디에 어떤 양자화기\" 를 복원할 수 없다",
+   "rn20_mo_qat8.pth = 1,174 KB"
+  ],
+  "args": [
+   [
+    "model",
+    "ModelOpt 양자화 모델"
+   ],
+   [
+    "path",
+    "저장 파일 (.pth)"
+   ]
+  ],
+  "flow": "modelopt_state + state_dict → 파일",
+  "ret": "None",
+  "hdr": "import modelopt.torch.opt as mto"
+ },
+ "mto.restore()": {
+  "role": "빈 FP32 모델에 저장된 ModelOpt 변환(양자화 구조)을 다시 씌우고 weight 복원",
+  "desc": [
+   "mto.restore(load_rn20().to(DEV), \"rn20_mo_qat8.pth\") → 정확도 0.843 = 저장 전",
+   "같은 FP32 구조 · 같은 ModelOpt 버전이 필요"
+  ],
+  "args": [
+   [
+    "model",
+    "빈 FP32 모델 (양자화 전)"
+   ],
+   [
+    "path",
+    "mto.save 로 저장한 파일"
+   ]
+  ],
+  "flow": "변환 다시 적용 → state_dict 로드",
+  "ret": "복원된 양자화 모델",
+  "hdr": "import modelopt.torch.opt as mto"
+ },
+ "load_rn20()": {
+  "role": "학습된 ResNet-20 FP32 를 새로 불러오기 (eval 모드, 제공)",
+  "desc": [
+   "data/resnet20_cifar10.pt 의 state_dict → ResNet() · FP32 정확도 0.846",
+   "mto.restore 의 빈 모델로도 쓴다"
+  ],
+  "args": [
+   [
+    "(없음)",
+    ""
+   ]
+  ],
+  "flow": "ResNet() → load_state_dict(torch.load(...)) → eval()",
+  "ret": "nn.Module",
+  "hdr": "import torch"
+ },
+ "on_epoch": {
+  "role": "train_qat 가 epoch 끝마다 부르는 함수 인자 — 정확도 곡선 기록",
+  "desc": [
+   "lambda ep, m: hist.append({\"epoch\": ep + 1, \"acc\": acc_torch(m)}) — ep 는 0 부터라 + 1",
+   "hist 를 [{\"epoch\": 0, \"acc\": PTQ 정확도}] 로 시작하면 곡선의 시작점이 PTQ"
+  ],
+  "args": [
+   [
+    "ep",
+    "epoch 번호 (0 부터)"
+   ],
+   [
+    "model",
+    "그 시점의 모델 (eval 모드)"
+   ]
+  ],
+  "flow": "train_qat 안에서 model.eval() 뒤 호출",
+  "ret": "None",
+  "hdr": "(함수 인자)"
+ },
+ "Counter()": {
+  "role": "목록의 항목별 개수를 세는 사전 (collections.Counter)",
+  "desc": [
+   "Counter(n.op_type for n in onnx.load(p).graph.node) → QuantizeLinear 45 · DequantizeLinear 45 · Conv 21 · BatchNormalization 21",
+   "없는 키는 0 — cnt[\"QuantizeLinear\"]"
+  ],
+  "args": [
+   [
+    "iterable",
+    "세어 볼 항목들"
+   ]
+  ],
+  "flow": "항목 → 개수",
+  "ret": "Counter (dict 처럼)",
+  "hdr": "from collections import Counter"
+ },
+ "deploy_lat()": {
+  "role": "ONNX 하나의 배치 1 평균 지연 ms — GPU 면 TensorRT 엔진, 아니면 ORT CPU (과제 2, 제공)",
+  "desc": [
+   "QDQ 모델(trt_check qdq > 0)은 fp16 + int8 엔진, FP32 는 플래그 없이 build_once",
+   "bench_fn(n=300, warm=30) 의 mean",
+   "이 실행(ORT CPU): FP32 0.71 · ORT PTQ 1.18 · ModelOpt PTQ 1.68 · ModelOpt QAT 1.58 ms"
+  ],
+  "args": [
+   [
+    "onnx_path",
+    "배치 1 고정 ONNX"
+   ]
+  ],
+  "flow": "엔진/세션 만들기 → X_ev[:1] 로 bench_fn",
+  "ret": "float (ms)",
+  "hdr": "import onnxruntime as ort"
+ },
+ "duel_df": {
+  "role": "PTQ vs QAT 5가지 방법 대결 표 (과제 2)",
+  "desc": [
+   "행: FP32 · ORT PTQ · ModelOpt PTQ · 수작업 QAT · ModelOpt QAT",
+   "열: method · acc_int8 · acc_w3a8 (없으면 NaN) · train_min ((INT8 + W3A8 학습 초) / 60) · latency_ms (수작업 QAT 는 NaN)"
+  ],
+  "args": [
+   [
+    "(DataFrame)",
+    ""
+   ]
+  ],
+  "flow": "행 사전 5개 → pd.DataFrame",
+  "ret": "DataFrame (5행)",
+  "hdr": "import pandas as pd"
+ },
+ "DataFrame.set_index()": {
+  "role": "열 하나를 행 이름(index)으로 — 이름으로 값 꺼내기",
+  "desc": [
+   "d_ = duel_df.set_index(\"method\") → d_.acc_int8[\"수작업 QAT\"]",
+   "base_df.set_index(\"model\").acc[\"FP32\"]"
+  ],
+  "args": [
+   [
+    "keys",
+    "index 로 쓸 열 이름"
+   ]
+  ],
+  "flow": "열 → index",
+  "ret": "새 DataFrame",
+  "hdr": "import pandas as pd"
+ },
+ "plt.axhline()": {
+  "role": "그래프 전체 너비의 가로선 — 기준값 표시",
+  "desc": [
+   "plt.axhline(acc_mo_ptq3, ls=\"--\") · plt.axhline(0.846, ls=\"--\", c=\"gray\") — PTQ · FP32 기준선"
+  ],
+  "args": [
+   [
+    "y",
+    "선의 높이"
+   ],
+   [
+    "ls",
+    "선 모양 (\"--\" 점선)"
+   ],
+   [
+    "c",
+    "색"
+   ]
+  ],
+  "flow": "현재 축에 가로선",
+  "ret": "Line2D",
+  "hdr": "import matplotlib.pyplot as plt"
+ },
+ "plt.savefig()": {
+  "role": "현재 그림을 파일로 저장",
+  "desc": [
+   "plt.savefig(\"qat_curve.png\", dpi=120) — plt.show() 전에 부른다 (show 뒤엔 빈 그림)"
+  ],
+  "args": [
+   [
+    "fname",
+    "파일 이름 (.png)"
+   ],
+   [
+    "dpi",
+    "해상도"
+   ]
+  ],
+  "flow": "그림 → 파일",
+  "ret": "None",
+  "hdr": "import matplotlib.pyplot as plt"
+ }
+}
