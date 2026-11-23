@@ -6,6 +6,15 @@
 
 **개요**: 어제 ResNet-20 은 CIFAR-10 에서 85% 를 넘겼다. 그런데 라즈베리파이 · Jetson 같은 작은 장치에서는 정확도만큼 **얼마나 빠른가(지연시간)**, **얼마나 무거운가(파라미터 · 메모리 · MAC)** 가 중요하다. ① 모델 선택 기준은 정확도 · 지연시간 · 파라미터 · MAC 네 가지. ② 지연시간은 장치를 흉내 내려고 **CPU · 스레드 1 · 배치 1장 · warm-up 버리고 평균**으로 잰다. ③ 경량 모델은 연산량을 수십 분의 1로 줄이면서 정확도는 몇 %p 만 내준다.
 
+**한눈에 보기**
+온디바이스 모델 선택 — 정확도만으로는 못 고른다
+> 장치(라즈베리파이 · Jetson)에서 직접 추론할 때는 정확도 · 지연시간 · 파라미터(메모리) · MAC 을 함께 본다 — 30 FPS 실시간이면 한 장을 33 ms 안에 끝내야 한다
+- **ResNet-50 vs MobileNetV3-Small — MAC 약 72배 차이**: 4,089,184,256 vs 56,510,400, ImageNet top-1 76.1% vs 67.7%
+- **CPU 1 스레드 실측**: ResNet-20 2.87 ms · MobileNetV3-S 8.8 ms · ResNet-18 70 ms · ResNet-50 134 ms
+- **지연시간 재는 법 — 온디바이스 흉내**: CPU · `torch.set_num_threads(1)` · 배치 1 · warm-up 3회 버리고 30회 평균
+- **원본을 건드리지 않고 복사해서 잰다**: `copy.deepcopy(model).cpu().eval()` · 구조만은 `weights=None`
+- **⚠ ResNet-50 은 장치에서 33 ms 안에 못 끝난다**: 재고 나서 스레드 수를 원래 값으로
+
 **핵심 용어**
 - **온디바이스(on-device)**: 서버가 아니라 장치(라즈베리파이 · Jetson)에서 직접 추론하는 것
 - **지연시간(latency)**: 이미지 한 장을 넣고 결과가 나올 때까지 걸리는 시간 (ms)
@@ -113,6 +122,15 @@ ResNet-50 과 MobileNetV3-Small 의 MAC 은 약 72배 차이인데 ImageNet 정�
 **키워드**: `파라미터 × 4 bytes`, `활성화 메모리`, `model_cost`, `register_forward_hook`, `ResNet-50 102 MB`, `1×1 Conv`, `bottleneck`, `1,179,648 → 69,632`, `16.9배`
 
 **개요**: 장치에서 모델이 차지하는 메모리는 **파라미터 × 4 B(float32) + 활성화**, 계산량은 **MAC**. ① 어제의 `count_macs` 를 넓혀 활성화 메모리(각 층 출력 크기)까지 한 번에 재는 `model_cost` 를 만든다. ② ResNet-50 은 ResNet-18 보다 층이 3배 가까이 많은데 MAC 은 2.3배 — **bottleneck 블록**(1×1 로 줄이고 → 3×3 → 1×1 로 늘리기) 덕분. ③ 256 채널에서 basic 블록 대비 가중치가 **1/17**.
+
+**한눈에 보기**
+연산량 계산 — 파라미터 · MAC · 활성화 메모리
+> 파일 크기 = 파라미터 × 4 B, 실행 메모리 = 그 위에 활성화(층 출력) 메모리, 계산량 = MAC — 셋은 서로 다른 비용이다
+- **ResNet-50 가중치만 ≈ 102 MB**: 25,557,032 × 4 B · ResNet-20 은 1.09 MB
+- **활성화 = 층 출력 크기의 합**: forward hook 으로 Conv · Linear 출력의 `numel()` 을 더한다 — 해상도가 클수록 커진다
+- **bottleneck — 1×1 로 줄였다 늘리기**: 256 채널에서 1×1 로 64 → 3×3 → 1×1 로 256 (ResNet-50 이상)
+- **basic 1,179,648 vs bottleneck 69,632 (16.9배 ↓)**: 1×1 Conv 는 위치마다 채널끼리만 섞는 "채널 압축기"
+- **⚠ 파라미터가 적어도 큰 해상도를 오래 유지하면 활성화가 크다**: 다 쓴 hook 은 `h.remove()`
 
 **핵심 용어**
 - **활성화(activation) 메모리**: 각 층 출력의 크기 합 — 실행 중 쓰는 메모리, 해상도가 클수록 큼
@@ -317,6 +335,16 @@ K = 3 이면 약 1/9 ~ 1/8, Cout 이 클수록 1/9 에 가깝다. 64 → 128, 32
 
 **개요**: MobileNet 은 3교시의 DS Conv 를 뼈대로 세 번 진화했다. ① **V1** — 일반 Conv 를 DS Conv 로 바꿔 쌓기. ② **V2** — **inverted residual**: 1×1 로 채널을 ×6 늘리고 → depthwise → 1×1 로 줄이기, 마지막 1×1 뒤엔 ReLU 없음(linear bottleneck), 입출력 크기가 같으면 지름길. ③ **V3** — 자동 구조 탐색(NAS) + **SE**(채널 중요도 재조정) + **h-swish** 활성화.
 
+**한눈에 보기**
+MobileNet V1 · V2 · V3 — 장치를 위한 CNN
+> V1 은 DS Conv 를 쌓고, V2 는 Inverted residual(1×1 늘리기 → depthwise → 1×1 줄이기)을, V3 는 구조 자동 탐색(NAS) + SE + h-swish 를 더했다
+- **Inverted residual — 넓은 곳에서 depthwise**: 1×1 로 ×6 → dw 3×3 → 1×1 로 줄이기, 블록 사이 텐서가 얇아 메모리가 적다 (bottleneck 과 반대)
+- **Linear bottleneck — 마지막 1×1 뒤에 활성화 없음**: 채널이 적은 곳에서 ReLU 가 음수 정보를 잘라 손실이 커서
+- **24 → 144 → 24 블록 = 8,832개**: 3,456 + 1,296 + 3,456 + BN 624 — ReLU6 = min(max(0, x), 6)
+- **h-swish = x · ReLU6(x + 3) / 6**: sigmoid 없이 swish 를 근사해 장치에서 싸다 — `nn.Hardswish()` 와 같은 값
+- **SE — 채널마다 중요도를 다시 정한다**: 채널 평균 → FC → ReLU → FC → 0 ~ 1 → 채널마다 곱
+- **MobileNetV3-Small — 파라미터 2,542,856 · MAC 56,510,400**: InvertedResidual 11개 (SE 9개), 마지막 특징맵 (576, 7, 7)
+
 **핵심 용어**
 - **Inverted residual**: ResNet bottleneck(256→64→256)과 반대로 '늘렸다 줄이기'(24→144→24) — depthwise 가 싸서 넓은 곳에서 해도 부담이 적다
 - **Linear bottleneck**: 블록 끝 1×1(줄이기) 뒤에 활성화를 안 넣는 것 — 채널이 적은 곳에서 ReLU 가 음수 정보를 잘라 손실이 커서
@@ -443,6 +471,15 @@ ResNet bottleneck 은 256 → 64 → 256 (줄였다 늘림), V2 는 24 → 144 �
 
 **개요**: ImageNet(1,000 클래스 · 128만 장)으로 학습한 모델의 앞쪽 층은 에지 · 질감 · 모양 같은 **일반 특징**을 이미 안다. 그 특징 추출기(`features`)는 가져오고, **마지막 분류기만 우리 클래스 수(10)로 바꿔** 학습하는 것이 전이학습. ① **feature extraction** — features 를 동결하고 분류기만 학습(빠르고 과적합 적음). ② **fine-tuning** — 전체를 작은 학습률로 학습(정확도 높음). ③ 사전학습 모델은 학습 때와 **같은 전처리**(ImageNet 평균 · 표준편차)를 기대하고, 입력은 32 → **96** 으로 키워 넣는다.
 
+**한눈에 보기**
+전이학습 — 사전학습 특징 추출기를 빌려 쓴다
+> ImageNet 으로 학습한 특징 추출기(features)는 그대로 가져오고, 분류기 마지막 층만 우리 클래스 수로 바꿔 학습한다
+- **feature extraction — features 동결, 분류기만 학습**: `requires_grad = False` — 빠르고 과적합이 적다
+- **fine-tuning — 전체를 작은 학습률로**: 같은 1 epoch 에 0.8273 (feature extraction 0.6607 · 처음부터 0.5470)
+- **분류기 교체 — Linear(1024 → 1000) 을 (1024 → 10) 으로**: 전체 1,528,106개, 그 중 classifier 601,098 (39%)
+- **전처리는 사전학습 때와 같게**: `Weights.transforms()` 의 ImageNet mean · std, 32 × 32 는 `Resize(96)` 으로 키운다
+- **⚠ 동결 후 옵티마이저엔 `requires_grad` 인 파라미터만**: 동결한 층의 BN 도 `train()` 에선 running 통계가 바뀐다 · CIFAR 정규화 상수 금지
+
 **핵심 용어**
 - **전이학습(transfer learning)**: 사전학습 특징 추출기 + 새 분류기
 - **feature extraction**: `features` 동결(`requires_grad = False`), 분류기만 학습
@@ -552,6 +589,16 @@ MobileNet 을 처음부터 학습하려면 많은 데이터와 시간이 필요�
 **키워드**: `클래스당 100장`, `Subset`, `np.bincount`, `처음부터 0.3560`, `사전학습 0.6561`, `BN momentum 0.01`, `set_bn_momentum(m, 0.1)`, `ImageFolder`, `클래스별 정확도`
 
 **개요**: 현장에서는 클래스당 수천 장을 모으기 어렵다. 전이학습의 진짜 힘은 **데이터가 적을 때** 나온다. ① CIFAR-10 에서 클래스당 **100장(총 1,000장)** 만 써서 처음부터 vs 사전학습을 비교 — 0.3560 vs 0.6561. ② torchvision MobileNetV3 의 BN `momentum=0.01` 때문에 적은 step 에서 test 가 **0.10(찍기)** 으로 나올 수 있다 → momentum 을 0.1 로 맞춘다. ③ 내 데이터는 **ImageFolder** 폴더 구조로 넣으면 나머지 코드는 그대로.
+
+**한눈에 보기**
+적은 데이터와 전이학습 — 1,000장으로도 된다
+> 클래스당 100장(총 1,000장, 1/50)에서 처음부터 학습하면 0.3560, 사전학습 모델이면 0.6561 — 데이터가 적을수록 전이학습의 이득이 크다
+- **클래스마다 같은 개수로 고른다**: `np.where(targets == c)[0][:100]` → `Subset` · `np.bincount` 로 모두 100 확인
+- **가장 크게 오른 클래스 — frog +0.59 · bird +0.43**: ImageNet 에 비슷한 대상이 많을수록
+- **BN momentum 함정 — 0.01 이면 running 통계가 안 바뀐다**: 160 step 후에도 0.99¹⁶⁰ ≈ 0.20 이 초기값 → train 은 오르는데 test 0.10
+- **해결 — `set_bn_momentum(m, 0.1)`**: 0.9¹⁶⁰ ≈ 0
+- **내 데이터는 ImageFolder — 폴더 이름 = 클래스**: train/helmet · train/no_helmet … 나머지 코드는 그대로
+- **⚠ 전체 평균만 보면 약한 클래스가 숨는다**: 클래스별 정확도도 · test 만 찍기 수준이면 BN · eval() 부터 의심
 
 **핵심 용어**
 - **Subset**: 데이터셋에서 지정한 인덱스만 골라 쓰는 래퍼
@@ -669,6 +716,15 @@ torchvision MobileNetV3 의 BN 은 momentum 0.01 — running 평균 · 분산이
 **키워드**: `Grad-CAM`, `마지막 합성곱 특징맵 A`, `기울기의 공간 평균 α`, `ReLU(Σ αA)`, `0~1 정규화`, `register_forward_hook`, `ResNet-20 8×8`, `MobileNetV3 3×3`, `오답 CAM 비교`
 
 **개요**: 정확도가 높아도 모델이 엉뚱한 곳(배경 · 워터마크)을 보고 맞힐 수 있다. 현장 안전 모델이 안전모가 아니라 '공사장 배경' 을 본다면 위험하다. **Grad-CAM** 은 마지막 합성곱 특징맵에서 판단 근거가 된 위치를 히트맵으로 보여 준다. ① 마지막 합성곱 출력 A(채널 K개)와 클래스 점수 y^c 의 A 에 대한 기울기를 구한다. ② 채널 중요도 α_k = 기울기의 공간 평균. ③ CAM = ReLU(Σ α_k A^k) → 0~1 정규화 → 입력 크기로 키워 겹침. ④ CAM 해상도는 마지막 특징맵 크기(ResNet-20 **8×8**, MobileNetV3 **3×3**).
+
+**한눈에 보기**
+Grad-CAM — 모델은 어디를 보고 판단했나
+> 클래스 점수를 마지막 합성곱 특징맵으로 미분해 채널 중요도를 구하고, 특징맵을 그 중요도로 섞어 히트맵으로 — CAM = ReLU(Σ α_k A^k)
+- **채널 중요도 α_k = 기울기의 공간 평균**: forward hook 으로 A 저장 + `register_hook` 으로 역전파 때 A 의 기울기를 가로챈다
+- **ReLU — 점수를 올리는 위치만**: 0 ~ 1 정규화 후 `F.interpolate` (bilinear)로 입력 크기로 키워 겹친다
+- **CAM 해상도 = 마지막 특징맵 크기**: ResNet-20 8 × 8 · MobileNetV3-S (96 입력) 3 × 3 — 경량 모델일수록 거칠다
+- **오답은 예측 · 정답 클래스 CAM 을 나란히**: 배경 · 가장자리에 몰리면 맥락에 속은 것 → 다양한 배경의 데이터를 더한다
+- **⚠ 쓰고 나면 hook 을 `remove()`**: 정밀한 위치가 필요하면 분류가 아니라 객체 탐지 (Day 4)
 
 **핵심 용어**
 - **Grad-CAM**: 분류 모델이 이미지의 어느 위치를 보고 판단했는지 히트맵으로 보여 주는 방법
@@ -794,6 +850,15 @@ CAM 은 마지막 특징맵 위의 지도라 그보다 정밀할 수 없다.
 **키워드**: `MobileNetV3-S fine-tuning 5 epoch`, `AdamW + OneCycleLR`, `test 0.8842`, `ResNet-20 0.8587`, `MAC 11,057,600 vs 40,813,184`, `1/3.7`, `지연시간 6.18 ms vs 2.87 ms`, `비교표`, `오답 8장 Grad-CAM`
 
 **개요**: 사전학습 MobileNetV3-Small 을 CIFAR-10 전체로 fine-tuning 해서 Day 2 의 ResNet-20(처음부터 20 epoch, test ≈ 0.86)과 비교한다. 정확도만이 아니라 **연산량 · 지연시간**까지 보고 장치에 올릴 모델을 고르는 게 목표. 결과(실행 예): MobileNetV3-S **0.8842** > ResNet-20 **0.8587**, MAC 은 약 **1/3.7**, 그런데 CPU 지연시간은 오히려 MobileNet 이 **더 길다**(6.18 vs 2.87 ms).
+
+**한눈에 보기**
+MobileNetV3 전이학습 vs ResNet-20 — 같은 기준의 비교표
+> 사전학습 MobileNetV3-S 를 CIFAR-10 전체로 5 epoch fine-tuning 하면 test 0.8842 — ResNet-20 을 처음부터 20 epoch 학습한 0.8587 보다 높다
+- **설정 — AdamW + OneCycleLR**: lr 1e-3 · wd 1e-4, steps_per_epoch = 391 · 증강 + Resize 96 + ImageNet 정규화
+- **파라미터는 5.6배인데 MAC 은 1/3.7**: MobileNetV3-S 1,528,106 · 11,057,600 vs ResNet-20 272,474 · 40,813,184
+- **그런데 CPU 지연은 MobileNet 이 더 길다**: 6.18 ms vs 2.87 ms — 입력 96 × 96 (9배) · depthwise · SE · 층 수의 메모리 이동
+- **다음 — ONNX → TensorRT · int8 · 가지치기**: 위치까지 필요하면 객체 탐지 (Day 4)
+- **⚠ 모델 선택은 정확도 · 파라미터 · MAC · 실제 지연시간을 함께**: 과제 4 의 오답 8장 Grad-CAM 은 (8, 3, 3)
 
 **핵심 용어**
 - **AdamW**: Adam + weight decay 를 분리해서 적용한 옵티마이저

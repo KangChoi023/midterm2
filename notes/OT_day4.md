@@ -6,6 +6,14 @@
 
 **개요**: ONNX 는 설계도, ONNX Runtime(ORT)은 설계도를 읽어 바로 돌리는 기계, **TensorRT 엔진은 "이 GPU 전용 완성품"** 이다. TensorRT 는 빌드할 때 이 GPU 에서 커널 후보를 직접 재 보고 가장 빠른 것을 골라 `.engine` 파일로 저장한다. 그래서 엔진은 만든 GPU 종류 · TensorRT 버전에서만 동작한다. 오늘은 배치 1 로 고정한 `mnv3s_b1.onnx` · `mnist_cnn_b1.onnx` 를 쓴다.
 
+**한눈에 보기**
+TensorRT — GPU 에서 재 보고 고른 엔진
+> 같은 ONNX 를 ORT 는 세션 만들 때 정해진 규칙으로 가볍게 최적화하고, TensorRT 는 빌드 때 이 GPU 에서 커널을 직접 재 보고 골라 .engine 파일로 저장한다
+- **최적화 시점이 다르다**: ORT 는 세션마다 1초 이내 · TensorRT 는 빌드 때 한 번 수십 초 ~ 분
+- **TensorRT 는 NVIDIA GPU 전용**: ORT 는 CPU · GPU · 여러 장치
+- **오늘은 배치 1 고정 ONNX 로**: `dynamic_axes` 없이 export → 입력 `[1, 3, 224, 224]`, 출력 (1, 1000)
+- **⚠ 엔진은 다른 GPU · 다른 TensorRT 버전에서 못 읽는다**: 배포할 것은 `.onnx`, 도착한 장치에서 다시 빌드 · 배치가 열린 ONNX 는 optimization profile 오류
+
 **핵심 용어**
 - **TensorRT**: NVIDIA GPU(Jetson 포함) 전용 추론 최적화 · 실행 도구
 - **엔진(engine)**: TensorRT 가 빌드해 저장한 실행 파일 (`.engine`) — GPU 세대 · 버전에 묶임
@@ -91,6 +99,14 @@ Day 3 에서 ONNX Runtime 의 손잡이로 CPU 속도를 끌어올렸다. 오늘
 
 **개요**: Polygraphy 는 NVIDIA 가 만든 TensorRT 도우미 도구다 (Jetson · 서버의 `trtexec` 는 pip 판 TensorRT 에 없어 Colab 에서는 Polygraphy 로 같은 일을 한다). `polygraphy convert 모델.onnx -o 엔진.engine` 한 줄이 파싱 → 최적화 → 커널 고르기 → 저장을 해 준다. 노트북에서는 환경 셀의 `sh("명령", log="파일")` 로 실행한다.
 
+**한눈에 보기**
+polygraphy convert — 명령 한 줄로 엔진 빌드
+> 빌드 = ONNX 파싱 → 최적화 → 레이어마다 후보 커널을 이 GPU 에서 돌려 보고 가장 빠른 것 선택 → 파일 저장 — 실제로 재 보기 때문에 오래 걸리는 한 번의 작업
+- **성공 판정은 종료 코드 0**: 로그의 `[W]` 는 경고, `[E]` 가 오류
+- **`--fp16` 하나로 FP16 엔진**: 같은 명령에 옵션만 추가
+- **빌드는 수십 초 ~ 분**: 커널을 실제로 재 보기 때문
+- **⚠ 빌드 셀을 여러 번 누르지 말 것**: 빌드가 겹쳐 더 느려지고 GPU 메모리가 모자랄 수 있다
+
 **핵심 용어**
 - **Polygraphy**: TensorRT 빌드 · 비교 · 점검을 명령 한 줄로 해 주는 도구
 - **종료 코드(return code)**: 명령 성공 여부 — 0 이 성공
@@ -171,6 +187,15 @@ print("경고", len(warn), "오류", len(err))
 
 **개요**: 엔진이 빨라도 답이 같아야 쓴다. `polygraphy run 모델.onnx --onnxrt --trt` 는 같은 무작위 입력을 ORT 와 TensorRT 에 넣고 출력을 비교해 PASSED / FAILED 를 알려 준다. 허용 오차는 `--atol` · `--rtol` 로 정한다.
 
+**한눈에 보기**
+polygraphy run — ORT 와 TensorRT 결과 비교
+> `polygraphy run --onnxrt --trt` 로 같은 입력을 두 실행기에 넣고, |a − b| ≤ atol + rtol · |b| 로 같은지 판정한다
+- **atol 은 0 근처용 고정 여유, rtol 은 값 크기에 비례**: 둘을 더한 범위 안이면 같다
+- **FP32 엔진은 엄격하게 1e-3**: 사실상 같은 답이어야 한다
+- **FP16 엔진은 느슨하게 5e-2 + 실제 정확도로**: 엄격 기준에서는 거의 FAILED
+- **`--trt` 는 안에서 엔진을 새로 빌드**: 그래서 또 수십 초
+- **⚠ 무작위 입력 한 번의 PASSED 로 "완벽" 결론 금지**: 실제 데이터로 확인 (6교시) · `--onnxrt` 를 빠뜨리면 비교 대상이 없다
+
 **핵심 용어**
 - **atol / rtol**: 절대 · 상대 허용 오차 — 두 출력이 "같다" 고 보는 기준
 
@@ -250,6 +275,14 @@ FP16 은 느슨한 기준 + **실제 데이터의 정확도**로 판단한다 (6
 **키워드**: `Logger → Builder → Network → OnnxParser → Config → build_serialized_network`, `explicit batch`, `WORKSPACE`, `DETAILED`, `build_engine()`
 
 **개요**: `polygraphy convert` 가 안에서 하던 일을 코드 **여섯 단계**로 직접 한다. ① Logger ② Builder ③ Network(빈 설계판) ④ OnnxParser 로 채움 ⑤ Config(작업 메모리 · FP16 등) ⑥ `build_serialized_network` → 파일 저장. 마지막에 함수 `build_engine(onnx, engine, fp16=False)` 로 묶어 이후 교시에서 그대로 쓴다.
+
+**한눈에 보기**
+build_engine — Python 으로 엔진 빌드 6단계
+> Logger → Builder → Network → OnnxParser → Config → build_serialized_network — convert 명령과 같은 일을 함수 하나로
+- **Network 는 `create_network(0)`**: 배치를 shape 에 그대로 적는 explicit batch
+- **파싱 결과를 반드시 확인**: 실패하면 `parser.get_error(i)` 로 이유 — 확인 안 하면 빈 설계판이라 blob 이 None
+- **Config — WORKSPACE 1 GB · DETAILED · FP16 플래그**: `profiling_verbosity = DETAILED` 는 7교시 인스펙터용
+- **⚠ Builder · Network · Config 는 빌드마다 새로**: 전역으로 재사용하면 이전 설계가 섞인다
 
 **핵심 용어**
 - **Builder / Network**: 엔진을 만드는 공장 / 파싱 결과를 담는 빈 설계판
@@ -349,6 +382,15 @@ open("mnv3s_fp32.engine", "wb").write(blob)
 **키워드**: `Runtime → deserialize_cuda_engine`, `ExecutionContext`, `set_tensor_address`, `execute_async_v3`, `synchronize`, `GPU 주소만 받는다`, `trt_runner()`
 
 **개요**: ORT 는 NumPy 를 그대로 받았지만 **TensorRT 는 GPU 메모리 주소만** 받는다. GPU 메모리는 PyTorch CUDA 텐서로 준비하고 `data_ptr()` 주소를 알려 준다. 순서: ① Runtime 으로 엔진 읽기 ② Context ③ 입출력 이름 · shape ④ CUDA 버퍼 + CPU→GPU 복사 ⑤ 주소 알려 주기 · 실행 · 기다리기 ⑥ GPU→CPU. 이를 `trt_runner(engine_path)` 로 묶는다 — 버퍼는 한 번만 준비하고 `run(x)` 만 여러 번.
+
+**한눈에 보기**
+trt_runner — GPU 주소를 알려 주고 실행
+> 엔진 읽기 → Context → GPU 버퍼 → `set_tensor_address` → `execute_async_v3` → `synchronize` → 결과 가져오기 — ORT 는 NumPy 를 받지만 TensorRT 는 GPU 주소를 받는다
+- **입력은 GPU 텐서의 `data_ptr()`**: NumPy 배열을 그대로 주면 안 됨 · `np.random.rand` 는 float64 라 `.astype(np.float32)`
+- **버퍼는 한 번 만들고 `copy_` 로 덮어쓴다**: 매번 새로 만들면 느리다
+- **준비는 한 번, 실행은 여러 번**: `trt_runner(path)` 가 준비하고 안쪽 `run(x)` 가 복사 → 실행 → 대기 → NumPy (Day 5 TRTInfer)
+- **엔진 · Context 를 붙잡아 둔다**: `run.engine, run.context = eng, ctx` — 사라지면 메모리 오류
+- **⚠ `synchronize` 없이 시간을 재면 엄청 빨라 보인다**: 끝나기 전 시간
 
 **핵심 용어**
 - **Runtime**: 엔진 파일을 읽는 도구 (빌드의 Builder 에 해당)
@@ -454,6 +496,14 @@ torch.cuda.synchronize()
 
 **개요**: FP16 은 숫자 하나를 16비트(2바이트)로 저장한다. 메모리가 절반이고 T4 의 Tensor Core 가 FP16 을 훨씬 빨리 계산한다. 대신 표현 범위와 정밀도가 줄어든다. 빌드 Config 에 FP16 플래그 한 줄이면 되고(`build_engine(..., fp16=True)`), **속도 · 파일 크기 · 오차 · 실제 정확도**를 함께 확인한다.
 
+**한눈에 보기**
+FP16 — 절반 크기, 절반 정밀도
+> 16비트 부동소수점으로 계산하면 메모리 1/2 · Tensor Core 로 빨라지지만, 범위는 65504 · 유효숫자 약 3자리로 줄어든다 — 속도와 정확도를 함께 재서 판단한다
+- **엔진의 입출력은 여전히 FP32**: 안쪽 계산만 FP16 — 입력을 float16 으로 바꿔 넣으면 안 됨
+- **판단 순서**: 파일 ↓ · 속도 ↑ · 최대 차이 ↑ → 결국 정확도(MNIST)로 판정
+- **성능표에 정확도 열을 함께**: 속도만 기록하면 반쪽
+- **⚠ "FP16 은 무조건 2배 빠르다" 가 아니다**: 복사 · 작은 레이어 · FP32 로 남은 레이어 때문에 모델마다 다르다 — 재 보고 말하기
+
 **핵심 용어**
 - **FP16(half precision)**: 16비트 부동소수점 — 범위 ±65504, 유효숫자 약 3자리
 - **Tensor Core**: NVIDIA GPU 의 행렬 곱 전용 연산기 — FP16 에서 매우 빠름
@@ -547,6 +597,14 @@ TensorRT 의 큰 장점 하나는 **FP16** 이다. 숫자 하나를 16비트(2�
 
 **개요**: 빌드할 때 `DETAILED` 로 해 두었기 때문에 엔진 안의 레이어 목록을 꺼내 볼 수 있다. **ONNX 노드 수 vs 엔진 레이어 수**를 비교하면 무엇이 합쳐졌는지 보이고, 이름에 ` + ` 가 들어간 레이어가 합쳐진 레이어다. 빨라진 이유: ① 레이어 합치기(메모리 왕복 ↓) ② 이 GPU 에서 재 보고 고른 커널 ③ FP16(Tensor Core).
 
+**한눈에 보기**
+엔진 들여다보기 — 왜 빨라졌나
+> 엔진 인스펙터로 레이어를 보면 Conv · BN · ReLU 같은 연속 연산이 하나로 합쳐져(fusion) 있다 — 메모리 왕복이 줄어 빨라진다
+- **레이어 이름의 ` + ` = 합쳐진 ONNX 노드들**: `n.split(" + ")` 으로 몇 개가 합쳐졌는지 센다
+- **엔진 레이어 수 < ONNX 노드 수가 보통**: `Reformat` 레이어는 데이터 형식 변환용 부수 비용
+- **빨라진 이유 3가지**: ① 합치기 ② 이 GPU 에서 재 보고 고른 커널 ③ FP16(Tensor Core)
+- **⚠ `DETAILED` 없이 빌드하면 LayerType 이 안 나온다**: 레이어 수가 적다고 무조건 빠른 것도 아님 — bench 로 확인
+
 **핵심 용어**
 - **레이어 합치기(layer fusion)**: Conv + BN + 활성화처럼 연속 연산을 하나의 커널로 묶는 최적화
 - **엔진 인스펙터(engine inspector)**: 엔진 안 레이어 정보를 JSON 으로 꺼내는 도구
@@ -633,6 +691,15 @@ TensorRT 는 왜 빨라졌을까? 빌드할 때 `profiling_verbosity = DETAILED`
 **키워드**: `ORT CPU · ORT CUDA · TRT FP32 · TRT FP16`, `실행기 = 같은 모양 함수(x → 점수)`, `bench_fn`, `speedup`, `ot_baseline.csv`
 
 **개요**: 같은 `mnv3s_b1.onnx` 를 네 가지 실행기로 돌려 **속도 + 정확도를 한 표**로 만들고 Day 3 의 `ot_baseline.csv` 에 이어 붙인다. 실행기를 모두 "x 를 받아 점수를 돌려주는 같은 모양의 함수" 로 맞추면 반복문 하나로 비교된다. 과제 6개(배점 20·20·20·20·10·10): 4행 측정표 · 정확도 열 · MNIST 정확도 · 속도 비교 · CSV 이어 붙이기 · 정리 · 추천.
+
+**한눈에 보기**
+실행기 4가지 성능표 — 같은 모양 함수로 비교
+> ORT CPU · ORT CUDA · TensorRT FP32 · FP16 을 모두 `f(x) → 출력` 으로 맞춰 한 반복문으로 속도와 정확도를 함께 재고, Day 3 표에 이어 붙인다
+- **조건 열은 Day 3 와 같게**: model · provider · precision · threads · level · batch — 표를 이어 붙인다
+- **정확도 열 — max_diff · top1_same**: ORT CPU 와의 최대 절대 차이, top-1 일치
+- **speedup = ORT CPU 평균 ÷ 해당 평균**: ORT CPU 는 정확히 1.0, fastest 는 p95 가 가장 작은 것
+- **FP16 은 max_diff 가 커서 정확도로 판정**: `mnist_acc` 같은 실제 정확도
+- **⚠ 엔진 파일을 Jetson 에 복사하지 말 것**: `.onnx` 를 가져가 그 장치에서 다시 빌드
 
 **핵심 용어**
 - **성능표**: 조건(provider · precision · batch) + 속도(mean · p95 · fps) + 정확도(max_diff · top1_same)로 구성

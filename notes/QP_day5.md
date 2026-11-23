@@ -6,6 +6,15 @@
 
 **개요**: Day 1 ~ 4 는 숫자를 **작게**(32 → 8 · 3비트) 했고, 오늘은 숫자를 **적게** — 필요 없는 weight · 채널을 잘라 낸다(**Pruning**). 가지치기는 네 가지 질문의 조합: **무엇을**(기준 — magnitude |w| · gradient w × ∂L/∂w) × **어떤 단위로**(weight 1개 · N:M · filter · layer) × **어떻게**(one-shot · iterative) × **자른 뒤**(그대로 · fine-tuning). 근거는 weight 분포 — ResNet-20 conv weight 270,256개 중 |w| < 0.01 이 **21%**, < 0.05 가 **76%** 로 0 근처에 몰려 있다. 오늘의 결론을 먼저: **실무에서 속도를 얻는 것은 structured pruning** — 단위가 클수록 정확도 손해는 크지만 텐서가 진짜로 작아진다.
 
+**한눈에 보기**
+Pruning — 무엇을, 어떤 단위로 자르나
+> 가지치기 = 기준(무엇을) × 단위(얼마나 크게) × 방식(한 번 · 여러 번) × 회복(fine-tuning) — 작은 weight 부터 지우되, 단위가 작을수록 정확도는 지키고 클수록 실제로 빨라진다
+- **magnitude 기준 — |w| 작은 것부터**: 학습된 weight 는 0 근처에 몰려 |w| < 0.05 가 76%
+- **unstructured(weight 1개)는 속도 그대로**: 일반 커널은 0 도 곱한다
+- **structured(filter · channel)는 어디서나 빨라진다**: 대신 정확도 손해가 커서 fine-tuning 필수 — 2:4 는 그 중간
+- **하나 지우면 사라지는 양**: layer2[0].conv1 에서 weight 1 · filter 144 · 입력 채널 288 · layer 4,608
+- **⚠ "값이 작다" ≠ "중요하지 않다"**: 그래서 gradient 기준도 쓰인다 · k = 0 이면 `kthvalue(0)` 오류
+
 **핵심 용어**
 - **Pruning(가지치기)**: 중요하지 않은 weight · 채널 · layer 를 0 으로 만들거나 빼서 모델을 줄이는 기법
 - **criterion(기준)**: 무엇을 지울지 고르는 점수 — magnitude(|w| 가 작은 것) · gradient(w × ∂L/∂w, 지우면 손실이 얼마나 변하나)
@@ -112,6 +121,15 @@ def filter_l1(conv):
 **키워드**: `torch.nn.utils.prune`, `l1_unstructured`, `global_unstructured`, `weight_orig × weight_mask`, `forward pre-hook`, `prune.remove`, `sparsity`, `layer 별 vs global`
 
 **개요**: `torch.nn.utils.prune` 은 weight 를 직접 지우지 않고 **mask 를 곱하는** 방식이다 — 적용하면 모듈 안의 `weight` 가 `weight_orig`(Parameter, 원래 값) + `weight_mask`(buffer, 0/1)로 바뀌고, forward 직전마다 hook 이 `weight = weight_orig × weight_mask` 를 계산한다. `prune.remove` 로 영구 반영하면 다시 `weight` 하나만 남는다(0 은 그대로). **layer 별**(층마다 똑같이 50%)은 weight 가 적고 중요한 층(stem · fc)도 50% 를 잃는다. **global**(전체에서 작은 50%)은 층마다 비율이 달라져 fc **5.8%** · stem **12.5%** 만 지우고 마지막 블록 conv2 는 **80%** 를 지운다. fine-tuning 없이: 30% 0.8415 / 0.838 · 50% **0.8125 / 0.789** · 70% 0.482 / 0.2945 · 90% 0.10 (global / layer 별) — 작은 ResNet-20 은 70% 부터 무너진다.
+
+**한눈에 보기**
+Unstructured pruning — mask 곱하기 · global
+> torch prune 은 weight 를 weight_orig × weight_mask 로 바꿔 지운 자리를 0 으로 유지하고, remove 로 결과를 굳힌다 — 같은 비율이면 전체에서 고르는 global 이 덜 망가진다
+- **적용하면 weight_orig + weight_mask, remove 하면 weight**: 모양은 그대로, 0 비율 0.500
+- **global 50% → 0.8125, 층마다 50% → 0.789**: 중요한 층(stem · fc)은 |w| 가 커서 global 에서 덜 지워진다 (fc 0.058 · layer3.2.conv2 0.801)
+- **30% 는 거의 공짜, 70% 부터 무너진다**: 30% 0.8415 · 70% 0.482 · 90% 0.10 (fine-tuning 없음)
+- **작은 모델은 여유가 적다**: ResNet-20(27만)과 달리 ResNet-50 · BERT 는 80 ~ 90% 도 버티기도
+- **⚠ 배포 전에 꼭 remove**: 안 하면 weight_orig · mask 가 따로 저장 · global 은 한 층을 통째로 지울 수도 있다
 
 **핵심 용어**
 - **sparsity(희소도)**: 전체 weight 중 0 의 비율 — 0.9 = 90% 가 0
@@ -226,6 +244,15 @@ def prune_unstructured(model, amount, scope="global"):
 
 **개요**: 90% 를 지운 모델은 10배 작고 10배 빠를까? 재 보면 **둘 다 아니다**. (1) **저장 크기**(state_dict · .onnx)는 그대로 — 0 도 FP32 4 byte 로 저장되는 dense 텐서다(1,109.7 KB = 1,109.7 KB). (2) **압축 크기**(gzip)는 크게 준다 — 0 이 반복돼 1,003 → **192 KB(5.2배)**, 배포 · 다운로드 크기 이득. (3) **지연**은 그대로 — cuDNN · MKL 의 Conv 는 0 도 곱한다(강사 실측 dense 1.80 · 50% 1.81 · 90% 1.78 ms). 0 을 건너뛰는 sparse 커널은 sparsity 가 아주 높거나 행렬이 클 때만 이득이다. 예외 하나: **2:4 semi-structured** — 연속한 weight 4개마다 정확히 2개가 0 이면 Ampere 이후 GPU(A100 · RTX 30 · Jetson Orin)의 Sparse Tensor Core 가 최대 약 2배(T4 는 미지원). 대가: 규칙 때문에 같은 50% 라도 정확도 **0.6485**(unstructured global 0.8125).
 
+**한눈에 보기**
+왜 빨라지지 않나 — 0 도 4 byte, 2:4 sparsity
+> unstructured 로 만든 0 은 dense 텐서 안의 숫자일 뿐이라 저장 크기 · 계산량 · 지연이 그대로 — 하드웨어가 아는 규칙(2:4)이 있어야 실제로 빨라진다
+- **크기 그대로 1,109.7 KB, 압축하면 5.2배**: gzip 1,003 → 192 KB — 다운로드 이득은 있다
+- **지연 그대로**: CPU dense 1.80 · 50% 1.81 · 90% 1.78 ms (잡음 수준)
+- **2:4 — 연속 4개마다 큰 2개만**: Sparse Tensor Core 가 절반만 계산해 최대 약 2배 (A100 · RTX 30 · Jetson Orin, T4 미지원)
+- **같은 50% 라도 2:4 는 0.6485**: 규칙이 있어 unstructured(0.8125)보다 손해가 크다 → fine-tuning 과 함께
+- **⚠ sparse 커널은 95% 이상 · 큰 행렬에서만 이득**: 작은 Conv 에서는 인덱스 읽는 비용이 더 크다
+
 **핵심 용어**
 - **dense 텐서**: 0 을 포함한 모든 원소를 그대로 저장 · 계산하는 보통 텐서
 - **sparse 커널(CSR SpMM)**: 0 이 아닌 값과 그 위치(인덱스)만 저장해 곱하는 계산 — 인덱스를 읽는 비용이 있다
@@ -327,6 +354,15 @@ with torch.no_grad():
 **키워드**: `filter(출력 채널) 제거`, `conv → BN → conv 사슬`, `keep 인덱스`, `BN 4가지 값`, `블록 안쪽 vs 바깥쪽`, `residual 덧셈 제약`, `prune_block()`, `manual_prune()`
 
 **개요**: filter 를 지우면 Conv 의 출력 채널이 C → C′ 로 줄고, 그 출력을 받는 **모든 층**도 함께 고쳐야 한다: conv1 `weight[keep]` → bn1 의 γ · β · running_mean · running_var `[keep]` → conv2 `weight[:, keep]`(입력 축). ResNet 의 BasicBlock 에서 **블록 안쪽**(conv1 출력 = conv2 입력)은 블록 밖으로 안 나가니 자유롭게 자를 수 있지만, **바깥쪽**(conv2 출력)은 `out + shortcut(x)` 덧셈 때문에 함께 잘라야 한다 — conv2 를 8채널로 바꾸면 `The size of tensor a (8) must match the size of tensor b (16)` 오류. 9개 블록 안쪽을 25% · 50% 자르면 params 272,474 → 205,490 → **138,506**, 정확도(fine-tuning 전) 0.846 → 0.5025 → **0.168**. 대신 텐서가 진짜로 작아져 지연이 준다(강사 실측 1.72 → 1.36 ms, 1.26배).
+
+**한눈에 보기**
+Structured pruning — L1-norm 으로 filter 제거
+> L1 이 작은 filter 를 빼고, 그 채널을 만드는 곳(conv1 출력)과 쓰는 곳(bn1 · conv2 입력)을 같은 keep 으로 함께 잘라 텐서를 진짜로 작게 만든다
+- **conv1 `weight[keep]` → bn1 네 가지 `[keep]` → conv2 `weight[:, keep]`**: 블록의 입출력 모양은 그대로
+- **residual 덧셈 쪽은 혼자 못 자른다**: 두 쪽 채널 수가 같아야 해 shortcut · 다른 블록 · stem 까지 함께 — 안 맞으면 size mismatch 오류
+- **params 272,474 → 50% 138,506**: 블록 안쪽만이라 절반까지는 안 준다
+- **정확도 0.846 → 0.168, 지연 1.26배 빠름**: 정확도 손해는 크지만 실제로 빨라진다 (unstructured 90% 는 1.0배)
+- **⚠ 새 BatchNorm2d 는 train 모드로 만들어진다**: `.train(b1.training)` 으로 맞추기 · fine-tuning 없이 쓰면 안 됨
 
 **핵심 용어**
 - **keep 인덱스**: 남길 채널 번호(오름차순) — 모든 관련 층을 같은 번호로 자른다
@@ -432,6 +468,15 @@ def prune_block(block, ratio):
 **키워드**: `torch-pruning`, `DependencyGraph`, `build_dependency`, `pruning group`, `group.prune()`, `MetaPruner`, `MagnitudeImportance(p=1)`, `ignored_layers`, `MACs`, `(1 − r)²`
 
 **개요**: torch-pruning 은 예시 입력 하나를 흘려 연산 그래프를 따라가며 "이 채널을 자르면 함께 잘라야 하는 모든 곳"(**group**)을 찾아 준다. layer1[0].conv2 의 출력 채널 [0, 1] 을 자르는 group 은 20항목 — stem · 세 블록 conv2(출력) · 세 블록 conv1(입력) · layer2[0] conv1 · shortcut(입력)까지 **Conv 9개 + BN 4개**. layer1 의 세 블록이 모두 같은 residual "통로"(stem 출력 16채널)에 덧셈으로 묶여 있기 때문이다. 통로 채널 2개만 잘라도 0.846 → **0.634**. **MetaPruner** 는 모든 group 의 중요도(L1 합)를 매겨 비율만큼 자동으로 자른다 — `ignored_layers=[model.fc]` 로 클래스 10개 출력을 지킨다. 채널 50% → 16/32/64 → 8/16/32, **MACs 41.24M → 10.53M(25.5%)** · params 272,474 → 68,786(25.2%). 채널 r 을 자르면 Conv 의 입력 · 출력이 함께 줄어 MACs ≈ (1 − r)². fine-tuning 전 정확도는 20% 만 잘라도 **0.2415** 로 무너진다.
+
+**한눈에 보기**
+torch-pruning — DependencyGraph 와 MetaPruner
+> DependencyGraph 가 연산 그래프를 따라가 함께 잘라야 하는 층을 group 으로 묶고, MetaPruner 가 group 마다 L1 중요도로 비율만큼 자동으로 자른다
+- **채널 2개를 자르면 Conv 9개가 함께**: layer1 세 블록이 stem 출력 통로에 덧셈으로 연결 — 정확도 0.846 → 0.634
+- **50% → MACs 41.24M → 10.53M (25.5%)**: params 25.2% — 채널 r 자르면 MACs ≈ (1 − r)²
+- **`ignored_layers=[model.fc]`**: 클래스 수 출력 10 은 그대로, 입력만 같이 줄어든다
+- **FT 전 정확도는 20% 부터 무너진다**: 20% 0.2415 · 40% 0.101 — MACs 는 24.89 · 14.19 M 로 매끄럽게
+- **⚠ `pruning_ratio` 는 채널 수 기준**: params · MACs 가 그만큼 주는 게 아니다 · 통로 채널까지 잘라 unstructured 보다 예민
 
 **핵심 용어**
 - **DependencyGraph(의존성 그래프)**: 층 사이에 "채널을 같이 잘라야 하는" 관계를 기록한 그래프
@@ -552,6 +597,15 @@ macs, params = tp.utils.count_ops_and_params(prune_channels(rn20, 0.5), EX_IN)
 
 **개요**: 잘라 낸 모델을 학습 데이터로 짧게 다시 학습하면 남은 weight 들이 빠진 채널의 역할을 나눠 맡으며 정확도를 되찾는다 — QP Day 4 의 `train_qat` 와 같은 루프(학습용 10,000장 · 증강 · SGD momentum 0.9 · cosine · 3 epoch)에 lr 만 **1e-2**(QAT 는 거의 다 된 모델을 살짝 1e-3, 오늘은 크게 망가진 모델을 다시 세움). 5교시의 structured 50% 모델(MACs 25%): **0.10 → 0.632 → 0.712 → 0.7225**(3 epoch, FP32 와 12.3%p 차). **iterative**(make_pruner 의 `iterative_steps=3` — 1/3 씩 자르고 1 epoch 씩 회복)로 같은 50% · 같은 총 3 epoch 를 만들면 0.8135 → 0.7465 → **0.68** — 이 짧은 예산에서는 one-shot 이 나았다. 비교는 반드시 **같은 학습 예산**으로. 50% + fine-tuning 모델은 `rn20_p50_ft.pth` 로 저장 → 7교시 배포 · Day 6 지식 증류(KD)의 학생 모델.
 
+**한눈에 보기**
+Fine-tuning · iterative pruning — 자른 모델 회복
+> 자른 모델을 짧게 다시 학습해 남은 채널이 빠진 역할을 나눠 맡게 한다 — 조금씩 자르고 회복하는 iterative 는 충격이 작지만, 같은 학습량에서 꼭 낫지는 않다
+- **structured 50% 회복 — 0.10 → 0.7225**: 3 epoch 0.632 · 0.712 · 0.7225 (FP32 대비 −12.3%p, MACs 25%)
+- **lr 1e-2 (QAT 의 10배)**: 0.10 까지 망가진 모델을 다시 세우니까 — 증강 · SGD · cosine 은 Day 4 와 같음
+- **one-shot 0.7225 vs iterative 0.68**: 같은 MACs 10.53M · 같은 총 3 epoch — iterative 는 마지막 회복이 1 epoch 뿐
+- **iterative 단계**: MACs 27.67 → 17.34 → 10.53 M · 정확도 0.8135 → 0.7465 → 0.68
+- **⚠ "iterative 가 낫다" 는 일반론**: 결론은 학습 예산과 함께 · 비율 0 도 같은 fine-tuning 으로 비교
+
 **핵심 용어**
 - **fine-tuning(회복 학습)**: 가지치기 · 양자화로 손상된 모델을 작은 학습률로 짧게 다시 학습해 정확도를 되찾는 것
 - **one-shot pruning**: 목표 비율까지 한 번에 자르고 → fine-tuning
@@ -654,6 +708,15 @@ for st in range(3):
 
 **개요**: pruning 의 최종 판정은 **배포 엔진에서의 지연**이다. 세 모델 — dense(원본) · unstructured 50%(global, FT 없음) · structured 50% + FT(`rn20_p50_ft.pth`) — 를 같은 방법(배치 1 ONNX)으로 내보내 같은 자(`deploy_lat`: GPU 면 TensorRT FP16 엔진, 아니면 ORT CPU)로 잰다. **unstructured**: ONNX 크기 1,070.8 KB · Conv weight 270,256개로 dense 와 똑같고 0 만 50.1% → 엔진도 dense 커널을 써서 속도 같음(이 실행 ORT CPU 1.00배). **structured**: Conv weight 67,672개(25%) · ONNX **276.6 KB** · 정확도 0.7225 → 이 실행 **2.06배** 빠름(TensorRT 에서는 커널 실행 오버헤드 때문에 MACs 비율 4배만큼은 안 빨라짐). ⚠ 채널 수도 속도를 좌우한다 — 커널은 채널을 4 · 8 · 16 개씩 묶어 계산하므로 13 · 26 · 51 같은 어중간한 수는 MACs 가 줄어도 느려질 수 있다(50% 모델은 8 · 16 · 32 로 딱 맞음, torch-pruning 의 `round_to=8`). 결과 3행은 `qp_baseline.csv` 에 Day 2 ~ 4 와 함께 모은다.
 
+**한눈에 보기**
+배포 비교 — 정말 빨라지나
+> 같은 엔진 · 같은 자로 재면 unstructured 는 ONNX 크기 · Conv 모양 · 속도가 dense 와 같고, structured 만 Conv 가 작아져 빨라진다
+- **unstructured 50% — 1,070.8 KB, 속도 ≈ 1배**: 0 비율 0.501 이지만 모양이 그대로
+- **structured 50% + FT — 276.6 KB, ORT CPU 2.06배**: conv 270,256 → 67,672 · 정확도 0.7225
+- **채널 수가 속도를 좌우한다**: 커널은 4 · 8 · 16 개씩 묶어 계산 — 50% 의 8 · 16 · 32 는 딱 맞고, 20% 의 12 · 25 · 51 은 낭비
+- **qp_baseline.csv 에 Day5 3행**: dense · us50 · p50 — 양자화 결과와 같은 열로
+- **⚠ TensorRT 도 dense 커널을 고른다**: unstructured 는 GPU 에서도 그대로 · MACs 는 이론값이라 지연은 배포 장치에서
+
 **핵심 용어**
 - **dense 커널**: 0 이 있든 없든 모든 원소를 곱하는 보통 Conv 구현 — TensorRT · cuDNN · MKL 의 기본
 - **커널 실행 오버헤드**: 연산마다 GPU 커널을 띄우는 고정 비용 — 작은 모델에서는 MACs 보다 이것이 지연을 좌우
@@ -754,6 +817,15 @@ deploy_df["speedup"] = deploy_df.latency_ms[0] / deploy_df.latency_ms
 **키워드**: `비율 곡선`, `MACs – 정확도`, `지연 – 정확도`, `무릎(knee)`, `FP32 − 3%p 기준`, `best_ratio`, `공정한 비교 (비율 0 도 같은 FT)`, `pruning_sweep.csv`, `rn20_pruned_best.onnx`, `채널 수 함정`
 
 **개요**: "ResNet-20 을 얼마나 잘라도 될까?" 를 하나의 비율이 아니라 **곡선**으로 답한다. structured 비율 0 / 20 / 40 / 60% 각각 → `prune_channels` → **같은 fine-tuning**(lr 1e-2 · 3 epoch, 비율 0 도) → MACs · params · 정확도 · 배포 지연. 선택 기준: 정확도가 FP32(0.846) 대비 **3%p 이내**(≥ 0.816)인 가장 큰 비율 — 3%p 로 둔 이유는 오늘의 짧은 학습 예산(10,000장 · 3 epoch)에서는 자르지 않은 모델도 0.84 안팎이기 때문(실무는 50,000장 · 수십 epoch 뒤 1%p). 이 실행(CPU): 정확도 0.842 · **0.8195** · 0.7595 · 0.603 → **best_ratio = 0.2**(MACs 1.66배 ↓ · params 1.60배 ↓ · 하락 2.65%p). 그런데 ORT CPU 지연은 0.704 → **0.839 ms 로 오히려 느려졌다** — 20% 모델의 채널 수가 12 · 25 · 51 로 어중간하기 때문(7교시 ⚠). 40% · 60% 는 빨라지지만 기준 밖. 과제 6(결론)의 핵심 질문이 바로 이것.
+
+**한눈에 보기**
+가지치기 비율 곡선 — 무릎 찾기
+> 비율 하나가 아니라 비율마다 MACs · 정확도 · 지연을 그려 정확도가 꺾이는 '무릎' 을 찾고, 미리 정한 기준(FP32 − 3%p)으로 고른다
+- **FT 뒤 정확도 — 0% 0.842 · 20% 0.8195 · 40% 0.7595 · 60% 0.603**: MACs 41.24 · 24.89 · 14.19 · 6.15 M
+- **이 실행 best = 20%**: MACs 1.66배 ↓ · params 1.60배 ↓ · 정확도 −2.65%p
+- **MACs 가 40% 줄었는데 느려졌다 (0.704 → 0.839 ms)**: 채널 12 · 25 · 51 이 계산 묶음과 안 맞아서 → `round_to=8` 로 8의 배수
+- **1%p 기준이면 자를 수 없다**: 학습 예산을 늘리거나 KD(Day 6)로 끌어올린다
+- **⚠ 비율 0 도 같은 fine-tuning**: 안 하면 자른 효과와 학습 효과가 섞인다 · 기준과 학습 예산을 결과와 함께 적는다
 
 **핵심 용어**
 - **비율 곡선(sweep)**: 비율을 바꿔 가며 같은 절차로 잰 (MACs · 지연, 정확도) 점들 — 무릎을 찾는다

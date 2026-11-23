@@ -6,6 +6,14 @@
 
 **개요**: 어제의 4단계를 `mnist_cnn.onnx` 로 혼자 다시 한다(복습 퀴즈 20문항 후 문제 1-1 · 1-2). 오늘은 4단계 중 **"열어보기"를 Netron 대신 코드로** 하고, 어제 막혔던 4가지(그래프 구조 · opset · 배치 크기 · export 가 조용히 틀리는 경우)를 푼다. 기억할 숫자: `mnist_cnn.onnx` = **노드 7개 · 가중치 텐서 6개**.
 
+**한눈에 보기**
+Day 1 복습 — 오늘은 "열어보기" 를 코드로
+> eval → export → 열어보기 → run · allclose 의 4단계 중, 어제 Netron 으로 눈으로 본 3단계를 오늘은 onnx 라이브러리 코드로 꺼낸다
+- **1단계 확인 — 예측이 PyTorch 와 allclose**: 입력 `[('input', [1, 1, 28, 28])]`
+- **노드 7 · 가중치 6 을 코드로**: `len(graph.node)` · `len(graph.initializer)` — 어제 Netron 으로 센 값
+- **오늘의 지도**: 파일 구조 → 가중치 · 속성 → opset · checker · shape → dynamic_axes → 조용히 틀리는 export → 미지원 연산 · onnxslim
+- **⚠ 기대값을 모르고 코드를 돌리면 확인이 안 된다**: 7 · 6 을 기억해 두기
+
 **핵심 용어**
 - **4단계**: ① `eval()` ② `export`(이름 · shape) ③ 열어보기 ④ `run` · `allclose`
 - **노드(node)**: 그래프의 연산 하나 — Conv · Relu · MaxPool · Flatten · Gemm · Relu · Gemm = 7개
@@ -79,6 +87,15 @@ Day 1 은 "내보내고 · 보고 · 실행" 까지였다. 보는 일을 Netron 
 **키워드**: `ModelProto`, `GraphProto`, `input · node · initializer · output`, `이름이 같으면 화살표`, `topological order`
 
 **개요**: `onnx.load` 한 결과는 상자 속 상자다. 가장 바깥 `ModelProto` 안에 `GraphProto`(`model.graph`)가 있고, 그 안에 **네 목록**(`input` · `node` · `initializer` · `output`)이 있다. 화살표는 파일에 따로 저장되지 않는다 — 노드는 입력 이름 목록과 출력 이름 목록만 갖고, **앞 노드의 output 이름 = 뒤 노드의 input 이름** 이면 이어진다. `mnist_cnn.onnx`: input 1 · output 1 · node 7 · initializer 6.
+
+**한눈에 보기**
+ONNX 파일 = 그래프 — input · node · initializer · output
+> ModelProto 안의 model.graph 는 input(바깥 입력) · node(연산) · initializer(저장된 가중치) · output 네 목록이고, 노드끼리는 같은 이름으로 이어진다
+- **mnist_cnn — input 1 · node 7 · initializer 6 · output 1**: `input [1, 1, 28, 28]` → … → `logits [1, 10]`
+- **화살표 = 이름 맞추기**: Conv 의 output `/conv/Conv_output_0` 가 Relu 의 input
+- **initializer 이름이면 가중치, 아니면 데이터**: Conv · Gemm = 데이터 1 + 가중치 2, 나머지 = 데이터 1
+- **저장 순서 = 계산 순서 (topological order)**: 화살표를 따라가도 같은 순서
+- **⚠ 이름은 단수형 `g.input` · `g.node`**: 복수형은 AttributeError · `print(m)` 은 가중치 숫자 전부를 찍어 멈출 수 있다
 
 **핵심 용어**
 - **ModelProto / GraphProto**: 모델(버전 정보 포함) / 그 안의 계산 그래프
@@ -185,6 +202,15 @@ shape 는 축마다 `dim_value` (숫자) 또는 `dim_param` (이름 — 5교시�
 **키워드**: `numpy_helper.to_array`, `get_attribute_value`, `attrs_of`, `describe_onnx`, `433,890`, `Conv-BN 합치기`
 
 **개요**: 2교시에 이름까지 읽었다. 이번에는 이름 뒤의 **숫자(가중치)** 와 노드의 **설정값(속성 attribute)** 을 꺼내고, 모두를 표 한 장으로 요약하는 `describe_onnx(path)` 를 만든다. 오늘부터 모든 모델은 이 표로 먼저 본다 (= 코드로 만든 Netron). 가중치 합계 433,890 = Day 1 의 파라미터 수.
+
+**한눈에 보기**
+가중치 · 속성 꺼내기 — 코드로 만든 Netron
+> initializer 는 `numpy_helper.to_array` 로 NumPy 배열이 되고, 노드 속성(kernel_shape · strides …)은 `get_attribute_value` 로 — 이를 모아 describe_onnx 표를 만든다
+- **가중치 합계 433,890**: conv 750 + 30 · fc1 432,000 + 100 · fc2 1,000 + 10 — Day 1 파라미터 수와 같다 (개수는 `.size`)
+- **속성 예**: Conv `kernel_shape [5, 5]` · `strides [1, 1]` · `pads [0, 0, 0, 0]` · MaxPool `[2, 2]` · Gemm `transB 1` · Flatten `axis 1`
+- **describe_onnx — 노드 한 줄 = Netron 상자 하나**: op_type · data_in · out · params · attrs — params [780, 0, 0, 0, 432100, 0, 1010]
+- **SafetyNet 은 PyTorch 1,491 vs ONNX 1,443**: 차이 48 = BN 의 γ · β — Conv-BN 합치기로 Conv 에 녹아 따로 안 셈
+- **⚠ `a.ints` · `a.i` 를 직접 읽지 말 것**: 속성 종류마다 필드가 달라 도우미 함수로 · 표는 `display(df)`
 
 **핵심 용어**
 - **속성(attribute)**: 노드의 설정값 — Conv 의 `kernel_shape` · `strides` · `pads` 등
@@ -309,6 +335,15 @@ Day 1 에서 본 Conv-BN 합치기 때문에 BN 의 숫자가 Conv 의 weight ·
 
 **개요**: ONNX 파일을 다룰 때 쓰는 세 도구. **opset** = 파일이 쓰는 "연산 사전"의 판 번호(같은 계산도 판에 따라 노드가 달라짐), **checker** = 규칙에 맞게 만들어졌는지 검사(맞춤법 검사기), **shape_inference** = 중간 화살표마다 shape 를 계산해 적기(도면에 치수 적기). 셋 다 **"결과가 맞는지"는 말해 주지 않는다** → 마지막은 `allclose`.
 
+**한눈에 보기**
+opset · checker · shape_inference — 판 번호 · 검사 · shape 채우기
+> opset 은 연산 사전의 판 번호, checker 는 파일 형식 검사, shape_inference 는 중간 화살표마다 shape 를 채워 주는 도구
+- **같은 GELU 도 판에 따라 노드가 다르다**: opset 13 = 9개 (Erf 조합) · opset 20 = `['Gemm', 'Gelu']` 2개, 결과는 같음
+- **⚠ opset 을 너무 높이면 배포할 실행기가 모른다**: 실행기의 지원 판부터 확인 — 8교시에 17 로 못 박음
+- **checker 는 끊긴 이름을 잡는다**: Relu 입력을 'nope' 로 바꾸면 `ValidationError` · ORT 는 `Invalid model` — 이름을 이어 주면 통과
+- **shape_inference — value_info 0 → 6개**: (1, 30, 24, 24) → (1, 30, 12, 12) → (1, 4320) → (1, 100) …
+- **⚠ checker 통과 = 형식이 맞다일 뿐**: 결과는 `allclose` · `infer_shapes` 결과는 새 모델 `mi` 에 있다
+
 **핵심 용어**
 - **opset(operator set)**: 연산 사전의 판 번호 — `opset_version=` 로 정함. 높을수록 새 연산 지원, 실행기가 모르는 판이면 오류
 - **checker**: 그래프 형식 검사 — 끊긴 화살표 · 순서 위반을 찾음
@@ -425,6 +460,15 @@ GELU(x) = 0.5 · x · (1 + erf(x / √2)) — opset 13 에는 Gelu 라는 단어
 
 **개요**: Day 1 5교시 — 고정 shape 파일에 배치 4를 넣으면 `Got: 4 Expected: 1`. export 때 `dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}` 로 "이 축은 크기가 바뀔 수 있다"고 알려 주면 shape 의 첫 축이 숫자 1 대신 **이름 `'batch'`** 가 되어 1장 · 4장 · 100장을 모두 받는다. 단, dynamic 은 **약속일 뿐** — 모델이 처리 못 하는 크기는 실행 중에 오류.
 
+**한눈에 보기**
+dynamic_axes — 배치 크기를 자유롭게
+> `dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}}` — 더미로 굳은 축 0 의 크기를 이름 "batch" 로 풀어 주면 배치 1 · 4 · 8 모두 받는다
+- **전 — 고정 파일에 배치 4 → `Got: 4 Expected: 1`**: 후 — 입력 shape `['batch', 1, 28, 28]`
+- **100장 한 번에 추론**: (100, 1, 28, 28) → `argmax(1)` 로 사진마다 예측 → 정확도 1.0
+- **열린 축이라도 모델 구조가 허락하는 크기만**: 높이 · 너비를 열고 32×32 를 넣으면 Gemm 이 4320 대신 5880 을 받아 `Dimension mismatch`
+- **5880 의 계산**: 32 → Conv 5×5 → 28 → Pool → 14 → 30 × 14 × 14 = 5,880
+- **⚠ 키는 input_names · output_names 와 같은 이름이어야 적용된다**: 사진마다 예측은 `argmax(1)` (`argmax()` 는 전체에서 하나)
+
 **핵심 용어**
 - **dynamic_axes**: `{텐서 이름: {축 번호: "축 이름"}}` — 크기가 바뀔 수 있는 축을 지정
 - **dim_param**: 이름 붙은 축(`'batch'`). 숫자 축은 `dim_value`
@@ -532,6 +576,15 @@ Conv · Pool 은 어떤 크기든 처리하지만 Flatten 뒤 Gemm 은 정확히
 **키워드**: `tracing`, `TracerWarning`, `torch.where`, `x.mean(dim=…)`, `flatten(1)`, `verify()`, `export_warn()`
 
 **개요**: 지금까지 export 는 늘 성공했고 결과도 맞았다. 그런데 **export 가 성공했는데 결과가 틀리는** 경우가 있다 — 오류 메시지가 없어 가장 위험. 원인은 하나: export 는 **더미 입력으로 실제 실행된 길만 녹화**한다(Day 1 2교시). 그래서 ① 파이썬 `if` ② NumPy · `.item()` · `float()` 로 꺼낸 값 ③ 숫자로 쓴 배치 크기 가 **그 순간의 결과로 굳는다**. 확인은 `verify()` (여러 입력으로 비교) + `export_warn()` (TracerWarning 만 보기).
+
+**한눈에 보기**
+조용히 틀리는 export 3가지 — if · NumPy · 고정 배치
+> tracing 은 더미 입력이 지나간 길만 녹화하므로, 입력 값에 따른 if · torch 밖 계산 · 숫자로 박은 배치 크기는 오류 없이 틀린 그래프를 만든다
+- **① 파이썬 if — 한쪽 길만 녹화**: 더미가 양수면 `x * 2` 만 남아 음수 입력 최대 차이 2.00 → `torch.where` 로 두 길을 모두 계산
+- **② NumPy · `.item()` · `float()` — 그때의 값이 상수로**: 더미 평균 5 가 박혀 [1,2,3] 에서 차이 3.00 → `x.mean(dim=1, keepdim=True)`
+- **③ `x.view(1, -1)` — 배치 1 이 숫자로 박힘**: 배치 4 에서 오류 → `x.flatten(1)` 또는 `x.view(x.size(0), -1)`
+- **verify 에는 일부러 다른 경우를 넣는다**: 음수 · 어두운 사진 · 배치 4 — 더미 하나로만 비교하면 늘 ✅
+- **⚠ TracerWarning 을 "경고일 뿐" 하고 넘기지 말 것**: Python boolean · NumPy 변환 경고가 ① · ② 의 신호 (모델 설정에 따른 `if self.training` 은 괜찮음)
 
 **핵심 용어**
 - **TracerWarning**: tracing 이 "이 값은 굳을 수 있다" 고 알리는 경고 — 이 교시의 3가지가 전부 경고 한 줄로만 알려 줌
@@ -650,6 +703,15 @@ verify(gate, "gate.onnx", cases)          # ✅ 양수 / ❌ 음수 (최대 차�
 
 **개요**: 6교시는 **조용히** 틀렸다. 이번엔 반대로 export 가 **오류를 내며 멈추는** 경우 — 메시지를 읽고 바꾸면 되니 오히려 쉽다. `torch.median` 은 ONNX 에 연산이 없어 `aten::median` 오류 → 정렬 후 가운데 고르기(`torch.sort`) 로 대체. 이어서 `onnxslim` 으로 "계산하면 늘 같은 값"인 노드들을 미리 계산해 접어 **11개 노드 → 4개**.
 
+**한눈에 보기**
+미지원 연산 · onnxslim — 바꿔 쓰고 줄이기
+> export 가 연산을 모르면 opset 을 올리거나 지원되는 연산 조합으로 바꿔 쓰고, onnxslim 으로 같은 계산을 더 적은 노드로 줄인다
+- **오류 메시지 읽기**: `Exporting the operator 'aten::median' to ONNX opset version N is not supported` — 따옴표 안이 PyTorch 연산 이름
+- **median → sort 후 가운데 고르기**: `torch.sort(x, dim=1).values[:, k:k + 1]` — 그래프에선 TopK, 원래 모델과 차이 ≈ 3e-08
+- **onnxslim — 11노드 → 4노드**: `x.view(x.size(0), -1)` 의 Shape · Gather · Concat … 이 사라지고 `['Conv', 'Relu', 'Reshape', 'Gemm']`, 결과 차이 0
+- **`slim(path)` 은 모델 객체를 돌려준다**: `onnx.save` 해야 파일이 된다
+- **⚠ 구조를 바꿨으면 반드시 원래 모델과 verify**: 같은 가중치를 `load_state_dict` 로 · 단순화 ≠ 정확도 향상
+
 **핵심 용어**
 - **미지원 연산**: PyTorch 에는 있는데 ONNX opset 에 대응 연산이 없는 것 (`aten::연산 이름`)
 - **onnxslim**: 그래프를 단순화하는 도구 — 상수 접기 · 불필요 노드 제거
@@ -752,6 +814,16 @@ print(f"{len(before)}개 → {len(after)}개 :", after)      # 11개 → 4개
 **키워드**: `BrightNet`, `고장 3곳`, `torch.where · 평균 dim=(1,2,3) · flatten(1)`, `opset 17`, `brightnet_final.onnx`, `checker → onnxslim → shape_inference`
 
 **개요**: PyTorch 에서는 잘 돌지만 ONNX 로 내보내면 이상한 현장 카메라용 분류기 **BrightNet**(64×64 컬러 0~1 → safe · warning · danger)을 고쳐 배포용 `brightnet_final.onnx` 를 만든다. 의도: ① 평균 밝기 < 0.3 이면 2배 ② 평균을 빼 보정 ③ CNN. 고장 3곳이 6교시의 세 가지와 똑같다 — `if` · `float(np.mean(…))` · `x.view(1, -1)`. 과제 6개(고장 찾기 10 · 고치기 30 · 배포용 export 20 · 점검·단순화 20 · 최종 확인 10 · 해석 10, 해석은 강사 채점). 정확도가 아니라 **배포 과정**이 과제 (가중치는 seed 연습용).
+
+**한눈에 보기**
+고장 난 BrightNet 고쳐 배포하기 — 오늘의 도구를 한 번에
+> 더미로만 맞던 BrightNet 의 if · NumPy · view(1, −1) 세 곳을 6교시 방법으로 고치고, export → checker → onnxslim → shape_inference → 최종 비교 순서로 배포용 파일을 만든다
+- **고장 찾기 — 더미만 ✅**: 다른 밝은 사진 3.86e-03 · 어두운 사진 6.87e-03 ❌, `view(1, -1)` 은 경고 없이 숨어 배치 8 에서 실패
+- **고치기 3곳**: if → `torch.where` · NumPy 평균 → `x.mean(dim=(1,2,3), keepdim=True)` · `view(1, -1)` → `flatten(1)`
+- **사진마다 평균 — `dim=(1,2,3)`**: `x.mean()` 은 배치 전체 하나라 밝고 어두운 사진이 섞인 배치에서 틀린다
+- **배포 순서**: export(batch · opset 17 · 이름) → checker → onnxslim → shape_inference — 최종 노드 14, 배치 1 · 8 모두 차이 ≈ 9.7e-08
+- **인계 정보**: opset 17 · 입력 `[batch, 3, 64, 64]` float32 0 ~ 1 · RGB · 64×64 · /255 · CHW · 클래스 safe · warning · danger
+- **⚠ checker · shape_inference · onnxslim 은 결과가 맞는지 보장하지 않는다**: 마지막은 언제나 `allclose`
 
 **핵심 용어**
 - **intended()**: 사진을 **한 장씩** 넣은 PyTorch 결과를 쌓는 채점 기준 ("의도")

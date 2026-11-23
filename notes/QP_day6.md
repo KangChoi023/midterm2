@@ -6,6 +6,15 @@
 
 **개요**: 작은 모델(학생)을 정답(hard label)만으로 가르치지 않고, 큰 모델(선생님)이 낸 **출력 분포**까지 따라 하게 만드는 기법이다. 선생님은 "고양이 0.6 · 개 0.3 · 사슴 0.05" 처럼 클래스 사이의 닮음(dark knowledge)을 알려 준다. logits 를 temperature T 로 나눈 뒤 softmax 하면 작은 확률이 잘 보인다. 선생님은 학습하지 않고(`eval()` · `no_grad`), 배포 때는 학생만 쓴다.
 
+**한눈에 보기**
+Knowledge Distillation — 선생님의 soft target 을 따라 배우기
+> 큰(또는 원본) 모델의 출력 분포를 temperature 로 부드럽게 펴서 작은 모델이 정답과 함께 따라 하게 한다 — loss = α·CE(학생, 정답) + (1 − α)·T²·KL(선생님‖학생)
+- **softmax(z / T) — T 를 키우면 2 · 3등이 드러난다**: logits [4, 2, 0] → T=1 0.867 · 0.117 · 0.016 / T=4 0.506 · 0.307 · 0.186
+- **T=1 이면 hard label 과 거의 같다**: 추가 정보가 없다 — T 가 너무 크면 모두 1/클래스 수에 가까워져 다시 사라짐
+- **α 는 정답 비중, T² 는 기울기 보정**: 오늘 α 0.5 · T 4 — soft 항의 기울기가 1/T² 로 작아지는 것을 되돌린다
+- **예 — CE 0.6216 → KD loss 0.7202**: 학생과 선생님이 같으면 soft 항은 0
+- **⚠ 선생님은 학습하지 않는다**: `eval()` + `torch.no_grad()`
+
 **핵심 용어**
 - **Knowledge Distillation(지식 증류)**: 큰 모델(teacher)의 출력을 작은 모델(student)이 따라 하도록 학습하는 기법
 - **soft target**: `softmax(teacher_logits / T)` — 선생님이 낸 확률 분포 (정답 하나짜리 hard label 의 반대)
@@ -84,6 +93,14 @@ KD = 학생이 정답(CE)과 선생님의 soft target(KL)을 함께 따라 한�
 
 **개요**: 가지치기에서는 선생님이 공짜로 생긴다 — **자르기 전의 원본**이 선생님이다. 원본 ResNet-20(0.846, MACs 41.2M)을 채널 50% 자르면 정확도 ≈ 0.10 · MACs 10.5M. 이 학생을 같은 데이터 10,000장 · 3 epoch · lr 1e-2 로 학습하되 **loss 만** 바꿔 비교한다 (fine-tuning: CE / KD: α·CE + (1 − α)·T²·KL). KD 는 step 마다 선생님 forward 가 한 번 더 들어 학습이 조금 느리다.
 
+**한눈에 보기**
+Pruning + KD — 자르기 전 원본이 선생님
+> 따로 큰 모델을 학습할 필요 없이, 가지치기 전 원본 모델을 선생님으로 삼아 자른 모델의 회복을 KD 로 한다
+- **Day 5 fine-tuning 0.10 → 0.7225**: 50% · 3 epoch
+- **같은 예산으로 KD 0.75**: fine-tuning 0.72 보다 높다 (강의 요약 값, 실행마다 조금 다름)
+- **덜 자를수록 KD 이득은 작다**: 20% 모델은 둘 다 0.78 초과
+- **⚠ 선생님 정확도는 그대로여야 한다**: `acc_torch(rn20) == FP32_ACC` — 선생님이 학습되면 잘못된 구현
+
 **핵심 용어**
 - **Pruning + KD**: structured pruning 으로 자른 모델을 원본 모델이 가르쳐 회복시키는 조합
 - **같은 예산 비교**: 같은 학생 · 같은 데이터 · 같은 epoch · lr — 달라지는 것은 loss 뿐
@@ -137,6 +154,14 @@ p50_ft = copy.deepcopy(p50); t_ft = finetune(p50_ft)
 **키워드**: `Prune → KD → INT8 → TensorRT`, `구조 → 회복 → 양자화 → 엔진`, `to_int8`, `need_qat`, `채널별 amax`, `compress()`
 
 **개요**: 배운 기법을 한 모델에 차례로 적용한다. 순서는 ① Prune(구조 확정) → ② KD(정확도 회복) → ③ INT8(PTQ, 손실이 1%p 를 넘으면 QAT) → ④ QDQ ONNX → TensorRT. 양자화를 먼저 하고 가지치기를 하면, 채널 수는 줄었는데 양자화기의 채널별 scale(amax)은 예전 개수 그대로라 forward 에서 **크기가 안 맞는다는 RuntimeError** 가 난다 (실습 3-2).
+
+**한눈에 보기**
+경량화 순서 — Prune → KD → INT8 → TensorRT
+> 양자화 범위(scale)는 최종 weight · 활성값으로 정해야 하므로 구조를 먼저 바꾸고(prune), 회복한 뒤(KD), 마지막에 양자화하고 엔진을 만든다
+- **구조가 먼저**: 채널 수가 바뀌면 weight · 양자화 범위가 모두 다시 정해져야 한다
+- **회복이 다음**: scale 은 회복이 끝난 weight 로 정해야 맞다
+- **PTQ 먼저, QAT 는 손실이 1%p 를 넘을 때만**: Day 4 의 판정 규칙
+- **⚠ 양자화 → 가지치기 순서면 오류**: 출력 채널은 줄었는데 `weight_quantizer.amax` 개수는 그대로 → `RuntimeError: size of tensor …`
 
 **핵심 용어**
 - **경량화 순서**: 구조(prune) → 회복(KD) → 양자화(INT8) → 엔진(TensorRT)
@@ -201,6 +226,15 @@ Day 3 ~ 5 에서 PTQ · QAT · 가지치기를 따로 배웠다. 한 모델에 �
 **키워드**: `YOLOv8n`, `재학습 없이 가능한 것`, `INT8 PTQ (QDQ)`, `mixed precision`, `Detect head 제외`, `배포 영상으로 보정`, `CalibrationDataReader`, `엔진 3종`
 
 **개요**: 오후에는 분류(ResNet-20)에서 탐지(YOLOv8n)로 넘어가 OT Day 5 침입 감지 파이프라인에 경량화한 엔진을 넣는다. 재학습 없이 할 수 있는 것은 FP16 · INT8 PTQ · INT8 mixed precision. QAT · structured pruning · KD 는 COCO 학습 데이터와 수 시간이 필요해 오늘은 하지 않는다 (12월 프로젝트에서 자기 데이터로). 보정 데이터는 **실제로 돌릴 영상**(people.mp4)의 앞부분 프레임(0 ~ 479, 10프레임마다 48장)이고, 평가는 480 프레임 이후 — 겹치지 않는다.
+
+**한눈에 보기**
+탐지 모델 경량화 — 재학습 없이 되는 것부터
+> 보정 데이터만 있으면 되는 FP16 · INT8 PTQ · mixed precision 은 YOLOv8n 에 바로 쓰고, 학습 데이터가 필요한 QAT · pruning · KD 는 나중으로 미룬다
+- **FP16 은 플래그 하나, INT8 PTQ 는 보정 데이터만**: OT Day 5 · QP Day 3 방법 그대로
+- **QAT · pruning · KD 는 COCO 학습 데이터 · 수 시간**: 오늘은 하지 않는다
+- **INT8 = head 후처리 제외, INT8-mixed = + 첫 Conv + 출력 Conv 6개**: 무거운 Conv 는 INT8, 예민한 곳은 FP16
+- **확인 — qdq 수 mixed < INT8, 사람 수 FP16 과 ±2 이내**: 프레임 530 기준
+- **⚠ 보정 프레임(0 ~ 479)과 평가 구간(480 ~)이 겹치면 평가가 부풀려진다**
 
 **핵심 용어**
 - **INT8-mixed**: Detect head 후처리 + 첫 Conv + 마지막 출력 Conv 6개까지 FP16 으로 남긴 INT8
@@ -272,6 +306,14 @@ class FrameReader(CalibrationDataReader):
 
 **개요**: OT Day 5 의 파이프라인은 추론기(`infer`)를 인자로 받는 구조라 엔진만 바꿔 끼우면 된다. 프레임 시간 = read(CPU) + pre(CPU) + **infer(GPU, 양자화로 빨라지는 곳은 여기뿐)** + post(CPU). 단계별 시간을 재고(`time_stages`), 엔진마다 영상 · 이벤트 CSV 를 만든다(`run_intrusion`).
 
+**한눈에 보기**
+침입 감지 파이프라인 — 엔진만 교체
+> read → pre → infer → post → 그리기 · 저장 구조에서 바뀌는 곳은 infer 한 곳 — FP16 · INT8 · INT8-mixed 엔진을 갈아 끼워 영상과 이벤트를 각각 만든다
+- **빨라지는 단계는 infer 뿐**: read · pre · post 는 CPU 그대로
+- **산출물 — 영상 3개 + 이벤트 CSV 3개**: `intrusion_{fp16,int8,int8_mixed}.mp4` · `events_*.csv`
+- **같은 함수 · 같은 영상으로**: 엔진만 다르게 해야 비교가 된다 (OT Day 5 와 같은 구조)
+- **⚠ 추론이 빨라질수록 나머지 단계의 비율이 커진다**: 6교시 Amdahl
+
 **핵심 용어**
 - **엔진 교체**: 전 · 후처리는 그대로 두고 `infer` 만 바꾼다
 - **infer_share**: 프레임 시간 중 추론이 차지하는 비율
@@ -325,6 +367,15 @@ infer 를 인자로 받으면 엔진 교체만으로 끝난다. 프레임 시간
 **키워드**: `GT 없는 평가`, `기준 엔진 FP16`, `프레임 일치율`, `이벤트 일치`, `agreement`, `match_events`, `Amdahl 의 법칙`
 
 **개요**: 현장 영상에는 정답(GT)이 없어 mAP 를 못 잰다. 대신 **기준 엔진(FP16)과 얼마나 같은 결정을 내리는가**를 본다 — 프레임 수준(n_people · n_inside · alarm 이 같은 프레임 비율)과 이벤트 수준(FP16 이벤트마다 겹치는 이벤트가 있나 · 시작 시각 차이). 박스 몇 개가 달라도 경보 · 이벤트가 같으면 서비스에는 같은 결과다. 또 추론이 빨라질수록 병목이 전 · 후처리로 옮겨간다.
+
+**한눈에 보기**
+결과 비교 — 이벤트 일치율 · 병목의 이동
+> 정답(GT)이 없는 현장 영상은 기준 엔진과 같은 결정을 내리는지(프레임 · 이벤트 일치율)로 평가하고, Amdahl 식으로 추론 가속이 전체 속도에 주는 효과를 계산한다
+- **프레임 수준 — 사람 수(엄격) · 구역 안 · 경보**: 서비스에 영향을 주는 것은 경보
+- **이벤트 수준 — 재현율 + 시작 시각 차이**: 경보가 늦게 켜지면 mAP 가 비슷해도 문제
+- **Amdahl — 전체 향상 = 1 / ((1 − p) + p / k)**: p = 0.5 면 추론 2배 → 1.33배 · 10배 → 1.82배, 최대 2배
+- **실제 p 는 내 실행의 추론 비율로 다시 계산**: `stage_df.infer_share["FP16"]`
+- **⚠ 지표는 서비스가 정한다**: 사람 수 일치율이 낮아도 경보 · 이벤트는 거의 같을 수 있다
 
 **핵심 용어**
 - **프레임 일치율**: 기준 로그와 값이 같은 프레임의 비율 (n_people 가 가장 엄격, alarm 이 서비스에 중요)
@@ -381,6 +432,15 @@ GT 가 없으면 기준 엔진과의 일치율(프레임 · 이벤트)로 평가
 **키워드**: `qp_baseline.csv`, `경량화 결정표`, `Jetson Orin`, `Raspberry Pi 5`, `MCU (Cortex-M)`, `재학습 없는 것 먼저`, `실제 장치에서 다시 재기`
 
 **개요**: 6일 동안의 결과를 `qp_baseline.csv` 한 표에 모으고(오늘 5행: 분류 2 + 침입 감지 3), 장치에 따라 기법을 고른다. 선택 순서 — ① 목표를 숫자로(지연 · 크기 · 정확도 하한) ② 재학습 없이: FP16 → INT8 PTQ → mixed (목표를 만족하면 끝) ③ 부족하면 재학습: structured pruning → KD → INT8 PTQ → (손실 1%p 초과 시) QAT ④ 항상 실제 장치 · 파이프라인에서 다시 잰다 (MACs ≠ 지연, 추론 ≠ 프레임 전체).
+
+**한눈에 보기**
+배포 판단 — 장치가 기법을 정한다
+> GPU 가 있으면 TensorRT INT8, CPU 만 있으면 INT8 + pruning, MCU 는 전부 INT8 — 목표를 숫자로 먼저 정하고, 재학습 없는 기법부터 차례로 시도한다
+- **재학습 없이 — FP16 → INT8 PTQ → mixed precision**: 보정 데이터만 있으면 된다
+- **재학습 — structured pruning → KD → INT8 PTQ → QAT**: QAT 는 PTQ 손실이 1%p 를 넘을 때만
+- **목표를 만족하면 거기서 끝**: 더 줄이는 것이 목적이 아니다
+- **최종 qp_baseline.csv**: Day 2 ~ 6 결과를 같은 열로 모아 결정표를 만든다
+- **⚠ MACs ≠ 지연, 추론 ≠ 프레임 전체**: 실제 장치에서 다시 잰다
 
 **핵심 용어**
 - **경량화 결정표**: 장치별 런타임 · 정밀도 · pruning · KD 추천표 (`decision_table.csv`)
@@ -439,6 +499,15 @@ display(final_df[final_df.day == "Day6"])         # 오늘 5행
 **키워드**: `평가 대비`, `static PTQ 비교표`, `structured pruning 30%`, `ptq_df`, `prune_df`, `eval_practice.csv`, `소스 기준 부분 점수`
 
 **개요**: 파트 2 평가(ONNX · TensorRT + Quantization · Pruning)의 실습과 같은 수준의 예제 2문항을 혼자 푼다. 과제 1(쉬움, 30점): ONNX 모델 static PTQ 후 크기 · 정확도 · 지연 비교표 `ptq_df`. 과제 2(중간, 40점): structured pruning 30% + 3 epoch 학습 후 결과표 `prune_df`. 과제 3(20점): `eval_practice.csv` · 요약 `answer`. 과제 4(10점): 마크다운 결론. 제출은 소스 기준 · 기능별 부분 점수 — 끝까지 못 해도 실행되는 곳까지 제출한다. 정답 보기 셀은 없다.
+
+**한눈에 보기**
+평가 대비 — 비교표 + 숫자로 쓴 결론
+> 쉬움 = static PTQ 비교표, 중간 = pruning + 학습 결과표 — 마지막은 표의 숫자로 쓴 한 줄 결론
+- **과제 1 — static PTQ**: `eval_fp32.onnx` · `eval_int8.onnx` 의 크기 · 정확도 · 지연
+- **과제 2 — 30% 가지치기 + 3 epoch**: `prune_channels(·, 0.3)` → finetune 또는 train_kd → MACs · 정확도 · 지연
+- **과제 3 — answer 사전**: ptq_size_x · ptq_acc_drop_pp · prune_macs_x · prune_acc_drop_pp · pass_3pp
+- **과제 4 — 결론 4문항**: INT8 배포 판단 · CPU 에서 QDQ INT8 이 느린 이유 · 3%p 기준 · 양자화가 마지막인 이유
+- **⚠ 끝까지 못 해도 만든 곳까지 실행되는 상태로 제출**: 부분 점수
 
 **핵심 용어**
 - **ptq_df**: 열 model · size_kb · acc · latency_ms, 행 FP32 · INT8
