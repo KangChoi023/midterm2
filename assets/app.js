@@ -987,14 +987,30 @@
     return h;
   }
 
-  // 한눈에 보기: 노트의 "**한눈에 보기**" 표 (| 항목 | 내용 |) → 왼쪽 굵은 항목 · 오른쪽 한 줄 설명. ⚠ 로 시작하는 항목은 함정 줄로 강조
+  // 한눈에 보기: 노트의 "**한눈에 보기**" 섹션
+  //   첫 줄 = 메인 개념 이름 · "> " = 그 개념이 무엇을 · 왜 하는지 한 줄 · "- **소제목**: 설명" = 중요한 점 (⚠ 로 시작하면 함정)
+  //   (예전 표 형식 | 항목 | 내용 | 도 읽는다)
   function glanceCard(x, L) {
-    const rows = x.md.split('\n').filter(l => /^\s*\|/.test(l) && !/^\s*\|\s*:?-{2,}/.test(l))
-      .map(l => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, '|')))
-      .filter(r => r.length >= 2);
-    const body = rows.filter((r, k) => !(k === 0 && /^(항목|구분)$/.test(r[0]))).map(r =>
-      `<tr class="${/^⚠/.test(r[0]) ? 'warn' : ''}"><th>${mdInline(r[0])}</th><td>${mdInline(r.slice(1).join(' | '))}</td></tr>`).join('');
-    return `<section class="glance"><h3>🎯 ${L.n}교시 한눈에 보기</h3><table class="gl"><tbody>${body}</tbody></table></section>`;
+    const lines = x.md.split('\n');
+    let title = '', lead = '';
+    const items = [];
+    lines.forEach(l => {
+      const s = l.trim(); if (!s) return;
+      let m;
+      if ((m = s.match(/^-\s*\*\*(.+?)\*\*\s*[:：]?\s*(.*)$/))) items.push({ t: m[1], d: m[2] });
+      else if (/^\|/.test(s)) {
+        if (/^\|\s*:?-{2,}/.test(s)) return;
+        const c = s.replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map(v => v.trim());
+        if (c.length >= 2 && !/^(항목|구분)$/.test(c[0])) items.push({ t: c[0], d: c.slice(1).join(' | ') });
+      }
+      else if (s.startsWith('>')) lead += (lead ? ' ' : '') + s.replace(/^>\s?/, '');
+      else if (/^\s{2,}\S/.test(l) && items.length) items[items.length - 1].d += ' ' + s;      // 설명 이어 쓰기
+      else if (!title) title = s;
+    });
+    const li = items.map(it => `<li class="${/^⚠/.test(it.t) ? 'warn' : ''}"><div class="gl-t">${mdInline(it.t)}</div>${it.d ? `<div class="gl-d">${mdInline(it.d)}</div>` : ''}</li>`).join('');
+    return `<section class="glance"><div class="gl-tag">🎯 ${L.n}교시 한눈에 보기</div>`
+      + (title ? `<h3 class="gl-main">${mdInline(title)}</h3>` : '') + (lead ? `<p class="gl-lead">${mdInline(lead)}</p>` : '')
+      + (li ? `<ul class="gl-list">${li}</ul>` : '') + `</section>`;
   }
 
   /* 옆 패널 */
