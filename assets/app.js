@@ -495,14 +495,14 @@
     const my = ++codeSeq, ctx = await lessonCtx(cur.s, cur.d, cur.n), box = $('.clsn-all', sideCode);
     if (my !== codeSeq || !box || !ctx) return;
     if ((ctx.L.codes || []).length) {          // 노트북 과목: 노트에 단 '하는 일' 제목 그대로, 교안 코드 빠짐없이
-      box.innerHTML = ctx.L.codes.map((c, j) => codeBox(c, j).replace(`<details class="cx" id="K${j}"`, `<details class="cx" open id="R${j}"`)).join('');
+      box.innerHTML = ctx.L.codes.map((c, j) => codeBox(c, j).replace(`<details class="cx" id="K${j}"`, `<details class="cx" id="R${j}"`)).join('');
       const h = box.previousElementSibling; if (h) h.textContent = h.textContent.replace(/코드 \d+개/, `코드 ${ctx.L.codes.length}개`);
       highlightIn(box); return;
     }
     box.innerHTML = (CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || []).map(r => {
       const t = ctx.L.topics[r[3]]; if (!t) return '';
       const sum = codeItem(r).replace(/^<button[^>]*>/, '').replace(/<\/button>$/, '');
-      return `<details class="clsn" open><summary class="citem">${sum}</summary><div class="clsn-b">${figsHtml(t, ctx)}${exampleBody(t)}<button type="button" class="btn sm clsn-more" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}">자세히 · 줄 설명 ›</button></div></details>`;
+      return `<details class="clsn"><summary class="citem">${sum}</summary><div class="clsn-b">${figsHtml(t, ctx)}${exampleBody(t)}<button type="button" class="btn sm clsn-more" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}">자세히 · 줄 설명 ›</button></div></details>`;
     }).join('');
     highlightIn(box);
   }
