@@ -812,3 +812,6 @@ body.rp-wide { --rp-w: min(1100px, 68vw); }
 .clsn-b { padding: 0 8px 8px; }
 .clsn-b .cb { margin: 6px 0; }
 .clsn-more { margin-top: 2px; }
+.cx-t b { font-weight: 700; }
+.cx-t small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-2); margin-top: 1px; }
+.clsn-all > details.cx { margin: 0 0 10px; }

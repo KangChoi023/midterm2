@@ -479,6 +479,11 @@
   async function codeLessonAll(cur) {
     const my = ++codeSeq, ctx = await lessonCtx(cur.s, cur.d, cur.n), box = $('.clsn-all', sideCode);
     if (my !== codeSeq || !box || !ctx) return;
+    if ((ctx.L.codes || []).length) {          // 노트북 과목: 노트에 단 '하는 일' 제목 그대로, 교안 코드 빠짐없이
+      box.innerHTML = ctx.L.codes.map((c, j) => codeBox(c, j).replace(`<details class="cx" id="K${j}"`, `<details class="cx" open id="R${j}"`)).join('');
+      const h = box.previousElementSibling; if (h) h.textContent = h.textContent.replace(/코드 \d+개/, `코드 ${ctx.L.codes.length}개`);
+      highlightIn(box); return;
+    }
     box.innerHTML = (CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || []).map(r => {
       const t = ctx.L.topics[r[3]]; if (!t) return '';
       const sum = codeItem(r).replace(/^<button[^>]*>/, '').replace(/<\/button>$/, '');
@@ -854,11 +859,12 @@
    * 노트 상세 학습의 <<CODE 키 | 제목>> 자리에 교안 코드(정답을 채운 코드 · 실행 결과 · 💡 해설)를 접힌 블록으로.
    * 마커가 없는 코드는 교시 끝 "이 교시의 다른 강의 코드" 에 모두 모은다 — 교안 코드가 빠지지 않게.
    * 블록 안: 함수 이름(점선 밑줄)을 누르면 함수 설명, 색칠된 줄(🧭)을 누르면 그 부분 설명 — 둘 다 그 줄 바로 아래 작은 상자. */
+  const cxTitle = s => { const i = String(s).indexOf(' — '); return i < 0 ? `<b>${esc(s)}</b>` : `<b>${esc(s.slice(0, i))}</b><small>${esc(s.slice(i + 3))}</small>`; };
   function codeBox(c, j) {
     const n = c.code.replace(/\n+$/, '').split('\n').length;
     const g = c.guide || [];
     const outs = (c.outs || []).map(o => codeBlock({ kind: 'out', lang: 'text', text: o.text, run: o.run || undefined })).join('');
-    return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${esc(c.t)}</span>`
+    return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${cxTitle(c.t)}</span>`
       + `<span class="cx-meta">${g.length ? `<span class="cx-g" title="색칠된 줄을 누르면 설명">🧭 ${g.length}</span>` : ''}${n}줄 · ${c.from === 'md' ? '강의 글' : '강의 ' + esc(c.k)}</span></summary>`
       + `<div class="cx-in">${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
       + (c.qp === 'solved' ? `<p class="cx-own" title="QP 교안의 정답은 강사 잠금 코드로 잠겨 있어, 직접 작성한 풀이를 교안의 확인 셀(assert)로 실행해 확인했습니다">✍️ 직접 작성한 풀이 · 교안 확인 셀 통과 (공식 정답 아님)</p>` : c.qp === 'todo' ? `<p class="cx-own">✍️ 아직 풀이가 없어 빈칸(TODO) 그대로</p>` : '')
