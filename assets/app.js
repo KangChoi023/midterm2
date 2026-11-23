@@ -127,7 +127,7 @@
       map.get(k).src.push({ s, d, n, a });
     };
     IDX.terms.forEach(r => add('term', r[0], r[1], r[2], r[3], r[4], '', 't' + r[5]));
-    IDX.funcs.forEach(r => { add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]); const e = map.get('code|' + r[3].toLowerCase().replace(/\s+/g, ' ').trim()); if (e && r[7] && !e.detail) e.detail = r[7]; if (e && r[8] && !e.ex) { e.ex = r[8]; e.exS = r[0]; } });
+    IDX.funcs.forEach(r => { add('code', r[0], r[1], r[2], r[3], r[5], r[4], 'f' + r[6]); const e = map.get('code|' + r[3].toLowerCase().replace(/\s+/g, ' ').trim()); if (e && r[7] && !e.detail) e.detail = r[7]; if (e && !e.fk) e.fk = r[8]; if (e && r[9] && !e.ex) { e.ex = r[9]; e.exS = r[0]; } });
     DICT = [...map.values()].sort((a, b) => a.o - b.o);
     DICT.forEach((e, i) => { e.i = i; e.nameLo = e.name.toLowerCase(); e.key = (e.name + ' ' + stripTags(e.def) + ' ' + stripTags(e.sig)).toLowerCase(); e.subj = [...new Set(e.src.map(x => x.s))]; });
   }
@@ -160,8 +160,8 @@
       return h + esc(s.slice(p));
     };
     const srcs = e.src.map(x => `<a href="${href(x.s, x.d, x.n, x.a)}">${loc(x.s, x.d, x.n)}</a>`).join('');
-    return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span></summary>
-      <div class="dbody">${e.detail && e.detail.role ? `<div class="drole">${esc(e.detail.role)}</div>` : ''}${e.sig ? `<code class="fsig">${esc(String(e.sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : ''}${e.detail ? detailHtml(e.detail, true) + exHtml(e.exS, e.ex) + `<div class="ddef note">노트: ${mdInline(e.def || '')}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>` + exHtml(e.exS, e.ex)}<div class="dsrc">${srcs}</div></div></details>`;
+    return `<details class="dent" data-i="${e.i}"><summary><span class="dk ${e.kind}">${e.kind === 'term' ? '용어' : '코드'}</span><span class="dn${e.kind === 'code' ? ' mono' : ''}">${hl(e.name)}</span>${e.fk ? `<span class="dp-k ${KIND_CLS[e.fk] || ''}">${esc(e.fk)}</span>` : ''}</summary>
+      <div class="dbody">${e.detail && e.detail.role ? `<div class="drole">${esc(e.detail.role)}</div>` : `<div class="ddef">${mdInline(e.def || '')}</div>`}${detailHtml(e.detail, true, e.sig)}${exHtml(e.exS, e.ex)}<div class="dsrc"><span class="apid-k">나온 곳</span>${srcs}</div></div></details>`;
   }
   function dictRender() {
     if (!DICT) dictBuild();
@@ -631,18 +631,25 @@
     return ts.length ? `<span class="cbtns">${ts.map(t => `<button type="button" class="cbtn" data-peek-x="${t.id}" title="${esc(t.title)} — 오른쪽 코드 패널에서 보기"><b>코드)</b> ${esc(exLabel(t))}</button>`).join('')}</span>` : '';
   }
   /* 함수·명령 상세 (summary/.src/api_detail.json): 역할 · 인자별 뜻 · 동작 · 반환 · 준비 */
-  function detailHtml(det, noRole) {
-    if (!det) return '';
-    const args = (det.args || []).length ? `<table class="apid-args"><thead><tr><th>인자</th><th>뜻</th></tr></thead><tbody>${det.args.map(a => `<tr><td><code>${esc(a[0])}</code></td><td>${mdInline(a[1])}</td></tr>`).join('')}</tbody></table>` : '';
-    const row = (k, v) => v ? `<div class="apid-row"><span class="k">${k}</span><span>${mdInline(v)}</span></div>` : '';
+  const KIND_CLS = { '클래스': 'cls', '메서드': 'mth', '속성': 'att', '인자 · 옵션': 'arg', '상수': 'con', '상수 · 매크로': 'con', '명령': 'cmd' };
+  const sigCode = sig => sig ? `<code class="fsig">${esc(String(sig).replace(/`\s*·\s*`/g, '\n').replace(/`|\*\*/g, ''))}</code>` : '';
+  // 'A → B — 설명' 이면 설명은 다음 줄 일반 글씨로
+  const ioHtml = f => { const i = f.indexOf(' — '); return `<div class="apid-io">${mdInline(i < 0 ? f : f.slice(0, i))}</div>` + (i < 0 ? '' : `<div class="apid-ion">${mdInline(f.slice(i + 3))}</div>`); };
+  function detailHtml(det, noRole, sig) {
+    det = det || {};
+    const args = (det.args || []).length ? `<ul class="apid-args">${det.args.map(a => `<li><code>${esc(a[0])}</code><span>${mdInline(a[1])}</span></li>`).join('')}</ul>` : '';
+    const sec = (k, v) => v ? `<div class="apid-k">${k}</div>${v}` : '';
     const desc = (det.desc || []).length ? `<ul class="apid-desc">${det.desc.map(x => `<li>${mdInline(x)}</li>`).join('')}</ul>` : '';
-    return `<div class="apid">${noRole ? '' : row('역할', det.role ? `<b>${esc(det.role)}</b>` : '')}${desc}${args}${row('동작', det.flow)}${row('반환', det.ret)}${row('준비', det.hdr)}</div>`;
+    const body = (noRole || !det.role ? '' : `<div class="drole">${esc(det.role)}</div>`)
+      + sec('기본형', sigCode(sig) + args) + sec('입력 → 출력', det.flow && ioHtml(det.flow))
+      + sec('반환', det.ret && `<div>${mdInline(det.ret)}</div>`) + sec('핵심', desc) + sec('준비', det.hdr && `<div class="apid-hdr">${mdInline(det.hdr)}</div>`);
+    return body ? `<div class="apid">${body}</div>` : '';
   }
   /* 강의 교안에서 이 함수가 실제로 쓰인 한 줄 (빌드가 고름: [day, 교시, 토픽 id, 줄, 토픽 제목, 강조할 낱말])
    * 버튼을 누르면 오른쪽 💻 코드 패널에 그 예제를 열고, 그 줄의 함수 이름으로 이동한다 */
   function exHtml(s, ex) {
     if (!s || !ex) return '';
-    return `<div class="apid-ex"><div class="k">강의 예제</div><code>${esc(ex[3])}</code><button type="button" class="exlink" data-code-open="${s}|${ex[0]}|${ex[1]}|${ex[2]}" data-code-find="${esc(ex[5] || '')}" data-code-line="${esc(ex[3])}" title="오른쪽 코드 패널에서 이 예제 보기">${loc(s, ex[0], ex[1])} · ${esc(ex[4])} ▶</button></div>`;
+    return `<div class="apid-k">강의 예제</div><div class="apid-ex"><code>${esc(ex[3].replace(/\s{3,}#/, '  #'))}</code><button type="button" class="exlink" data-code-open="${s}|${ex[0]}|${ex[1]}|${ex[2]}" data-code-find="${esc(ex[5] || '')}" data-code-line="${esc(ex[3])}" title="${esc(ex[4])} — 오른쪽 코드 패널에서 보기">${loc(s, ex[0], ex[1])} ▶</button></div>`;
   }
   /* 함수·명령 한 줄: 이름 + 역할만 (기본형 · 인자 · 동작은 이름을 누르면 옆 패널에) */
   function fnRole(use, det) { return det && det.role ? `<span class="frole">${esc(det.role)}</span>` : `<span class="frole">${mdInline(use || '')}</span>`; }
@@ -1037,7 +1044,7 @@
     const f = L.funcs[i]; if (!f) return '';
     const d = f.detail || {};
     const kind = f.kind || '함수';
-    const kc = { '클래스': 'cls', '메서드': 'mth', '속성': 'att', '인자 · 옵션': 'arg', '상수': 'con', '상수 · 매크로': 'con', '명령': 'cmd' }[kind] || '';
+    const kc = KIND_CLS[kind] || '';
     return `<div class="dp-h"><code>${esc(f.name)}</code><span class="dp-k ${kc}">${esc(kind)}</span></div>`
       + (d.role ? `<div class="dp-role">${mdInline(d.role)}</div>` : '')
       + (f.sig ? `<div class="dp-sig">${mdInline(f.sig)}</div>` : '')
@@ -1081,7 +1088,7 @@
     if (kind === 'c') {
       const c = LK.byId[id]; if (!c) return closePeek();
       title = `<span class="tag">${c.kind === 'term' ? '용어' : '함수·명령'}</span> ${esc(c.name)}`;
-      h += `<div class="pk-def">${mdInline(c.def || '')}${c.sig ? `<div class="sig">${mdInline(c.sig)}</div>` : ''}</div>${detailHtml(c.detail)}${exHtml(CX.s, c.ex)}`;
+      h += (c.detail && c.detail.role ? '' : `<div class="pk-def">${mdInline(c.def || '')}</div>`) + detailHtml(c.detail, false, c.sig) + exHtml(CX.s, c.ex);
       if (c.bullets.length) h += pkSec(`핵심 내용 ${c.bullets.length}`, c.bullets.map(bid => { const b = findBullet(bid); return b ? `<div class="pk-item">${bulletBody(b.md)}<button type="button" class="go" data-go="${bid}">본문 ↗</button></div>` : ''; }).join(''));
       if (c.usage.length) h += pkSec('기본 사용형태', `<pre><code data-lang="${esc(c.usage[0].lang)}">${esc(c.usage.map(u => u.line).join('\n'))}</code></pre>`);
       if (c.examples.length) h += pkSec(`예제 코드 ${c.examples.length}`, `<div class="cbtn-col">${codeBtns(c.examples)}</div>`);

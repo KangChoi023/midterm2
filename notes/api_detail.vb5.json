@@ -1,9 +1,8 @@
 {
  "_설명": "VB Day 5 함수 상세",
  "np.unique()": {
-  "role": "배열에 들어 있는 서로 다른 값 목록",
+  "role": "배열에 들어 있는 서로 다른 값 목록 — 마스크에 쓰인 값(0 = 배경, 1 · 2 = 사람)을 확인",
   "desc": [
-   "마스크에 쓰인 값(0 = 배경, 1 · 2 = 사람)을 확인",
    "정렬된 1차원 배열로 돌려줌"
   ],
   "args": [
@@ -17,9 +16,8 @@
   "hdr": "import numpy as np"
  },
  "mask_box()": {
-  "role": "마스크 → 둘러싸는 박스",
+  "role": "마스크 → 둘러싸는 박스 — `np.where` 로 True 인 위치를 찾고 최솟값 · 최댓값을 박스로",
   "desc": [
-   "`np.where` 로 True 인 위치를 찾고 최솟값 · 최댓값을 박스로",
    "마스크에서 박스는 바로 나온다 (반대는 불가)"
   ],
   "args": [
@@ -32,9 +30,8 @@
   "ret": "xyxy 배열"
  },
  "tconv_out()": {
-  "role": "Transposed Conv 출력 크기",
+  "role": "Transposed Conv 출력 크기 — `(n − 1)·s − 2p + k`",
   "desc": [
-   "`(n − 1)·s − 2p + k`",
    "n = 8, k4 s2 p1 → 16 · k3 s2 p1 → 15"
   ],
   "args": [
@@ -95,9 +92,8 @@
   "hdr": "torch.nn"
  },
  "miou()": {
-  "role": "클래스별 IoU 와 평균 mIoU",
+  "role": "클래스별 IoU 와 평균 mIoU — 클래스마다 `(교집합) / (합집합)` 픽셀 수",
   "desc": [
-   "클래스마다 `(교집합) / (합집합)` 픽셀 수",
    "합집합 0 이면 `nan` → `nanmean` 으로 제외",
    "4×4 예제: [0.5, 0.6667] → 0.5833"
   ],
@@ -119,9 +115,8 @@
   "ret": "(IoU 배열, mIoU)"
  },
  "seg_person_mask()": {
-  "role": "YOLOv8-seg 결과 → 사람 마스크(0/1)",
+  "role": "YOLOv8-seg 결과 → 사람 마스크(0/1) — `classes=[0]` 로 사람만 예측",
   "desc": [
-   "`classes=[0]` 로 사람만 예측",
    "`r.masks.xy` 외곽선을 `cv2.fillPoly` 로 원본 크기 마스크에 채움",
    "사람 0명이면 `r.masks is None`"
   ],
@@ -143,9 +138,8 @@
   "ret": "(H×W uint8 마스크, 사람 수)"
  },
  "cv2.fillPoly()": {
-  "role": "다각형 안을 한 값으로 채움",
+  "role": "다각형 안을 한 값으로 채움 — 마스크 만들기 · 위험구역 칠하기에 쓴다",
   "desc": [
-   "마스크 만들기 · 위험구역 칠하기에 쓴다",
    "다각형은 `int32` 배열의 리스트"
   ],
   "args": [
@@ -204,9 +198,8 @@
   "ret": "float (도)"
  },
  "body_tilt()": {
-  "role": "몸통과 수직선 사이 각도",
+  "role": "몸통과 수직선 사이 각도 — 어깨 중점 `(5, 6)` 과 엉덩이 중점 `(11, 12)` 사용",
   "desc": [
-   "어깨 중점 `(5, 6)` 과 엉덩이 중점 `(11, 12)` 사용",
    "위쪽 수직 = `[0, -1]` (이미지 y 는 아래가 +)",
    "서 있으면 ≈ 0°, 누우면 ≈ 90°"
   ],
@@ -220,9 +213,8 @@
   "ret": "float (도)"
  },
  "is_fallen()": {
-  "role": "쓰러짐 판정",
+  "role": "쓰러짐 판정 — 기울기 > thr(60°) 이면 True",
   "desc": [
-   "기울기 > thr(60°) 이면 True",
    "어깨 · 엉덩이 conf 가 min_conf(0.5) 미만이면 판정 보류 `None`"
   ],
   "args": [
@@ -261,9 +253,8 @@
   "ret": "int"
  },
  "draw_pose()": {
-  "role": "뼈대 · 관절 그리기",
+  "role": "뼈대 · 관절 그리기 — `SKELETON` 의 연결선을 `cv2.line`, 관절은 `cv2.circle`",
   "desc": [
-   "`SKELETON` 의 연결선을 `cv2.line`, 관절은 `cv2.circle`",
    "conf 가 min_conf 미만인 점 · 선은 건너뜀"
   ],
   "args": [
@@ -284,9 +275,8 @@
   "ret": "그려진 이미지 복사본"
  },
  "np.arccos()": {
-  "role": "코사인 값 → 각도(라디안)",
+  "role": "코사인 값 → 각도(라디안) — `np.degrees` 로 도(°) 변환",
   "desc": [
-   "`np.degrees` 로 도(°) 변환",
    "입력이 [−1, 1] 밖이면 nan → `np.clip` 먼저"
   ],
   "args": [
@@ -319,9 +309,8 @@
   "hdr": "import cv2"
  },
  "n_channels()": {
-  "role": "태스크별 칸당 출력 숫자 개수",
+  "role": "태스크별 칸당 출력 숫자 개수 — detect `4 + nc` = 84",
   "desc": [
-   "detect `4 + nc` = 84",
    "segment `4 + nc + nm` = 116",
    "pose `4 + 1 + nk×3` = 56"
   ],
@@ -339,9 +328,8 @@
   "ret": "int"
  },
  "torch.onnx.export()": {
-  "role": "PyTorch 모델 → ONNX 파일",
+  "role": "PyTorch 모델 → ONNX 파일 — 예시 입력으로 한 번 실행하며 연산을 기록(tracing)",
   "desc": [
-   "예시 입력으로 한 번 실행하며 연산을 기록(tracing)",
    "`.eval()` 모델을 넣는다"
   ],
   "args": [
@@ -397,9 +385,8 @@
   "ret": "ONNX ModelProto"
  },
  "onnx.load()": {
-  "role": "ONNX 파일 읽기",
+  "role": "ONNX 파일 읽기 — `graph.node` (연산 목록) · `graph.input` 으로 구조 확인",
   "desc": [
-   "`graph.node` (연산 목록) · `graph.input` 으로 구조 확인",
    "MobileNetV3-S: 노드 159개"
   ],
   "args": [
@@ -452,9 +439,8 @@
   "hdr": "import onnxruntime as ort"
  },
  "sess.run()": {
-  "role": "ONNX Runtime 추론",
+  "role": "ONNX Runtime 추론 — 입력은 **이름**으로 넣는다 (`input` · YOLO 는 `images`)",
   "desc": [
-   "입력은 **이름**으로 넣는다 (`input` · YOLO 는 `images`)",
    "입력은 numpy float32"
   ],
   "args": [
@@ -471,9 +457,8 @@
   "ret": "출력 numpy 배열의 리스트"
  },
  "yolo.export()": {
-  "role": "ultralytics 모델 → ONNX",
+  "role": "ultralytics 모델 → ONNX — `format=\"onnx\"`, `imgsz=640`, `opset=17`",
   "desc": [
-   "`format=\"onnx\"`, `imgsz=640`, `opset=17`",
    "원시 출력 `(1, 84, 8400)` — 후처리는 직접"
   ],
   "args": [
@@ -494,9 +479,8 @@
   "ret": "저장된 .onnx 경로"
  },
  "benchmark()": {
-  "role": "반복 측정 → 통계",
+  "role": "반복 측정 → 통계 — warm-up 은 버리고 `reps` 번 시간(ms) 측정",
   "desc": [
-   "warm-up 은 버리고 `reps` 번 시간(ms) 측정",
    "mean · p50 · p95 · fps 를 딕셔너리로"
   ],
   "args": [
@@ -590,9 +574,8 @@
   "hdr": "import os"
  },
  "cv2.pointPolygonTest()": {
-  "role": "점이 다각형 안인지",
+  "role": "점이 다각형 안인지 — 안 `+1` · 선 위 `0` · 밖 `−1` (`measureDist=False`)",
   "desc": [
-   "안 `+1` · 선 위 `0` · 밖 `−1` (`measureDist=False`)",
    "점은 float 튜플, 다각형은 int32"
   ],
   "args": [
@@ -673,9 +656,8 @@
   "ret": "(boxes, scores)"
  },
  "run_intrusion()": {
-  "role": "영상 전체 침입 감지",
+  "role": "영상 전체 침입 감지 — 프레임마다 박스 → 발 위치 → 구역 안 인원 → streak → 경보",
   "desc": [
-   "프레임마다 박스 → 발 위치 → 구역 안 인원 → streak → 경보",
    "결과 영상 + CSV 로그 (`frame, time_s, n_people, n_inside, alarm`)"
   ],
   "args": [
@@ -696,9 +678,8 @@
   "ret": "로그 · 경보 배열"
  },
  "find_events()": {
-  "role": "경보 배열 → 이벤트 구간",
+  "role": "경보 배열 → 이벤트 구간 — 경보가 1 로 이어진 구간을 (시작 초, 끝 초) 로",
   "desc": [
-   "경보가 1 로 이어진 구간을 (시작 초, 끝 초) 로",
    "`[0,0,1,1,1,0,0,1,1,0,1]`, 10 FPS → `[(0.2, 0.4), (0.7, 0.8), (1.0, 1.0)]`"
   ],
   "args": [
