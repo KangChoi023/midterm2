@@ -787,3 +787,8 @@ details.ctree.l > .citem:hover .cn { color: var(--lv3); }
 .gl-codes { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px 8px; margin: 0 0 14px; }
 .gl-codes > h3 { margin: 0 0 10px; font-size: 16px; } .gl-codes > h3 small { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 6px; }
 .gl-codes details.cx { margin: 0 0 8px; }
+.dictpop .dp-k.cls { color: #7c3aed; border-color: color-mix(in srgb, #7c3aed 40%, var(--line)); }
+.dictpop .dp-k.mth { color: #0891b2; border-color: color-mix(in srgb, #0891b2 40%, var(--line)); }
+.dictpop .dp-k.att, .dictpop .dp-k.con { color: #b45309; border-color: color-mix(in srgb, #b45309 40%, var(--line)); }
+.dictpop .dp-k.arg { color: #be185d; border-color: color-mix(in srgb, #be185d 40%, var(--line)); }
+.dictpop .dp-k.cmd { color: #15803d; border-color: color-mix(in srgb, #15803d 40%, var(--line)); }

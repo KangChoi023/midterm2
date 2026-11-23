@@ -395,6 +395,73 @@ EX_STAT = []
 GUIDE_MISS = {}   # 키 → 못 찾은 단계 (어느 토픽에서도 못 찾았을 때만 경고)
 GUIDE_HIT = set()
 
+# ---- 함수 · 명령의 종류 (말풍선 오른쪽 위 표시) ----
+# 이름 모양으로 판별한다. 틀린 것은 api_detail 의 "kind" 로 고친다 (예: {"Tensor.zero_grad()": {"kind": "메서드", …}}).
+PY_SUBJ = {'nn', 'vb', 'ot', 'qp', 'py'}
+C_SUBJ = {'c', 'mcu'}
+PY_MODULES = {'np', 'numpy', 'torch', 'F', 'nn', 'cv2', 'os', 'ort', 'onnx', 'onnxruntime', 'plt', 'pd', 'tp', 'mtq', 'mto',
+              'trt', 'time', 'json', 're', 'math', 'random', 'sys', 'copy', 'torchvision', 'collections', 'csv', 'pathlib',
+              'itertools', 'shutil', 'glob', 'gzip', 'io', 'pickle', 'base64', 'hashlib', 'subprocess', 'warnings',
+              'inspect', 'importlib', 'datetime', 'onnxslim', 'polygraphy', 'prune', 'numpy_helper', 'transforms',
+              'datasets', 'models', 'optim', 'utils', 'cuda', 'linalg', 'IPython', 'ultralytics', 'modelopt', 'scipy',
+              'my_quant', 'mynn', 'zipfile', 'tensorrt', 'lr_scheduler'}
+PY_SYNTAX = {'lambda', 'f-string', 'with', 'yield', 'try', 'except', 'class', 'def', 'import', 'for', 'while', 'if',
+             'list comprehension', 'dict comprehension', 'assert', 'global', 'del', 'return'}
+C_KEYWORDS = ('switch', 'do-while', 'static', 'sizeof', 'const', 'typedef', 'volatile', 'struct', 'enum', 'union', 'if',
+              'for', 'while', 'break', 'continue', 'return', 'goto', 'extern', 'register', 'unsigned', 'signed', 'void',
+              'inline', 'case', 'default', 'else')
+SHELL_HEAD = {'gcc', 'g++', 'nm', 'make', 'touch', 'objdump', 'wc', 'echo', 'arduino-cli', 'cc', 'ldd', 'file', 'ar',
+              'strip', 'size', 'readelf', 'gdb', 'valgrind', 'time', 'cat', 'ls', 'xxd', 'hexdump', 'od', 'man'}
+KIND_FIX = {'Tensor.zero_grad': '메서드', 'duel_df': '변수', 'CUDAExecutionProvider': '실행기 이름', 'A @ B': '연산자'}
+
+def func_kind(sid, name, detail=None):
+    if detail and detail.get('kind'): return detail['kind']
+    n = re.sub(r'[`*]', '', name).strip()
+    n = re.sub(r'^\((구|\d+\.x)\)\s*', '', n)                             # (구) ledcSetup · (2.x) timerBegin(…) → 이름만
+    base = n.split('(')[0].strip()
+    if base in KIND_FIX or n in KIND_FIX: return KIND_FIX.get(base) or KIND_FIX[n]
+    if re.match(r'^[가-힣]', n) or not re.search(r'[A-Za-z]', n):
+        if re.search(r'법칙|=', n): return '공식'
+        if '→' in n: return '메뉴'
+        if not re.search(r'[A-Za-z가-힣]', n): return '연산자'
+        return '문법' if sid in ('c', 'linux') else '개념'
+    if sid in PY_SUBJ:
+        if n[:1] in '%!': return '매직 명령'
+        if n in PY_SYNTAX: return '문법'
+        if ' ' in base and '(' not in n: return '명령'                     # polygraphy run · polygraphy inspect model
+        last = base.split('.')[-1]
+        pre = base.rsplit('.', 1)[0] if '.' in base else ''
+        first = base.split('.')[0]
+        is_mod = first in PY_MODULES
+        if '(' in n:
+            if pre and not is_mod: return '메서드'                           # Tensor.mean() · Model.SerializeToString()
+            if last[:1].isupper(): return '클래스'                           # nn.Conv2d() · TRTInfer()
+            return '함수'
+        if re.fullmatch(r'[A-Z][A-Z0-9]*_[A-Z0-9_]+', last): return '상수'   # INT8_DEFAULT_CFG
+        if pre and not is_mod:
+            return '상수' if pre.split('.')[-1][:1].isupper() and last[:1].isupper() else '속성'   # QuantType.QInt8 · Tensor.grad · ndarray.T
+        if last[:1].isupper(): return '클래스'                               # MulLayer · nn.Module · SGD
+        if pre: return '함수'                                               # csv.writer
+        return '인자 · 옵션'
+    if sid in C_SUBJ:
+        if n.startswith('%'): return '서식 지정자'
+        if n.startswith('#'): return '전처리 지시자'
+        if 'Ctrl+' in n: return '단축키'
+        if '→' in n: return '메뉴'
+        head = n.split()[0]
+        if head in SHELL_HEAD or n.startswith('-') or re.search(r'\s-{1,2}[A-Za-z]', n): return '명령'
+        if re.match(r'^\((unsigned|signed|const|char|int|long|short|float|double|void|uint\w*|int\w*)\b[^)]*\)', n): return '형 변환'
+        if n.startswith('(') or re.search(r'<<|>>', n): return '비트 연산'
+        if any(n == k or n.startswith(k + ' ') for k in C_KEYWORDS): return '문법'
+        if re.fullmatch(r'[A-Z][A-Z0-9_]+(\s*/\s*[A-Z0-9_]+)*', n): return '상수 · 매크로'
+        if re.match(r'^[A-Za-z_][\w:]*\s+[A-Za-z_]\w*\s*=', n): return '선언'   # portMUX_TYPE mux = …
+        return '함수'
+    # linux · os · eio — 셸 명령이 중심, C 함수 호출 모양이면 함수
+    if re.match(r'^[A-Za-z_]\w*\s*\(', n) and not n.startswith('sudo'): return '함수'
+    if re.match(r'^(\d?>|<)', n): return '리다이렉션'
+    if re.fullmatch(r'[A-Z][A-Z0-9_]+', n): return '상수'
+    return '명령'
+
 def attach_guides(sid, d, topics, n=0):
     """code_guide.json 의 단계(at/to 글자)를 실제 코드 블록의 줄 범위로 바꿔 topic['guide'] 에.
     같은 파일명이 본문에만 언급된 토픽도 있으므로, 그 파일의 코드 블록이 실제로 있는 토픽에만 붙인다."""
@@ -533,6 +600,7 @@ def build_subject(cfg, index):
                 index['terms'].append(loc + [t['name'], t['def'], i])
                 index['search'].append(loc + ['term', f't{i}', t['name'], strip_md(t['def'])])
             for i, f in enumerate(funcs):
+                f['kind'] = func_kind(sid, f['name'], f.get('detail'))
                 index['funcs'].append(loc + [f['name'], f['sig'], f['use'], i, f.get('detail')])
                 fn_rows.append((d, n, f, index['funcs'][-1]))
                 index['search'].append(loc + ['func', f'f{i}', f['name'], strip_md(f['sig'] + ' ' + f['use'])])

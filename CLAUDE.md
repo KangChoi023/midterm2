@@ -12,7 +12,7 @@
 | 경로 | 무엇 |
 |---|---|
 | `notes/<SUBJ>_dayN.md` | **노트 원본** (직접 작성). SUBJ = ARCH · OS · PY · C · LINUX · MCU · EIO · NN |
-| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, desc:[개조식 2~4줄], args:[[인자, 한글 뜻]], flow, ret, hdr, ex?}}` — **Day 별 파일** (PR 끼리 충돌 방지). 같은 이름이면 **자기 과목 파일이 먼저**. 강의 예제 한 줄은 빌드가 교안에서 자동으로 고른다 — 어색하면 `"ex": "줄의 일부"` 로 지정, `""` 면 끔 (`! 예제 줄 못 찾음` 경고 확인) |
+| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, desc:[개조식 2~4줄], args:[[인자, 한글 뜻]], flow, ret, hdr, ex?}}` — **Day 별 파일** (PR 끼리 충돌 방지). 같은 이름이면 **자기 과목 파일이 먼저**. 종류(함수 · 클래스 · 메서드 · 속성 · 인자 · 상수 · 명령 …)는 빌드가 이름 모양으로 정한다 (`build_site.func_kind`) — 틀리면 `"kind": "메서드"` 로 지정. 강의 예제 한 줄은 빌드가 교안에서 자동으로 고른다 — 어색하면 `"ex": "줄의 일부"` 로 지정, `""` 면 끔 (`! 예제 줄 못 찾음` 경고 확인) |
 | `notes/code_guide*.json` · `review_quiz*.json` | 코드 읽기 가이드(줄 묶음 설명) · 복습 퀴즈. .ipynb 과목은 `code_guide.<sid><N>.json`, 키 `<sid>/<N>/<코드 키>` (예 `vb/3/3-1`) |
 | `tools/build_site.py` | 빌드. `SUBJECTS` 에 과목 · 교안 경로 (배운 순서). 교안은 `STUDY_ROOT/AI_CAMPUS` |
 | 교안의 `*_GoogleForm.gs` | 강사님 구글 폼 복습 · 최종 퀴즈 — 빌드가 자동으로 읽어 문항의 `anim: "D2-3"` 교시 "연관 문제" 에 붙인다 (공식 정답 · 해설, Python 제외). 장면 번호 ≠ 교시인 Day 는 `build_site.py` 의 `ANIM_LESSON` 표 |
@@ -24,6 +24,7 @@
 | `tools/fig_vb.py` · `assets/fig/vb/` | VB 그림 — `fig_nn.py` 의 Svg · Plot 을 가져다 쓴다 (`python3 -I tools/fig_vb.py d3_` 처럼 함수 이름 앞부분으로 일부만) |
 | `tools/fig_ot.py` · `assets/fig/ot/` | OT(ONNX · TensorRT) 그림 — 같은 방식, 숫자는 `notes/cell_outputs.ot*.json` 의 실행값 (TensorRT 는 GPU 가 없으면 개념 그림 · 교안 기대값) |
 | `tools/cell_outputs.py` · `notes/cell_outputs.<sid><N>.json` | 강의 노트북을 실제로 실행해 "빈칸 정답 코드 + 검증 셀" 의 출력을 모은다 → 사이트는 검증 셀 대신 "▶ 실행하면" 상자로 보여 준다 (`nbparse.py`). 실행 못 한 문제는 assert 에서 "교안 기대값". 새 Day 가 올라오면 `python3 -I tools/cell_outputs.py <sid> <N> --root <AI_CAMPUS 의 부모>` (torch · matplotlib 필요, 학습 셀은 오래 걸림). CIFAR · 사전학습 가중치가 필요한 셀은 PC 에서 — `.claude/skills/cell-outputs/` |
+| `.claude/skills/ponytail/` | 코드 작업 규칙 — 가장 작은 완전한 변경 ([Ponytail](https://github.com/DietrichGebert/ponytail), MIT). 코드에만 적용 · 설명은 이 문서대로 자세히 |
 | `tools/sync_campus.py` · `.claude/skills/campus-sync/` | 사용자 PC 의 Claude 가 "강의자료 정리해줘" 에 돌리는 교안 → 06_HyundaiAI 과목 폴더 정리 (클라우드에서 실행하지 않음) |
 | `data/` · `anim/` · `index.html` 의 `?v=` | **빌드 산출물** — 노트 PR 에 넣지 않는다 (Actions 가 만든다) |
 
