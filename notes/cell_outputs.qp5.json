@@ -1,0 +1,70 @@
+{
+ "1-1": {
+  "text": "sparsity 0.3: mask 의 0 비율 0.300\nsparsity 0.5: mask 의 0 비율 0.500\nsparsity 0.9: mask 의 0 비율 0.900\n✅ magnitude mask — 작은 절반을 지움: [0.0, 1.0, 1.0, 0.0, 0.0, 1.0]",
+  "check": true
+ },
+ "1-2": {
+  "text": "         unit  removed\n0      weight        1\n1      filter      144\n2  in_channel      288\n3       layer     4608\n✅ filter 하나 = weight 144개 — 가장 작은 filter L1 7.45 vs 가장 큰 11.36",
+  "check": true
+ },
+ "2-1": {
+  "text": "적용 직후 parameters: ['weight_orig'] | buffers: ['weight_mask'] | 0 비율 0.500\nprune.remove 뒤 parameters: ['weight'] | 0 비율 0.500\n✅ weight_orig × weight_mask → remove 하면 다시 weight 하나 (0 은 그대로 남음)",
+  "check": true
+ },
+ "2-2": {
+  "text": "global 50%: sparsity 0.500 · 정확도 0.8125 | layer 50%: sparsity 0.500 · 정확도 0.7890\nglobal 50% 에서 층별 sparsity — 가장 적게: [['fc', 0.058], ['stem.0', 0.125], ['layer2.0.shortcut.0', 0.135]]\n✅ 같은 50% — global 은 층마다 0.06 ~ 0.80 로 다르게 지운다",
+  "check": true
+ },
+ "3-1": {
+  "text": "        model  raw_kb  gzip_kb\n0        FP32  1109.7   1003.3\n1  global 90%  1109.7    191.7\n✅ 원래 크기는 같고 (1110 KB), 압축하면 1003 → 192 KB (5.2배)",
+  "check": true
+ },
+ "3-2": {
+  "text": "2:4 적용 — sparsity 0.498 · 정확도 0.6485 (global 50% unstructured 0.8125)\n✅ 4개마다 정확히 2개 — 같은 50% 라도 규칙이 있어 정확도는 0.648 (unstructured 0.812 보다 낮음)",
+  "check": true
+ },
+ "4-1": {
+  "text": "keep: [1, 2, 3, 4, 6, 7, 15, 17, 18, 21, 23, 25, 27, 28, 30, 31] | conv1 (16, 32, 3, 3) | conv2 (32, 16, 3, 3) | 출력 (2, 32, 16, 16)\n✅ 블록 안쪽 32 → 16 채널 — 블록의 입출력 모양은 그대로 (ratio 0 이면 출력도 똑같음)",
+  "check": true
+ },
+ "4-2": {
+  "text": "   ratio  params     acc  latency_ms\n0   0.00  272474  0.8460      1.9500\n1   0.25  205490  0.5025      2.8313\n2   0.50  138506  0.1680      2.1404\n✅ 블록 안쪽 50% — params 272,474 → 138,506, 정확도 0.168 (fine-tuning 전)",
+  "check": true
+ },
+ "5-1": {
+  "text": "            model  macs_m  params\n0            FP32   41.24  272474\n1  structured 50%   10.53   68786\np50 의 layer3[0]: Conv2d(16, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False) | fc: Linear(in_features=32, out_features=10, bias=True)\n✅ 채널 50% → MACs 41.2M → 10.5M (26%) · params 25%",
+  "check": true
+ },
+ "5-2": {
+  "text": "   ratio   macs_m  params     acc  latency_ms\n0    0.0  41.2351  272474  0.8460      2.1253\n1    0.2  24.8927  170772  0.2415      2.6051\n2    0.4  14.1883   96086  0.1010      1.4668\n3    0.6   6.1512   41293  0.1000      1.1652\n✅ 60% → MACs 6.2M · 지연 2.13 → 1.17 ms — 하지만 정확도는 0.24 부터 무너짐",
+  "check": true
+ },
+ "6-1": {
+  "text": "   epoch    acc\n0      0  0.100\n1      1  0.637\n2      2  0.714\n3      3  0.717\nfine-tuning 27초 | 저장 rn20_p50_ft.pth (324 KB)\n✅ 50% 모델 0.10 → 0.717 — FP32 와의 차이 12.9%p (MACs 25%)",
+  "check": true
+ },
+ "6-2": {
+  "text": "   step   macs_m    acc\n0     1  27.6734  0.815\n1     2  17.3384  0.748\n2     3  10.5250  0.679\n{'one-shot': 0.717, 'iterative': 0.679} | iterative 86초\n✅ 같은 MACs (10.5M) · 같은 총 3 epoch — one-shot 0.717 vs iterative 0.679",
+  "check": true
+ },
+ "7-1": {
+  "text": "                 model    size_kb  conv_params  zero_frac     acc\n0                dense  1070.7822       270256      0.000  0.8460\n1     unstructured 50%  1070.7822       270256      0.501  0.8125\n2  structured 50% + FT   276.6318        67672      0.000  0.7170\n✅ ONNX 크기 — dense 1071 · unstructured 1071 · structured 277 KB",
+  "check": true
+ },
+ "7-2": {
+  "text": "                 model    acc  latency_ms  speedup\n0                dense  0.846       0.825    1.000\n1     unstructured 50%  0.812       0.780    1.057\n2  structured 50% + FT  0.717       0.362    2.279\n✅ ORT CPU — unstructured 1.06배 · structured 2.28배 — 속도는 structured 에서만",
+  "check": true
+ },
+ "과제 1": {
+  "text": "   ratio   macs_m  params  acc_before     acc  latency_ms     ft_s\n0    0.0  41.2351  272474      0.8460  0.8435      0.8952  48.7281\n1    0.2  24.8927  170772      0.2415  0.8195      1.1861  44.9134\n2    0.4  14.1883   96086      0.1010  0.7555      0.6436  48.8732\n3    0.6   6.1512   41293      0.1000  0.6035      0.3736  22.5781",
+  "check": false
+ },
+ "과제 3": {
+  "text": "기준 0.8160 이상 → best_ratio 0.2 | MACs 24.9M · 정확도 0.8195 · 지연 1.186 ms",
+  "check": false
+ },
+ "과제 5": {
+  "text": "{'best_ratio': 0.2, 'macs_x': 1.657, 'params_x': 1.596, 'speedup': 0.755, 'acc_drop_pp': 2.65}\n✅ 과제 1  +20\n✅ 과제 2  +20\n✅ 과제 3  +20\n✅ 과제 4  +20\n✅ 과제 5  +10\n자동 채점 90 / 90  (+ 과제 6 강사 채점 10점) | 장치: cpu · 측정: ORT CPU\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}
