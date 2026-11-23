@@ -112,7 +112,7 @@
   ],
   "flow": "선생님 logits (no_grad) → kd_loss(학생 logits, …) → backward → step",
   "ret": "걸린 시간(초)",
-  "hdr": "# QP Day 6 데이터 셀의 도우미 위에 직접 구현"
+  "hdr": "QP Day 6 데이터 셀의 도우미 위에 직접 구현"
  },
  "prune_channels()": {
   "role": "채널을 비율만큼 structured pruning 한 새 모델을 돌려준다 (Day 5)",
@@ -132,7 +132,7 @@
   ],
   "flow": "복사 → MetaPruner.step() → 작아진 모델",
   "ret": "가지치기된 모델",
-  "hdr": "# QP Day 5 에서 만든 함수"
+  "hdr": "QP Day 5 에서 만든 함수"
  },
  "to_int8()": {
   "role": "모델 복사본을 ModelOpt INT8 PTQ 로 양자화",
@@ -181,12 +181,11 @@
   ],
   "flow": "prune → KD → INT8 → export_b1",
   "ret": "(가지치기+KD 모델, INT8 모델)",
-  "hdr": "# 노트북 3교시 예제 3-A"
+  "hdr": "노트북 3교시 예제 3-A"
  },
  "export_b1()": {
-  "role": "batch=1 고정 ONNX 로 내보내기 (TensorRT 엔진용)",
+  "role": "batch=1 고정 ONNX 로 내보내기 (TensorRT 엔진용) — TensorRT 용은 배치를 고정해 빌드한다",
   "desc": [
-   "TensorRT 용은 배치를 고정해 빌드한다",
    "양자화된 모델이면 QDQ 노드가 들어간 ONNX 가 된다"
   ],
   "args": [
@@ -280,9 +279,8 @@
   "hdr": "import pandas as pd"
  },
  "match_events()": {
-  "role": "기준 이벤트마다 겹치는 비교 이벤트가 있는지 찾는다",
+  "role": "기준 이벤트마다 겹치는 비교 이벤트가 있는지 찾는다 — 겹침 판정에 tol 초 여유를 둔다",
   "desc": [
-   "겹침 판정에 tol 초 여유를 둔다",
    "matched 여부와 시작 시각 차이(start_diff_s) 기록",
    "matched 비율 = 이벤트 재현율"
   ],
@@ -317,7 +315,7 @@
   ],
   "flow": "if nvidia_gpu … elif ram_mb 큼 … else MCU",
   "ret": "{'runtime','precision','pruning','kd'}",
-  "hdr": "# 직접 구현 7-2"
+  "hdr": "직접 구현 7-2"
  },
  "pd.read_csv()": {
   "role": "CSV 를 DataFrame 으로 읽기 — 누적 결과표 qp_baseline.csv 확인",

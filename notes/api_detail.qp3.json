@@ -192,7 +192,6 @@
    ]
   ],
   "flow": "목록에 없는 노드에는 Q/DQ 를 붙이지 않음",
-  "ret": "—",
   "hdr": "from onnxruntime.quantization import quantize_static"
  },
  "block_nodes()": {
@@ -230,7 +229,6 @@
    ]
   ],
   "flow": "목록의 노드 앞뒤에는 Q/DQ 를 붙이지 않음",
-  "ret": "—",
   "hdr": "from onnxruntime.quantization import quantize_static"
  },
  "trt_check()": {
@@ -300,7 +298,6 @@
    ]
   ],
   "flow": "quantize_static 이 Q/DQ scale · zp 를 정할 때 반영",
-  "ret": "—",
   "hdr": "from onnxruntime.quantization import quantize_static"
  },
  "BuilderFlag.INT8": {
@@ -375,9 +372,8 @@
   "ex": ""
  },
  "run_acc()": {
-  "role": "추론기 하나로 배치 1 정확도 (한 장씩)",
+  "role": "추론기 하나로 배치 1 정확도 (한 장씩) — 엔진 입력이 배치 1 고정이라 X[i:i+1] 로 2,000번",
   "desc": [
-   "엔진 입력이 배치 1 고정이라 X[i:i+1] 로 2,000번",
    "TRTInfer · ORT 함수 어느 쪽이든 x → logits 이면 된다"
   ],
   "args": [
@@ -559,9 +555,8 @@
   "hdr": "import pandas as pd"
  },
  "DataFrame.itertuples()": {
-  "role": "행을 하나씩 이름 붙은 튜플로 돌려주는 반복자",
+  "role": "행을 하나씩 이름 붙은 튜플로 돌려주는 반복자 — r.prec · r.AP50 처럼 열 이름으로 꺼낸다",
   "desc": [
-   "r.prec · r.AP50 처럼 열 이름으로 꺼낸다",
    "qp_baseline.csv 에 넣을 사전(day · model · quant · acc …)을 행마다 만든다"
   ],
   "args": [

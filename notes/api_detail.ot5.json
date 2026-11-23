@@ -18,12 +18,11 @@
   ],
   "flow": "엔진 읽기(1번) → 프레임마다 복사 · 실행 · 대기 · 출력",
   "ret": "NumPy 배열 (예: (1, 84, 8400))",
-  "hdr": "class TRTInfer  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "build_once()": {
-  "role": "엔진 파일이 없을 때만 빌드",
+  "role": "엔진 파일이 없을 때만 빌드 — 엔진 빌드는 오래 걸려 있으면 건너뜀",
   "desc": [
-   "엔진 빌드는 오래 걸려 있으면 건너뜀",
    "`fp16=True` 면 FP16 엔진",
    "ONNX 를 바꾸면 옛 엔진 파일을 지우고 다시"
   ],
@@ -43,13 +42,13 @@
   ],
   "flow": "파일 있나 확인 → 없으면 빌드 · 저장",
   "ret": "엔진 파일 경로",
-  "hdr": "def build_once  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "get_tensor_mode()": {
-  "role": "텐서가 입력인지 출력인지 구분",
+  "role": "텐서가 입력인지 출력인지 구분 — `trt.TensorIOMode.INPUT` / `OUTPUT` 과 비교",
   "desc": [
-   "`trt.TensorIOMode.INPUT` / `OUTPUT` 과 비교",
-   "이름 목록을 입력 · 출력으로 나눌 때"
+   "이름 목록을 입력 · 출력으로 나눌 때",
+   "예: `engine.get_tensor_mode(name)`"
   ],
   "args": [
    [
@@ -58,8 +57,7 @@
    ]
   ],
   "flow": "이름 → 입력/출력",
-  "ret": "TensorIOMode",
-  "hdr": "engine.get_tensor_mode(name)"
+  "ret": "TensorIOMode"
  },
  "detect()": {
   "role": "사진 한 장 → 사람 박스 · 점수",
@@ -88,12 +86,11 @@
   ],
   "flow": "letterbox → CHW · /255 → infer → decode · NMS → 좌표 복원",
   "ret": "(boxes (N, 4), scores (N,))",
-  "hdr": "def detect  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "iou_matrix()": {
-  "role": "두 박스 집합의 IoU 표",
+  "role": "두 박스 집합의 IoU 표 — `(A 개수, B 개수)` 행렬",
   "desc": [
-   "`(A 개수, B 개수)` 행렬",
    "`.max(1)` 로 A 박스마다 가장 잘 겹치는 B 박스 IoU (짝 IoU)"
   ],
   "args": [
@@ -108,12 +105,11 @@
   ],
   "flow": "모든 짝의 IoU 계산",
   "ret": "ndarray (len(a), len(b))",
-  "hdr": "def iou_matrix  # VB 함수"
+  "hdr": "VB 에서 만든 함수"
  },
  "map_50_95()": {
-  "role": "IoU 0.5 ~ 0.95 평균 mAP",
+  "role": "IoU 0.5 ~ 0.95 평균 mAP — 임계값 10개(0.05 간격)의 AP 평균",
   "desc": [
-   "임계값 10개(0.05 간격)의 AP 평균",
    "AP50 보다 박스 위치까지 엄격하게 본다"
   ],
   "args": [
@@ -128,12 +124,11 @@
   ],
   "flow": "임계값마다 AP → 평균",
   "ret": "float",
-  "hdr": "def map_50_95  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "time_stages()": {
-  "role": "한 프레임을 네 조각으로 시간 재기",
+  "role": "한 프레임을 네 조각으로 시간 재기 — pre · infer · post · draw 를 ms 로",
   "desc": [
-   "pre · infer · post · draw 를 ms 로",
    "합 = 프레임 시간, FPS = 1000 ÷ 합",
    "warm-up 후 여러 프레임 평균"
   ],
@@ -153,7 +148,7 @@
   ],
   "flow": "t0~t4 를 찍어 구간 차이 × 1000",
   "ret": "딕셔너리 {pre, infer, post, draw} (ms)",
-  "hdr": "def time_stages  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "time.perf_counter()": {
   "role": "짧은 시간 측정용 타이머",
@@ -176,9 +171,8 @@
   "hdr": "pandas Series.idxmax()"
  },
  "process_frame()": {
-  "role": "프레임 한 장 처리 (침입 감지)",
+  "role": "프레임 한 장 처리 (침입 감지) — 탐지 → 발 위치 → 구역 안? → debounce → 그리기",
   "desc": [
-   "탐지 → 발 위치 → 구역 안? → debounce → 그리기",
    "`streak` 를 받아 새 `streak` 를 반환 (연속 프레임 수)",
    "`infer` 만 바꾸면 ORT · TensorRT 모두 가능"
   ],
@@ -214,7 +208,7 @@
   ],
   "flow": "detect → foot_points → in_zone → streak 갱신 → draw_result",
   "ret": "(그린 프레임, info 딕셔너리, 새 streak)",
-  "hdr": "def process_frame  # 교안 정의"
+  "hdr": "교안에서 정의"
  },
  "cv2.VideoWriter()": {
   "role": "프레임을 영상 파일로 저장",
@@ -245,9 +239,8 @@
   "hdr": "import cv2"
  },
  "bench_fn()": {
-  "role": "함수 실행 시간을 반복 측정",
+  "role": "함수 실행 시간을 반복 측정 — warm 번 예열 후 n 번 측정",
   "desc": [
-   "warm 번 예열 후 n 번 측정",
    "mean · p50 · p95 · fps 를 돌려줌"
   ],
   "args": [
@@ -266,6 +259,6 @@
   ],
   "flow": "예열 → n 번 시간 기록 → 통계",
   "ret": "딕셔너리 {mean, p50, p95, fps}",
-  "hdr": "def bench_fn  # Day 3 정의"
+  "hdr": "OT Day 3 에서 정의"
  }
 }

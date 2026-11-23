@@ -33,7 +33,7 @@
   ],
   "args": [["k", "몇 번째로 작은 값인가 (1 ~ 원소 수)"], ["dim", "기준 축 (생략하면 마지막 축)"]],
   "flow": "x.kthvalue(k) → (values, indices)",
-  "ret": "namedtuple (values, indices) — .values 로 값",
+  "ret": "namedtuple (values, indices) — 값만 쓰려면 `.values`",
   "hdr": "import torch"
  },
  "convs()": {

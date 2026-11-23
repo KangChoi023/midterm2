@@ -1,8 +1,7 @@
 {
  "Tensor.numel()": {
-  "role": "텐서의 원소 개수",
+  "role": "텐서의 원소 개수 — 파라미터마다 `p.numel()` 을 더하면 모델의 파라미터 수",
   "desc": [
-   "파라미터마다 `p.numel()` 을 더하면 모델의 파라미터 수",
    "크기(byte) = 파라미터 수 × 자료형 byte"
   ],
   "args": [],
@@ -11,9 +10,8 @@
   "hdr": "import torch"
  },
  "torchvision.models.mobilenet_v3_small()": {
-  "role": "MobileNetV3-Small 구조 만들기",
+  "role": "MobileNetV3-Small 구조 만들기 — `weights=None` 이면 가중치를 내려받지 않고 구조만",
   "desc": [
-   "`weights=None` 이면 가중치를 내려받지 않고 구조만",
    "파라미터 2,542,856 개 — INT8 2.54 MB"
   ],
   "args": [
@@ -27,9 +25,8 @@
   "hdr": "import torchvision"
  },
  "np.finfo()": {
-  "role": "부동소수점 자료형 정보",
+  "role": "부동소수점 자료형 정보 — `.max` 최댓값 · `.eps` 1 근처 간격 · `.tiny` 가장 작은 정상 양수",
   "desc": [
-   "`.max` 최댓값 · `.eps` 1 근처 간격 · `.tiny` 가장 작은 정상 양수",
    "FP16 max 65504 · eps 0.000977"
   ],
   "args": [
@@ -59,9 +56,8 @@
   "hdr": "import numpy as np"
  },
  "ndarray.astype()": {
-  "role": "배열 자료형 바꾸기",
+  "role": "배열 자료형 바꾸기 — 실수 → 정수는 소수점 **버림**, 범위 밖은 wrap-around (200 → −56)",
   "desc": [
-   "실수 → 정수는 소수점 **버림**, 범위 밖은 wrap-around (200 → −56)",
    "안전한 순서: round → clip → astype",
    "정수 계산 전에는 `astype(np.int32)` 로 넓히기"
   ],
@@ -77,9 +73,8 @@
   "ex": "astype(np.int8)"
  },
  "np.clip()": {
-  "role": "범위 밖 값을 끝값으로 자르기",
+  "role": "범위 밖 값을 끝값으로 자르기 — 양자화에서 qmin ~ qmax 안으로 넣는 단계",
   "desc": [
-   "양자화에서 qmin ~ qmax 안으로 넣는 단계",
    "round 다음 · astype 전에"
   ],
   "args": [
@@ -114,14 +109,13 @@
    ]
   ],
   "flow": "−1 ~ 3 → (4/255, 64)",
-  "ret": "(scale, zp) — float, int",
+  "ret": "(scale, zp) — scale 은 float, zp 는 int",
   "hdr": "3교시 직접 구현 (my_quant.py)",
   "ex": ""
  },
  "quantize()": {
-  "role": "실수 → 정수 (affine)",
+  "role": "실수 → 정수 (affine) — q = clip(round(x / scale) + zp, qmin, qmax)",
   "desc": [
-   "q = clip(round(x / scale) + zp, qmin, qmax)",
    "INT32 배열로 돌려줌 — 계산 중 wrap-around 방지, 저장할 때만 8비트"
   ],
   "args": [
@@ -144,9 +138,8 @@
   "ex": ""
  },
  "dequantize()": {
-  "role": "정수 → 실수 (affine)",
+  "role": "정수 → 실수 (affine) — x̂ = (q − zp) × scale",
   "desc": [
-   "x̂ = (q − zp) × scale",
    "범위 안 왕복 오차 ≤ scale/2, 0 은 정확히 0"
   ],
   "args": [
@@ -186,9 +179,8 @@
   "ex": ""
  },
  "sym_quantize()": {
-  "role": "대칭 양자화 (zp = 0)",
+  "role": "대칭 양자화 (zp = 0) — q = clip(round(x / scale), −qmax, qmax) → INT32",
   "desc": [
-   "q = clip(round(x / scale), −qmax, qmax) → INT32",
    "되돌리기는 q × scale 만 (zp 를 빼지 않음)",
    "−128 은 쓰지 않음 → 0 중심 대칭"
   ],
@@ -229,9 +221,8 @@
   "ex": ""
  },
  "per_channel_scale()": {
-  "role": "출력 채널마다 대칭 scale",
+  "role": "출력 채널마다 대칭 scale — W 를 (C, 나머지) 로 펴서 행마다 max|W| / qmax",
   "desc": [
-   "W 를 (C, 나머지) 로 펴서 행마다 max|W| / qmax",
    "(C, 1, 1, 1) · (C, 1) 모양으로 돌려줘 W 와 바로 broadcast",
    "Conv · Linear 모두 0번 축 = 출력 채널"
   ],
@@ -267,9 +258,8 @@
   "hdr": "import numpy as np"
  },
  "np.percentile()": {
-  "role": "백분위 값",
+  "role": "백분위 값 — `np.percentile(A, 99.9)` = 그보다 큰 값이 0.1% 인 경계",
   "desc": [
-   "`np.percentile(A, 99.9)` = 그보다 큰 값이 0.1% 인 경계",
    "Percentile 보정의 clip 값 (A 에서 1.607 = 최대의 0.75배)"
   ],
   "args": [
@@ -344,9 +334,8 @@
   "ex": "np.int32(a) * np.int32(b)"
  },
  "np.array_equal()": {
-  "role": "두 배열이 완전히 같은지",
+  "role": "두 배열이 완전히 같은지 — 모양과 모든 원소가 같으면 True",
   "desc": [
-   "모양과 모든 원소가 같으면 True",
    "정수 결과 비교(보정 항 확인)에 — 실수는 np.allclose"
   ],
   "args": [
@@ -424,9 +413,8 @@
   "ex": ""
  },
  "copy.deepcopy()": {
-  "role": "객체를 통째로 복사",
+  "role": "객체를 통째로 복사 — 모델 복사본의 weight 만 바꿔 원래 모델 보존",
   "desc": [
-   "모델 복사본의 weight 만 바꿔 원래 모델 보존",
    "얕은 복사(`copy.copy`)는 weight 텐서를 공유"
   ],
   "args": [

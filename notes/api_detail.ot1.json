@@ -1,8 +1,7 @@
 {
  "torch.onnx.export()": {
-  "role": "PyTorch 모델 → ONNX 파일",
+  "role": "PyTorch 모델 → ONNX 파일 — 더미 입력으로 한 번 실행하며 연산을 녹화(tracing)",
   "desc": [
-   "더미 입력으로 한 번 실행하며 연산을 녹화(tracing)",
    "입력 shape · dtype 이 파일에 굳는다",
    "`.eval()` 모델을 넣는다"
   ],
@@ -29,9 +28,8 @@
   "hdr": "import torch"
  },
  "Module.eval()": {
-  "role": "실행 모드로 전환",
+  "role": "실행 모드로 전환 — Dropout 끄기, BatchNorm 은 저장된 평균 · 분산 사용",
   "desc": [
-   "Dropout 끄기, BatchNorm 은 저장된 평균 · 분산 사용",
    "export 전 · PyTorch 와 비교할 때 항상"
   ],
   "args": [],
@@ -85,9 +83,8 @@
   "hdr": "import onnx.numpy_helper"
  },
  "show_netron()": {
-  "role": "Colab 에서 Netron 열기",
+  "role": "Colab 에서 Netron 열기 — 환경 셀이 만들어 둔 도우미 함수",
   "desc": [
-   "환경 셀이 만들어 둔 도우미 함수",
    "파일마다 다른 `port` 사용"
   ],
   "args": [
@@ -105,9 +102,8 @@
   "hdr": "(환경 셀 제공)"
  },
  "ort.InferenceSession()": {
-  "role": "ONNX Runtime 세션 열기",
+  "role": "ONNX Runtime 세션 열기 — PyTorch 없이 ONNX 를 실행",
   "desc": [
-   "PyTorch 없이 ONNX 를 실행",
    "`providers` 순서 = 우선순위"
   ],
   "args": [
@@ -125,9 +121,8 @@
   "hdr": "import onnxruntime as ort"
  },
  "sess.get_inputs()": {
-  "role": "입력 정보",
+  "role": "입력 정보 — `[0].name` · `.shape` · `.type`",
   "desc": [
-   "`[0].name` · `.shape` · `.type`",
    "`type` `tensor(float)` = float32"
   ],
   "args": [],
@@ -136,9 +131,8 @@
   "hdr": ""
  },
  "sess.run()": {
-  "role": "ONNX 실행",
+  "role": "ONNX 실행 — 입력은 딕셔너리, 출력은 리스트",
   "desc": [
-   "입력은 딕셔너리, 출력은 리스트",
    "입력은 float32 NumPy (텐서 X)"
   ],
   "args": [
@@ -156,9 +150,8 @@
   "hdr": ""
  },
  "np.allclose()": {
-  "role": "오차 허용 같음 비교",
+  "role": "오차 허용 같음 비교 — float32 끝자리 차이를 무시 (`atol=1e-5`)",
   "desc": [
-   "float32 끝자리 차이를 무시 (`atol=1e-5`)",
    "export 후 PyTorch 와 비교할 때"
   ],
   "args": [
@@ -210,9 +203,8 @@
   "hdr": "import cv2"
  },
  "cv2.resize()": {
-  "role": "크기 맞추기",
+  "role": "크기 맞추기 — 크기 인자는 **(W, H)**",
   "desc": [
-   "크기 인자는 **(W, H)**",
    "축소는 `INTER_AREA`"
   ],
   "args": [
@@ -234,9 +226,8 @@
   "hdr": "import cv2"
  },
  "preprocess()": {
-  "role": "사진 → 모델 입력 6단계",
+  "role": "사진 → 모델 입력 6단계 — RGB · resize · /255 · 정규화 · CHW · 배치 축",
   "desc": [
-   "RGB · resize · /255 · 정규화 · CHW · 배치 축",
    "학습 때와 같은 규칙이어야 함"
   ],
   "args": [
@@ -292,9 +283,8 @@
   "hdr": "(8교시에서 직접 정의)"
  },
  "sess.get_providers()": {
-  "role": "세션이 쓰는 실행 장치 목록",
+  "role": "세션이 쓰는 실행 장치 목록 — `[\"CPUExecutionProvider\"]` 처럼 우선순위 순서",
   "desc": [
-   "`[\"CPUExecutionProvider\"]` 처럼 우선순위 순서",
    "GPU 는 `CUDAExecutionProvider` (Day 3), TensorRT 는 `TensorrtExecutionProvider`"
   ],
   "args": [],
@@ -303,9 +293,8 @@
   "hdr": ""
  },
  "sess.get_outputs()": {
-  "role": "출력 정보",
+  "role": "출력 정보 — `[0].name` · `.shape`",
   "desc": [
-   "`[0].name` · `.shape`",
    "export 때 붙인 `output_names` 가 여기 나온다"
   ],
   "args": [],
@@ -329,9 +318,8 @@
   "hdr": "import numpy as np"
  },
  "ndarray.transpose()": {
-  "role": "축 순서 바꾸기",
+  "role": "축 순서 바꾸기 — `x.transpose(2, 0, 1)` : (H, W, C) → (C, H, W)",
   "desc": [
-   "`x.transpose(2, 0, 1)` : (H, W, C) → (C, H, W)",
    "`reshape` 는 모양만 바꾸고 축 순서는 안 바꾼다"
   ],
   "args": [
