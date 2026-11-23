@@ -226,6 +226,52 @@ def _dep_parse(src):
     try: return _ast.parse(src), src.split('\n')
     except SyntaxError: return None, None
 
+USERDEF = set()          # 노트북에서 def · class 로 만든 이름 (과목 순서대로 쌓인다 — VB 함수를 OT 에서 다시 써도 직접 만듦)
+
+LIB_OF = {'np': 'NumPy', 'numpy': 'NumPy', 'ndarray': 'NumPy', 'rng': 'NumPy', 'torch': 'PyTorch', 'F': 'PyTorch', 'nn': 'PyTorch',
+          'Tensor': 'PyTorch', 'Module': 'PyTorch', 'Optimizer': 'PyTorch', 'Parameter': 'PyTorch', 'optim': 'PyTorch', 'prune': 'PyTorch',
+          'DataLoader': 'PyTorch', 'CosineAnnealingLR': 'PyTorch', 'OneCycleLR': 'PyTorch', 'register_buffer': 'PyTorch',
+          'torchvision': 'torchvision', 'transforms': 'torchvision', 'datasets': 'torchvision', 'models': 'torchvision', 'detection': 'torchvision',
+          'cv2': 'OpenCV', 'VideoCapture': 'OpenCV', 'VideoWriter': 'OpenCV', 'ort': 'ONNX Runtime', 'onnxruntime': 'ONNX Runtime', 'sess': 'ONNX Runtime',
+          'onnx': 'ONNX', 'numpy_helper': 'ONNX', 'onnxslim': 'onnxslim', 'trt': 'TensorRT', 'tensorrt': 'TensorRT', 'builder': 'TensorRT',
+          'config': 'TensorRT', 'parser': 'TensorRT', 'engine': 'TensorRT', 'context': 'TensorRT', 'pd': 'pandas', 'DataFrame': 'pandas',
+          'plt': 'matplotlib', 'ax': 'matplotlib', 'mtq': 'ModelOpt', 'mto': 'ModelOpt', 'TensorQuantizer': 'ModelOpt', 'tp': 'torch-pruning',
+          'polygraphy': 'Polygraphy', 'YOLO': 'ultralytics', 'model': 'ultralytics', 'yolo': 'ultralytics',
+          'time': '파이썬 표준', 'os': '파이썬 표준', 'json': '파이썬 표준', 're': '파이썬 표준', 'copy': '파이썬 표준', 'math': '파이썬 표준',
+          'random': '파이썬 표준', 'collections': '파이썬 표준', 'itertools': '파이썬 표준', 'shutil': '파이썬 표준', 'io': '파이썬 표준',
+          'gzip': '파이썬 표준', 'zipfile': '파이썬 표준', 'csv': '파이썬 표준', 'importlib': '파이썬 표준', 'inspect': '파이썬 표준',
+          'Counter': '파이썬 표준', 'setattr': '파이썬 표준', 'pickle': '파이썬 표준'}
+ORT_QUANT = {'quantize_dynamic', 'quantize_static', 'quant_pre_process', 'QuantType', 'QuantFormat', 'CalibrationDataReader',
+             'CalibrationMethod', 'get_providers', 'get_available_providers', 'CUDAExecutionProvider', 'end_profiling', 'optimized_model_filepath',
+             'modify_model_output_intermediate_tensors', 'collect_activations', 'extra_options', 'nodes_to_quantize', 'nodes_to_exclude'}
+
+ORIGIN_FIX = {'A @ B': 'NumPy', 'Weights.transforms': 'torchvision', 'Model.SerializeToString': 'ONNX', 'deserialize_cuda_engine': 'TensorRT',
+              'create_engine_inspector': 'TensorRT', 'get_engine_information': 'TensorRT', 'get_tensor_mode': 'TensorRT', 'idxmax': 'pandas',
+              'on_epoch': '직접 만듦', 'Counter': '파이썬 표준', 'kthvalue': 'PyTorch', 'topk': 'PyTorch', 'scatter_': 'PyTorch', 'argsort': 'PyTorch',
+              'named_buffers': 'PyTorch', 'register_forward_hook': 'PyTorch', 'register_buffer': 'PyTorch', 'drop_duplicates': 'pandas',
+              'DataLoader': 'PyTorch', 'OneCycleLR': 'PyTorch', 'CosineAnnealingLR': 'PyTorch', 'YOLO': 'ultralytics'}
+LIB_NAME = {'torch_pruning': 'torch-pruning', 'onnxruntime': 'ONNX Runtime', 'torch': 'PyTorch', 'numpy': 'NumPy', 'cv2': 'OpenCV'}
+
+def func_origin(sid, name, detail=None):
+    """'직접 만듦' · '라이브러리 이름' · '' (모름 — 틀리게 붙이느니 비운다). 노트북 과목만."""
+    if detail and detail.get('origin'): return detail['origin']       # api_detail 에서 직접 지정 (판정이 틀렸을 때)
+    if sid not in ('nn', 'vb', 'ot', 'qp'): return ''
+    n = re.sub(r'[`*]', '', name).strip()
+    base = re.split(r'[(\s]', n)[0].rstrip('.')
+    first, last = base.split('.')[0], base.split('.')[-1]
+    hdr = (detail or {}).get('hdr', '')
+    if base in ORIGIN_FIX: return ORIGIN_FIX[base]
+    if re.search(r'환경 셀 제공|데이터 셀|도우미', ' '.join((detail or {}).get('desc', [])[:1] + [hdr])): return '직접 만듦'
+    if first in ('mynn', 'my_quant') or re.search(r'직접|교안에서 정의|만든 함수|에서 정의|환경 셀|제공|과제|실습', hdr): return '직접 만듦'
+    if base in USERDEF or (first == base and last in USERDEF): return '직접 만듦'
+    if '.' in base and base.split('.', 1)[1] in USERDEF and first not in LIB_OF: return '직접 만듦'
+    if first in LIB_OF: return LIB_OF[first]
+    if base in ORT_QUANT: return 'ONNX Runtime'
+    if '.' not in base and base not in DEP_SKIP: return '직접 만듦'     # 모듈 이름 없이 부르는 함수 = 노트북에서 만든 것 (라이브러리 것은 위에서 걸러짐)
+    m = re.search(r'import (\w+)|from (\w+)', hdr)
+    if m: w = m.group(1) or m.group(2); return LIB_OF.get(w) or LIB_NAME.get(w, w)
+    return ''
+
 def attach_deps(D):
     """D['lessons'][*]['codes'][*]['deps'] = [[이름, 교시, 코드 번호(j), 만든 줄], …] — 같은 Day 안에서만 (다른 Day · 과목의 같은 이름과 섞이지 않게)"""
     defs, n_dep = {}, 0
@@ -247,7 +293,9 @@ def attach_deps(D):
             if used: c['deps'] = [[u] + defs[u] for u in used[:10]]; n_dep += 1
             for nd in tree.body:                       # 이 코드가 맨 바깥에서 만든 이름 → 뒤 코드가 가져다 쓸 수 있다
                 names = []
-                if isinstance(nd, (_ast.FunctionDef, _ast.ClassDef, _ast.AsyncFunctionDef)): names = [nd.name]
+                if isinstance(nd, (_ast.FunctionDef, _ast.ClassDef, _ast.AsyncFunctionDef)):
+                    names = [nd.name]; USERDEF.add(nd.name)
+                    if isinstance(nd, _ast.ClassDef): USERDEF.update(f'{nd.name}.{m.name}' for m in nd.body if isinstance(m, _ast.FunctionDef))
                 elif isinstance(nd, (_ast.Assign, _ast.AnnAssign, _ast.AugAssign)):
                     for t in (nd.targets if isinstance(nd, _ast.Assign) else [nd.target]):
                         names += [x.id for x in _ast.walk(t) if isinstance(x, _ast.Name)]
@@ -674,6 +722,9 @@ def build_subject(cfg, index):
         attach_deps(D)
         S['days'].append(D); meta['days'].append(dm)
     EX_STAT.append((sid,) + attach_examples(sid, S, fn_rows))
+    for d, n, f, row in fn_rows:
+        f['origin'] = func_origin(sid, f['name'], f.get('detail'))
+        if f['origin']: row[8] = [f['kind'], f['origin']]
     return S, meta
 
 ANIM_EXT = ('.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.json')

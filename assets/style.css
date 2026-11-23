@@ -823,3 +823,9 @@ body.rp-wide { --rp-w: min(1100px, 68vw); }
 a.dep { display: inline-block; font-family: var(--mono); font-size: 12px; border: 1px dashed #d97706; border-radius: 999px; padding: 0 8px; margin: 1px 4px 1px 0; color: #b45309; text-decoration: none; background: var(--panel); }
 a.dep:hover { border-style: solid; }
 .depv { background: color-mix(in srgb, #f59e0b 18%, transparent); border-bottom: 1px dashed #d97706; border-radius: 2px; cursor: help; }
+/* 함수 출처: 직접 만듦 / 라이브러리 */
+.dp-o { flex: none; font-size: 11px; padding: 0 7px; border-radius: 999px; white-space: nowrap; }
+.dp-o.own { color: #be185d; background: color-mix(in srgb, #ec4899 12%, var(--panel)); border: 1px solid color-mix(in srgb, #ec4899 35%, var(--line)); }
+.dp-o.lib { color: #1d4ed8; background: color-mix(in srgb, #3b82f6 10%, var(--panel)); border: 1px solid color-mix(in srgb, #3b82f6 30%, var(--line)); }
+details.dent > summary .dp-o { margin-left: auto; } details.dent > summary .dp-o + .dp-k { margin-left: 4px; }
+.dictpop .dp-o { margin-left: auto; } .dictpop .dp-o + .dp-k { margin-left: 4px; }
