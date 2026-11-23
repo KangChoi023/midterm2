@@ -978,12 +978,23 @@
       return study ? study + `<details class="fullnote"><summary>전체 노트 — 용어 · 함수 표 · 예제 표 · 핵심 내용을 노트 순서대로</summary>${flow}</details>` : flow;
     }
     let h = '', placed = false;
+    L.sections.forEach(x => { if (x.key === 'glance') h += glanceCard(x, L); });   // 한눈에 보기 표 — 맨 위
     L.sections.forEach((x, i) => {
-      if (x.key === 'study') return;                                       // 공부용 설명은 상세 학습 탭에만
+      if (x.key === 'study' || x.key === 'glance') return;                 // 공부용 설명은 상세 학습 탭에만
       if (['terms', 'funcs', 'core'].includes(x.key)) { if (!placed) { const grouped = CX.LK.sections.some(y => y.groups && y.groups.length); h += `<div class="cards-h">개념별 정리 <small>${grouped ? '큰 개념마다 정의 · 핵심 · 함수 · 사용형태 · 함정을 한 카드에' : '정의 · 그 개념의 핵심 내용 · 사용형태 · 예제 코드를 한 카드에'}</small></div>` + (grouped ? `<nav class="gtoc">${CX.LK.sections.filter(y => y.groups).flatMap(y => y.groups).map((g, gi) => `<button type="button" data-go="gc${gi}">${mdInline(g.title)}</button>`).join('')}</nav>` : '') + conceptCards(); placed = true; } return; }
       if (x.key !== 'kw') h += noteSection(x, i, L);
     });
     return h;
+  }
+
+  // 한눈에 보기: 노트의 "**한눈에 보기**" 표 (| 항목 | 내용 |) → 왼쪽 굵은 항목 · 오른쪽 한 줄 설명. ⚠ 로 시작하는 항목은 함정 줄로 강조
+  function glanceCard(x, L) {
+    const rows = x.md.split('\n').filter(l => /^\s*\|/.test(l) && !/^\s*\|\s*:?-{2,}/.test(l))
+      .map(l => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, '|')))
+      .filter(r => r.length >= 2);
+    const body = rows.filter((r, k) => !(k === 0 && /^(항목|구분)$/.test(r[0]))).map(r =>
+      `<tr class="${/^⚠/.test(r[0]) ? 'warn' : ''}"><th>${mdInline(r[0])}</th><td>${mdInline(r.slice(1).join(' | '))}</td></tr>`).join('');
+    return `<section class="glance"><h3>🎯 ${L.n}교시 한눈에 보기</h3><table class="gl"><tbody>${body}</tbody></table></section>`;
   }
 
   /* 옆 패널 */

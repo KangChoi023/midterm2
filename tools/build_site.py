@@ -59,7 +59,7 @@ def campus_path(pat, d):
     return next((x for x in paths if os.path.exists(x)), paths[0])
 
 # 노트 소제목 -> 정해진 키 (앞부분 일치)
-SECTION_KEYS = [('키워드', 'kw'), ('개요', 'overview'), ('핵심 용어', 'terms'), ('새로 나온', 'funcs'),
+SECTION_KEYS = [('키워드', 'kw'), ('개요', 'overview'), ('한눈에 보기', 'glance'), ('핵심 용어', 'terms'), ('새로 나온', 'funcs'),
                 ('이 교시에서 만드는', 'funcs'), ('예제 코드가 하는 일', 'examples'), ('핵심 내용', 'core'),
                 ('기본 사용형태', 'usage'), ('연결', 'links'), ('상세 학습', 'study'), ('연관 문제', 'quiz')]
 HEAD_RE = re.compile(r'^\*\*([^*]+?):?\*\*:?(.*)$')
