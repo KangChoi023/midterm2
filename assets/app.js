@@ -981,11 +981,10 @@
     const gl = L.sections.find(x => x.key === 'glance');
     if (gl) {                                                              // 한눈에 보기가 있으면 그것만 — 카드 · 개요는 상세 학습(전체 노트)에
       h = glanceCard(gl, L);
-      const chip = (id, name, kind) => `<button type="button" class="cchip ${kind}" data-peek-c="${cid(id)}">${esc(name)}</button>`;
-      const fs = (L.funcs || []).map((f, i) => chip('f' + i, f.name, 'func')).join('');
-      const ts = (L.terms || []).map((x, i) => chip('t' + i, x.name.replace(/\*\*/g, ''), 'term')).join('');
       const lk = L.sections.find(x => x.key === 'links');
-      if (fs || ts) h += `<div class="gl-ref">${fs ? `<div><span class="gl-ref-l">함수</span>${fs}</div>` : ''}${ts ? `<div><span class="gl-ref-l">용어</span>${ts}</div>` : ''}</div>`;
+      const cs = L.codes || [];
+      if (cs.length) h += `<section class="gl-codes"><h3>💻 이 교시의 코드 <small>${cs.length}개 · 눌러서 열기</small></h3>`
+        + cs.map((c, j) => codeBox(c, j).replace(' id="K' + j + '"', ' id="G' + j + '"')).join('') + `</section>`;
       if (lk) h += `<div class="gl-links"><span class="gl-ref-l">연결</span>${md(lk.md)}</div>`;
       h += `<p class="gl-more">정의 · 사용형태 · 예제 코드 · 함정까지 자세히는 <button type="button" class="linklike" data-view="study">상세 학습</button> 에서</p>`;
       return h;
@@ -1023,6 +1022,47 @@
       + (title ? `<h3 class="gl-main">${mdInline(title)}</h3>` : '') + (lead ? `<p class="gl-lead">${mdInline(lead)}</p>` : '')
       + (li ? `<ul class="gl-list">${li}</ul>` : '') + `</section>`;
   }
+
+  // 맨 위 네비게이션의 함수 · 용어 버튼 (예전 키워드 줄 자리) — 누르면 바로 아래 말풍선에 설명
+  function dictBar(L) {
+    const fs = (L.funcs || []).map((f, i) => `<button type="button" class="dchip func" data-dk="f${i}">${esc(f.name)}</button>`).join('');
+    const ts = (L.terms || []).map((x, i) => `<button type="button" class="dchip term" data-dk="t${i}">${esc(x.name.replace(/\*\*/g, ''))}</button>`).join('');
+    if (!fs && !ts) return '';
+    return `<div class="kwbar dictbar" id="s-kw">${fs ? `<span class="kwbar-l">함수</span><div class="kwbar-chips">${fs}</div>` : ''}${ts ? `<span class="kwbar-l">용어</span><div class="kwbar-chips">${ts}</div>` : ''}</div>`;
+  }
+  function dictPopHtml(L, k) {
+    const i = +k.slice(1);
+    if (k[0] === 't') { const x = L.terms[i]; return x ? `<div class="dp-h"><b>${mdInline(x.name)}</b><span class="dp-k">용어</span></div><div class="dp-b">${mdInline(x.def)}</div>` : ''; }
+    const f = L.funcs[i]; if (!f) return '';
+    const d = f.detail || {};
+    return `<div class="dp-h"><code>${esc(f.name)}</code><span class="dp-k">함수</span></div>`
+      + (d.role ? `<div class="dp-role">${mdInline(d.role)}</div>` : '')
+      + (f.sig ? `<div class="dp-sig">${mdInline(f.sig)}</div>` : '')
+      + (f.use ? `<div class="dp-b">${mdInline(f.use)}</div>` : '')
+      + ((d.desc || []).length ? `<ul class="dp-ul">${d.desc.slice(0, 3).map(s => `<li>${mdInline(s)}</li>`).join('')}</ul>` : '')
+      + `<button type="button" class="dp-more" data-peek-c="${cid(k)}">자세히 ›</button>`;
+  }
+  function dictPopClose() {
+    const o = document.getElementById('dictpop'); if (o) o.parentNode.removeChild(o);
+    $$('.dchip.on', main).forEach(b => b.classList.remove('on'));
+  }
+  main.addEventListener('click', e => {
+    const b = e.target.closest('.dchip');
+    if (!b) { if (!e.target.closest('#dictpop')) dictPopClose(); return; }
+    const was = b.classList.contains('on'); dictPopClose(); if (was || !CX) return;
+    b.classList.add('on');
+    const pop = document.createElement('div'); pop.id = 'dictpop'; pop.className = 'dictpop'; pop.innerHTML = dictPopHtml(CX.L, b.dataset.dk);
+    main.appendChild(pop);                                               // main 안 — "자세히" 가 기존 옆 패널 처리로 열리게
+    const r = b.getBoundingClientRect(), w = Math.min(380, innerWidth - 24);
+    pop.style.width = w + 'px';
+    pop.style.left = Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px';
+    pop.style.top = (r.bottom + 6) + 'px';
+    highlightIn(pop);
+  });
+  document.addEventListener('click', e => { if (e.target.closest('#dictpop .dp-more')) setTimeout(dictPopClose, 0); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') dictPopClose(); });
+  addEventListener('scroll', () => dictPopClose(), { passive: true });
+  addEventListener('hashchange', () => dictPopClose());
 
   /* 옆 패널 */
   const peekEl = $('#peek'); let peekStack = [];
@@ -1366,7 +1406,7 @@
       <span class="tag ${L.status}">${L.status === 'done' ? '정리됨' : '정리 전'}</span>
       ${L.lectureTitle && L.lectureTitle !== L.title ? `<span class="tag">강의: ${esc(L.lectureTitle)}</span>` : ''}</div>
       ${L.goals.length ? `<ul class="goals"><b>학습 목표 (강의)</b>${L.goals.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}</div>
-      <nav class="jump"><a href="#notes" data-jump>정리 노트</a>${CM ? '' : `<button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>`}${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button><button type="button" data-view="study" class="${view === 'study' ? 'on' : ''}">${L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서'}</button></span>` : ''}${L.keywords.length ? `<div class="kwbar" id="s-kw"><span class="kwbar-l">키워드</span><div class="kwbar-chips">${L.keywords.map((k, i) => `<button type="button" class="kwc" data-kw="${i}">${esc(k)}</button>`).join('')}</div><span class="kwnav" hidden><button type="button" class="icon-btn sm" data-kwnav="-1" aria-label="이전 위치">‹</button><span class="kwpos"></span><button type="button" class="icon-btn sm" data-kwnav="1" aria-label="다음 위치">›</button><button type="button" class="icon-btn sm" data-kwnav="0" aria-label="강조 지우기">✕</button></span></div>` : ''}</nav>`;
+      <nav class="jump"><a href="#notes" data-jump>정리 노트</a>${CM ? '' : `<button type="button" class="jbtn" data-code-list>💻 예제 코드 ${exTopics.length}</button><a href="#lecture" data-jump>강의 원문 ${L.topics.length}</a>`}${(L.fills || []).length ? `<a href="#fills" data-jump>빈칸·괄호 ${L.fills.length}</a>` : ''}<a href="#quiz" data-jump>연관 문제 ${L.quiz.length}</a>${L.sections.length ? `<span class="view-tg" role="group" aria-label="정리 노트 보기 방식"><button type="button" data-view="concept" class="${view === 'concept' ? 'on' : ''}">개념별 묶어 보기</button><button type="button" data-view="study" class="${view === 'study' ? 'on' : ''}">${L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서'}</button></span>` : ''}${dictBar(L)}</nav>`;
 
     h += `<section class="part" id="notes"><h2>정리 노트 <small id="viewName">${view === 'concept' ? '개념별 묶어 보기' : (L.sections.some(x => x.key === 'study') ? '상세 학습' : '노트 순서')}</small></h2>`;
     if (L.sections.length) h += `<p class="part-note">점선 칩(개념)·▶ 칩(예제)을 누르면 관련 정의·핵심 내용·코드·문항이 옆에 모입니다.</p><div id="notes-body">${notesHtml(view)}</div>`;
