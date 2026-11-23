@@ -801,3 +801,14 @@ details.dent > summary .dp-k { margin-left: auto; flex: none; font-size: 11px; p
 .apid-ion { font-size: 12px; color: var(--ink-2); margin-top: 1px; }
 .apid-box { margin: 7px 0 0; padding: 7px 10px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .apid-box > .apid-k:first-child { margin-top: 0; }
+/* 코드 탭 — 넓게 보기 · 교시 코드 전부 펼치기 */
+body.rp-wide { --rp-w: min(1100px, 68vw); }
+#rpWide { margin-left: auto; margin-right: 6px; }
+.clsn { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 10px; background: var(--panel); }
+.clsn > summary { list-style: none; border-radius: 10px 10px 0 0; }
+.clsn > summary::-webkit-details-marker { display: none; }
+.clsn > summary .cn::before { content: '▸ '; color: var(--ink-3); }
+.clsn[open] > summary .cn::before { content: '▾ '; }
+.clsn-b { padding: 0 8px 8px; }
+.clsn-b .cb { margin: 6px 0; }
+.clsn-more { margin-top: 2px; }

@@ -207,6 +207,9 @@
     if (rTab === 'dict') { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
     else codeRender();
   }
+  const rpWide = on => { document.body.classList.toggle('rp-wide', on); const b = $('#rpWide'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '↔ 원래대로' : '↔ 넓게'; store.set('rpWide', on); };
+  rpWide(!!store.get('rpWide', false));
+  $('#rpWide').addEventListener('click', () => rpWide(!document.body.classList.contains('rp-wide')));
   const rpRefresh = () => { if (dictIsOpen()) (rTab === 'dict' ? dictRender() : codeRender()); };
   $('#dictClose').addEventListener('click', () => rpSet(false));
   $('.rtabs', dictPanel).addEventListener('click', e => { const b = e.target.closest('[data-rt]'); if (b) rpSet(true, b.dataset.rt, true); });
@@ -235,7 +238,7 @@
   }
   function codeItem(r, cur, find) {
     const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '') + (r[9] ? ' <span class="cfig" title="코드 읽기 가이드 있음">🧭</span>' : '');
-    return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"${find ? ` data-code-find="${esc(find)}"` : ''}><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}<span class="cw">${esc(r[5])}</span></button>`;
+    return `<button type="button" class="citem${cur ? ' cur' : ''}" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}"${find ? ` data-code-find="${esc(find)}"` : ''}><span class="cn${r[4] ? ' mono' : ''}">${name}</span>${r[6] ? `<span class="cnum">${esc(r[6])}</span>` : ''}${r[5] && r[5] !== r[7] || r[4] ? `<span class="cw">${esc(r[5])}</span>` : ''}</button>`;
   }
   function codeRender() {
     if (CODE.view === 'detail') return codeDetail();
@@ -264,10 +267,9 @@
     } else {
       if (cur) {
         const here = CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || [];
-        h += `<div class="dict-h">이 교시 (${loc(cur.s, cur.d, cur.n)}) · ${here.length}</div>` + (here.map(r => codeItem(r)).join('') || '<div class="dict-empty">이 교시에는 예제 코드가 없습니다.</div>');
-        h += '<div class="dict-h">전체 목차</div>';
+        h += `<div class="dict-h">이 교시 (${loc(cur.s, cur.d, cur.n)}) · 코드 ${here.length}개</div>` + (here.length ? '<div class="clsn-all"><div class="dict-empty">불러오는 중…</div></div>' : '<div class="dict-empty">이 교시에는 예제 코드가 없습니다.</div>');
       }
-      SUBJ.forEach(S => {
+      if (!cur) SUBJ.forEach(S => {
         const sOpen = cur && cur.s === S.id;
         h += `<details class="ctree s" data-k="${S.id}" ${sOpen ? 'open' : ''}><summary>${esc(S.name)}</summary>`;
         S.days.forEach(D => {
@@ -284,6 +286,7 @@
       });
     }
     sideCode.innerHTML = h;
+    if (cur && !words.length) codeLessonAll(cur);
     const qi = $('.code-q', sideCode);
     let raf = 0;
     const sched = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; CODE.q = qi.value; const pos = qi.selectionStart; codeRender(); const n = $('.code-q', sideCode); n.focus(); n.setSelectionRange(pos, pos); }); };
@@ -470,6 +473,17 @@
   window.addEventListener('resize', () => { if (CODEGUIDE.length && !sideCode.hidden) { const k = GPOP; guideDraw(); if (k >= 0) guidePop(k); } });
 
   let codeSeq = 0;                                                             // 늦게 끝난 이전 요청이 화면을 덮어쓰지 않게
+  // 이 교시의 코드를 위에서 아래로 모두 — 제목(굵게) · 하는 일 · 코드 · 실행 결과. 줄 묶음 설명 · 개념 칩은 '자세히 ›'
+  async function codeLessonAll(cur) {
+    const my = ++codeSeq, ctx = await lessonCtx(cur.s, cur.d, cur.n), box = $('.clsn-all', sideCode);
+    if (my !== codeSeq || !box || !ctx) return;
+    box.innerHTML = (CODE_BY[cur.s + '|' + cur.d + '|' + cur.n] || []).map(r => {
+      const t = ctx.L.topics[r[3]]; if (!t) return '';
+      const sum = codeItem(r).replace(/^<button[^>]*>/, '').replace(/<\/button>$/, '');
+      return `<details class="clsn" open><summary class="citem">${sum}</summary><div class="clsn-b">${figsHtml(t, ctx)}${exampleBody(t)}<button type="button" class="btn sm clsn-more" data-code-open="${r[0]}|${r[1]}|${r[2]}|${r[3]}">자세히 · 줄 설명 ›</button></div></details>`;
+    }).join('');
+    highlightIn(box);
+  }
   async function codeDetail() {
     const my = ++codeSeq, want = { s: CODE.s, d: CODE.d, n: CODE.n, tid: CODE.tid };
     sideCode.innerHTML = '<div class="dict-empty">불러오는 중…</div>';
