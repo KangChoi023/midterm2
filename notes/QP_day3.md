@@ -71,6 +71,9 @@ Day 2 는 "PTQ 하면 정확도가 거의 그대로" 였다. 그런데 실제 �
 | ResNet-20 | 0.846 | 0.8445 |
 | BadQuantNet | 0.846 | 0.2955 |
 
+<<CODE 1-1 | ResNet-20 vs BadQuantNet — FP32 같고 INT8 은 무너진다>>
+<<CODE 1-2 | forward hook 으로 블록별 bn1 출력 · outlier 채널 비율>>
+
 #### 개념 2 · 왜 scale 을 독차지하나
 ![bn1 출력 채널별 최댓값 비율 — 블록 3개에서 250 ~ 390배, layer1.1 의 나머지 채널은 2칸만 쓴다](assets/fig/qp/d3-outlier.svg)
 
@@ -83,30 +86,7 @@ Day 2 는 "PTQ 하면 정확도가 거의 그대로" 였다. 그런데 실제 �
 
 나머지 채널의 값 0 ~ 2.7 은 1.81 짜리 칸에서 0 또는 1 로만 표현된다 → 정보가 사라진다.
 
-#### 코드로 확인
-```python
-rows = []
-for name, m in [("rn20", rn20), ("bad", bad)]:
-    export_onnx(m, f"{name}.onnx")
-    with quiet(): quant_pre_process(f"{name}.onnx", f"{name}_pre.onnx")
-    ptq_ort(f"{name}_pre.onnx", f"{name}_int8.onnx")
-    rows.append({"model": name, "fp32": ort_acc(f"{name}_pre.onnx"), "int8": ort_acc(f"{name}_int8.onnx")})
-cmp_df = pd.DataFrame(rows)
-```
-- **무엇을 하나**: 두 모델을 같은 순서(export → 전처리 → PTQ)로 INT8 로 바꾸고 정확도를 비교한다 (실습 1-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `rn20 0.846 → 0.8445` · `bad 0.846 → 0.2955` (직접 실행)
-
-```python
-A = np.maximum(acts["layer1.1"], 0)
-normal = np.delete(A, ch, axis=1)                   # outlier 채널을 뺀 나머지
-s_all, s_wo = A.max() / 255, normal.max() / 255
-levels_all = len(np.unique(np.round(normal / s_all)))
-levels_wo = len(np.unique(np.round(normal / s_wo)))
-```
-- **무엇을 하나**: 나머지 15채널이 실제로 쓰는 정수 칸 수를 두 scale 로 센다 (예제 1-A).
-- **어떤 개념**: 개념 2.
-- **출력**: `scale 1.8113 (outlier 포함) vs 0.0104 (제외) — 나머지 채널이 쓰는 칸 2 개 vs 228 개 / 256` (직접 실행)
+<<CODE 1-c1 | outlier 채널 하나가 scale 을 독차지 — 나머지가 쓰는 칸 수>>
 
 #### 한 번에 정리
 - 같은 FP32 함수라도 중간 텐서 범위가 다르면 INT8 결과가 크게 갈린다 (0.8445 vs 0.2955).
@@ -185,6 +165,10 @@ def cosine(x, y):
 - ‖x‖ = √(x₁² + x₂² + …) — 텐서 전체를 한 줄로 편 벡터의 길이.
 - 오차가 신호의 1% → ‖x‖/‖x − x̂‖ = 100 → 20·log10(100) = 40 dB.
 
+<<CODE 2-1 | sqnr · cosine — 두 오차 지표>>
+<<CODE 2-c1 | FP32 · INT8 블록 출력을 꺼내 누적 SQNR>>
+<<CODE 2-c2 | 블록 출력 SQNR 그림>>
+
 #### 개념 2 · 두 가지 찾는 법
 ![누적 비교는 layer1.1 이후 모두 낮고, 단독 민감도는 범인 3블록만 20 dB 아래](assets/fig/qp/d3-sens.svg)
 
@@ -204,32 +188,8 @@ def cosine(x, y):
 
 누적은 보정용 100장, 단독은 평가용 500장의 logits 로 쟀다. 단독 민감도는 블록마다 모델을 하나씩 만들어야 해서 느리지만 범인이 또렷하다.
 
-#### 코드로 확인
-```python
-modify_model_output_intermediate_tensors("bad_pre.onnx", "bad_aug_f.onnx")
-modify_model_output_intermediate_tensors("bad_int8.onnx", "bad_aug_q.onnx")
-with quiet():
-    f_acts = collect_activations("bad_aug_f.onnx", CifarReader(X_cal[:100]))
-    q_acts = collect_activations("bad_aug_q.onnx", CifarReader(X_cal[:100]))
-t = "/layer1/layer1.1/Relu_1_output_0"
-fa = np.concatenate([a.ravel() for a in f_acts[t]])
-qa = np.concatenate([a.ravel() for a in q_acts[t + "_DequantizeLinear_Output"]])
-```
-- **무엇을 하나**: 두 모델의 모든 중간 텐서를 꺼내 같은 이름끼리 비교할 준비를 한다 (예제 2-A).
-- **어떤 개념**: 개념 2 · 누적 비교.
-- **출력**: layer1.1 출력 `sqnr 9.56 · cos 0.94` · `SQNR 이 가장 많이 떨어진 곳: layer1.1` (직접 실행)
-
-```python
-ref = make_session("bad_pre.onnx", 0).run(None, {"input": X_ev[:500]})[0]
-for b in BLK + ["fc"]:
-    sel = [n.name for n in g_bad.node if n.name.startswith(PREFIX[b])]
-    ptq_ort("bad_pre.onnx", "one_block.onnx", quantize=sel, X=X_cal[:100])
-    out = make_session("one_block.onnx", 0).run(None, {"input": X_ev[:500]})[0]
-    rows.append({"block": b, "n_nodes": len(sel), "sqnr": sqnr(ref, out)})
-```
-- **무엇을 하나**: 블록 하나만 양자화한 모델 11개를 만들어 최종 logits 의 SQNR 을 잰다 (실습 2-2).
-- **어떤 개념**: 개념 2 · 단독 민감도.
-- **출력**: `범인 후보: ['layer1.1', 'layer2.1', 'layer3.1']` (직접 실행)
+<<CODE 2-2 | 블록 하나만 양자화 — 단독 민감도 · 범인 찾기>>
+<<CODE 2-c3 | 단독 민감도 그림>>
 
 #### 한 번에 정리
 - SQNR(dB, 클수록 좋음, 1% 오차 = 40 dB) · cosine(1 = 같은 방향).
@@ -307,6 +267,9 @@ ptq_ort("bad_pre.onnx", "bad_mix3.onnx", exclude=ex)
 - outlier 채널은 bn1 출력(= ONNX 에서 conv1 출력, BN 이 접혀 있음)에 있다 → conv1 의 출력 · Relu · conv2 의 입력이 모두 큰 범위.
 - conv2 만 빼면 conv1 출력 쪽에서 이미 Q/DQ 가 붙어 양자화된다 → 0.2905.
 
+<<CODE 3-1 | block_nodes — 블록의 conv1 · Relu · conv2 노드 이름>>
+<<CODE 3-c1 | conv2 만 빼면? (outlier 는 conv1 출력)>>
+
 #### 개념 2 · 몇 블록을 빼나
 ![범인 블록을 0 · 1 · 3개 빼면 정확도는 회복, 지연 · 크기는 조금씩 늘어난다](assets/fig/qp/d3-mixed.svg)
 
@@ -319,19 +282,7 @@ ptq_ort("bad_pre.onnx", "bad_mix3.onnx", exclude=ex)
 
 (CPU · 스레드 1 · 직접 실행. 지연 시간은 컴퓨터마다 다르다 — 순서와 비율을 본다.) 단독 민감도가 가장 낮은 블록(layer3.1, 3.6 dB)부터 뺐다. 크기가 늘어난 것은 FP32 로 남긴 conv weight 가 4 byte 그대로이기 때문.
 
-#### 코드로 확인
-```python
-order = list(sens_df[sens_df.block.isin(suspects)].sort_values("sqnr").block)
-for k in [0, 1, 3]:
-    ex = [n for b in order[:k] for n in block_nodes(b)]
-    p = ptq_ort("bad_pre.onnx", f"bad_mix{k}.onnx", exclude=ex)
-    s = make_session(p)
-    rows.append({"n_blocks": k, "n_nodes": len(ex), "acc": ort_acc(p),
-                 "mean_ms": bench_fn(lambda: s.run(None, {"input": x1}), n=200, warm=20)["mean"]})
-```
-- **무엇을 하나**: 가장 나쁜 블록부터 0 · 1 · 3개를 FP32 로 남긴 모델을 만들어 잰다 (실습 3-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `order ['layer3.1', 'layer2.1', 'layer1.1']` · 정확도 `0.2955 → 0.6290 → 0.8440` (직접 실행)
+<<CODE 3-2 | 범인 0 · 1 · 3 블록을 FP32 로 — 정확도 · 지연 · 크기>>
 
 #### 한 번에 정리
 - `nodes_to_exclude` 로 범인 노드만 FP32 → mixed precision.
@@ -416,6 +367,8 @@ if int8:
 | INT8 위치 | TensorRT 가 빠른 쪽으로 | Q/DQ 있는 곳만 |
 | TensorRT 10 | deprecated | 권장 |
 
+<<CODE 4-c1 | trt_check — S8 · zero-point 0 인지 검사>>
+
 #### 개념 2 · trt_check 가 보는 것
 - Q/DQ 노드의 입력은 (x, scale, zero_point) — `input[2]` 가 zero_point initializer.
 - 그 자료형이 uint8 이거나 값이 0 이 아니면 TensorRT 파서가 "zero point must be 0" 류 오류로 빌드를 멈춘다.
@@ -425,31 +378,8 @@ if int8:
 | rn20_int8.onnx (Day 2 설정) | 112 | 68 | 26 | False |
 | rn20_trt_int8.onnx (make_trt_int8) | 128 | 0 | 0 | True |
 
-#### 코드로 확인
-```python
-def trt_check(path):
-    g = onnx.load(path).graph
-    init = {i.name: numpy_helper.to_array(i) for i in g.initializer}
-    qdq = [n for n in g.node if n.op_type in ("QuantizeLinear", "DequantizeLinear")]
-    zps = [init[n.input[2]] for n in qdq if len(n.input) > 2 and n.input[2] in init]
-    r = {"qdq": len(qdq), "uint8": sum(z.dtype == np.uint8 for z in zps),
-         "nonzero_zp": sum(bool(np.any(z != 0)) for z in zps)}
-    r["ok"] = r["qdq"] > 0 and r["uint8"] == 0 and r["nonzero_zp"] == 0
-    return r
-```
-- **무엇을 하나**: 모든 Q/DQ 의 zero_point 를 꺼내 자료형 · 값을 센다 (예제 4-A).
-- **어떤 개념**: 개념 2.
-- **출력**: `rn20_int8.onnx (Day 2 설정): {'qdq': 112, 'uint8': 68, 'nonzero_zp': 26, 'ok': False}` (직접 실행)
-
-```python
-export_onnx(rn20, "rn20_b1.onnx", batch=1)
-with quiet(): quant_pre_process("rn20_b1.onnx", "rn20_b1_pre.onnx")
-make_trt_int8("rn20_b1_pre.onnx", "rn20_trt_int8.onnx", CifarReader(X_cal, bs=1))
-acc_trt_int8 = ort_acc("rn20_trt_int8.onnx", bs=1)
-```
-- **무엇을 하나**: 배치 1 고정 ResNet-20 을 TensorRT 조건에 맞게 양자화한다 (실습 4-1).
-- **어떤 개념**: 개념 1 · explicit 경로의 입력 만들기.
-- **출력**: `{'qdq': 128, 'uint8': 0, 'nonzero_zp': 0, 'ok': True} | ORT 정확도 0.8420` · weight 최댓값 64 (직접 실행)
+<<CODE 4-1 | make_trt_int8 — S8 대칭 QDQ · 배치 1 모델>>
+<<CODE 4-2 | build_engine 에 INT8 플래그 한 줄>>
 
 #### 한 번에 정리
 - TensorRT 10 INT8 = explicit(QDQ ONNX) 권장 · implicit calibrator 는 deprecated.
@@ -526,21 +456,15 @@ infer = TRTInfer(build_once(src, f"rn20_{prec.lower()}.engine", fp16=f16, int8=i
 
 (GPU 없음 → ORT CPU · 평가 2,000장 · 직접 실행.) CPU 에서 INT8 이 느린 것은 활성값을 S8 로 만들었기 때문 — Day 2 5교시에서 본 "x86 은 U8 × S8 이 빠른 경로" 와 같다. TensorRT GPU 에서는 S8 이 표준이라 결과가 다르다 → 배포 장치에서 다시 잰다.
 
+<<CODE 5-1 | FP32 · FP16 · INT8 엔진 — 정확도 · 지연 · 크기>>
+<<CODE 5-c1 | polygraphy 로 ORT 와 TensorRT INT8 비교>>
+
 #### 개념 2 · 왜 숫자가 똑같지 않나
 - 런타임마다 연산 순서 · layer 융합 · FP16 fallback 이 달라 INT8 끼리도 출력이 조금씩 다르다.
 - 그래서 "같다" 의 기준 = 최대 차이가 허용 오차 안 + 예측(argmax) 대부분 일치. logits 크기가 약 19.5 이니 차이 몇 이하는 예측을 바꾸지 않는 경우가 많다.
 
-#### 코드로 확인
-```python
-s_ref = make_session("rn20_trt_int8.onnx")
-ref_l = np.concatenate([s_ref.run(None, {"input": X_ev[i:i + 1]})[0] for i in range(300)])
-trt_l = np.concatenate([INFER5["INT8"](X_ev[i:i + 1]) for i in range(300)])
-max_abs = float(np.abs(ref_l - trt_l).max())
-agree = float((ref_l.argmax(1) == trt_l.argmax(1)).mean())
-```
-- **무엇을 하나**: ORT INT8 과 엔진 INT8 의 logits 를 300장에서 비교한다 (실습 5-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `ORT CPU INT8 vs ORT INT8 — 최대 차이 0.0000 · 예측 일치 1.000 · logits 크기 19.5` (직접 실행 · GPU 없음이라 같은 ORT 끼리)
+<<CODE 5-2 | ORT INT8 vs 엔진 INT8 logits 차이 · 예측 일치>>
+<<CODE 5-c2 | 엔진 레이어별 정밀도 세기>>
 
 #### 한 번에 정리
 - 같은 QDQ ONNX → INT8 + FP16 플래그 → INT8 엔진.
@@ -620,31 +544,16 @@ yolo_int8 = ort_infer("yolov8n_int8.onnx")
 
 칸이 1 개도 안 되므로 모든 점수가 0 → conf 0.25 를 넘는 박스가 없다.
 
+<<CODE 6-c1 | Penn-Fudan · YOLOv8n · 탐지 함수 준비>>
+<<CODE 6-c2 | 보정 43장 / 평가 127장 · YoloReader>>
+<<CODE 6-1 | YOLOv8n 전체 INT8 — 사람 0명, output0 scale 이 너무 크다>>
+
 #### 개념 2 · 무엇을 빼고 무엇을 남기나
 - **남김(INT8)**: cv2.i(박스 갈래) · cv3.i(클래스 갈래)의 Conv — 계산량의 대부분.
 - **뺌(FP16 · ORT 에서는 FP32)**: DFL(Reshape · Transpose · Softmax · 1×1 conv) · Sigmoid · 앵커 디코딩(Slice · Sub · Add · Div · Mul) · Concat.
 - 노드 수: FP32 233개 → head 제외 INT8 732개 (Q 218 · DQ 281 이 더해짐).
 
-#### 코드로 확인
-```python
-make_trt_int8("yolov8n_pre.onnx", "yolov8n_int8_all.onnx", YoloReader(CAL_IDX))
-n_fp32 = len(detect(im0, yolo_fp32)[0]); n_all = len(detect(im0, ort_infer("yolov8n_int8_all.onnx"))[0])
-g = onnx.load("yolov8n_int8_all.onnx").graph
-init = {i.name: numpy_helper.to_array(i) for i in g.initializer}
-dq_out = [n for n in g.node if "output0" in n.output][0]
-out_scale = float(init[dq_out.input[1]]); score_levels = 1 / out_scale
-```
-- **무엇을 하나**: YOLOv8n 전체를 양자화해 사람 수를 세고, 마지막 DQ 의 scale 을 꺼낸다 (실습 6-1).
-- **어떤 개념**: 개념 1.
-- **출력**: `사람 FP32 2명 · INT8(전체) 0명 | output0 scale 5.166 → 점수 0~1 에 쓸 수 있는 칸 0.19 개` (직접 실행)
-
-```python
-b32, b8 = detect(im0, yolo_fp32)[0], detect(im0, yolo_int8)[0]
-head_iou = float(np.median(iou_matrix(b8, b32).max(1)))
-```
-- **무엇을 하나**: head 후처리를 뺀 INT8 의 박스를 FP32 박스와 짝지어 IoU 중앙값을 구한다 (실습 6-2).
-- **어떤 개념**: 개념 2.
-- **출력**: `head 제외 노드 24개 | 사람 FP32 2명 · INT8 2명 | 짝 IoU 중앙값 0.966 | {'qdq': 499, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}` (직접 실행)
+<<CODE 6-2 | Detect head 후처리를 빼고 INT8 — 사람을 다시 찾는다>>
 
 #### 한 번에 정리
 - 탐지 출력 = 범위가 다른 값(박스 · 점수)을 한 텐서에 → 통째 양자화하면 점수 0.
@@ -722,6 +631,8 @@ def make_infer(prec, onnx_path, fp16=False, int8=False):
 3. 누적 TP 로 precision · recall → PR 곡선 → 면적 = AP.
 4. 기준을 0.5 하나로 = AP50, 0.5 ~ 0.95 10단계 평균 = mAP.
 
+<<CODE 7-1 | eval_map — AP50 · mAP, 보정 / 평가 세트 비교>>
+
 #### 개념 2 · 네 가지 측정
 | 모델 | 세트 | AP50 | mAP |
 |---|---|---|---|
@@ -732,18 +643,7 @@ def make_infer(prec, onnx_path, fp16=False, int8=False):
 
 (직접 실행 · ORT CPU.) 세트끼리 절대값은 사진 난이도가 달라 비교하지 않는다. 같은 세트 안의 **INT8 − FP32 차이**를 본다: 평가 세트 AP50 −0.53%p · 보정 세트 −1.49%p — 사진 43장 · 127장의 차이로도 결론(mAP 2%p 한도 통과 여부)이 바뀔 수 있다. 그래서 평가 세트를 미리 정해 두고 바꾸지 않는다.
 
-#### 코드로 확인
-```python
-rows = []
-for name, f, split, idx in [("FP32", yolo_fp32, "eval", EVAL_IDX), ("INT8", yolo_int8, "eval", EVAL_IDX),
-                            ("INT8", yolo_int8, "calib", CAL_IDX), ("FP32", yolo_fp32, "calib", CAL_IDX)]:
-    a, m = eval_map(f, idx)
-    rows.append({"model": name, "split": split, "AP50": a, "mAP": m})
-map_df = pd.DataFrame(rows)
-```
-- **무엇을 하나**: 모델 2개 × 세트 2개를 같은 함수로 잰다 (실습 7-1).
-- **어떤 개념**: 개념 2.
-- **출력**: `평가 127장 — AP50 0.972 → 0.967 · mAP 0.838 → 0.815` (직접 실행)
+<<CODE 7-2 | make_infer — FP16 · INT8 추론기를 같은 모양으로>>
 
 #### 한 번에 정리
 - 탐지 정확도 = AP50 · mAP@0.5:0.95 (conf 0.01 까지 받아서).
@@ -827,6 +727,9 @@ recommend = review_df[review_df["pass"]].sort_values("latency_ms").iloc[0].prec
 
 정답 보기 셀 없음 · GPU 가 없으면 FP16 행은 비우고 ORT CPU 값으로 채점.
 
+<<CODE 과제 1 | 과제 1 — INT8-mixed: 첫 Conv · 출력 Conv 도 제외>>
+<<CODE 과제 2 | 과제 2 — measure: 지연 · AP · 크기>>
+
 #### 개념 2 · 심사표 (이 실행)
 ![엔진 4개 심사표 — ORT CPU 에서 INT8 은 mAP 한도로 탈락, 통과한 둘 중 가장 빠른 FP32 추천](assets/fig/qp/d3-review.svg)
 
@@ -839,23 +742,15 @@ recommend = review_df[review_df["pass"]].sort_values("latency_ms").iloc[0].prec
 
 (ORT CPU · 스레드 자동 · n=10 · 직접 실행. 정확도는 Day 3 교안 수정(`reduce_range=True`) 뒤 다시 잰 값, 지연 시간은 이전 실행 값 — 7비트 weight 는 속도를 바꾸지 않는다.) 교안의 의도는 T4 GPU + TensorRT — 거기서는 INT8 이 빠른 경로라 추천이 INT8 계열이 될 수 있다. 이 표의 지연 시간은 "CPU 에서는 S8 INT8 이 느리다" 는 것만 보여 준다.
 
+<<CODE 과제 3 | 과제 3 — 엔진 4개 심사표>>
+<<CODE 과제 4 | 과제 4 — 규칙대로 추천 · 저장>>
+
 #### 개념 3 · 과제 6 의 생각할 거리
 - **INT8 vs INT8-mixed 차이가 잡음보다 큰가**: mAP 차 1.3%p 가 합격 / 탈락을 갈랐다 — 평가 127장에서 박스 몇 개 — 사진을 늘리거나 여러 번 나눠 재서 흔들림을 본다.
 - **전체 양자화했다면**: 6-1 — 형식(trt_check)은 합격인데 사람 0명. 심사서에 "대표 장면 사람 수 비교" 같은 기능 점검 항목을 넣는다.
 - **Jetson 에 그대로?**: 엔진은 GPU 종류 · TensorRT 버전에 묶인다 → QDQ ONNX 를 가져가 장치에서 다시 빌드 · 측정한다.
 
-#### 코드로 확인
-```python
-last_convs = [n.name for n in g_y.node if re.match(r"/model.22/cv[23]\.\d/cv[23]\.\d\.2/Conv$", n.name)]
-mixed_nodes = head + ["/model.0/conv/Conv"] + last_convs
-make_trt_int8("yolov8n_pre.onnx", "yolov8n_int8_mixed.onnx", YoloReader(CAL_IDX), exclude=mixed_nodes)
-SPEC = [("FP32", YOLO_ONNX, False, False), ("FP16", YOLO_ONNX, True, False),
-        ("INT8", "yolov8n_int8.onnx", True, True), ("INT8-mixed", "yolov8n_int8_mixed.onnx", True, True)]
-review_df = pd.DataFrame([measure(*s) for s in SPEC])
-```
-- **무엇을 하나**: INT8-mixed 를 만들고 엔진 4개를 같은 `measure` 로 잰다 (과제 1 · 3).
-- **어떤 개념**: 개념 2.
-- **출력**: `제외 노드 31개 | {'qdq': 478, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}` · `추천: FP32` (직접 실행 · ORT CPU)
+<<CODE 과제 5 | 과제 5 — FP32 vs 추천 엔진 박스 비교>>
 
 #### 한 번에 정리
 - 배포 심사 = 같은 자(지연 · FPS · AP50 · mAP · 크기)로 재고, 먼저 정한 규칙으로 고른다.
