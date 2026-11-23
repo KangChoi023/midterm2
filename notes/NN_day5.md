@@ -68,6 +68,8 @@ Day 3 · 4 의 MLP 는 MNIST 에서 0.97 을 넘었다. 그런데 이 모델은 
 
 완전연결층(Affine)은 784개 입력마다 따로 가중치를 둔다. "몇 번 칸이 몇 번 칸 옆인지" 라는 정보를 전혀 쓰지 않는다. 그 증거가 **픽셀 뒤섞기 실험**이다. 모든 이미지의 픽셀 순서를 똑같은 순열로 섞으면 사람 눈엔 노이즈가 되지만, MLP 정확도는 원본 0.9455, 뒤섞음 0.9436 으로 거의 같다. MLP 는 "획은 이어져 있다" 같은 상식 없이 6만 장에서 모든 것을 처음부터 배운다.
 
+<<CODE 1-1 | 픽셀 순서를 모두 섞어도 MLP 정확도는 그대로?>>
+
 #### 개념 2 · 파라미터 폭발
 완전연결층의 가중치 수 = 입력 수 × 출력 수.
 
@@ -79,34 +81,13 @@ Day 3 · 4 의 MLP 는 MNIST 에서 0.97 을 넘었다. 그런데 이 모델은 
 
 스마트폰 사진 크기면 첫 층 하나만 600 MB 다. 합성곱 층은 필터 크기와 개수로만 정해지므로 이미지가 224×224 든 28×28 이든 1,792 개다.
 
+<<CODE 1-2 | 완전연결 vs 합성곱 — 가중치 개수 세기>>
+
 #### 개념 3 · 합성곱의 두 아이디어
 | 아이디어 | 뜻 | 효과 |
 |---|---|---|
 | 지역성 | 출력 하나는 입력의 작은 영역(예 3×3)만 본다 | 이웃 관계를 구조적으로 사용 |
 | 가중치 공유 | 같은 필터를 이미지의 모든 위치에 쓴다 | 파라미터 수가 이미지 크기와 무관 · 어디에 있든 같은 특징 검출 |
-
-#### 코드로 확인
-```python
-perm = np.random.default_rng(0).permutation(784)       # 모든 이미지에 같은 순열
-X_perm_train, X_perm_test = X_train[:, perm], X_test[:, perm]
-for name, A, B in [("original", X_train, X_test), ("permuted", X_perm_train, X_perm_test)]:
-    m = mynn.Sequential([mynn.Affine(784, 100, seed=1), mynn.Relu(), mynn.Affine(100, 10, seed=2)])
-    mynn.Trainer(m, mynn.Adam(lr=0.001), batch_size=100, seed=0).fit(A, t_train, epochs=1, verbose=False)
-    mlp_acc[name] = m.accuracy(B, t_test)
-```
-- **무엇을 하나**: 픽셀을 고정 순열로 뒤섞은 MNIST 와 원본으로 같은 MLP 를 1 epoch 학습해 비교한다.
-- **어떤 개념**: 개념 1 — MLP 는 위치 관계를 쓰지 않는다.
-- **출력**: 원본 **0.9455** vs 뒤섞음 **0.9436** (강의 실행 값) — 차이 0.01 미만
-
-```python
-def fc_weights(n_in, n_out):  return n_in * n_out
-def conv_params(C, F, FN):    return FN * C * F * F + FN      # 필터 FN 개 + 편향 FN 개
-
-fc_weights(28 * 28, 100), fc_weights(224 * 224 * 3, 1000), conv_params(3, 3, 64)
-```
-- **무엇을 하나**: 완전연결층과 합성곱 층의 파라미터 수를 센다.
-- **어떤 개념**: 개념 2.
-- **출력**: `(78400, 150528000, 1792)`
 
 #### 한 번에 정리
 - 펼치면 이웃 픽셀이 28칸 떨어진다 — MLP 는 위치 관계를 안 쓴다 (뒤섞어도 정확도 같음).
@@ -203,6 +184,8 @@ def conv_naive(x, W, b, stride=1, pad=0):
 - 필터 하나의 출력을 **특징 맵**이라 한다. 필터와 비슷한 무늬가 있는 자리에서 값이 크다.
 - 예: **Sobel 가로 에지** 필터 [[−1, −2, −1], [0, 0, 0], [1, 2, 1]] 는 위아래 밝기 차이(가로 경계)에 반응한다. CNN 은 이런 필터를 사람이 설계하지 않고 데이터로 학습한다.
 
+<<CODE 2-2 | 채널 하나 · 필터 하나 합성곱 — 이중 for 루프>>
+
 #### 개념 2 · 출력 크기 — 패딩과 스트라이드
 > OH = (H + 2P − FH) // S + 1
 
@@ -221,6 +204,8 @@ def conv_naive(x, W, b, stride=1, pad=0):
 | 28 | 3 | 2 | 1 | 14 | 스트라이드 2 = 절반 |
 | 224 | 7 | 2 | 3 | 112 | |
 
+<<CODE 2-1 | 출력 크기 (H + 2P − F) / S + 1>>
+
 #### 개념 3 · 다채널 · 다중 필터 · 배치
 컬러 이미지는 R · G · B 3장(**채널**)이다. 필터 하나는 모든 채널을 덮는 (C, FH, FW) 블록이고, 채널마다 곱한 결과를 **모두 더해** 출력 한 장을 만든다. 필터가 FN 개면 출력도 FN 장이다.
 
@@ -233,34 +218,8 @@ def conv_naive(x, W, b, stride=1, pad=0):
 | 편향 | (FN,) — 필터마다 하나 |
 | 출력 | (N, FN, OH, OW) |
 
-#### 코드로 확인
-```python
-def conv_naive(x, W, b, stride=1, pad=0):
-    N, C, H, Wd = x.shape; FN, _, FH, FW = W.shape
-    OH, OW = conv_output_size(H, FH, stride, pad), conv_output_size(Wd, FW, stride, pad)
-    xp = np.pad(x, [(0, 0), (0, 0), (pad, pad), (pad, pad)])
-    out = np.zeros((N, FN, OH, OW))
-    for n in range(N):
-        for f in range(FN):
-            for i in range(OH):
-                for j in range(OW):
-                    window = xp[n, :, i * stride:i * stride + FH, j * stride:j * stride + FW]
-                    out[n, f, i, j] = np.sum(window * W[f]) + b[f]
-    return out
-```
-- **무엇을 하나**: 배치 · 필터 · 출력 위치를 4중 루프로 돌며, (C, FH, FW) 영역과 필터를 곱해 모두 더한다.
-- **어떤 개념**: 개념 1 ~ 3 — 패딩은 높이 · 너비에만, 채널은 합쳐서 한 장.
-- **출력**: 모두 1 인 (1, 2, 3, 3) 입력 · (1, 2, 2, 2) 필터 · 편향 1 → shape `(1, 1, 2, 2)`, 모든 값 **9** (= 2채널 × 2 × 2 + 1)
-
-```python
-sobel_h = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=float)     # 가로 에지
-sobel_v = sobel_h.T                                                         # 세로 에지
-W_sobel = np.stack([sobel_h, sobel_v])[:, None, :, :]                      # (2, 1, 3, 3)
-edges = conv_naive(X4_train[:1], W_sobel, np.zeros(2), stride=1, pad=1)
-```
-- **무엇을 하나**: 손으로 설계한 에지 필터 2개로 숫자 이미지를 합성곱한다.
-- **어떤 개념**: 개념 1 — 필터 = 특징 검출기, 개념 2 — P1 이라 크기 유지.
-- **출력**: `edges.shape` = `(1, 2, 28, 28)` — 가로획 · 세로획이 밝게 나온 특징 맵 2장
+<<CODE 2-3 | 배치 · 다채널 · 다중 필터 합성곱 (4중 for · 패딩 · 스트라이드)>>
+<<CODE 2-4 | Sobel 에지 필터를 숫자 5 에 적용>>
 
 #### 한 번에 정리
 - 합성곱 = 필터를 미끄러뜨리며 겹치는 칸끼리 곱해 더하기 (신경망은 뒤집지 않음).
@@ -345,40 +304,17 @@ out   = out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)   # (N, FN, OH, OW)
 
 마지막 transpose 는 (N, OH, OW, FN) 의 채널 축 FN 을 앞으로 옮겨 (N, FN, OH, OW) 로 만든다.
 
+<<CODE 3-1 | im2col — 필터가 닿는 영역을 행 하나로 펼치기>>
+
 #### 개념 2 · 구현 요령 — 루프는 필터 크기만큼
 영역을 하나씩(576번) 도는 대신, 필터 안의 위치 (y, x) 를 돈다. "모든 영역의 (y, x) 번째 값" 은 슬라이싱 `img[:, :, y : y + S·OH : S, x : x + S·OW : S]` 한 번으로 얻는다. 루프는 5×5 = **25**번뿐이고 출력 크기와 무관하다 (Day 1 벡터화).
+
+<<CODE 3-2 | im2col + 행렬곱 한 번 = 합성곱>>
 
 #### 개념 3 · 속도 ↔ 메모리 trade-off
 이웃 영역은 서로 겹치므로 같은 픽셀이 col 의 여러 행에 **중복 복사**된다. 메모리는 약 FH·FW / S² 배가 된다 — MNIST 5×5, S = 1 이면 25 × 576 / 784 ≈ **18.4배**. 대신 CPU · GPU · NPU 가 가장 잘하는 행렬곱 한 번이 되어 **백 배 이상** 빨라진다. 실제 라이브러리도 비슷한 방법을 쓰고, 메모리가 빠듯한 온디바이스에서는 이 교환 비율이 설계 기준이 된다.
 
-#### 코드로 확인
-```python
-def im2col(x, FH, FW, stride=1, pad=0):
-    N, C, H, W = x.shape
-    OH, OW = conv_output_size(H, FH, stride, pad), conv_output_size(W, FW, stride, pad)
-    img = np.pad(x, [(0, 0), (0, 0), (pad, pad), (pad, pad)])
-    col = np.zeros((N, C, FH, FW, OH, OW))
-    for y in range(FH):
-        for x_ in range(FW):
-            col[:, :, y, x_, :, :] = img[:, :, y:y + stride * OH:stride, x_:x_ + stride * OW:stride]
-    return col.transpose(0, 4, 5, 1, 2, 3).reshape(N * OH * OW, -1)
-```
-- **무엇을 하나**: 필터 안 위치 (y, x) 마다 모든 출력 위치의 값을 한꺼번에 잘라 담고, 축을 바꿔 (영역, 값) 행렬로 편다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `im2col(np.arange(16.).reshape(1, 1, 4, 4), 3, 3)` → shape `(4, 9)`, 첫 행 `[0, 1, 2, 4, 5, 6, 8, 9, 10]` (왼쪽 위 3×3 영역)
-
-```python
-def conv_im2col(x, W, b, stride=1, pad=0):
-    FN, C, FH, FW = W.shape; N, _, H, Wd = x.shape
-    OH, OW = conv_output_size(H, FH, stride, pad), conv_output_size(Wd, FW, stride, pad)
-    col = im2col(x, FH, FW, stride, pad)          # (N·OH·OW, C·FH·FW)
-    col_W = W.reshape(FN, -1).T                   # (C·FH·FW, FN)
-    out = col @ col_W + b                         # (N·OH·OW, FN)
-    return out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)
-```
-- **무엇을 하나**: im2col → 행렬곱 → 모양 되돌리기로 합성곱을 계산한다.
-- **어떤 개념**: 개념 1 — Affine 과 같은 식.
-- **출력**: `conv_naive` 와 같은 값 · MNIST 20장 · 필터 30개에서 **백 배 이상** 빠름 (시간은 CPU 마다 다름) · `col_ratio` ≈ **18.4**
+<<CODE 3-3 | for 루프 vs im2col — 시간과 메모리 비교>>
 
 #### 한 번에 정리
 - im2col: 영역 하나 = 행 하나, 필터 하나 = 열 하나 → col @ col_W + b.
@@ -476,6 +412,9 @@ forward 가 `col @ col_W + b` 이므로 backward 도 Day 3 Affine 의 식을 그
 
 **col2im** 은 im2col 의 반대다. 단, 한 입력 픽셀이 여러 영역(여러 col 행)에 복사되어 쓰였으므로 그 자리들에서 온 기울기를 **모두 더한다** — Day 3 "값이 여러 곳에 쓰이면 역전파 때 기울기를 더한다" 와 같은 원리다. 예를 들어 4×4 입력 · 3×3 필터에서 가운데 픽셀은 영역 4개에 쓰여 기울기 4개가 더해진다.
 
+<<CODE 4-1 | mynn_conv.py — col2im · Convolution · Pooling 계층>>
+<<CODE 4-c1 | Day 4 mynn.py 에 CNN 부분을 이어 붙이기>>
+
 #### 개념 2 · Max Pooling — 최댓값만, 기울기도 그 자리로만
 2×2 영역마다 최댓값만 남겨 크기를 절반으로 줄인다. 채널 수는 그대로이고 학습할 파라미터는 **없다**.
 
@@ -488,45 +427,7 @@ forward 가 `col @ col_W + b` 이므로 backward 도 Day 3 Affine 의 식을 그
 #### 개념 3 · 새 계층은 gradient check
 Day 3 4교시 방법: L = Σ (forward(x) ⊙ dout) 를 수치 미분한 값과 backward(dout) 를 비교한다. 이 L 의 ∂L/∂(출력) 이 정확히 dout 이라 계층 하나만 떼어 시험할 수 있다.
 
-#### 코드로 확인
-```python
-def backward(self, dout):                                        # Convolution
-    FN, C, FH, FW = self.params["W"].shape
-    dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)            # (N·OH·OW, FN)
-    self.grads["b"] = dout.sum(axis=0)
-    self.grads["W"] = (self.col.T @ dout).T.reshape(FN, C, FH, FW)
-    dcol = dout @ self.col_W.T                                    # Affine 의 dX 와 같은 식
-    return col2im(dcol, self.x_shape, FH, FW, self.stride, self.pad)
-```
-- **무엇을 하나**: dout 을 forward 의 반대 순서로 (N·OH·OW, FN) 로 펼친 뒤 Affine 식으로 dW · db · dcol 을 구하고, col2im 으로 입력 모양으로 되돌린다.
-- **어떤 개념**: 개념 1.
-- **출력**: `col2im(np.ones((4, 9)), (1, 1, 4, 4), 3, 3)` → `[[1, 2, 2, 1], [2, 4, 4, 2], [2, 4, 4, 2], [1, 2, 2, 1]]` — 각 픽셀이 몇 개 영역에 쓰였는지 (더하기)
-
-```python
-def forward(self, x, train_flg=True):                           # Pooling
-    N, C, H, W = x.shape
-    OH = conv_output_size(H, self.pool_h, self.stride, self.pad)
-    OW = conv_output_size(W, self.pool_w, self.stride, self.pad)
-    self.x_shape = x.shape
-    col = im2col(x, self.pool_h, self.pool_w, self.stride, self.pad).reshape(-1, self.pool_h * self.pool_w)
-    self.arg_max = col.argmax(axis=1)                            # 역전파 때 기울기를 보낼 자리
-    out = col[np.arange(col.shape[0]), self.arg_max]
-    return out.reshape(N, OH, OW, C).transpose(0, 3, 1, 2)
-```
-- **무엇을 하나**: im2col 로 영역을 행으로 편 뒤 (채널별로 한 행씩) 행마다 최댓값과 그 위치를 고른다.
-- **어떤 개념**: 개념 2.
-- **출력**: 그림의 4×4 입력 → `[[4, 5], [6, 3]]` · backward([[1, 2], [3, 4]]) → 최댓값 자리 4곳에만 1 · 2 · 3 · 4, 나머지 0
-
-```python
-rng4 = np.random.default_rng(0)
-x4 = rng4.normal(size=(2, 3, 7, 7))
-checks = {"conv s1 p1": layer_check(mynn.Convolution(3, 4, 3, stride=1, pad=1, seed=1), x4.copy(), rng4),
-          "conv s2 p0": layer_check(mynn.Convolution(3, 2, 3, stride=2, pad=0, seed=2), x4.copy(), rng4),
-          "pool 2×2":   layer_check(mynn.Pooling(2, 2, stride=2), x4[:, :, :6, :6].copy(), rng4)}
-```
-- **무엇을 하나**: 패딩 · 스트라이드 설정을 바꾼 합성곱 2개와 풀링을 수치 미분과 비교한다.
-- **어떤 개념**: 개념 3.
-- **출력**: dx · W · b 상대 오차 모두 **1e-11 미만** (numpy 로 직접 실행 — 약 1e-12) → 통과
+<<CODE 4-2 | Convolution · Pooling 을 gradient check>>
 
 #### 한 번에 정리
 - Convolution backward = Affine backward(col, col_W) + col2im.
@@ -602,6 +503,9 @@ mynn.Trainer(cnn, mynn.Adam(lr=0.001), batch_size=100).fit(X4_train, t_train, ep
 
 Affine 은 (N, C, H, W) 입력을 받으면 내부에서 (N, 4320) 으로 펼친다 (Day 4 에서 만들어 둠).
 
+<<CODE 5-1 | SimpleConvNet 층별 shape>>
+<<CODE 5-2 | Conv → ReLU → Pool → Affine → ReLU → Affine 조립>>
+
 #### 개념 2 · 계층 규약의 힘
 Day 4 MLP 와 다른 점은 계층 리스트 앞에 `Convolution, Relu, Pooling` 이 들어간 것뿐이다. Sequential 의 gradient() 는 계층이 무엇이든 반대 순서로 backward 를 부르고, Trainer 는 그대로 셔플 → 배치 → 갱신을 한다. **프레임워크는 한 줄도 고치지 않는다** — PyTorch 의 nn.Sequential, Keras 의 model.fit 이 같은 원리다.
 
@@ -613,29 +517,7 @@ Day 4 MLP 와 다른 점은 계층 리스트 앞에 `Convolution, Relu, Pooling`
 
 공간 구조를 쓰는 모델이 더 적은 학습으로 더 잘 맞힌다.
 
-#### 코드로 확인
-```python
-cnn = mynn.Sequential([
-    mynn.Convolution(1, 30, 5, stride=1, pad=0, seed=1),
-    mynn.Relu(),
-    mynn.Pooling(2, 2, stride=2),
-    mynn.Affine(30 * 12 * 12, 100, seed=2),
-    mynn.Relu(),
-    mynn.Affine(100, 10, seed=3),
-])
-```
-- **무엇을 하나**: SimpleConvNet 을 계층 리스트로 조립한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: `cnn.count_params()` = **433,890** (Conv 780 + Affine 432,100 + Affine 1,010)
-
-```python
-trainer5 = mynn.Trainer(cnn, mynn.Adam(lr=0.001), batch_size=100, seed=0)
-history5 = trainer5.fit(X4_train, t_train, epochs=1, X_val=X4_test, t_val=t_test)
-mynn.save_params(cnn, "day5_cnn.npz")
-```
-- **무엇을 하나**: Day 4 Trainer 그대로 1 epoch(600 step) 학습하고 가중치를 저장한다. 입력은 `X4_train` = (60000, 1, 28, 28).
-- **어떤 개념**: 개념 2.
-- **출력**: test **0.981** (강의 실행 값, 학습 시간은 CPU 마다 다름)
+<<CODE 5-3 | Day 4 Trainer 그대로 — 6만 장 1 epoch>>
 
 #### 한 번에 정리
 - Conv → ReLU → Pool → Affine → ReLU → Affine, shape 28 → 24 → 12 → 4,320 → 100 → 10.
@@ -713,8 +595,12 @@ CNN 은 0.981 을 냈다. 그런데 **무엇을** 배웠을까? 이 교시는 �
 
 더 오래, 더 깊게 학습하면 2교시 Sobel 같은 뚜렷한 에지 검출기가 나타난다 (Vision 과정).
 
+<<CODE 6-1 | 1층 필터 30장 — 학습 전 · 후 · 변화량>>
+
 #### 개념 2 · 특징 맵 — 부품 검출 결과
 test 첫 숫자를 Conv → ReLU 에 통과시키면 특징 맵 30장 (24×24) 이 나온다. 맵마다 밝게 반응한 부분이 다르다 — 어떤 맵은 가로획, 어떤 맵은 오른쪽 경계, 어떤 맵은 배경. 뒤쪽 Affine 은 이 30장의 "부품 검출 결과" 를 조합해 숫자를 판단한다. 층이 깊어지면 부품 → 모양 → 물체로 점점 추상적인 특징을 잡는다.
+
+<<CODE 6-2 | 숫자 하나의 특징 맵 30장과 예측 확률>>
 
 #### 개념 3 · 위치가 조금 바뀌면 — CNN vs MLP
 test 이미지를 오른쪽으로 몇 픽셀 옮겨 정확도를 잰다 (강의 실행 값).
@@ -726,30 +612,8 @@ test 이미지를 오른쪽으로 몇 픽셀 옮겨 정확도를 잰다 (강의 
 
 같은 필터를 모든 위치에 쓰고(가중치 공유) 풀링이 작은 이동을 흡수하므로 CNN 이 훨씬 덜 떨어진다. 하지만 3 px 이면 CNN 도 **0.748** — 풀링이 2×2 한 번뿐이라 한계가 있다. 실제 모델은 풀링을 여러 번 쓰고 **데이터 증강**(학습 때 일부러 옮기고 돌린 이미지를 섞기)으로 보완한다.
 
-#### 코드로 확인
-```python
-W_before = mynn.Convolution(1, 30, 5, seed=1).params["W"]      # 같은 seed = 학습 전 필터
-W_after = cnn.layers[0].params["W"]
-dW = W_after - W_before
-corr = [np.corrcoef(W_before[i].ravel(), W_after[i].ravel())[0, 1] for i in range(30)]
-np.linalg.norm(dW) / np.linalg.norm(W_before)
-```
-- **무엇을 하나**: 같은 seed 로 학습 전 필터를 다시 만들어, 필터마다 학습 전후 상관계수와 전체 변화량 비율을 구한다.
-- **어떤 개념**: 개념 1.
-- **출력**: 상관계수 **0.86 ~ 0.999**, 변화량 비율 약 **0.28** (강의 실행 값)
-
-```python
-x1 = X4_test[:1]
-fmap = cnn.layers[1].forward(cnn.layers[0].forward(x1, False), False)     # Conv → ReLU
-shift_acc = {"cnn": [], "mlp": []}
-for s in range(4):
-    xs = np.roll(X4_test, s, axis=3)                                       # 너비 방향으로 s px
-    shift_acc["cnn"].append(cnn.accuracy(xs, t_test))
-    shift_acc["mlp"].append(mlp4.accuracy(xs.reshape(-1, 784), t_test))
-```
-- **무엇을 하나**: 첫 test 이미지의 특징 맵을 뽑고, test 전체를 0 ~ 3 px 옮겨 CNN 과 Day 4 MLP 의 정확도를 잰다.
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: `fmap.shape` = `(1, 30, 24, 24)` · 2 px 에서 CNN **0.9119** vs MLP 0.7975 · 3 px 에서 CNN 0.748
+<<CODE 6-c1 | 비교용 Day 4 MLP 준비 (불러오기 또는 다시 학습)>>
+<<CODE 6-3 | 0 ~ 3 픽셀 밀었을 때 CNN vs MLP 정확도>>
 
 #### 한 번에 정리
 - 1층 필터는 1 epoch 동안 조금만 바뀐다 (상관 0.86 ~ 0.999) — 학습의 대부분은 Affine 의 조합.
@@ -845,6 +709,8 @@ def affine_cost(in_shape, n_out):
 
 Pooling · ReLU 는 파라미터 0, MAC 0 (비교 연산은 무시). 합성곱은 가중치를 공유해 파라미터가 적지만, 같은 가중치를 **모든 출력 위치에서 다시 쓰므로** MAC 이 많다. Affine 은 파라미터 하나당 MAC 하나다.
 
+<<CODE 7-1 | 층별 비용 함수 — 파라미터 · MAC · 출력 shape>>
+
 #### 개념 2 · SimpleConvNet — 파라미터는 Affine 에, 연산은 Conv 에
 ![SimpleConvNet 의 층별 파라미터와 MAC — 파라미터는 Affine 4320→100 에 몰리고, MAC 은 Conv 와 Affine 이 절반씩](assets/fig/nn/d5-cost.svg)
 
@@ -858,6 +724,8 @@ Pooling · ReLU 는 파라미터 0, MAC 0 (비교 연산은 무시). 합성곱�
 
 Conv MAC = 30 × 24 × 24 × 1 × 5 × 5 = 432,000. Affine1 이 파라미터의 99.6% 인 이유는 Pooling 출력 4,320 개를 100 개에 모두 연결했기 때문이다.
 
+<<CODE 7-2 | SimpleConvNet 층별 비용표>>
+
 #### 개념 3 · 경량 설계 — 저장과 속도는 다른 문제
 | 모델 | 파라미터 | MAC (1장) | float32 |
 |---|---|---|---|
@@ -869,34 +737,7 @@ Conv MAC = 30 × 24 × 24 × 1 × 5 × 5 = 432,000. Affine1 이 파라미터의 
 - 큰 이미지에서는 파라미터보다 MAC 과 활성화 메모리가 병목 → MobileNet 의 **depthwise separable conv** (채널별 합성곱 + 1×1 합성곱).
 - 그 밖에 int8 **양자화**(메모리 1/4, Day 3) · BN folding(층 수 감소, Day 4).
 
-#### 코드로 확인
-```python
-def conv_cost(in_shape, FN, F, S=1, P=0):
-    C, H, W = in_shape
-    OH, OW = conv_output_size(H, F, S, P), conv_output_size(W, F, S, P)
-    return FN * C * F * F + FN, FN * OH * OW * C * F * F, (FN, OH, OW)
-
-def pool_cost(in_shape, P=2):
-    C, H, W = in_shape
-    return 0, 0, (C, H // P, W // P)
-
-def affine_cost(in_shape, n_out):
-    n_in = int(np.prod(in_shape))
-    return n_in * n_out + n_out, n_in * n_out, (n_out,)
-```
-- **무엇을 하나**: 층 하나의 (파라미터, MAC, 출력 shape) 를 돌려준다. 출력 shape 를 다음 층 입력으로 넘기며 이어 계산한다.
-- **어떤 개념**: 개념 1.
-- **출력**: `conv_cost((1, 28, 28), 30, 5)` → `(780, 432000, (30, 24, 24))` · `affine_cost((30, 12, 12), 100)` → `(432100, 432000, (100,))`
-
-```python
-simple_spec = [("conv", 30, 5, 1, 0), ("pool", 2), ("affine", 100), ("affine", 10)]
-lite_spec = [("conv", 16, 3, 1, 1), ("pool", 2), ("conv", 32, 3, 1, 1), ("pool", 2), ("affine", 10)]
-P_simple, M_simple = show(cost_table((1, 28, 28), simple_spec), "SimpleConvNet")
-P_lite, M_lite = show(cost_table((1, 28, 28), lite_spec), "경량 CNN")
-```
-- **무엇을 하나**: 층 목록(spec)으로 비용표를 만들어 두 모델을 비교한다.
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: SimpleConvNet 433,890 · 865,000 / 경량 CNN **20,490** · 1,031,744 → 파라미터 21배 감소, MAC 1.2배
+<<CODE 7-c1 | 경량 CNN 비용 · 224×224 입력 Conv 한 층>>
 
 #### 한 번에 정리
 - 파라미터 = 저장, MAC = 시간 · 전력, 활성화 = 실행 메모리 — 층마다 공식으로 계산.
@@ -970,6 +811,10 @@ print(p, m)                                     # 9098 290080
 - **저장 · 불러오기**: day5_cnn.npz 를 다른 seed 로 만든 SimpleConvNet 에 불러와 test ≥ 0.98.
 - **비용표**: Conv 8 (3×3, P1) · Pool · Conv 16 · Pool · Affine 10 을 층마다 직접 계산 → 파라미터 **9,098**, MAC **290,080**.
 
+<<CODE 8-1 | 평가 과제 1 — 새 설정으로 gradient check>>
+<<CODE 8-2 | 평가 과제 2 — 저장한 CNN 불러오기 · Drive 복사>>
+<<CODE 8-3 | 평가 과제 3 — 경량 CNN 비용 계산>>
+
 #### 개념 2 · 5일 정리 — 학습의 고리
 Day 1 에 본 **학습의 고리**: 모델 → 손실 → 기울기 → 갱신. 5일 동안 이 고리를 처음부터 직접 만들고, 빠르고 안정적으로 돌게 했다.
 
@@ -982,30 +827,6 @@ Day 1 에 본 **학습의 고리**: 모델 → 손실 → 기울기 → 갱신. 
 | 5 | 합성곱 · 풀링 → CNN, 모델 비용 | 더 좋은 모델 · 온디바이스 |
 
 다음 Vision 과정에서는 깊은 CNN · 데이터 증강 · 양자화 · TensorRT 로 이어진다.
-
-#### 코드로 확인
-```python
-c1 = conv_cost((1, 28, 28), 8, 3, 1, 1)
-p1 = pool_cost(c1[2])
-c2 = conv_cost(p1[2], 16, 3, 1, 1)
-p2 = pool_cost(c2[2])
-a1 = affine_cost(p2[2], 10)
-eval_params = c1[0] + c2[0] + a1[0]
-eval_macs = c1[1] + c2[1] + a1[1]
-```
-- **무엇을 하나**: 평가 과제 3 — 경량 CNN 의 비용을 층마다 직접 호출해 더한다.
-- **어떤 개념**: 7교시 개념 1 — 앞 층의 출력 shape 가 다음 층 입력.
-- **출력**: shape (8, 28, 28) → (8, 14, 14) → (16, 14, 14) → (16, 7, 7) → (10,) · 파라미터 **9,098** · MAC **290,080** · float32 35.5 KB
-
-```python
-rng8 = np.random.default_rng(5)
-x8 = rng8.normal(size=(2, 2, 9, 9))
-eval_conv = layer_check(mynn.Convolution(2, 3, 4, stride=2, pad=1, seed=7), x8.copy(), rng8)
-eval_pool = layer_check(mynn.Pooling(3, 3, stride=3), x8.copy(), rng8)
-```
-- **무엇을 하나**: 평가 과제 1 — 새 설정의 합성곱 · 풀링을 gradient check 한다.
-- **어떤 개념**: 4교시 개념 3.
-- **출력**: 상대 오차 모두 약 **1e-12** (numpy 로 직접 실행) → 통과
 
 #### 한 번에 정리
 - 평가: 미니 프로젝트 50 · 필답 30 · CNN 실습 20.

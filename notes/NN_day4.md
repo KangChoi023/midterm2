@@ -79,6 +79,8 @@ Day 3 까지는 SGD(기울기 반대로 일정 비율만큼 이동) 하나로 �
 
 ![f = x²/20 + y² 위에서 다섯 옵티마이저의 30 step 경로 — SGD 는 지그재그, Momentum 은 관성으로 x 를 가로지르고, AdaGrad · Adam 은 방향마다 걸음을 조절한다](assets/fig/nn/d4-optimizers.svg)
 
+<<CODE 1-1 | f = x²/20 + y² 의 기울기 · SGD · 경로 기록 함수>>
+
 #### 개념 2 · 학습률은 두 방향을 동시에 만족시킬 수 없다
 SGD 한 step 을 방향별로 쓰면 각 좌표가 일정한 비율로 곱해진다.
 
@@ -96,36 +98,7 @@ SGD 한 step 을 방향별로 쓰면 각 좌표가 일정한 비율로 곱해진
 | 1.0 | (−0.30, 2) | y ← −y — ±2 를 영원히 오감 |
 | 1.05 | (−0.25, 34.9) | y 가 매번 1.1 배 → 발산 |
 
-#### 코드로 확인
-```python
-def grad_f(p):                         # p = [x, y]
-    return np.array([p[0] / 10.0, 2.0 * p[1]])
-
-def run_optimizer(opt, steps=30, start=(-7.0, 2.0)):
-    params = {"p": np.array(start, dtype=float)}
-    path = [params["p"].copy()]
-    for _ in range(steps):
-        opt.update(params, {"p": grad_f(params["p"])})
-        path.append(params["p"].copy())
-    return np.array(path)                  # (steps + 1, 2)
-```
-- **무엇을 하나**: 옵티마이저 객체 하나를 받아 (−7, 2) 에서 30 step 움직이며 위치를 기록한다. 옵티마이저는 `update(params, grads)` 만 있으면 무엇이든 끼울 수 있다.
-- **어떤 개념**: 개념 1 — 기울기 (x/10, 2y) 로 움직인 경로.
-- **출력**: `(31, 2)` 배열 — 그림의 경로 한 줄
-
-```python
-class SGD:
-    def __init__(self, lr=0.01): self.lr = lr
-    def update(self, params, grads):
-        for k in params:
-            params[k] -= self.lr * grads[k]      # 제자리 갱신
-
-for lr in [0.1, 0.95, 1.0, 1.05]:
-    print(lr, run_optimizer(SGD(lr=lr))[-1])
-```
-- **무엇을 하나**: 학습률 네 개로 SGD 를 돌려 30 step 후의 끝점을 비교한다.
-- **어떤 개념**: 개념 2 — 상한 η < 1 과 느린 x 방향.
-- **출력**: `0.1 [-5.178 0.002]` · `0.95 [-0.35 0.085]` · `1.0 [-0.297 2.]` · `1.05 [-0.251 34.899]`
+<<CODE 1-2 | 학습률 0.1 · 0.95 · 1.0 · 1.05 로 끝점 비교>>
 
 #### 한 번에 정리
 - 비등방성: 방향마다 경사가 다르면 기울기가 최소점이 아니라 가파른 쪽을 가리킨다 → 지그재그.
@@ -232,6 +205,8 @@ class Adam:
 | y (지그재그) | +, −, +, − (부호가 바뀜) | 서로 **상쇄** → 흔들림 감소 |
 | x (일관된 방향) | 매번 같은 부호 | 계속 **쌓임** → 가속 |
 
+<<CODE 2-1 | Momentum (속도 v) · AdaGrad (기울기 제곱 누적 h)>>
+
 #### 개념 2 · AdaGrad · RMSProp — 파라미터마다 다른 학습률
 많이 움직인 파라미터는 "이미 충분히 조정됐다" 고 보고 걸음을 줄인다. 기울기 제곱을 누적한 h 로 나눈다.
 
@@ -245,6 +220,8 @@ class Adam:
 
 AdaGrad 는 h 가 계속 커지기만 해서 결국 학습이 멈춘다. **RMSProp** 은 h 를 지수 이동 평균(h ← 0.99h + 0.01g²)으로 바꿔 오래된 기울기를 잊는다 — 최근 기울기만 반영하므로 멈추지 않는다.
 
+<<CODE 2-2 | RMSProp (지수 이동 평균) · Adam (m · v + 편향 보정)>>
+
 #### 개념 3 · Adam — 둘을 합치고 편향을 보정
 Adam 은 Momentum 의 m(방향)과 RMSProp 의 v(크기)를 함께 쓴다.
 
@@ -253,6 +230,8 @@ Adam 은 Momentum 의 m(방향)과 RMSProp 의 v(크기)를 함께 쓴다.
 m, v 는 0 에서 시작하므로 처음 몇 step 은 0 쪽으로 치우친다. t = 1 이면 m = 0.1g 뿐이다. 그래서 **편향 보정** m̂ = m / (1 − β₁ᵗ) 로 나눈다 → 1 − 0.9 = 0.1 로 나눠 m̂ = g 로 되돌린다. v 도 같다. 결과적으로 첫 step 은 m̂ / √v̂ = g / |g| = ±1 → **모든 방향이 정확히 η 만큼** 움직인다 (기울기 크기와 무관).
 
 기본값 β₁ 0.9 · β₂ 0.999 · lr 0.001 — 실무에서 가장 먼저 쓰는 옵티마이저다.
+
+<<CODE 2-3 | 다섯 옵티마이저로 같은 함수 30 step — 경로 비교>>
 
 #### 개념 4 · 실제 신경망에서 — MNIST 5층
 작은 지형 하나로는 "어느 것이 최고" 라고 할 수 없다. 784-100×4-10 망(`MultiLayerNet`, He 초기화)을 2000 iteration 학습해 비교한다 (강의 실행 값).
@@ -263,43 +242,8 @@ m, v 는 0 에서 시작하므로 처음 몇 step 은 0 쪽으로 치우친다. 
 
 SGD 만 눈에 띄게 느리고 나머지는 약 0.97 이다.
 
-#### 코드로 확인
-```python
-class Momentum:
-    def __init__(self, lr=0.01, momentum=0.9):
-        self.lr, self.momentum, self.v = lr, momentum, None
-    def update(self, params, grads):
-        if self.v is None:                                  # 첫 update 때 shape 를 알게 됨
-            self.v = {k: np.zeros_like(p) for k, p in params.items()}
-        for k in params:
-            self.v[k] = self.momentum * self.v[k] - self.lr * grads[k]
-            params[k] += self.v[k]
-```
-- **무엇을 하나**: 파라미터마다 속도 v 를 두고 매 step 0.9 배로 줄인 뒤 −ηg 를 더해 이동한다.
-- **어떤 개념**: 개념 1 — 관성. 상태 v 를 `__init__` 이 아니라 첫 update 에서 만드는 이유는 그때 비로소 파라미터 shape 를 알기 때문이다.
-- **출력**: 지형에서 lr 0.1, 첫 step (−7, 2) → (−6.93, 1.6) · 30 step 후 (0.90, 0.09) — 최소점을 지나쳤다 돌아오는 중
-
-```python
-self.t += 1                                                 # for 밖에서 한 번
-for k in params:
-    self.m[k] = self.beta1 * self.m[k] + (1 - self.beta1) * grads[k]
-    self.v[k] = self.beta2 * self.v[k] + (1 - self.beta2) * grads[k] ** 2
-    m_hat = self.m[k] / (1 - self.beta1 ** self.t)        # 편향 보정
-    v_hat = self.v[k] / (1 - self.beta2 ** self.t)
-    params[k] -= self.lr * m_hat / (np.sqrt(v_hat) + 1e-7)
-```
-- **무엇을 하나**: Adam 의 update 본체 — m · v 를 이동 평균으로 갱신하고 편향 보정 후 이동한다.
-- **어떤 개념**: 개념 3 — t 는 step 수라서 파라미터 for 밖에서 한 번만 늘린다.
-- **출력**: 지형에서 lr 0.3, 첫 step (−7, 2) → (**−6.7, 1.7**) — 기울기는 (−0.7, 4) 로 6배 차이지만 두 방향 모두 0.3 씩
-
-```python
-optimizers = {"SGD": SGD(lr=0.95), "Momentum": Momentum(lr=0.1), "AdaGrad": AdaGrad(lr=1.5),
-              "RMSProp": RMSProp(lr=0.1), "Adam": Adam(lr=0.3)}
-paths = {name: run_optimizer(opt) for name, opt in optimizers.items()}
-```
-- **무엇을 하나**: 다섯 옵티마이저로 1교시 지형을 30 step 씩 움직여 경로를 모은다 (1교시 그림).
-- **어떤 개념**: 개념 1 ~ 3 의 차이를 한 그림에서.
-- **출력**: 30 step 후 원점까지 거리 — SGD 0.36 · Momentum 0.90 · AdaGrad **0.12** · RMSProp 0.70 · Adam 0.35
+<<CODE 2-c1 | MultiLayerNet · fit — 층 수 · 초기화 · BN · Dropout · weight decay 를 고르는 망>>
+<<CODE 2-4 | MNIST 5층 망을 다섯 옵티마이저로 2000 iteration>>
 
 #### 한 번에 정리
 - Momentum: 속도에 기울기를 쌓아 흔들림은 상쇄, 일관된 방향은 가속.
@@ -387,6 +331,8 @@ b = np.zeros(100)                                    # 편향은 0 이어도 됨
 
 100개가 사실상 1개인 셈이다. 모두 0 이면 더 나빠서, ReLU 출력이 0 이 되어 기울기 자체가 0 이다. 그래서 가중치는 반드시 **무작위**로 시작해 대칭을 깬다 (편향은 0 이어도 된다 — 가중치가 이미 다르므로).
 
+<<CODE 3-c1 | 가중치를 모두 0 으로 — 기울기가 어떻게 되나>>
+
 #### 개념 2 · 활성화 분포 — 층을 지나며 커지거나 사라진다
 층 출력 a = Σ xᵢWᵢ 는 n 개 항의 합이다. 서로 독립이면 분산이 더해져
 
@@ -400,6 +346,8 @@ b = np.zeros(100)                                    # 편향은 0 이어도 됨
 
 ![활성화 분포 — 입력 1000개를 100 노드 층 5개에 통과시킨 층별 히스토그램. sigmoid + std 1 은 0 · 1 에 몰리고, ReLU + std 0.01 은 사라지고, ReLU + He 는 유지된다](assets/fig/nn/d4-activations.svg)
 
+<<CODE 3-1 | Xavier · He 표준편차와 층별 활성화 분포 모으기>>
+
 #### 개념 3 · Xavier · He 초기화
 분산을 유지하려면 Var(W) = 1/n, 즉 표준편차 √(1/n) — 이것이 **Xavier** 초기화다 (n = 입력 노드 수). ReLU 는 음수 절반을 0 으로 만들어 분산이 ½ 로 줄므로, 2배로 보상한 √(2/n) 이 **He** 초기화다.
 
@@ -410,35 +358,7 @@ b = np.zeros(100)                                    # 편향은 0 이어도 됨
 
 ReLU 층별 표준편차 — std 0.01: 0.058 → 0.004 → 0.0003 (소멸) · Xavier: 0.58 → 0.18 (줄어듦) · He: 0.82 → 1.00 (**유지**).
 
-#### 코드로 확인
-```python
-def xavier_std(n_in): return np.sqrt(1.0 / n_in)
-def he_std(n_in):     return np.sqrt(2.0 / n_in)
-
-def activation_stats(weight_init_std, act, n_layers=5, seed=0):
-    rng_ = np.random.default_rng(seed)
-    x = rng_.standard_normal((1000, 100))
-    outs = []
-    for _ in range(n_layers):
-        W = init_scale(weight_init_std, 100) * rng_.standard_normal((100, 100))
-        a = x @ W
-        x = 1 / (1 + np.exp(-a)) if act == "sigmoid" else np.maximum(0, a)
-        outs.append(x)
-    return outs
-```
-- **무엇을 하나**: 정규분포 입력 1000개를 100 노드 층 5개에 통과시키며 층마다 활성화를 모은다. `init_scale` 은 숫자 · "xavier" · "he" 를 표준편차로 바꾼다.
-- **어떤 개념**: 개념 2 · 3 — 초기화마다 층별 분포가 어떻게 변하나.
-- **출력**: sigmoid + std 1 의 1층은 **82%** 가 0.1 미만 · 0.9 초과 · ReLU + He 층별 std 0.82 → 1.00
-
-```python
-for w in [0.01, "xavier", "he"]:
-    net = MultiLayerNet(784, [100, 100, 100, 100], 10, weight_init_std=w)
-    h = fit(net, SGD(lr=0.01), X_train, t_train, iters=2000, batch_size=128, eval_every=None)
-    print(w, net.accuracy(X_test, t_test))
-```
-- **무엇을 하나**: 초기화만 바꾼 같은 4층 MLP 를 SGD 로 2000 iteration 학습한다.
-- **어떤 개념**: 개념 3 — 초기화가 학습의 성패를 가른다.
-- **출력**: std 0.01 **0.11** (학습 안 됨) · Xavier 0.92 · He **0.94** (강의 실행 값)
+<<CODE 3-2 | std 0.01 · Xavier · He 로 MNIST 학습 비교>>
 
 #### 한 번에 정리
 - 같은 값 초기화 = 대칭 → 뉴런 100개가 1개. 반드시 무작위.
@@ -535,6 +455,8 @@ def forward(self, x, train_flg=True):
 
 ![BatchNorm — 미니배치의 열마다 평균 0 · 분산 1 로 맞춘 뒤 γ · β 로 늘이고 옮긴다. 학습 때는 running 평균 · 분산을 갱신하고, 추론 때는 그것을 쓴다](assets/fig/nn/d4-bn.svg)
 
+<<CODE 4-1 | BatchNorm forward — 학습: 배치 통계, 추론: 이동 평균>>
+
 #### 개념 2 · 학습 모드와 추론 모드
 추론 때는 미니배치가 없을 수도 있다 (사진 한 장). 한 장으로 평균을 내면 자기 자신이라 x − μ = 0 → 출력이 항상 β 다. 그래서 학습 중에 배치 통계의 이동 평균을 모아 두었다가 추론 때 쓴다.
 
@@ -543,39 +465,16 @@ def forward(self, x, train_flg=True):
 | 학습 (`train_flg=True`) | 이 배치의 통계 | running = 0.9 · running + 0.1 · 배치값 |
 | 추론 (`train_flg=False`) | running 평균 · 분산 | 하지 않음 |
 
+<<CODE 4-c1 | 이동 평균이 진짜 평균 5 · 분산 4 로 다가가는지>>
+
 #### 개념 3 · backward 와 효과
 - dβ = Σ dout, dγ = Σ x̂ · dout — 행 방향 합 (Affine 의 db 와 같은 이유: N 개 행에 같은 β 가 쓰였다).
 - dx 는 열 합이 항상 0 이다 → BN 바로 앞 Affine 의 편향 기울기는 0 (1e-16 수준). gradient check 상대 오차가 커 보여도 참값이 0 이라 생기는 일이지 버그가 아니다.
 - 효과: 784-100×5-10 · 1000장 · std 0.01 에서 BN 이 없으면 0.117 (학습 안 됨), 있으면 train 1.000. std 1.0 에서도 BN 이 없으면 발산하지만 BN 이 있으면 학습된다 → **초기화에 둔감**, 큰 학습률에서도 안정.
 
-#### 코드로 확인
-```python
-def forward(self, x, train_flg=True):
-    if train_flg:
-        mu = x.mean(axis=0); xc = x - mu
-        var = np.mean(xc ** 2, axis=0); std = np.sqrt(var + self.eps)
-        xn = xc / std
-        self.xc, self.xn, self.std = xc, xn, std             # backward 용
-        self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mu
-        self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
-    else:
-        xn = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
-    return self.gamma * xn + self.beta
-```
-- **무엇을 하나**: 학습 모드면 배치 통계로 정규화하고 running 을 갱신, 추론 모드면 running 으로 정규화한 뒤 γ · β 를 적용한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: 평균 3 · 표준편차 2 근처의 (5, 4) 배치, γ = [1, 2, 0.5, 1.5], β = [0, 1, −1, 0.5] → 출력 열 평균 `[0, 1, -1, 0.5]` (= β), 열 표준편차 `[1, 2, 0.5, 1.5]` (= γ)
-
-```python
-bn_r = BatchNorm(np.ones(1), np.zeros(1)); r_ = np.random.default_rng(0)
-for _ in range(50):
-    bn_r.forward(r_.normal(5.0, 2.0, (100, 1)))      # N(5, 2²) 배치 100개짜리 50번
-x1 = np.array([[5.0]])
-bn_r.forward(x1, train_flg=False), bn_r.forward(x1, train_flg=True)
-```
-- **무엇을 하나**: running 통계가 참값에 다가가는지 보고, 한 장을 두 모드로 넣어 비교한다.
-- **어떤 개념**: 개념 2 — 추론에 running 이 필요한 이유.
-- **출력**: running_mean **5.03**, running_var **3.83** (참값 5, 4) · 추론 −0.015 vs 학습 모드 **0**
+<<CODE 4-2 | BatchNorm backward — dγ · dβ · dx>>
+<<CODE 4-3 | BN 기울기를 수치 미분으로 검증>>
+<<CODE 4-4 | 초기화 std 4가지 × BN 있음/없음 학습 비교>>
 
 #### 한 번에 정리
 - BN: 열마다 (x − μ)/√(σ² + ε) 후 γx̂ + β — Affine → BN → ReLU.
@@ -649,8 +548,12 @@ MNIST **300장**으로 784-100×6-10 (파라미터 784·100 + 100 + 5·(100·100
 
 ![과적합의 신호 — 정확도는 train 1.0 · test 0.786 에서 벌어지고, test 손실은 오히려 오른다](assets/fig/nn/d4-overfit.svg)
 
+<<CODE 5-c1 | 300장 · 6층 · 200 epoch — 일부러 과적합 만들기>>
+
 #### 개념 2 · 왜 test 손실이 오르나 — 과신
 학습 데이터를 완벽히 맞히려고 가중치가 점점 커진다 → softmax 출력이 0 · 1 에 가까워진다(확신) → 틀리는 test 샘플에도 높은 확신. 교차 엔트로피는 **확신하며 틀릴수록** 큰 벌점이라 (Day 2 −log) 정확도는 그대로인데 손실은 오른다. 그래서 과적합은 정확도보다 **손실 곡선**에서 먼저 보인다.
+
+<<CODE 5-1 | 일반화 간극과 test 손실이 가장 낮았던 epoch>>
 
 #### 개념 3 · 무엇이 과적합을 줄이나
 | 방법 | test | 이유 |
@@ -662,27 +565,7 @@ MNIST **300장**으로 784-100×6-10 (파라미터 784·100 + 100 + 5·(100·100
 
 3000장을 20 epoch 만 한 것은 iteration 수를 300장 · 200 epoch 와 맞추기 위해서다. 그 밖에 **조기 종료**(검증 손실이 오르기 시작하면 멈춤)도 있다. 반대로 모델을 너무 줄이거나 규제를 너무 세게 하면 학습 데이터조차 못 맞히는 **과소적합**이 된다.
 
-#### 코드로 확인
-```python
-X300, t300 = X_train[:300], t_train[:300]
-net_plain = MultiLayerNet(784, [100] * 6, 10)
-h_plain = fit(net_plain, SGD(lr=0.1), X300, t300, epochs=200, X_val=X_test, t_val=t_test, eval_every=5)
-gap_plain = h_plain["train_acc"][-1] - h_plain["val_acc"][-1]
-best_loss_epoch = h_plain["epoch"][int(np.argmin(h_plain["val_loss"]))]
-```
-- **무엇을 하나**: 300장으로 6층 MLP 를 200 epoch 학습하고, train − test 간극과 test 손실이 가장 낮았던 epoch 을 구한다.
-- **어떤 개념**: 개념 1 · 2 — 간극과, test 손실이 최저를 찍고 다시 오르는 지점(= 조기 종료 시점).
-- **출력**: train **1.000**, test **0.786**, 간극 약 0.21 (강의 실행 값)
-
-```python
-net_3000 = MultiLayerNet(784, [100] * 6, 10)
-h_3000 = fit(net_3000, SGD(lr=0.1), X_train[:3000], t_train[:3000], epochs=20, X_val=X_test, t_val=t_test, eval_every=20)
-net_small = MultiLayerNet(784, [100], 10)
-h_small = fit(net_small, SGD(lr=0.1), X300, t300, epochs=200, X_val=X_test, t_val=t_test, eval_every=200)
-```
-- **무엇을 하나**: 데이터를 10배로 늘린 경우와 모델을 1층으로 줄인 경우를 학습한다.
-- **어떤 개념**: 개념 3.
-- **출력**: 3000장 · 6층 test **0.926** · 300장 · 1층 test **0.802**
+<<CODE 5-2 | 데이터를 3,000장으로 · 모델을 1층으로 — 간극 비교>>
 
 #### 한 번에 정리
 - 과적합: train ↑, test 정체, test 손실 ↑ — 데이터 적음 + 모델 큼.
@@ -777,6 +660,8 @@ class Dropout:
 
 λ 가 너무 크면(0.1) 학습 데이터조차 못 맞혀 과소적합 (train 0.767, test 0.641).
 
+<<CODE 6-1 | L2 벌점 ½λΣW²>>
+
 #### 개념 2 · Dropout — 무작위로 끄고, 추론 땐 평균
 학습 때마다 은닉 뉴런을 비율 ratio 만큼 무작위로 끈다(출력 0). 매번 다른 작은 망을 학습하는 셈이고, 특정 뉴런에 기댈 수 없으니 더 견고한 특징을 배운다.
 
@@ -787,6 +672,8 @@ class Dropout:
 | 학습 forward | x · mask (mask = rand > ratio) | 무작위로 끄기 |
 | 학습 backward | dout · mask | 꺼진 뉴런으로는 기울기도 안 흐름 (ReLU 의 mask 와 같다) |
 | 추론 | x · (1 − ratio) | 학습 때 평균 (1 − ratio) 만 켜져 있었으므로 크기를 맞춤 = 여러 망의 평균(앙상블) |
+
+<<CODE 6-2 | Dropout 계층 — 학습: 무작위 끄기, 추론: (1 − ratio) 곱하기>>
 
 #### 개념 3 · 결과 — 정확도는 조금, 손실은 크게
 300장 · 6층 · 200 epoch (강의 실행 값):
@@ -799,35 +686,7 @@ class Dropout:
 
 weight decay 는 과신을 막아 test 손실을 크게 낮췄다. Dropout 은 정확도는 올렸지만 손실 개선은 작고, 초반 학습이 느리다 (25 epoch 에 train 0.53).
 
-#### 코드로 확인
-```python
-def l2_penalty(net, lam):
-    return 0.5 * lam * sum(np.sum(net.params[f"W{i}"] ** 2) for i in range(1, net.n_layers + 1))
-
-net_w = MultiLayerNet(784, [100] * 6, 10, weight_decay_lambda=0.01)
-L_with = net_w.loss(X300, t300)
-L_ce = net_w.lastLayer.forward(net_w.predict(X300), t300)
-np.isclose(L_with, L_ce + l2_penalty(net_w, 0.01))
-```
-- **무엇을 하나**: W1 ~ W7 의 제곱합으로 벌점을 계산하고, `MultiLayerNet.loss` 가 CE + 벌점과 같은지 확인한다.
-- **어떤 개념**: 개념 1 — 벌점은 W 에만.
-- **출력**: `True`
-
-```python
-class Dropout:
-    def __init__(self, dropout_ratio=0.5, seed=0):
-        self.ratio, self.rng, self.mask = dropout_ratio, np.random.default_rng(seed), None
-    def forward(self, x, train_flg=True):
-        if train_flg:
-            self.mask = self.rng.random(x.shape) > self.ratio     # True = 살림
-            return x * self.mask
-        return x * (1.0 - self.ratio)
-    def backward(self, dout):
-        return dout * self.mask
-```
-- **무엇을 하나**: 학습 때는 무작위 마스크를 곱하고 저장, 추론 때는 (1 − ratio) 배, 역전파는 마스크를 곱한다.
-- **어떤 개념**: 개념 2.
-- **출력**: ratio 0.2 · 1로 채운 (1000, 100) 입력 → 학습 출력 평균 **0.799** · 추론 출력 **0.8** — 평균이 같다
+<<CODE 6-3 | weight decay · Dropout 을 5교시 설정에 넣어 비교>>
 
 #### 한 번에 정리
 - weight decay: 손실 + ½λΣW², 기울기 + λW → 매 step (1 − ηλ)W. W 에만.
@@ -908,6 +767,8 @@ test 정확도를 보며 하이퍼파라미터를 고르면, test 에 맞춰 고
 
 하이퍼파라미터가 정해지면 train + validation 을 합쳐 다시 학습하고 test 로 한 번 평가한다.
 
+<<CODE 7-1 | train 1,000장을 학습 800 · 검증 200 으로 나누기>>
+
 #### 개념 2 · 로그 스케일과 랜덤 탐색
 학습률은 0.001 과 0.002 의 차이보다 0.001 과 0.01 의 차이가 훨씬 중요하다 — **자릿수**가 중요하다. 그래서 값 대신 지수를 균등하게 뽑는다.
 
@@ -921,31 +782,7 @@ test 정확도를 보며 하이퍼파라미터를 고르면, test 에 맞춰 고
 
 탐색은 "넓은 범위 · 짧은 epoch → 좁힌 범위 · 긴 epoch" 를 2 ~ 3번 반복한다.
 
-#### 코드로 확인
-```python
-rng7 = np.random.default_rng(0)
-p = rng7.permutation(1000)
-X_val7, t_val7 = X_train[:1000][p[:200]], t_train[:1000][p[:200]]
-X_tr7, t_tr7 = X_train[:1000][p[200:]], t_train[:1000][p[200:]]
-```
-- **무엇을 하나**: 학습 데이터 1000장을 섞어 앞 200장을 validation, 나머지 800장을 train 으로 나눈다. test 10000장은 건드리지 않는다.
-- **어떤 개념**: 개념 1.
-- **출력**: train `(800, 784)` · validation `(200, 784)` — 겹치는 인덱스 0개
-
-```python
-def log_uniform(rng_, low, high):
-    return 10 ** rng_.uniform(low, high)
-
-for trial in range(30):
-    lr, lam = log_uniform(rng7, -4, 0), log_uniform(rng7, -6, -1)
-    net = MultiLayerNet(784, [100, 100], 10, weight_decay_lambda=lam, seed=trial)
-    h = fit(net, SGD(lr=lr), X_tr7, t_tr7, epochs=20, batch_size=100, seed=trial,
-            X_val=X_val7, t_val=t_val7, eval_every=20)
-    results.append((h["val_acc"][-1], lr, lam, h["train_acc"][-1]))
-```
-- **무엇을 하나**: lr · λ 를 로그 스케일로 30번 뽑아 짧게(20 epoch) 학습하고 validation 정확도를 기록한다.
-- **어떤 개념**: 개념 2 — 넓게 짧게 훑는 첫 단계.
-- **출력**: 최고 val **0.885** (lr **0.242**) · lr 0.1 ~ 0.6 이 0.84 ~ 0.885 · lr < 0.001 은 0.1 근처 · λ 영향은 작음 (강의 실행 값)
+<<CODE 7-2 | lr · λ 를 로그 스케일로 30번 랜덤 탐색>>
 
 #### 한 번에 정리
 - 하이퍼파라미터는 validation 으로 고르고, test 는 마지막에 한 번.
@@ -1039,6 +876,11 @@ Day 3 · 4 에서 계층, 옵티마이저, 초기화, BN, Dropout, weight decay 
 
 ![mynn.py 의 구조 — Sequential.params() 는 계층의 배열을 복사 없이 모아 옵티마이저에 넘긴다](assets/fig/nn/d4-mynn.svg)
 
+<<CODE 8-c1 | mynn.py ① — 함수 · 계층 · 옵티마이저>>
+<<CODE 8-1 | mynn.py ② — Sequential: 계층 목록을 하나의 모델로>>
+<<CODE 8-2 | mynn.py ③ — Trainer · save_params · load_params>>
+<<CODE 8-c2 | mynn 불러오기 (reload)>>
+
 #### 개념 2 · 오늘의 기법을 모두 합친 5층 MLP
 784 → 100 × 4 → 10, 은닉층마다 Affine(He) → BatchNorm → Relu (13계층), Adam 0.001 · 배치 100.
 
@@ -1052,6 +894,10 @@ Day 3 · 4 에서 계층, 옵티마이저, 초기화, BN, Dropout, weight decay 
 
 파라미터 110,610 = Affine (784·100 + 100) + 3 × (100·100 + 100) + (100·10 + 10) = 109,810 + BN γ · β 4층 × 200 = 800.
 
+<<CODE 8-3 | Affine → BN → ReLU × 4 + Affine — Adam 5 epoch>>
+<<CODE 8-c3 | 손실 · 정확도 곡선>>
+<<CODE 8-4 | 가중치 저장 → 새 모델에 불러오기 · Drive 복사>>
+
 #### 개념 3 · BN folding — 학습 기법은 추론 비용을 늘리지 않는다
 추론 때 BN 의 μ, σ², γ, β 는 모두 고정값이라 y = γ(x − μ)/√(σ² + ε) + β 는 그냥 선형 변환이다. 바로 앞 Affine 에 합칠 수 있다.
 
@@ -1059,49 +905,7 @@ Day 3 · 4 에서 계층, 옵티마이저, 초기화, BN, Dropout, weight decay 
 
 13계층 → 9계층, 정확도 동일. Adam · He · weight decay 는 학습 때만 쓰이고, Dropout 은 추론 때 곱하기 하나 — 추론 모델은 여전히 행렬곱 + ReLU 다.
 
-#### 코드로 확인
-```python
-def params(self):
-    """{'0.W': 배열, '0.b': 배열, '1.gamma': …} — 계층의 배열을 그대로(같은 객체) 모은다"""
-    return {f"{i}.{name}": p for i, layer in enumerate(self.layers) for name, p in layer.params.items()}
-
-def grads(self):
-    g = {}
-    for i, layer in enumerate(self.layers):
-        for name, d in layer.grads.items():
-            if name == "W" and self.weight_decay_lambda:
-                d = d + self.weight_decay_lambda * layer.params["W"]     # weight decay λW
-            g[f"{i}.{name}"] = d
-    return g
-```
-- **무엇을 하나**: `Sequential` 의 두 메서드 — 파라미터와 기울기를 "계층번호.이름" 키로 모은다. 기울기에는 W 일 때만 λW 를 더한다.
-- **어떤 개념**: 개념 1 — 복사 없이 모으기 · 6교시 weight decay.
-- **출력**: 5층 MLP 의 키 `0.W, 0.b, 1.gamma, 1.beta, 3.W, …, 12.b` — gradient check 에서 `0.b` 만 상대 오차가 커 보임 (BN 앞 편향, 참값 0)
-
-```python
-sizes = [784, 100, 100, 100, 100, 10]
-layers = []
-for i in range(5):
-    layers.append(mynn.Affine(sizes[i], sizes[i + 1], weight_init="he", seed=i + 1))
-    if i < 4:                                                    # 은닉층
-        layers += [mynn.BatchNorm(sizes[i + 1]), mynn.Relu()]
-model = mynn.Sequential(layers)
-trainer = mynn.Trainer(model, mynn.Adam(lr=0.001), batch_size=100, seed=0)
-history = trainer.fit(X_train, t_train, epochs=5, X_val=X_test, t_val=t_test)
-```
-- **무엇을 하나**: 5층 MLP 를 조립하고 Adam 으로 5 epoch 학습한다.
-- **어떤 개념**: 개념 2.
-- **출력**: 계층 **13**개 · 파라미터 **110,610**개 · 5 epoch 후 test **0.9757** (강의 실행 값)
-
-```python
-def load_params(model, path):
-    data = np.load(path)
-    for k, p in model.state().items():
-        p[...] = data[k]                  # 제자리 복사 — 계층 · 옵티마이저와의 연결 유지
-```
-- **무엇을 하나**: 저장한 .npz 에서 파라미터와 BN running 통계를 읽어 기존 배열에 **제자리 복사**한다.
-- **어떤 개념**: 개념 1 — `p = data[k]` 처럼 새 배열을 대입하면 계층과 연결이 끊긴다.
-- **출력**: 다른 seed 로 만든 같은 구조 모델이 불러온 뒤 원래 모델과 **같은 정확도**
+<<CODE 8-c4 | BN 을 앞 Affine 에 접어 넣기 — 13계층 → 9계층>>
 
 #### 한 번에 정리
 - 계층 규약 + Sequential(params · grads) + Trainer(루프) = 미니 프레임워크.
