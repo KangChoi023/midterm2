@@ -764,3 +764,26 @@ details.ctree.l > .citem:hover .cn { color: var(--lv3); }
 .gl-links ul { margin: 4px 0 0; padding-left: 1.2em; } .gl-links li { margin: 2px 0; }
 .gl-more { margin: 4px 2px 16px; font-size: 13.5px; color: var(--ink-3); }
 .linklike { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+/* 맨 위 함수 · 용어 버튼 줄 (예전 키워드 줄 자리) + 말풍선 */
+.dictbar { flex-direction: column; align-items: stretch; gap: 4px; }
+.dict-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dict-row .kwbar-l { width: 2.4em; }
+.dict-row .kwbar-chips { flex: 1; overflow-x: auto; }
+@media (max-width: 700px) { .dictbar .kwbar-l { display: inline; } }
+.dchip { border: 1px dashed var(--line); background: var(--panel); color: var(--ink-2); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.dchip.func { font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.dchip:hover, .dchip.on { border-style: solid; background: var(--accent-soft); color: var(--ink); }
+.dictpop { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.14); padding: 12px 14px; font-size: 14px; line-height: 1.6; max-height: 60vh; overflow: auto; }
+.dictpop .dp-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.dictpop .dp-h code { font-size: 14px; color: var(--accent); }
+.dictpop .dp-k { margin-left: auto; font-size: 11.5px; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
+.dictpop .dp-role { font-weight: 600; margin-bottom: 4px; }
+.dictpop .dp-sig { margin: 4px 0; } .dictpop .dp-sig code { font-size: 12.5px; white-space: normal; }
+.dictpop .dp-b { color: var(--ink-2); }
+.dictpop .dp-ul { margin: 6px 0 0; padding-left: 1.2em; color: var(--ink-2); font-size: 13.5px; }
+.dictpop .dp-more { margin-top: 8px; background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer; }
+/* 한눈에 보기 아래 — 이 교시의 코드 모아 보기 */
+.gl-codes { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px 8px; margin: 0 0 14px; }
+.gl-codes > h3 { margin: 0 0 10px; font-size: 16px; } .gl-codes > h3 small { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 6px; }
+.gl-codes details.cx { margin: 0 0 8px; }
