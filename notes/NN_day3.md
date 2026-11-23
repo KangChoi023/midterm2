@@ -58,20 +58,14 @@ Day 2 까지는 기울기를 손으로 유도하거나(층 하나일 때) Day 1 
 - O(P²) 는 "파라미터가 10배면 시간 100배" 라는 뜻이다. 컴퓨터가 빨라져도 이 **차수(order)** 의 차이는 줄지 않는다.
 - 784-100-10 망은 step 한 번에 수십 ~ 100 초. 학습은 수천 step 이 필요하니 사실상 불가능하다.
 
+<<CODE 1-c1 | 784 → hidden → 10 망의 파라미터 · 손실 함수 준비>>
+<<CODE 1-1 | 파라미터 수 P 와 수치 미분 1 step 의 손실 계산 횟수 (2P)>>
+<<CODE 1-2 | 은닉 1 · 2 · 4 개로 수치 미분 시간 재고 784-100-10 추정>>
+
 #### 개념 2 · 역전파는 한 번에 모든 기울기를 구한다
 역전파는 순전파 1번으로 중간값을 저장해 두고, 출력에서 입력 방향으로 **한 번** 거꾸로 지나가며 모든 파라미터의 기울기를 구한다. 비용은 순전파의 2~3배, 즉 **O(P)**. 784-100-10 · 배치 100 이면 수 ms — 수치 미분과 **수만 배** 차이다.
 
 수치 미분은 버리지 않는다. 느리지만 구현이 단순해 틀리기 어렵기 때문에, 역전파가 맞는지 확인하는 **정답지(gradient check, 6교시)** 로 쓴다.
-
-#### 코드로 확인
-```python
-def count_params(params): return sum(p.size for p in params.values())
-def n_loss_evals(P):      return 2 * P          # 파라미터마다 +h, -h 두 번
-n_loss_evals(count_params(init_params(100)))
-```
-- **무엇을 하나**: 784-h-10 망의 파라미터 수를 세고, 수치 미분 한 step 에 필요한 손실 계산 횟수를 구한다.
-- **어떤 개념**: 개념 1 — 2P 번.
-- **출력**: h = 1 · 2 · 4 이면 P = 805 · 1,600 · 3,190, h = 100 이면 P = 79,510 → `159020`
 
 #### 한 번에 정리
 - 수치 미분 = 파라미터마다 손실 2번 → O(P²) → 큰 망에서는 불가능.
@@ -142,24 +136,16 @@ dapple = dall * 1 * 2                   # 덧셈 → 그대로, 곱셈 → 상�
 
 역전파로 얻은 값의 뜻: "그 값이 1 오르면 최종 금액이 얼마나 오르나". 사과 가격의 기울기가 **2.2** 라면 사과가 1원 오를 때 최종 금액이 2.2원 오른다 (2개 × 세금 1.1). 소비세의 기울기는 **650** (세금 전 합계).
 
+<<CODE 2-1 | 사과 · 귤 쇼핑 계산 그래프 — 순전파>>
+
 #### 개념 2 · 국소 계산 — 노드는 자기 일만 한다
 마지막 × 소비세 노드는 앞에서 사과가 몇 개였는지 몰라도 된다. 자기 입력(650, 1.1)과 위에서 내려온 기울기만으로 자기 몫을 계산해 넘긴다. 이것을 **국소 계산**이라 한다.
 - 신경망이 아무리 커도 노드 하나가 하는 일은 단순하다 → **노드 종류마다 forward · backward 를 한 번만** 만들어 조립하면 된다 (3 ~ 5교시).
 - 중간값을 순전파 때 저장해 두면 역전파 때 다시 계산하지 않는다.
 - 역전파 한 번으로 **모든 입력의 기울기가 동시에** 나온다 — 수치 미분은 입력마다 따로 계산해야 했다.
 
-#### 코드로 확인
-```python
-apple_price  = 100 * 2;  orange_price = 150 * 3
-all_price    = apple_price + orange_price
-price        = all_price * 1.1                       # 순전파
-dprice = 1                                           # 역전파: 출력에서 1
-dall_price = dprice * 1.1;   dtax = dprice * all_price   # 곱셈 노드 → 상대편
-dapple = dall_price * 1 * 2;  dapple_num = dall_price * 1 * 100
-```
-- **무엇을 하나**: 그래프를 따라 값을 계산하고, 출력에서 1 을 출발시켜 기울기를 거꾸로 구한다.
-- **어떤 개념**: 개념 1 — 덧셈 노드는 그대로(× 1), 곱셈 노드는 상대편 값을 곱한다.
-- **출력**: price **715**, dapple **2.2**, dapple_num **110**, dtax **650** — `numerical_gradient` 결과와 같다
+<<CODE 2-2 | 오른쪽에서 왼쪽으로 — 기울기를 손으로 전달>>
+<<CODE 2-3 | 손으로 구한 기울기를 numerical_gradient 로 확인>>
 
 #### 한 번에 정리
 - 계산 그래프: 순전파는 값을 앞으로, 역전파는 기울기를 뒤로.
@@ -240,6 +226,8 @@ class AddLayer:
 
 x = 3, y = 1 이면 t = 4, z = 16, ∂z/∂x = 8. 역전파는 이 연쇄 법칙을 그래프 위에서 실행하는 것이다 — 출력에서 1 을 출발시켜, 노드를 지날 때마다 그 노드의 **국소 미분**을 곱한다. Day 2 에서 ½(y − t)² 를 미분할 때 쓴 "바깥 미분 × 안쪽 미분" 이 바로 이것이었다.
 
+<<CODE 3-c1 | z = (x + y)² 를 단계별 미분의 곱으로>>
+
 #### 개념 2 · 덧셈 노드와 곱셈 노드
 ![덧셈 노드는 기울기를 그대로 복사하고, 곱셈 노드는 상대편 입력을 곱해 보낸다](assets/fig/nn/d3-nodes.svg)
 
@@ -250,18 +238,9 @@ x = 3, y = 1 이면 t = 4, z = 16, ∂z/∂x = 8. 역전파는 이 연쇄 법칙
 
 곱셈 노드는 역전파 때 순전파의 입력 x, y 가 필요하다. 그래서 계층 클래스는 **forward 에서 입력을 저장**해 두고 backward 에서 쓴다. 이 "forward 에서 저장 → backward 에서 사용" 패턴이 오늘 만드는 모든 계층의 공통 구조다.
 
-#### 코드로 확인
-```python
-class MulLayer:
-    def forward(self, x, y):
-        self.x, self.y = x, y            # 역전파에 쓰려고 저장
-        return x * y
-    def backward(self, dout):
-        return dout * self.y, dout * self.x    # 상대편 입력을 곱한다
-```
-- **무엇을 하나**: 곱셈 노드를 forward(값 + 저장) · backward(기울기 반환) 두 메서드로 만든다.
-- **어떤 개념**: 개념 2 — 곱셈 노드는 상대편을 곱한다.
-- **출력**: 사과만 (100 × 2) × 1.1 = **220**, backward → 사과 가격 **2.2**, 개수 **110**, 소비세 **200**
+<<CODE 3-1 | MulLayer — 곱셈 노드: 상대편 입력을 곱해 돌려준다>>
+<<CODE 3-2 | AddLayer — 덧셈 노드: 기울기를 그대로 나눠 준다>>
+<<CODE 3-3 | 계층 네 개로 사과 · 귤 그래프 조립 — 역전파는 반대 순서>>
 
 #### 한 번에 정리
 - 연쇄 법칙: 합성 함수의 미분 = 단계별 국소 미분의 곱 → 역전파의 원리.
@@ -350,6 +329,8 @@ ReLU 의 미분은 x > 0 이면 1, 아니면 0 이다. 그래서 역전파는 **
 
 ![ReLU 계층 — 순전파에서 0 이 된 자리(빨강)는 역전파에서도 기울기가 0](assets/fig/nn/d3-relu.svg)
 
+<<CODE 4-1 | Relu 계층 — 막힌 자리(mask)는 기울기도 0>>
+
 #### 개념 2 · Sigmoid 계층 — 출력 하나로 기울기를 낸다
 sigmoid y = 1/(1 + e⁻ˣ) 를 계산 그래프로 쪼개면 ×(−1) → exp → +1 → 1/x 네 노드다. 각 노드의 국소 미분을 곱해 정리하면
 
@@ -357,34 +338,12 @@ sigmoid y = 1/(1 + e⁻ˣ) 를 계산 그래프로 쪼개면 ×(−1) → exp �
 
 Day 2 의 `sigmoid_grad` 와 같은 식이다. 역전파에 필요한 것이 순전파 출력 y **하나뿐**이므로 forward 에서 `self.out` 만 저장하면 된다.
 
+<<CODE 4-2 | Sigmoid 계층 — 출력 y 로 기울기 y(1 − y)>>
+
 #### 개념 3 · 계층 하나를 떼어 검증하는 법
 L = Σ (forward(x) ⊙ dout) 라는 손실을 만들면, 이 L 을 출력으로 미분한 값이 정확히 dout 이 된다. 그래서 이 L 을 수치 미분한 결과가 backward(dout) 와 같으면 그 계층의 역전파가 맞다. 망 전체를 만들기 전에 계층마다 확인할 수 있다.
 
-#### 코드로 확인
-```python
-class Relu:
-    def forward(self, x):
-        self.mask = (x <= 0)
-        out = x.copy(); out[self.mask] = 0
-        return out
-    def backward(self, dout):
-        dx = dout.copy(); dx[self.mask] = 0
-        return dx
-```
-- **무엇을 하나**: 0 이하인 자리를 기억해 순전파 · 역전파 모두 그 자리를 0 으로 만든다.
-- **어떤 개념**: 개념 1 — 스위치.
-- **출력**: x = [[1, −0.5], [−2, 3]] → out [[1, 0], [0, 3]], backward(1) [[1, 0], [0, 1]], 입력 x 는 그대로
-
-```python
-class Sigmoid:
-    def forward(self, x):
-        self.out = 1 / (1 + np.exp(-x)); return self.out
-    def backward(self, dout):
-        return dout * self.out * (1 - self.out)
-```
-- **무엇을 하나**: 순전파 출력을 저장하고, 역전파에서 그것으로 y(1 − y) 를 곱한다.
-- **어떤 개념**: 개념 2.
-- **출력**: x = [1, −2] → y = [0.7311, 0.1192], backward(1) = [**0.1966**, **0.1050**], x = 0 이면 **0.25**
+<<CODE 4-3 | 계층 backward 를 수치 미분과 비교 (상대 오차)>>
 
 #### 한 번에 정리
 - ReLU 계층: forward 에서 mask 저장, backward 에서 mask 자리 0 — 스위치.
@@ -480,6 +439,8 @@ class SoftmaxWithLoss:
 - 편향 b 는 순전파에서 브로드캐스팅으로 N 개 행 모두에 더해졌다. 같은 b 가 N 번 쓰였으니 기울기도 N 개를 **모두 더한다** → **db = dout.sum(axis=0)**.
 - dX 는 앞 계층으로 돌려주고, dW · db 는 계층에 저장해 두었다가 갱신에 쓴다.
 
+<<CODE 5-1 | Affine 계층 — dX = dout·Wᵀ, dW = Xᵀ·dout, db = 행 합>>
+
 #### 개념 2 · Softmax-with-Loss — 기울기가 (Y − T) / N
 분류 신경망의 끝은 언제나 softmax → cross-entropy 다. 둘을 한 계층으로 묶어 역전파하면 softmax 의 복잡한 미분과 log 의 미분이 깔끔하게 상쇄되어
 
@@ -487,30 +448,9 @@ class SoftmaxWithLoss:
 
 Day 2 의 선형 회귀 · 로지스틱 회귀에서 본 "(예측 − 정답)" 이 다시 나온다. 잘 설계된 출력층 + 손실의 짝은 모두 이 모양이 되도록 만들어져 있다. 실제 계산은 softmax 출력을 복사해 **정답 자리에서만 1 을 빼고** N 으로 나누면 된다 — 정답 칸은 음수(확률을 키우는 쪽), 나머지는 양수(줄이는 쪽).
 
-#### 코드로 확인
-```python
-class Affine:
-    def forward(self, X):
-        self.X = X
-        return X @ self.W + self.b
-    def backward(self, dout):
-        self.dW = self.X.T @ dout
-        self.db = dout.sum(axis=0)
-        return dout @ self.W.T
-```
-- **무엇을 하나**: 순전파에서 X 를 저장하고, 역전파에서 dW · db 를 저장한 뒤 dX 를 돌려준다.
-- **어떤 개념**: 개념 1 — shape 로 유도한 세 식.
-- **출력**: N, D, M = 2, 3, 4 → dX (2, 3), dW (3, 4), db (4,) — 모두 수치 미분과 일치
-
-```python
-def backward(self, dout=1):                      # SoftmaxWithLoss
-    N = len(self.t)
-    dx = self.y.copy(); dx[np.arange(N), self.t] -= 1
-    return dx / N
-```
-- **무엇을 하나**: softmax 출력에서 행마다 정답 칸만 1 을 빼고 배치 크기로 나눈다.
-- **어떤 개념**: 개념 2 — (Y − T)/N.
-- **출력**: 점수 [[0.3, 2.9, 4.0], [1.0, 2.0, 0.5]], 정답 [2, 0] → 손실 **0.8850**, 첫 행 정답 칸 기울기 (0.737 − 1)/2 = **−0.132**
+<<CODE 5-2 | cross_entropy_error — 레이블 · one-hot 모두 받기>>
+<<CODE 5-3 | SoftmaxWithLoss — 기울기 (Y − T) / N>>
+<<CODE 5-4 | Affine → SoftmaxWithLoss 기울기를 Day 2 식과 비교>>
 
 #### 한 번에 정리
 - Affine: dX = dout Wᵀ, dW = Xᵀ dout, db = 행 방향 합 — 기울기 shape = 자기 shape.
@@ -604,6 +544,8 @@ def failing(g_bp, g_num, tol=1e-7):
 - **gradient()** 는 네 단계다: ① loss() 로 순전파(계층마다 값 저장) ② `lastLayer.backward(1)` ③ layers 를 **반대 순서(reversed)** 로 backward ④ 각 Affine 의 dW · db 를 모은다.
 - params 딕셔너리와 Affine 계층은 **같은 배열 객체**를 가리킨다 → 갱신은 반드시 제자리(`-=`).
 
+<<CODE 6-1 | TwoLayerNet — 계층 조립 · predict · loss · gradient>>
+
 #### 개념 2 · gradient check — 상대 오차로 판정
 기울기 값의 크기는 파라미터마다 달라서 차이의 절댓값보다 **상대 오차**로 비교한다.
 
@@ -618,34 +560,16 @@ def failing(g_bp, g_num, tol=1e-7):
 - 수치 미분이 느리므로 **작은 망(784-10-10, 파라미터 7,960개) · 샘플 3장**으로 검사한다.
 - log 에 1e-7 을 더한 Day 2 손실로 검사하면 모든 상대 오차가 약 5×10⁻⁷ 이 나온다. 역전파 (Y − T) 는 eps 없는 손실의 정확한 미분이라 생기는 차이 — 버그가 아니다. 그래서 오늘은 **1e-12** 를 쓴다.
 
+<<CODE 6-2 | rel_error — 상대 오차로 판정>>
+<<CODE 6-c1 | log 에 1e-7 을 더하면 오차가 커지는 이유>>
+
 #### 개념 3 · shape 가 맞아도 틀리는 버그
 - **db = dout.mean(axis=0)** (합 대신 평균): b2 만 틀린다 (상대 오차 0.5).
 - **dX = dout @ self.W** (`.T` 빠뜨림): W2 가 (10, 10) 정사각이라 오류 없이 실행된다. 그런데 Affine2 의 dX 가 틀려 그 **앞쪽(Affine1) 의 W1, b1 이 모두 틀린다**.
 - 교훈: 오류는 그 계층의 **앞쪽** 파라미터에서 드러난다. 새 계층을 만들 때마다 gradient check.
 
-#### 코드로 확인
-```python
-def gradient(self, X, t):
-    self.loss(X, t)                                   # ① 순전파
-    dout = self.lastLayer.backward(1)                 # ②
-    for layer in reversed(list(self.layers.values())):
-        dout = layer.backward(dout)                   # ③ 반대 순서
-    return {"W1": self.layers["Affine1"].dW, "b1": self.layers["Affine1"].db,
-            "W2": self.layers["Affine2"].dW, "b2": self.layers["Affine2"].db}
-```
-- **무엇을 하나**: 순전파로 값을 저장한 뒤, 손실 계층부터 거꾸로 backward 를 불러 각 Affine 의 기울기를 모은다.
-- **어떤 개념**: 개념 1 — 순서대로 forward, 반대로 backward.
-- **출력**: 784-10-10, MNIST 3장 → W1 (784, 10), b1 (10,), W2 (10, 10), b2 (10,)
-
-```python
-def rel_error(a, b):
-    return np.linalg.norm(a - b) / (np.linalg.norm(a) + np.linalg.norm(b))
-def failing(g_bp, g_num, tol=1e-7):
-    return [k for k in g_bp if rel_error(g_bp[k], g_num[k]) > tol]
-```
-- **무엇을 하나**: 역전파와 수치 미분의 상대 오차를 재고, 기준을 넘는 파라미터 이름만 고른다.
-- **어떤 개념**: 개념 2 · 3.
-- **출력**: 정상 `[]`, db 버그 `['b2']`, dX 버그 `['W1', 'b1']`
+<<CODE 6-3 | 일부러 넣은 버그 두 개를 gradient check 로 잡기>>
+<<CODE 6-c2 | 역전파 vs 수치 미분 속도 비교>>
 
 #### 한 번에 정리
 - TwoLayerNet: OrderedDict 로 쌓아 순서대로 forward, reversed 로 backward.
@@ -727,23 +651,14 @@ for epoch in range(epochs):
 - 미니배치 기울기는 전체 기울기의 **잡음 섞인 추정**이라 손실 곡선이 들쭉날쭉하지만, 평균적으로는 내려간다.
 - 학습은 train 데이터로, "처음 보는 데이터에도 통하는지(일반화)" 는 학습에 쓰지 않은 **test** 정확도로 확인한다.
 
+<<CODE 7-c1 | 나선형 3 클래스 데이터 만들기>>
+<<CODE 7-1 | epoch 당 iteration 수 계산>>
+<<CODE 7-2 | 미니배치 SGD 학습 루프 — 섞기 · 배치 · 갱신>>
+
 #### 개념 2 · ReLU 망은 곡선 경계를 만든다
 세 갈래로 꼬인 나선 데이터는 Day 2 의 로지스틱 회귀(직선 하나)로는 풀 수 없다. 은닉층 100개의 ReLU 망은 학습이 진행될수록 경계가 굽어지며 나선을 따라간다. ReLU 뉴런 하나는 꺾인 직선 하나를 만들고, 100개가 모이면 곡선처럼 보이는 경계가 된다 (Day 2 "은닉층은 공간을 바꾼다"). 중간에 손실이 들쭉날쭉한 것은 미니배치 잡음 + 큰 학습률(1.0) 때문이고, Day 4 의 옵티마이저가 이 문제를 다룬다.
 
-#### 코드로 확인
-```python
-iters_per_epoch = len(X_tr) // batch_size
-for epoch in range(epochs):
-    idx = rng.permutation(len(X_tr))
-    for i in range(iters_per_epoch):
-        batch = idx[i * batch_size:(i + 1) * batch_size]
-        grads = net.gradient(X_tr[batch], t_tr[batch])
-        for k in net.params:
-            net.params[k] -= lr * grads[k]           # 제자리 갱신
-```
-- **무엇을 하나**: epoch 마다 섞고, batch_size 씩 잘라 기울기를 구해 파라미터를 고친다.
-- **어떤 개념**: 개념 1 — 미니배치 SGD.
-- **출력**: 나선 데이터 batch 30 이면 epoch 당 **8** iteration, 300 epoch 동안 결정 경계가 나선을 따라 굽는다 (그림으로 확인)
+<<CODE 7-3 | plot_boundary — 격자점마다 예측해 결정 경계 그리기>>
 
 #### 한 번에 정리
 - 미니배치 SGD: epoch 마다 셔플 → batch 단위로 기울기 · 갱신.
@@ -821,8 +736,12 @@ def quantize(W):
 - **정규화**: 0~255 를 255 로 나눠 0~1 로. 값이 크면 가중합이 커져 학습이 불안정하다.
 - **레이블**: 정수 배열 그대로 — SoftmaxWithLoss 가 레이블을 받는다.
 
+<<CODE 8-1 | MNIST 전처리 — 784 펴기 · /255 · 레이블>>
+
 #### 개념 2 · 학습 전 손실로 구현을 점검한다
 가중치를 0.01 배로 아주 작게 시작하면 출력 점수가 거의 0 이라 softmax 확률이 10개 클래스에 거의 균등(각 0.1)하다. 그러면 손실은 −log 0.1 = **log 10 ≈ 2.30**. 학습 전 손실이 이 근처면 초기화와 손실 구현이 정상이라는 신호다. 크게 다르면 전처리(/255 빠짐) · 가중치 크기 · 손실 식부터 의심한다.
+
+<<CODE 8-2 | 학습 전 손실 ≈ log 10 = 2.30 확인>>
 
 #### 개념 3 · 학습과 결과 읽기
 - 설정: 학습률 0.1, 배치 100, 10 epoch = 600 × 10 = **6,000** iteration (Colab CPU 30초 ~ 1분).
@@ -830,28 +749,11 @@ def quantize(W):
 - 같은 학습을 수치 미분으로 했다면 6,000 step × 수십 초 → 며칠. 역전파는 그래프를 한 번 거꾸로 지나며 기울기를 재사용하기 때문에 빠르다.
 - **양자화 맛보기**: 가중치를 −127 ~ 127 정수(int8)로 바꾸면 메모리가 1/8(float64 대비)이 된다 — Vision 과정 이후 Quantization 의 아이디어.
 
-#### 코드로 확인
-```python
-X_train = x_train.reshape(-1, 784) / 255.0
-t_train = y_train.astype(int)
-network = TwoLayerNet(784, 100, 10)
-loss0 = network.loss(X_train[:100], t_train[:100])
-```
-- **무엇을 하나**: 이미지를 펼쳐 0~1 로 바꾸고, 학습 전 손실을 계산한다.
-- **어떤 개념**: 개념 1 · 2.
-- **출력**: X_train (60000, 784), 학습 전 손실 ≈ **2.30** (= log 10 ≈ 2.3026)
-
-```python
-for epoch in range(10):
-    idx = rng.permutation(len(X_train))
-    for i in range(600):
-        batch = idx[i * 100:(i + 1) * 100]
-        grads = network.gradient(X_train[batch], t_train[batch])
-        for k in network.params: network.params[k] -= 0.1 * grads[k]
-```
-- **무엇을 하나**: 7교시 루프를 MNIST 에 적용한다 (6,000 iteration).
-- **어떤 개념**: 개념 3.
-- **출력**: 기준 결과 train **0.9747**, test **0.9694** (CPU 마다 넷째 자리는 다를 수 있음)
+<<CODE 8-3 | MNIST 2층 MLP 10 epoch 미니배치 학습>>
+<<CODE 8-4 | 손실 · 정확도 곡선>>
+<<CODE 8-c1 | 틀린 숫자 16장 보기>>
+<<CODE 8-c2 | (선택) 가중치 int8 양자화 맛보기>>
+<<CODE 8-c3 | (선택) 학습한 가중치를 Drive 에 저장>>
 
 #### 한 번에 정리
 - 전처리: 펼치기(784) · /255 · 정수 레이블.
