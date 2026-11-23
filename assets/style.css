@@ -766,9 +766,10 @@ details.ctree.l > .citem:hover .cn { color: var(--lv3); }
 .linklike { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
 /* 맨 위 함수 · 용어 버튼 줄 (예전 키워드 줄 자리) + 말풍선 */
-.dictbar { overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
-.dictbar .kwbar-chips { flex: none; overflow: visible; padding-bottom: 0; }
-.dictbar .kwbar-l:not(:first-child) { margin-left: 10px; }
+.dictbar { flex-direction: column; align-items: stretch; gap: 4px; }
+.dict-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dict-row .kwbar-l { width: 2.4em; }
+.dict-row .kwbar-chips { flex: 1; overflow-x: auto; }
 @media (max-width: 700px) { .dictbar .kwbar-l { display: inline; } }
 .dchip { border: 1px dashed var(--line); background: var(--panel); color: var(--ink-2); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
 .dchip.func { font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }

@@ -1028,7 +1028,8 @@
     const fs = (L.funcs || []).map((f, i) => `<button type="button" class="dchip func" data-dk="f${i}">${esc(f.name)}</button>`).join('');
     const ts = (L.terms || []).map((x, i) => `<button type="button" class="dchip term" data-dk="t${i}">${esc(x.name.replace(/\*\*/g, ''))}</button>`).join('');
     if (!fs && !ts) return '';
-    return `<div class="kwbar dictbar" id="s-kw">${fs ? `<span class="kwbar-l">함수</span><div class="kwbar-chips">${fs}</div>` : ''}${ts ? `<span class="kwbar-l">용어</span><div class="kwbar-chips">${ts}</div>` : ''}</div>`;
+    const row = (l, c) => `<div class="dict-row"><span class="kwbar-l">${l}</span><div class="kwbar-chips">${c}</div></div>`;
+    return `<div class="kwbar dictbar" id="s-kw">${fs ? row('함수', fs) : ''}${ts ? row('용어', ts) : ''}</div>`;
   }
   function dictPopHtml(L, k) {
     const i = +k.slice(1);
