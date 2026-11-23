@@ -1021,7 +1021,29 @@
       }
       (box || out).appendChild(n);
     });
+    $$(':scope > section.scard > p, :scope > section.scard > ul > li, :scope > section.scard > ol > li', out).forEach(proseLines);
+    $$('table', out).forEach(tb => { const w = document.createElement('div'); w.className = 'stbl'; tb.replaceWith(w); w.appendChild(tb); });
     return out.innerHTML;
+  }
+  /* 상세 학습 줄글 → 문장마다 한 줄, ' — ' 뒤 덧붙임은 들여 쓴 다음 줄(↳).
+   * 바로 아래 글자 조각만 나눈다 — <code> · <b> · 수식 안은 그대로 (숫자 0.9 같은 마침표도 그대로) */
+  function proseLines(p) {
+    const lines = [{ dash: false, nodes: [] }];
+    const SEP = /([가-힣)\]%])\.\s+(?=\S)| — /g;
+    [...p.childNodes].forEach(nd => {
+      if (nd.nodeType !== 3) { lines[lines.length - 1].nodes.push(nd); return; }
+      let s = nd.data, at = 0, m; SEP.lastIndex = 0;
+      while ((m = SEP.exec(s))) {
+        const dash = m[0] === ' — ', cut = dash ? m.index : m.index + m[1].length + 1;
+        lines[lines.length - 1].nodes.push(document.createTextNode(s.slice(at, cut)));
+        lines.push({ dash, nodes: [] }); at = m.index + m[0].length;
+      }
+      lines[lines.length - 1].nodes.push(document.createTextNode(s.slice(at)));
+    });
+    const real = lines.filter(l => l.nodes.some(x => (x.textContent || '').trim()));
+    if (real.length < 2) return;
+    p.textContent = '';
+    real.forEach(l => { const sp = document.createElement('span'); sp.className = 'pl' + (l.dash ? ' pd' : ''); l.nodes.forEach(x => sp.appendChild(x)); p.appendChild(sp); });
   }
 
   function notesHtml(view) {

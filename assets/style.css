@@ -829,3 +829,17 @@ a.dep:hover { border-style: solid; }
 .dp-o.lib { color: #1d4ed8; background: color-mix(in srgb, #3b82f6 10%, var(--panel)); border: 1px solid color-mix(in srgb, #3b82f6 30%, var(--line)); }
 details.dent > summary .dp-o { margin-left: auto; } details.dent > summary .dp-o + .dp-k { margin-left: 4px; }
 .dictpop .dp-o { margin-left: auto; } .dictpop .dp-o + .dp-k { margin-left: 4px; }
+/* 상세 학습 — 문장마다 한 줄 · 표 읽기 쉽게 */
+.scard .pl { display: block; }
+.scard .pl + .pl { margin-top: 3px; }
+.scard .pl.pd { padding-left: 1.3em; position: relative; color: var(--ink-2); }
+.scard .pl.pd::before { content: '↳'; position: absolute; left: .2em; color: var(--ink-3); }
+.scard li > .pl:first-child { display: inline; }
+.scard .stbl { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; }
+.nsec.study .scard .stbl table { display: table; width: 100%; margin: 0; border: 0; font-size: .94em; }
+.scard .stbl th, .scard .stbl td { border: 0; border-bottom: 1px solid var(--line); padding: .6em .9em; }
+.scard .stbl tr:last-child td { border-bottom: 0; }
+.scard .stbl th { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--ink); font-weight: 700; }
+.scard .stbl td:first-child { font-weight: 600; white-space: nowrap; }
+.scard .stbl tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ink) 3%, var(--panel)); }
+.scard .stbl th + th, .scard .stbl td + td { border-left: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
