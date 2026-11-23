@@ -375,9 +375,8 @@
   "hdr": "from onnxruntime.quantization import …"
  },
  "QuantType.QInt8": {
-  "role": "부호 있는 8비트 (S8)",
+  "role": "부호 있는 8비트 (S8) — weight 의 기본 (대칭 · zp 0)",
   "desc": [
-   "weight 의 기본 (대칭 · zp 0)",
    "activation_type 에 넣으면 S8/S8 모델 — 이 CPU 에서 U8/S8 보다 3.4배 느림"
   ],
   "args": [],
@@ -467,9 +466,8 @@
   "hdr": "import pandas as pd"
  },
  "pd.concat()": {
-  "role": "표를 위아래로 이어 붙이기",
+  "role": "표를 위아래로 이어 붙이기 — 기존 qp_baseline.csv 아래에 오늘 행을 붙인다",
   "desc": [
-   "기존 qp_baseline.csv 아래에 오늘 행을 붙인다",
    "이어서 drop_duplicates 로 같은 (day, model) 은 마지막만"
   ],
   "args": [
@@ -483,9 +481,8 @@
   "hdr": "import pandas as pd"
  },
  "DataFrame.drop_duplicates()": {
-  "role": "중복 행 지우기",
+  "role": "중복 행 지우기 — `subset=['day', 'model']` 이 같으면 중복으로 본다",
   "desc": [
-   "`subset=['day', 'model']` 이 같으면 중복으로 본다",
    "`keep='last'` → 새로 넣은 행을 남긴다 — 셀을 다시 실행해도 표가 불어나지 않음"
   ],
   "args": [
