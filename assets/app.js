@@ -1036,7 +1036,9 @@
     if (k[0] === 't') { const x = L.terms[i]; return x ? `<div class="dp-h"><b>${mdInline(x.name)}</b><span class="dp-k">용어</span></div><div class="dp-b">${mdInline(x.def)}</div>` : ''; }
     const f = L.funcs[i]; if (!f) return '';
     const d = f.detail || {};
-    return `<div class="dp-h"><code>${esc(f.name)}</code><span class="dp-k">함수</span></div>`
+    const kind = f.kind || '함수';
+    const kc = { '클래스': 'cls', '메서드': 'mth', '속성': 'att', '인자 · 옵션': 'arg', '상수': 'con', '상수 · 매크로': 'con', '명령': 'cmd' }[kind] || '';
+    return `<div class="dp-h"><code>${esc(f.name)}</code><span class="dp-k ${kc}">${esc(kind)}</span></div>`
       + (d.role ? `<div class="dp-role">${mdInline(d.role)}</div>` : '')
       + (f.sig ? `<div class="dp-sig">${mdInline(f.sig)}</div>` : '')
       + (f.use ? `<div class="dp-b">${mdInline(f.use)}</div>` : '')

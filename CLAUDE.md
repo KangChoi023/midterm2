@@ -12,7 +12,7 @@
 | 경로 | 무엇 |
 |---|---|
 | `notes/<SUBJ>_dayN.md` | **노트 원본** (직접 작성). SUBJ = ARCH · OS · PY · C · LINUX · MCU · EIO · NN |
-| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, desc:[개조식 2~4줄], args:[[인자, 한글 뜻]], flow, ret, hdr, ex?}}` — **Day 별 파일** (PR 끼리 충돌 방지). 같은 이름이면 **자기 과목 파일이 먼저**. 강의 예제 한 줄은 빌드가 교안에서 자동으로 고른다 — 어색하면 `"ex": "줄의 일부"` 로 지정, `""` 면 끔 (`! 예제 줄 못 찾음` 경고 확인) |
+| `notes/api_detail.<sid><N>.json` | 함수 상세 `{"이름": {role, desc:[개조식 2~4줄], args:[[인자, 한글 뜻]], flow, ret, hdr, ex?}}` — **Day 별 파일** (PR 끼리 충돌 방지). 같은 이름이면 **자기 과목 파일이 먼저**. 종류(함수 · 클래스 · 메서드 · 속성 · 인자 · 상수 · 명령 …)는 빌드가 이름 모양으로 정한다 (`build_site.func_kind`) — 틀리면 `"kind": "메서드"` 로 지정. 강의 예제 한 줄은 빌드가 교안에서 자동으로 고른다 — 어색하면 `"ex": "줄의 일부"` 로 지정, `""` 면 끔 (`! 예제 줄 못 찾음` 경고 확인) |
 | `notes/code_guide*.json` · `review_quiz*.json` | 코드 읽기 가이드(줄 묶음 설명) · 복습 퀴즈. .ipynb 과목은 `code_guide.<sid><N>.json`, 키 `<sid>/<N>/<코드 키>` (예 `vb/3/3-1`) |
 | `tools/build_site.py` | 빌드. `SUBJECTS` 에 과목 · 교안 경로 (배운 순서). 교안은 `STUDY_ROOT/AI_CAMPUS` |
 | 교안의 `*_GoogleForm.gs` | 강사님 구글 폼 복습 · 최종 퀴즈 — 빌드가 자동으로 읽어 문항의 `anim: "D2-3"` 교시 "연관 문제" 에 붙인다 (공식 정답 · 해설, Python 제외). 장면 번호 ≠ 교시인 Day 는 `build_site.py` 의 `ANIM_LESSON` 표 |
