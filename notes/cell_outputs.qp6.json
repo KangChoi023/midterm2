@@ -1,0 +1,70 @@
+{
+ "1-1": {
+  "text": "{1: 0.118, 2: 0.262, 4: 0.512, 8: 0.73}\n✅ 1등 외 확률 — T=1 0.118 → T=4 0.512 → T=8 0.730",
+  "check": true
+ },
+ "1-2": {
+  "text": "학생 = 선생님이면 soft 항 0 → 0.3108 (= 0.5 · CE 0.6216) | 다르면 0.7202\n✅ KD loss = α·CE + (1 − α)·T²·KL — 검산 값 0.7575",
+  "check": true
+ },
+ "2-1": {
+  "text": "KD: 0.1000 → 0.6380 → 0.7330 → 0.7455 (41초)\n✅ KD 로 50% 모델 0.10 → 0.7455 — 선생님 (FP32 0.846) 은 그대로",
+  "check": true
+ },
+ "2-2": {
+  "text": "        method     acc  train_s\n0  fine-tuning  0.7170  21.9423\n1           KD  0.7455  40.9761\nKD 이득 +2.85%p | FP32 와의 차이 10.0%p\n✅ 같은 예산 — fine-tuning 0.7170 vs KD 0.7455 (+2.85%p)",
+  "check": true
+ },
+ "3-1": {
+  "text": "KD 0.7455 → INT8 PTQ 0.7465 (손실 -0.10%p) → need_qat False | QDQ ONNX 0.7465 · {'qdq': 90, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}\n✅ 가지치기 + KD 모델도 INT8 PTQ 손실 -0.10%p — QAT 불필요",
+  "check": true
+ },
+ "3-2": {
+  "text": "양자화만: 0.8430 | 그 뒤 가지치기 → conv1 weight (8, 8, 3, 3) · weight 양자화기 amax 16개\nforward → The size of tensor a (8) must match the size of tensor b (16) at non-singleton dimension 0\n✅ 채널은 줄었는데 채널별 scale (amax) 은 예전 개수 그대로 — 양자화 뒤에 구조를 바꾸면 깨진다",
+  "check": true
+ },
+ "4-1": {
+  "text": "보정 48장 (프레임 0 ~ 470) | 첫 입력 (1, 3, 640, 640) float32\n✅ 보정 48장 — 평가 구간 (480 ~) 과 겹치지 않는다",
+  "check": true
+ },
+ "4-2": {
+  "text": "head 제외 24개 · 출력 Conv 6개 | 프레임 530 사람 수 {'FP16': 6, 'INT8': 6, 'INT8-mixed': 6} | {'qdq': 499, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}\n✅ 엔진 3종 준비 — 프레임 530 에서 FP16 6명 · INT8 6명 · INT8-mixed 6명",
+  "check": true
+ },
+ "5-1": {
+  "text": "            read   pre   infer  post   total  infer_share\nengine\nFP16        2.08  5.31   42.49  2.28   52.16         0.81\nINT8        2.11  5.11  102.55  2.19  111.96         0.92\nINT8-mixed  1.86  4.96   92.59  2.19  101.60         0.91\n✅ 프레임당 ORT CPU — FP16 52.2 ms (추론 81%) · INT8 112.0 ms (추론 92%) · INT8-mixed 101.6 ms (추론 91%)",
+  "check": true
+ },
+ "5-2": {
+  "text": "FP16        315 프레임 · 경보 224 프레임 · 이벤트 5건 [(52.4, 59.9), (61.0, 61.2), (61.6, 61.8), (62.6, 74.1), (75.9, 78.4)] · 50.1 ms/프레임\nINT8        315 프레임 · 경보 218 프레임 · 이벤트 4건 [(52.4, 59.9), (60.7, 60.7), (62.6, 74.1), (76.0, 78.4)] · 104.1 ms/프레임\nINT8-mixed  315 프레임 · 경보 219 프레임 · 이벤트 4건 [(52.4, 59.9), (61.8, 61.8), (62.6, 74.1), (75.9, 78.4)] · 103.3 ms/프레임\n✅ 엔진만 바꿔 영상 3개 · 이벤트 CSV 3개 — FP16 이벤트 5건 · INT8 4건 · INT8-mixed 4건",
+  "check": true
+ },
+ "6-1": {
+  "text": "       engine  n_people  n_inside   alarm  events\n0        FP16    1.0000    1.0000  1.0000       5\n1        INT8    0.7873    0.9111  0.9746       4\n2  INT8-mixed    0.7968    0.9429  0.9841       4\n✅ FP16 기준 경보 일치율 — INT8 97.5% · INT8-mixed 98.4% (사람 수 일치율은 79% · 80%)",
+  "check": true
+ },
+ "6-2": {
+  "text": "   ref_start  ref_end  matched  start_diff_s      engine\n0       52.4     59.9     True           0.0        INT8\n1       61.0     61.2     True          -0.3        INT8\n2       61.6     61.8    False           NaN        INT8\n3       62.6     74.1     True           0.0        INT8\n4       75.9     78.4     True           0.1        INT8\n5       52.4     59.9     True           0.0  INT8-mixed\n6       61.0     61.2    False           NaN  INT8-mixed\n7       61.6     61.8     True           0.2  INT8-mixed\n8       62.6     74.1     True           0.0  INT8-mixed\n9       75.9     78.4     True           0.0  INT8-mixed\n이벤트 재현율 (FP16 기준): {'INT8': 0.8, 'INT8-mixed': 0.8}\n✅ FP16 이벤트 5건 중 — INT8 80% · INT8-mixed 80% 재현 · 시작 시각 차이 최대 0.3초",
+  "check": true
+ },
+ "7-1": {
+  "text": "    day              model                  quant  ...   mean_ms    p95_ms  fps_b32\n0  Day6        rn20_p50_kd  FP32 (prune 50% + KD)  ...    0.3807       NaN      NaN\n1  Day6   rn20_p50_kd_int8  INT8 (prune 50% + KD)  ...    0.7516       NaN      NaN\n2  Day6  yolov8n_intrusion                   FP16  ...   50.1277   62.4243  19.9491\n3  Day6  yolov8n_intrusion                   INT8  ...  104.0527  121.6748   9.6105\n4  Day6  yolov8n_intrusion             INT8-mixed  ...  103.3118  120.3866   9.6794\n[5 rows x 8 columns]\n✅ qp_baseline.csv — 전체 5행 (Day6 5행) · 침입 감지 FPS: FP16 19.9 · INT8 9.6 · INT8-mixed 9.7",
+  "check": true
+ },
+ "7-2": {
+  "text": "             device                runtime  ...     pruning     kd\n0  Jetson Orin Nano               TensorRT  ...  structured  False\n1    Raspberry Pi 5  ONNX Runtime / TFLite  ...  structured  False\n2   MCU (Cortex-M7)           TFLite Micro  ...  structured   True\n[3 rows x 5 columns]\n✅ 경량화 결정표 — Jetson Orin Nano: TensorRT · INT8 (QDQ) + FP16 | Raspberry Pi 5: ONNX Runtime / TFLite · INT8 (static PTQ) | MCU (Cortex-M7): TFLite Micro · INT8 only",
+  "check": true
+ },
+ "과제 1": {
+  "text": "  model    size_kb    acc  latency_ms\n0  FP32  1070.7822  0.846      0.7496\n1  INT8   323.4619  0.842      1.3747\n{'qdq': 128, 'uint8': 0, 'nonzero_zp': 0, 'ok': True}",
+  "check": false
+ },
+ "과제 2": {
+  "text": "                model   macs_m  params     acc  latency_ms\n0                FP32  41.2351  272474  0.8460      0.8620\n1          pruned 30%  19.6758  129359  0.1315      0.7124\n2  pruned 30% + tuned  19.6758  129359  0.8035      0.7452",
+  "check": false
+ },
+ "과제 3": {
+  "text": "{'ptq_size_x': 3.31, 'ptq_acc_drop_pp': 0.4, 'prune_macs_x': 2.096, 'prune_acc_drop_pp': 4.25, 'pass_3pp': False}\n✅ 과제 1  +30\n✅ 과제 2  +40\n✅ 과제 3  +20\n자동 채점 90 / 90  (+ 과제 4 강사 채점 10점) | 장치: cpu · 측정: ORT CPU\n정답 열람 0개 — 없음 👍",
+  "check": true
+ }
+}
