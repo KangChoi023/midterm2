@@ -203,12 +203,14 @@
     document.body.classList.toggle('dict-on', open);
     [['dictBtn', 'dict'], ['codeBtn', 'code']].forEach(([id, t]) => { const on = open && rTab === t; $('#' + id).classList.toggle('on', on); $('#' + id).setAttribute('aria-expanded', String(on)); });
     store.set('dictOn', open); store.set('rTab', rTab);
-    if (!open) return;
+    if (!open) {                                  // 접으면 처음 상태로 — 다음에 열 때 검색어 · 걸러 보기 · 넓게 보기 없이
+      rpWide(false); CODE.q = ''; CODE.view = 'list'; dictKind = dictSubj = 'all'; sideDict.innerHTML = '';
+      return;
+    }
     if (rTab === 'dict') { dictRender(); if (focus) setTimeout(() => $('.dict-q', sideDict).focus(), 0); }
     else codeRender();
   }
-  const rpWide = on => { document.body.classList.toggle('rp-wide', on); const b = $('#rpWide'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '↔ 원래대로' : '↔ 넓게'; store.set('rpWide', on); };
-  rpWide(!!store.get('rpWide', false));
+  const rpWide = on => { document.body.classList.toggle('rp-wide', on); const b = $('#rpWide'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '↔ 원래대로' : '↔ 넓게'; };
   $('#rpWide').addEventListener('click', () => rpWide(!document.body.classList.contains('rp-wide')));
   const rpRefresh = () => { if (dictIsOpen()) (rTab === 'dict' ? dictRender() : codeRender()); };
   $('#dictClose').addEventListener('click', () => rpSet(false));
