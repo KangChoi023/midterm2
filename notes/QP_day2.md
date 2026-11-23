@@ -6,6 +6,15 @@
 
 **개요**: Day 1 은 NumPy 로 양자화를 손으로 했다. 오늘은 ONNX Runtime 의 양자화 도구로 **학습 없이(PTQ)** 모델 전체를 INT8 로 바꾼다. 재료는 VB Day 2 에서 학습한 CIFAR-10 **ResNet-20**(파라미터 272,474개) — 보정용 500장 · 평가용 2,000장(클래스마다 200장). PTQ 는 두 가지: 활성값 scale 을 **실행할 때마다** 재는 dynamic, **보정 데이터로 미리** 정하는 static. 먼저 기준을 잡는다: PyTorch 정확도 = ONNX 정확도 = **0.846**. 이 과목 6일: Day 1 양자화의 수학 → **Day 2 ORT PTQ** → Day 3 PTQ 디버깅 · TensorRT INT8 → Day 4 QAT → Day 5 Pruning → Day 6 통합 경량화.
 
+**한눈에 보기**
+PTQ — 학습 없이 INT8 로
+> 학습이 끝난 FP32 모델을 다시 학습하지 않고(보정 데이터만으로) INT8 로 바꾸는 사후 양자화 — 먼저 같은 평가 함수로 FP32 기준을 잡는다
+- **dynamic — 모델만 있으면 된다**: weight 만 미리 INT8, 활성값 scale 은 실행 중 계산 (LSTM · Transformer 의 Linear 에 알맞음)
+- **static — 보정 데이터로 활성값 범위까지 미리**: Conv 위주 CNN 에 알맞음 — `quantize_static` + `CalibrationDataReader`
+- **기준 — ONNX FP32 정확도 0.846**: PyTorch 와 같은 값, 출력 최대 차이 3.1e-06, 파일 1,071 KB
+- **평가 2,000장이라 0.001 = 2장**: 작은 차이는 장수로 생각한다
+- **⚠ 보정 데이터에 정답 라벨은 필요 없다 — 범위만 잰다**: export 때 `dynamic_axes` 를 빼면 배치 250 평가가 실패
+
 **핵심 용어**
 - **PTQ(Post-Training Quantization, 학습 후 양자화)**: 다 학습한 모델을 다시 학습하지 않고 INT8 로 바꾸는 것
 - **Dynamic 양자화**: weight 만 미리 INT8, 활성값 scale 은 실행할 때마다 그 입력의 min · max 로 계산 — 보정 데이터 불필요
@@ -93,6 +102,15 @@ Day 1 은 양자화 식(scale · zp · per-channel · clipping)을 NumPy 로 하
 **키워드**: `quantize_dynamic`, `QuantType.QInt8`, `크기 1/3.5`, `bench()`, `warm-up · 평균 · p95`, `ConvInteger`, `노드 52 → 181`, `9배 느림`
 
 **개요**: `quantize_dynamic` 한 줄이면 weight 가 INT8 이 되어 파일이 1,071 → 310 KB(1/3.5)로 줄고 정확도는 0.846 → 0.8445 로 거의 그대로다. 그런데 속도를 재 보면 CPU 배치 1 에서 **FP32 보다 9배 느리다**. 노드 개수를 세 보면 이유가 보인다 — Conv 하나가 실행할 때마다 "범위 재기 → 양자화 → 정수 Conv → Cast → scale 곱" 5단계가 되어 노드가 52 → 181개로 늘었다. 결론: CNN 은 static 으로(4교시). 속도는 OT Day 3 의 `bench()`(warm-up 후 평균 · p95)로 잰다.
+
+**한눈에 보기**
+Dynamic 양자화 — 한 줄로 INT8, 그런데 느리다
+> weight 만 미리 INT8 로 두고 활성값은 실행할 때마다 그 입력의 min · max 로 양자화하는 가장 쉬운 PTQ — CNN 에서는 실행마다 붙는 단계 때문에 오히려 느려질 수 있다
+- **크기 1,071 → 310 KB, 정확도 0.846 → 0.8445**: −0.15%p = 3장
+- **노드 52 → 181**: Conv 마다 범위 재기 → DynamicQuantizeLinear → ConvInteger → Cast → Mul 5단계
+- **배치 1 약 9배 느림**: FP32 0.68 ms vs dynamic 6.08 ms · 배치 32 도 0.10배
+- **속도는 bench() 로 — warm-up 후 평균 · p95 · fps**: 스레드 1 고정, fps = 1000 / mean × 배치
+- **⚠ "INT8 이면 무조건 빠르다" 가 아니다 — 측정이 먼저**: 크기가 1/4 이 아닌 이유는 bias · scale · 그래프 정보
 
 **핵심 용어**
 - **ConvInteger**: 정수 입력 · 정수 weight 로 Conv 를 하고 INT32 를 내는 ONNX 연산자 (scale 은 따로 곱해야 함)
@@ -193,6 +211,15 @@ def bench(sess, x, n=100, warm=10):
 
 **개요**: 양자화 전에 그래프를 정리해 두면 정확도와 속도가 모두 좋아진다. 가장 중요한 정리는 **BatchNorm folding** — BN 의 채널별 곱셈 · 덧셈을 바로 앞 Conv 의 weight · bias 에 미리 합쳐, Conv → BN 두 단계를 Conv 하나로 만든다(양자화할 텐서가 줄고 오차도 준다). 직접 `fold_bn()` 을 만들어 보면 원래 출력과 차이 9.5e-07. 그런데 PyTorch exporter 는 eval 모드에서 이미 BN 을 합쳐 내보낸다(ONNX 에 BatchNormalization 0개). 남은 정리는 `quant_pre_process` — 중간 텐서 모양 정보(value_info)를 0 → 52개로 채워 준다. 양자화 입력은 항상 `*_pre.onnx`.
 
+**한눈에 보기**
+양자화 전처리 — BatchNorm folding · quant_pre_process
+> BN 을 앞 Conv 의 weight 와 bias 에 접어 넣으면(W' = W × k, b' = β − μ × k) 양자화할 텐서가 줄고 오차도 한 번 덜 생긴다 — 그 뒤 모양 정보를 채운 파일을 양자화 입력으로 쓴다
+- **k = γ / √(σ² + ε), 채널마다**: (16,) 을 `k[:, None, None, None]` 으로 weight (16, 3, 3, 3) 에 맞춘다
+- **접은 결과가 같은지 확인**: Conv+BN 출력과 `F.conv2d(x, W', b')` 의 최대 차이 9.5e-07
+- **PyTorch exporter 는 eval 모드에서 이미 접는다**: BN 모듈 21개 → ONNX BatchNormalization 0개
+- **quant_pre_process — value_info 0 → 52**: 노드 수 · 정확도는 그대로, 양자화 입력은 항상 `rn20_pre.onnx`
+- **⚠ eval 모드 전용**: train 모드로 export 하면 BN 이 남는다 — 접을 때는 running 평균 · 분산
+
 **핵심 용어**
 - **BatchNorm folding(BN 접기)**: BN 의 γ · β · μ · σ² 를 앞 Conv 의 W · b 에 미리 합치는 것 — 추론 전용(eval)
 - **value_info**: ONNX 그래프의 중간 텐서마다 붙은 모양 · 자료형 정보
@@ -281,6 +308,16 @@ $$\text{BN}(Wx) = \gamma \frac{Wx - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta = \
 **키워드**: `quantize_static`, `CalibrationDataReader`, `get_next() · rewind()`, `QDQ · U8/S8 · per-channel`, `정확도 0.846 → 0.845`, `scale 0.016141 · zp 123`, `어두운 보정 → 0.684`
 
 **개요**: static 양자화는 **보정 데이터**를 모델에 흘려 활성값 텐서마다 범위를 재고, 그 범위로 scale · zero_point 를 미리 정해 파일에 넣는다. 보정 데이터는 `CalibrationDataReader` 를 상속한 클래스(`get_next()` 가 `{"input": 배치}` 를 하나씩, 끝나면 `None`)로 건넨다. 결과: 정확도 0.846 → **0.845**(−0.1%p), 크기 1,071 → 322 KB. 파일 속 입력 scale · zp(0.016141 · 123)는 Day 1 의 `my_quant.calc_scale_zp` 로 계산한 값과 **똑같다**. 보정 데이터를 일부러 어둡게 하면 정확도가 **0.684** 로 무너진다 — 보정 데이터는 "많이" 보다 "현장 입력과 비슷하게".
+
+**한눈에 보기**
+Static 양자화 — 보정 데이터로 범위를 미리 고정
+> 보정 데이터로 활성값 텐서마다 범위를 미리 재서 scale · zp 를 파일에 고정한다 — 실행 중에는 계산하지 않아 빠르다
+- **정확도 0.846 → 0.845 (−2장), 크기 322 KB**: QDQ · 활성값 U8 · weight S8 · per-channel
+- **CalibrationDataReader — `get_next()` 가 배치를 하나씩, 끝나면 None**: 보정 500장 ÷ 50 = 10 배치
+- **보정은 수백 장이면 충분**: 10장 0.8445 · 500장 0.845
+- **파일 속 scale 은 Day 1 식 그대로**: 입력 범위 −1.9895 ~ 2.1265 → scale 0.016141, zp 123
+- **어두운 사진으로 보정하면 0.845 → 0.684**: 범위가 좁게 잡혀 실제 밝은 값이 모두 잘린다 — 낮 · 밤을 섞어 보정
+- **⚠ reader 는 quantize_static 마다 새로 만든다**: None 을 안 돌려주면 끝나지 않음 · 보정 · 평가 · 배포 전처리는 같게
 
 **핵심 용어**
 - **CalibrationDataReader**: ORT 가 보정 데이터를 받는 틀 — `get_next()` (다음 배치 사전, 끝나면 None) · `rewind()` (처음으로)
@@ -382,6 +419,15 @@ quantize_static("rn20_pre.onnx", "rn20_int8.onnx", CifarReader(X_cal),
 
 **개요**: 같은 static INT8 이라도 ONNX 그래프에 담는 방식이 두 가지다. **QDQ** 는 원래 Conv 를 그대로 두고 앞뒤에 QuantizeLinear · DequantizeLinear 를 끼운다(노드 145개, 읽기 쉽고 TensorRT 등의 표준 입력). **QOperator** 는 Conv 자체를 QLinearConv 같은 정수 연산자로 바꾼다(노드 35개, ORT CPU 가 그대로 실행). 정확도는 둘 다 0.845. QDQ 의 weight 는 INT8 initializer → DequantizeLinear → Conv 로 연결되고 scale 이 채널 수(16개)만큼 — Day 1 의 대칭 per-channel 그대로다. 그리고 x86 CPU 는 **활성값 U8 × weight S8** 조합이 빠르다: 활성값까지 S8 로 하면 FP32 보다도 느려졌다.
 
+**한눈에 보기**
+QDQ vs QOperator · U8 vs S8 — 파일 형식과 자료형
+> QDQ 는 원래 그래프에 Quantize · Dequantize 노드를 끼우고, QOperator 는 Conv 자체를 정수 연산자(QLinearConv)로 바꾼다 — 같은 scale 이라 정확도는 같고, 속도는 활성값 자료형이 가른다
+- **QDQ 145노드 vs QOperator 35노드**: QDQ 는 원래 Conv 가 보여 읽기 쉽고 TensorRT 등 다른 런타임의 표준
+- **둘 다 정확도 0.845**: 같은 scale · zp
+- **weight 는 INT8 initializer + per-channel scale**: q × scale 로 되돌리면 3교시 W' 와 최대 오차 0.00146 ≤ scale/2
+- **x86 은 활성값 U8 × weight S8 이 빠르다**: 배치 1 QDQ U8/S8 0.386 ms (FP32 의 1.92배 빠름) · S8/S8 1.310 ms (3.4배 느림)
+- **⚠ QDQ 의 Conv 는 FP32 계산이 아니다**: 런타임이 Q-Conv-DQ 를 묶어 정수 연산으로 — U8/S8 결론은 x86 CPU 의 것, 배포 장치에서 다시
+
 **핵심 용어**
 - **QDQ 형식**: 연산자 앞뒤에 Q(실수 → 정수) · DQ(정수 → 실수) 노드를 끼운 그래프 — 런타임이 Q-Conv-DQ 를 묶어(fuse) 정수 연산으로 실행
 - **QOperator 형식**: QLinearConv · QLinearAdd 처럼 정수 입출력 연산자로 바꾼 그래프
@@ -480,6 +526,15 @@ c_qdq, c_qop = op_count("rn20_int8.onnx"), op_count("rn20_qop.onnx")
 
 **개요**: Day 1 6교시에서 범위를 어디까지 잡을지(clipping) 직접 실험했다. ORT 의 `calibrate_method` 가 그 선택이다: MinMax(본 값 전부) · Percentile(드문 큰 값을 잘라냄, 기본 99.999%) · Entropy(원래 분포와 양자화 분포의 KL 차이가 가장 작은 범위). 3가지 × per-channel 2가지 = 6개 모델을 만들면 정확도는 0.8435 ~ 0.8465 — **차이 0.30%p(6장)** 로 거의 같다. 하지만 실제로 고른 scale 을 열어 보면 Percentile 은 활성값 34개의 범위를 평균 18% 줄였고(가장 많이 잘린 텐서는 67% 로), Entropy 는 이 실행에서 34개 모두 MinMax 와 같은 scale 이었다. 정확도만 보지 말고 **scale 도 열어 본다**.
 
+**한눈에 보기**
+Calibration 방법 — MinMax · Percentile · Entropy
+> 보정 방법은 Day 1 의 clipping 선택 — 본 값 전체(MinMax), 드문 큰 값 잘라내기(Percentile), 분포 차이 최소(Entropy) 중 어디까지를 범위로 잡을지 정한다
+- **MinMax — 기본값, outlier 에 약하다**: 본 값의 최솟값 ~ 최댓값
+- **Percentile — 범위를 평균 0.819배로**: 가장 많이 줄인 곳은 Relu 출력 0.665배, 입력 · logits 는 1.0
+- **Entropy — 이 실행에서는 MinMax 와 같은 범위**: 34개 scale 비율 모두 1.000 (onnxruntime 1.32)
+- **정확도 차이는 0.30%p (6장)**: 양자화에 강한 모델은 방법 차이가 작다
+- **⚠ 같은 이름의 방법도 버전 · 설정에 따라 다르게 동작한다**: scale 을 열어 확인
+
 **핵심 용어**
 - **calibrate_method**: 보정 데이터에서 활성값 범위를 정하는 방법 (`quantize_static` 의 인자)
 - **Percentile 보정**: 값의 아주 큰 쪽 일부(기본 0.001%)를 잘라 범위를 좁히는 방법
@@ -572,6 +627,15 @@ def act_scales(path):
 
 **개요**: 오늘 만든 5개 모델(FP32 · dynamic · QDQ U8/S8 · QDQ S8/S8 · QOperator U8/S8)을 **같은 조건**(스레드 1 · 같은 입력 · warm-up)으로 재서 한 표에 모은다. 지연 시간(배치 1)과 처리량(배치 32)을 따로 잰다. 결과: static INT8(U8/S8)은 크기 약 1/3 · 처리량 약 2.2 ~ 2.4배 · 정확도 손실 0.1%p, dynamic 은 오히려 느림. 이 표를 `qp_baseline.csv` 에 `day` 열을 붙여 쌓는다 — OT 과정의 `ot_baseline.csv` 처럼, Day 3 이후 TensorRT INT8 · QAT · Pruning 행이 이어진다.
 
+**한눈에 보기**
+성능 측정 — 크기 · 정확도 · 지연 · 처리량을 한 표에
+> 스레드 1 · 같은 입력 · warm-up 후로 조건을 맞춰 크기 · 정확도 · 지연(배치 1) · 처리량(배치 32)을 재고, qp_baseline.csv 에 Day 별로 쌓는다
+- **static INT8 U8/S8 — 처리량 2.2배**: 1,245 → 2,758 장/초, 크기 322 KB, 정확도 −0.1%p
+- **QOperator U8/S8 — 2.4배, 배치 1 0.342 ms**: 가장 빠르다
+- **dynamic — FP32 의 0.14배**: 170 장/초, 배치 1 6.18 ms
+- **qp_baseline.csv 에 이어 붙이기**: day · model · quant · size_kb · acc · mean_ms · p95_ms · fps_b32 — (day, model) 중복 제거
+- **⚠ 지연은 잴 때마다 흔들린다 (0.386 ↔ 0.480 ms)**: 결정은 여유를 두고 · `index=False` 를 빼면 `Unnamed: 0` 열
+
 **핵심 용어**
 - **지연 시간(latency)**: 한 장(배치 1)을 처리하는 데 걸리는 시간 — 실시간 응답에 중요
 - **처리량(throughput)**: 초당 처리 장수(배치 32) — 많은 이미지를 한꺼번에 처리할 때 중요
@@ -663,6 +727,15 @@ out.to_csv("qp_baseline.csv", index=False)
 **키워드**: `make_ptq()`, `evaluate()`, `16가지 조합 그리드`, `손실 1%p 이내 → 가장 빠른 것`, `rn20_best.onnx`, `클래스별 정확도`, `과제 6 해석`
 
 **개요**: 과제 — ResNet-20 을 현장 PC(x86 CPU)에 배포한다. **정확도 손실 1%p 이내**에서 배치 1 지연 시간이 가장 짧은 PTQ 설정을 찾아 `rn20_best.onnx` 로 저장한다. PTQ 설정 4가지 축 — 형식(QDQ · QOperator) × 활성값(U8 · S8) × 보정 방법(MinMax · Percentile) × granularity(pc · pt) = **16가지**를 모두 만들고 재서 규칙으로 고른다. 16개 정확도는 0.8435 ~ 0.8465 로 모두 통과 — 속도를 가른 것은 **활성값 U8 / S8**(U8 0.34 ~ 0.49 ms, QOperator S8 은 4.5 ~ 5.1 ms). 전체 정확도와 함께 **클래스별 정확도**도 확인한다. 과제 6개(100점) 중 1 ~ 5 는 자동 채점, 6 은 강사 채점 · 정답 보기 셀 없음.
+
+**한눈에 보기**
+최적 PTQ 설정 찾기 — 규칙을 먼저, 그리드로
+> 형식 × 활성값 자료형 × 보정 방법 × granularity 16가지를 모두 재고, 미리 정한 규칙(손실 ≤ 1%p → 가장 빠른 것)으로 고른다
+- **16개 모두 0.8435 ~ 0.8465**: 정확도로는 못 가른다 → 속도가 결정
+- **속도는 활성값 자료형이 가른다**: U8 0.34 ~ 0.49 ms · QDQ S8 1.07 ~ 1.31 · QOperator S8 4.5 ~ 5.1 ms
+- **이 실행의 선택 — QDQ · U8 · MinMax · per-tensor**: 0.341 ms · acc 0.846
+- **클래스별 정확도도 확인**: FP32 cat 0.695 (가장 낮음) · best 는 클래스마다 −0.5 ~ +0.5%p (200장 중 1장)
+- **⚠ 1 · 2위 차이 0.001 ms 는 측정 흔들림보다 작다**: 배포 장치에서 다시 재고, 놓치면 안 되는 클래스는 하락 한도를 규칙에
 
 **핵심 용어**
 - **그리드 탐색(grid search)**: 설정 후보를 모든 조합으로 만들어 재 보고 고르는 방법

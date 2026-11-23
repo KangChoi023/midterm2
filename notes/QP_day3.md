@@ -6,6 +6,15 @@
 
 **개요**: Day 2 설정 그대로 INT8 로 바꾸면 ResNet-20 은 0.846 → 0.8445 로 멀쩡한데, 강사가 준 **BadQuantNet** 은 0.846 → **0.2955** 로 무너진다. 두 모델은 FP32 출력 차이가 3.8e-06 — **같은 함수**다. 다른 것은 중간 텐서의 범위: 블록마다 bn1 출력(ReLU 직전)의 채널별 최댓값을 forward hook 으로 재 보면, 블록 3개(layer1.1 · layer2.1 · layer3.1)에서 채널 하나가 다른 채널보다 **250 ~ 390배** 크다. 활성값은 **per-tensor**(텐서 하나에 scale 하나)라 그 outlier 채널에 scale 이 맞춰지고, 나머지 15채널은 256칸 중 **2칸**만 쓴다. 오늘의 질문: "어디가 · 왜 망가졌나 → 어떻게 고치나 → TensorRT 로 어떻게 배포하나".
 
+**한눈에 보기**
+양자화에 민감한 곳 — outlier 채널이 정확도를 무너뜨린다
+> 같은 8비트라도 범위가 넓거나 · 채널마다 다르거나 · 정보가 적은 텐서에 오차가 몰린다 — 활성값은 per-tensor 라 채널 하나가 크면 나머지가 몇 칸에 뭉개진다
+- **FP32 는 같은데 INT8 은 0.8445 vs 0.2955**: ResNet-20 과 BadQuantNet — 출력 차이 3.8e-06 인 같은 FP32 모델
+- **범인은 채널 3 의 최대/중앙값 250 ~ 390배**: layer1.1 247.9 · layer2.1 344.8 · layer3.1 387.2 (나머지 1.4 ~ 1.9)
+- **나머지 15채널이 256칸 중 2칸만 쓴다**: layer1.1 scale 1.81 (outlier 포함) vs 0.0104 (제외) → 2칸 vs 228칸
+- **민감 지점 — 첫 Conv · 마지막 출력 · depthwise · outlier 채널**: FP16 유지 · per-channel · FP32 로 남기기 · 채널 균등화
+- **⚠ weight 는 per-channel 로 피하지만 활성값은 per-tensor**: 그래서 더 위험하고, 오차는 뒤로 갈수록 누적된다
+
 **핵심 용어**
 - **양자화 민감 지점**: 첫 Conv · 마지막 분류기 · 탐지 head · depthwise Conv · SiLU/Hardswish 뒤 · outlier 채널 — INT8 오차가 크게 나는 곳
 - **outlier 채널**: 다른 채널보다 값이 수백 배 큰 채널 하나 — 텐서 전체 scale 을 독차지한다
@@ -101,6 +110,15 @@ Day 2 는 "PTQ 하면 정확도가 거의 그대로" 였다. 그런데 실제 �
 **키워드**: `SQNR`, `20·log10(‖x‖/‖x−x̂‖)`, `1% 오차 = 40 dB`, `cosine similarity`, `qdq_loss_debug`, `_DequantizeLinear_Output`, `누적 비교`, `단독 민감도`, `범인 3블록`
 
 **개요**: 어느 layer 가 범인인지 찾으려면 FP32 텐서와 INT8 텐서가 "얼마나 비슷한지" 재는 지표가 필요하다 — **SQNR**(신호 대 양자화 잡음, dB)과 **cosine similarity**. 찾는 방법은 둘: (1) **누적 비교** — FP32 · INT8 모델을 끝까지 돌려 같은 위치의 중간 텐서를 비교(`qdq_loss_debug`). layer1.1 에서 35 → 9.6 dB 로 떨어진 뒤 계속 낮아 "어디서부터" 무너졌는지 보인다. (2) **단독 민감도** — 블록 하나만 INT8 로 바꾼 모델을 블록마다 만들어 최종 logits 비교. 범인 3개(layer1.1 10.4 · layer2.1 7.7 · layer3.1 3.5 dB)만 20 dB 아래로 또렷하다 — 1교시 outlier 위치와 정확히 같다.
+
+**한눈에 보기**
+Layer 별 오차 분석 — SQNR 로 범인 찾기
+> SQNR = 20·log10(‖x‖ / ‖x − x̂‖) dB 로 layer 마다 FP32 와 INT8 출력을 비교한다 — 누적 비교로 "어디서부터", 단독 민감도로 "누가" 범인인지 찾는다
+- **8비트 이상적이면 약 40 dB, 20 dB 아래면 의심**: 1% 오차 = 40.0 dB · 10% 노이즈 = 20.2 dB
+- **cosine 은 방향만 본다**: 크기를 3배 해도 1 — 0.99 아래면 의심
+- **누적 — layer1.1 에서 9.6 dB 로 무너진다**: stem 37.8 · layer1.0 34.3 → 그 뒤로는 모두 낮음
+- **단독 — 범인 셋**: layer1.1 10.4 · layer2.1 7.5 · layer3.1 3.6 dB, 나머지 32 ~ 49 dB
+- **⚠ 누적만으로는 뒤쪽 범인이 안 보인다**: 이미 망가진 입력을 받기 때문 · 분모 1e-12, float64 로 계산
 
 **핵심 용어**
 - **SQNR(Signal-to-Quantization-Noise Ratio)**: 20·log10(‖x‖ / ‖x − x̂‖) dB — 신호 크기 대비 오차 크기, 클수록 좋음
@@ -205,6 +223,15 @@ def cosine(x, y):
 
 **개요**: 범인을 찾았으면 그 부분만 양자화하지 않고 FP32 로 남긴다 — `quantize_static(..., nodes_to_exclude=[노드 이름])`. 대부분 INT8 · 일부 FP32 인 모델이 **mixed precision**. 어떤 노드를 빼야 할까? outlier 텐서는 conv1 의 출력 → ReLU → conv2 의 입력으로 흐르므로 **세 노드를 함께** 빼야 한다(conv2 만 빼면 0.2905 그대로). 범인 블록을 나쁜 것부터 0 · 1 · 3개 빼면 정확도 0.2955 → 0.6290 → **0.8440**(FP32 0.846 에 0.2%p 차이로 회복), 지연 시간 0.355 → 0.436 → 0.559 ms(FP32 0.679 ms 보다는 여전히 빠름), 크기 322 → 535 → 598 KB.
 
+**한눈에 보기**
+Mixed Precision — 범인만 FP32 로
+> 대부분은 INT8 로 두고 범인 노드만 `nodes_to_exclude` 로 FP32 에 남겨, 정확도 · 속도 · 크기를 표로 보고 결정한다
+- **3블록(9노드) 제외 → 0.8440**: FP32 0.846 에 0.2%p — 0.559 ms · 598 KB 로 FP32(0.679 ms · 1,074 KB)보다 빠르고 작다
+- **1블록만 → 0.6290, 0블록 → 0.2955**: 빼는 블록 수에 따라 단계적으로 회복
+- **outlier 텐서가 지나는 길 전체를 뺀다**: 생산자 conv1 · 중간 Relu · 소비자 conv2 — conv2 만 빼면 0.2905 그대로
+- **다른 처방 — 채널 균등화**: 큰 채널 × 1/k, 다음 weight × k (ReLU 는 양수 배 통과) — LLM 의 SmoothQuant 와 같은 아이디어
+- **⚠ 빼는 곳마다 Q · DQ 변환이 생겨 느려진다**: "그래도 FP32 보다 빠른가" 를 꼭 잰다 · 노드 이름은 그래프에서 확인
+
 **핵심 용어**
 - **Mixed precision(혼합 정밀도)**: 대부분은 INT8, 민감한 layer 만 FP32 · FP16 으로 남긴 모델
 - **nodes_to_exclude**: `quantize_static` 에 넘기는 "양자화하지 않을 노드 이름" 목록
@@ -297,6 +324,15 @@ ptq_ort("bad_pre.onnx", "bad_mix3.onnx", exclude=ex)
 **키워드**: `implicit · calibrator (deprecated)`, `explicit · QDQ ONNX`, `S8 · 대칭 · zero_point 0`, `trt_check()`, `make_trt_int8()`, `reduce_range=True · 7비트 weight`, `ActivationSymmetric`, `BuilderFlag.INT8`, `INT8 + FP16 fallback`
 
 **개요**: TensorRT 로 INT8 엔진을 만드는 길은 둘 — **implicit**(FP32 ONNX + calibrator 클래스, TensorRT 가 빌드 중에 범위를 재고 INT8 위치도 정함 · TensorRT 10 에서 deprecated)과 **explicit**(scale 이 이미 들어 있는 **QDQ ONNX** 를 넣음 · Q/DQ 가 있는 곳만 INT8 · 권장). 조건: TensorRT INT8 은 **부호 있는 INT8(S8) · 대칭(zero_point = 0)** 만 받는다. Day 2 의 x86 최적 설정(활성값 U8 · 비대칭)은 `trt_check` 에서 불합격(uint8 zp 68개 · 0 아닌 zp 26개). `make_trt_int8` — QInt8 + `ActivationSymmetric` · `WeightSymmetric` + `reduce_range=True`(weight 7비트 ±64, Day 2 4교시) — 로 만들면 합격 · 정확도 0.8420. 빌드는 OT Day 4 `build_engine` 에 `BuilderFlag.INT8` 한 줄. FP16 을 함께 켜면 양자화하지 않은 layer 는 FP16.
+
+**한눈에 보기**
+TensorRT INT8 — explicit(QDQ) 과 S8 · 대칭 조건
+> implicit 은 TensorRT 가 빌드 중에 보정 · INT8 위치를 정하고, explicit 은 QDQ ONNX 의 Q/DQ 가 있는 곳만 INT8 로 돈다 — TensorRT 10 은 explicit 권장
+- **explicit 은 mixed precision 이 쉽다**: Q/DQ 를 빼면 끝 (3교시 그대로) — Day 4 QAT 모델도 같은 길
+- **TensorRT INT8 은 zp = 0 · 부호 있는 INT8 만**: Day 2 의 활성값 U8(비대칭)은 그대로 못 넣는다
+- **trt_check — Day 2 모델은 uint8 68 · nonzero_zp 26 → 불합격**: QInt8 + 대칭으로 다시 만들면 합격, ORT 정확도 0.8420
+- **reduce_range=True → weight |q| ≤ 64 (7비트)**: bias 는 FP32 로 두고 TensorRT 가 처리
+- **⚠ TensorRT 엔진 입력은 배치 고정이 다루기 쉽다**: `export_onnx(..., batch=1)` · reader 도 bs=1
 
 **핵심 용어**
 - **implicit 양자화**: FP32 ONNX + calibrator(`IInt8EntropyCalibrator2`) 로 TensorRT 가 빌드 중 범위를 정하는 방식 — TensorRT 10 deprecated
@@ -395,6 +431,16 @@ if int8:
 
 **개요**: 같은 ResNet-20 으로 엔진 세 개 — FP32(`rn20_b1_pre.onnx`, 플래그 없음) · FP16(같은 ONNX + FP16) · INT8(`rn20_trt_int8.onnx` + INT8 + FP16) — 를 만들어 **정확도 · 지연 시간 · 크기**를 한 표로 비교한다. 엔진 검증은 두 단계: (1) 같은 입력에서 ORT INT8 과 출력을 비교 — 런타임마다 연산 순서 · 융합이 달라 숫자가 똑같지 않으므로 **허용 오차(tolerance)**와 **예측 일치율**을 본다(Polygraphy 와 같은 생각). (2) 엔진의 layer 마다 실제 실행 정밀도(INT8 · FP16 · FP32)를 센다. GPU 가 없는 이 실행(ORT CPU): FP32 0.8460 · 0.70 ms · 1.05 MB vs INT8 0.8420 · 1.28 ms · 0.32 MB — x86 CPU 는 활성값 S8 이 느려 INT8 이 오히려 느리다.
 
+**한눈에 보기**
+INT8 엔진 빌드 — FP32 · FP16 · INT8 을 같은 자로
+> 같은 모델로 FP32 · FP16 · INT8 엔진을 만들어 정확도 · 배치 1 지연 · 파일 크기를 한 표에 두고, 출력 비교와 layer 정밀도로 검증한다
+- **INT8 엔진 = QDQ ONNX + int8 · fp16 플래그**: Q/DQ 없는 곳은 FP16
+- **이 실행(ORT CPU) — INT8 0.8420 · 1.28 ms · 0.32 MB**: FP32 0.8460 · 0.70 ms · 1.05 MB, GPU 가 없어 FP16 은 NaN
+- **작은 모델 · 배치 1 은 INT8 이득이 작게 보인다**: 복사 · 실행 준비 시간이 대부분 (8교시 YOLOv8n 에서 더 잘 보임)
+- **검증 ① 출력 비교 — 최대 차이 + 예측 일치율**: 300장, GPU 면 일치 ≥ 0.95 → ✅
+- **검증 ② layer_precisions**: 엔진 정보의 `Int8` · `Half` 글자로 layer 마다 실제 정밀도를 센다
+- **⚠ layer 별 정보는 빌드할 때 `ProfilingVerbosity.DETAILED`**: 숫자는 장치마다 다르다
+
 **핵심 용어**
 - **허용 오차(tolerance)**: 두 런타임 출력을 비교할 때 "이 정도 차이는 같다" 고 보는 범위 (`--atol` · `--rtol`)
 - **argmax 일치율**: 두 모델의 예측 클래스가 같은 비율 — 최대 차이와 함께 본다
@@ -479,6 +525,15 @@ infer = TRTInfer(build_once(src, f"rn20_{prec.lower()}.engine", fp16=f16, int8=i
 **키워드**: `output0 (1, 84, 8400)`, `박스 0~640 + 점수 0~1`, `scale 5.166`, `점수 0칸 → 사람 0명`, `Detect head 후처리`, `/model.22/ · cv2 · cv3`, `YoloReader`, `보정 43장 / 평가 127장`, `IoU 0.966`
 
 **개요**: YOLOv8n 출력 `output0` (1, 84, 8400) 은 한 텐서에 **박스 4줄(0 ~ 640 픽셀)**과 **클래스 점수 80줄(0 ~ 1)**을 함께 담는다(마지막 Concat). 이 텐서를 대칭 INT8 scale 하나로 양자화하면 scale = **5.166** — 점수 0 ~ 1 은 칸 하나의 0.19배라 모두 0 으로 반올림되어 사람을 **한 명도** 못 찾는다(FP32 2명 → 0명). 그래서 Detect head 의 **후처리 부분**(DFL · Sigmoid · 박스 디코딩 · Concat 등 24노드)은 양자화하지 않고, 무거운 Conv(cv2 · cv3 갈래)는 INT8 로 둔다 → 다시 2명 · FP32 박스와 IoU 중앙값 **0.966**. 데이터는 Penn-Fudan 170장을 보정 43장 / 평가 127장으로 **겹치지 않게** 나눈다.
+
+**한눈에 보기**
+탐지 모델 양자화 — YOLOv8n Detect head 의 함정
+> output0 은 박스(0 ~ 640)와 점수(0 ~ 1)가 섞인 텐서 — scale 하나로 양자화하면 점수가 0칸이 되어 사람을 0명 찾는다, 그래서 head 후처리만 FP16 으로 남긴다
+- **scale = 656 / 127 = 5.166**: 점수 0.9 / 5.166 = 0.17 → 반올림 0
+- **전체 양자화 → 사람 2명이 0명**: trt_check 는 합격 — 형식은 맞아도 결과가 틀릴 수 있다
+- **head 후처리 24노드만 제외**: `/model.22/` 의 Reshape · Concat · Sigmoid · Softmax … — 무거운 cv2 · cv3 Conv 는 INT8
+- **결과 — 사람 2명, 짝 IoU 중앙값 0.966**: 크기 12.26 → 3.43 MB
+- **⚠ 범위가 다른 값이 섞이는 출력은 대표 민감 지점**: 보정 43장 · 평가 127장은 같은 사진을 쓰지 않는다
 
 **핵심 용어**
 - **Detect head**: YOLOv8 의 마지막 모듈(`/model.22/`) — cv2(박스) · cv3(클래스) Conv 갈래 + 후처리(DFL · 디코딩 · Concat)
@@ -569,6 +624,15 @@ yolo_int8 = ort_infer("yolov8n_int8.onnx")
 
 **개요**: 탐지 모델 정확도는 **AP@0.5**(IoU 0.5 기준 AP)와 **mAP@0.5:0.95**(IoU 0.5 ~ 0.95, 10단계 평균)로 잰다 — 박스를 낮은 conf(0.01)까지 모두 받아 precision-recall 곡선의 면적을 구한다(VB Day 4 함수). 검증 규칙 3가지: 평가는 **보정에 쓰지 않은 사진**, FP32 · FP16 · INT8 을 **같은 함수 · 같은 사진**, 기준은 **FP32 대비 몇 %p**. 평가 127장: FP32 AP50 0.9719 · mAP 0.8375 → INT8 0.9666 · 0.8149 (−0.53 · −2.26%p — 교안 "AP50 1%p 안팎 · mAP 2~3%p"). 보정 43장으로 재면 INT8 − FP32 차이가 AP50 −1.49%p 로 평가 세트와 전혀 다르게 나온다 — 어느 사진으로 쟀는지가 결과를 바꾸므로 보정에 쓴 사진은 평가에서 뺀다. `make_infer` 하나로 엔진(TensorRT) · ORT 추론기를 같은 모양으로 바꿔 끼운다.
 
+**한눈에 보기**
+탐지 정확도 검증 — AP50 · mAP, 보정과 평가 분리
+> conf 0.01 까지 박스를 남겨 정답과 짝지어 AP50 · mAP 를 재고, 보정에 쓰지 않은 사진으로만 평가한다
+- **FP32 AP50 0.9719 · mAP 0.8375 → INT8 0.9666 · 0.8149**: AP50 −0.53%p, mAP −2.26%p
+- **mAP 가 더 예민하다**: 박스가 조금만 어긋나도 IoU 0.9 · 0.95 기준에서 놓친다
+- **보정 사진으로 재면 결론이 뒤집힌다**: 보정 43장에서는 AP50 −1.49%p · mAP −1.47%p
+- **같은 detect · 같은 AP 함수 · 같은 사진, 엔진만 바꾼다**: `make_infer`
+- **⚠ conf 0.25 로 자르면 AP 가 낮게 나온다**: 평가는 0.01 · 127장이라 1%p 는 사진 몇 장 차이일 수 있다
+
 **핵심 용어**
 - **AP@0.5 (AP50)**: IoU ≥ 0.5 를 맞힌 것으로 보고 구한 precision-recall 곡선의 면적
 - **mAP@0.5:0.95**: IoU 기준 0.5, 0.55, …, 0.95 의 AP 10개 평균 — 박스 위치 정밀도까지 본다 (더 예민)
@@ -658,6 +722,15 @@ def make_infer(prec, onnx_path, fp16=False, int8=False):
 **키워드**: `엔진 4개 (FP32 · FP16 · INT8 · INT8-mixed)`, `mixed_nodes 31개`, `measure()`, `review_df`, `추천 규칙`, `deploy_review.csv`, `qp_baseline.csv`, `짝 IoU · 사람 수 차이`, `배포 장치에서 다시 측정`
 
 **개요**: 상황 — 침입 감지 카메라(OT Day 5)를 GPU 장치에 배포한다. YOLOv8n 엔진 4개(FP32 · FP16 · INT8(head 제외) · INT8-mixed(head + 첫 Conv + 마지막 출력 Conv 6개 제외, 31노드))를 **같은 자**(지연 · FPS · AP50 · mAP · 크기)로 재서 심사표를 만들고, **규칙을 먼저 정해** 하나를 추천한다: AP50 ≥ FP32 − 0.01 이고 mAP ≥ FP32 − 0.02 인 엔진 중 가장 빠른 것. 추천 엔진은 FP32 와 박스를 직접 비교(짝 IoU · 사람 수)해 기능 점검까지 한다. 이 실행(ORT CPU)에서는 INT8(head 제외)이 mAP 한도(−2%p)를 넘어 탈락하고, INT8-mixed 는 통과하지만 S8 활성값 때문에 느려 **FP32 추천** — GPU(TensorRT)에서는 결과가 달라질 수 있으므로 배포 장치에서 다시 재야 한다.
+
+**한눈에 보기**
+INT8 배포 심사서 — 먼저 정한 규칙으로 고른다
+> 엔진 4개를 지연 · FPS · AP50 · mAP · 크기로 재고, AP50 ≥ FP32 − 0.01 · mAP ≥ FP32 − 0.02 를 만족하는 것 중 가장 빠른 것을 고른다
+- **INT8 은 mAP 0.8149 < 0.8175 로 탈락**: INT8-mixed 는 AP50 0.9734 · mAP 0.8279 로 통과
+- **INT8-mixed = head 24 + 첫 Conv + 출력 Conv 6개 = 31노드 제외**: AP50 +0.69%p · mAP +1.30%p, 크기 3.43 → 3.51 MB
+- **이 실행의 추천은 FP32 (29.9 ms)**: ORT CPU 에서 S8 INT8 은 79 ~ 90 ms 로 느리다 — GPU 가 없어 FP16 은 NaN
+- **기능 점검 — 사람 수 · 짝 IoU**: 평가 20장에서 FP32 와 비교 — 형식이 맞아도 0명인 사고를 잡는다
+- **⚠ TensorRT GPU 에서는 순위가 바뀔 수 있다**: 배포 장치에서 다시 빌드 · 측정
 
 **핵심 용어**
 - **배포 심사서**: 후보 엔진들을 같은 기준으로 잰 표 + 규칙에 따른 추천 + 근거

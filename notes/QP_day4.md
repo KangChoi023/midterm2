@@ -6,6 +6,15 @@
 
 **개요**: Day 2 · 3 에서 ResNet-20 은 8비트 PTQ 로 0.846 → 0.84x — 거의 손실이 없었다. 그런데 메모리 · 전력을 더 줄이려고 weight 를 4 · 3 · 2비트로 내리면? 채널별 대칭 양자화 `quant_weight(w, bits)` 로 모든 Conv · Linear weight 만 바꿔(활성값은 FP32) 재면 8비트 **0.8435** · 6비트 0.844 · 4비트 **0.8355** · 3비트 **0.730** · 2비트 **0.1205** — 4비트 아래에서 급격히 무너진다. 3비트면 한 채널이 쓸 수 있는 값이 7개(−3 ~ 3)뿐이기 때문. 오늘의 기준선은 8비트 PTQ(Day 3 의 TensorRT 용 S8 대칭 `make_trt_int8`): FP32 0.846 → **0.842** · 1,074 → 323 KB. 저비트 · 작은 모델 · depthwise 처럼 PTQ 가 무너지는 곳에서 쓰는 처방이 **QAT** — 이미 학습된 모델에 양자화를 끼워 넣고 짧게 fine-tuning 한다.
 
+**한눈에 보기**
+PTQ 의 한계 — 비트를 줄이면 무너진다
+> 칸 수 = 2^bits 라서 3비트 대칭이면 채널마다 값이 7개뿐 — 반올림 오차가 weight 크기의 30% 에 이르러 PTQ 로는 정확도가 무너지고, 학습 중에 양자화를 겪게 하는 QAT 가 필요해진다
+- **weight-only PTQ — 8비트 0.8435, 4비트 0.8355, 3비트 0.730, 2비트 0.1205**: FP32 0.846, 활성값은 FP32 그대로인데도
+- **원인은 weight 칸 수**: 채널 0 이 쓰는 값 98 · 12 · 6 · 3개 → 상대 오차 0.007 · 0.127 · 0.302 · 0.782
+- **8비트는 PTQ 로 충분**: ORT PTQ INT8 0.842 (−0.4%p), 1,074 → 323 KB
+- **QAT 가 필요한 경우 — 저비트 · 작은 모델 · depthwise**: weight 하나의 역할이 크고 범위 차이가 크다
+- **⚠ outlier 모델은 QAT 로도 잘 안 고쳐진다**: BadQuantNet 0.30 → 0.50 — mixed precision · 채널 균등화가 낫다
+
 **핵심 용어**
 - **QAT(Quantization-Aware Training, 양자화 인식 학습)**: 학습 forward 에 양자화(fake quant)를 끼워 넣어, 모델이 양자화 오차를 미리 겪으며 weight 를 조정하게 하는 방법
 - **weight-only PTQ**: weight 만 저비트로 바꾸고 활성값은 FP32 로 두는 PTQ — 비트 수의 영향만 따로 볼 때
@@ -109,6 +118,16 @@ Day 2 · 3 의 결론은 "ResNet-20 은 8비트 PTQ 로 충분" 이었다. 그�
 **키워드**: `fake quant`, `quantize → dequantize`, `x̂ 는 FP32 · 값은 2^bits 개`, `FakeQuant(nn.Module)`, `per_channel (weight · 대칭 · 매번 scale)`, `활성값 (텐서 하나 · 비대칭 · 보정 범위 고정)`, `register_buffer`, `round 기울기 0`
 
 **개요**: 학습은 FP32 로 해야 기울기가 흐른다. 그래서 QAT 는 진짜 정수 연산 대신 **양자화했다가 바로 되돌린 FP32 값** — fake quant: q = clamp(round(x/s) + zp, qmin, qmax), x̂ = (q − zp) · s. x̂ 는 FP32 지만 2^bits 개의 값만 가지므로 모델은 "양자화된 세상" 을 본다. weight 는 FP32 로 계속 학습 · 저장되고, 진짜 INT8 은 배포할 때 만든다. 이것을 모듈 `FakeQuant` 로 만든다 — weight(per_channel)는 채널별 대칭 · scale 을 매번 다시 계산, 활성값은 텐서 하나 · 비대칭 · 보정 모드에서 잰 범위 lo ~ hi 고정. 문제: `torch.round` 의 기울기는 0 이라 loss 0.1875 인데 w.grad = [0, 0, 0] — 이대로는 학습이 멈춘다.
+
+**한눈에 보기**
+Fake Quantization — 학습 그래프 안의 양자화
+> x̂ = (clamp(round(x/s) + zp) − zp) · s — 값은 FP32 지만 2^bits 개 칸 위에만 놓여, 학습 중에 모델이 양자화 오차를 그대로 겪는다
+- **예 — s 0.25 · 범위 −4 ~ 3**: [−1.2, −0.3, 0, 0.13, 0.9, 5.0] → [−1.0, −0.25, 0, 0.25, 0.75, 0.75]
+- **weight 는 FP32 로 학습 · 저장**: 진짜 INT8 은 배포(ONNX · TensorRT) 때 만든다
+- **weight FakeQuant — 채널별 대칭, scale 은 매번 계산**: 3비트면 채널당 7개 값
+- **활성값 FakeQuant — 텐서 하나 · 비대칭, 보정으로 lo ~ hi 고정**: −0.5 ~ 2.0 → s 0.0098, zp 51
+- **round 의 기울기는 0**: loss 0.1875 인데 w.grad = [0, 0, 0] — 학습 신호가 끊긴다 → STE (3교시)
+- **⚠ 범위 밖 값은 끝 칸으로 잘린다 (5.0 → 0.75)**: scale 의 amax 는 `x.detach()` — scale 은 학습 대상이 아니다
 
 **핵심 용어**
 - **Fake quantization(가짜 양자화)**: quantize → dequantize 를 한 번에 — 값은 FP32 인데 2^bits 개 칸 위에만 놓인다
@@ -215,6 +234,15 @@ x = linspace(−1.2, 1.2, 9) → x̂ = [−1.0, −1.0, −0.5, −0.25, 0, 0.25
 
 **개요**: 아이디어는 단순하다 — forward 는 round, backward 는 round 가 없는 것처럼 위에서 온 기울기를 **그대로 통과**(∂L/∂x = ∂L/∂y). PyTorch 에서는 `torch.autograd.Function` 을 상속해 forward · backward 를 따로 정의한다(`RoundSTE.apply(x)`). fake quant 에는 clamp 도 있으므로 **범위 밖으로 잘린 값은 기울기 0** — 범위 안의 값만 학습된다: x = [−2.0, −0.4, 0.3, 0.6, 2.0] (3비트 · 범위 −1.0 ~ 0.75) → 기울기 [0, 1, 1, 1, 0]. 작은 실험: w 3개를 target [0.5, −0.5, 0.5] 에 맞추도록 SGD 50번 — round 버전은 제자리(loss 0.1875), STE 버전은 w → [0.41, −0.62, 0.40] 로 움직여 양자화 결과가 정확히 목표 칸에 들어간다(loss 0).
 
+**한눈에 보기**
+STE — 계단을 곧게 통과하는 기울기
+> forward 는 y = round(x) 그대로, backward 는 ∂L/∂x = ∂L/∂y — 반올림이 없었던 것처럼 기울기를 넘겨 양자화된 모델도 학습할 수 있게 한다
+- **backward 는 항등**: 위 기울기 [1, 2, 3] → x.grad [1, 2, 3]
+- **`torch.autograd.Function` 으로 구현**: `@staticmethod forward` · `backward` → `.apply(x)`
+- **clamp 범위 밖은 기울기 0**: 3비트 s 0.25, x [−2.0, −0.4, 0.3, 0.6, 2.0] → [0, 1, 1, 1, 0] — 이미 잘린 값은 움직여도 그대로
+- **toy 실험 — round 는 제자리, STE 는 loss 0**: w 가 [0.41, −0.62, 0.40] 으로 옮겨 x̂ = [0.5, −0.5, 0.5]
+- **⚠ STE 는 근사다**: 그래서 lr 을 작게 · 짧게 학습하고, 범위는 보정으로 먼저 정한다
+
 **핵심 용어**
 - **STE(Straight-Through Estimator)**: 미분이 0 · 정의 안 되는 연산(round)을 backward 에서 항등 함수처럼 취급해 기울기를 그대로 넘기는 근사
 - **torch.autograd.Function**: forward · backward 를 직접 정의하는 PyTorch 연산 — `.apply(x)` 로 호출
@@ -303,6 +331,16 @@ def fake_quant(x, scale, zp, qmin, qmax):                     # STE 버전 (같�
 **키워드**: `BN folding 먼저`, `fold() · fold_all()`, `QConv2d · QLinear`, `입력 FakeQuant + weight FakeQuant`, `quantize_model()`, `calibrate() = PTQ`, `train_qat()`, `lr 1e-3 · cosine · 3 epoch`, `W3A8 0.728 → 0.8375`
 
 **개요**: 직접 만드는 QAT 의 순서 — (1) **BN folding 먼저**: 배포할 때는 BN 이 Conv 에 접힌 weight 가 양자화되므로, QAT 도 접힌 weight 로 학습해야 배포와 같은 숫자가 된다(BN 21개 → 0 · 정확도 0.846 그대로 · 출력 차이 4.8e-06). (2) Conv · Linear 를 **입력(활성값) FakeQuant + weight FakeQuant** 가 붙은 `QConv2d` · `QLinear` 로 바꿈(21 + 1개, ONNX 의 QDQ 위치와 같음). (3) 보정용 500장으로 활성값 범위를 잡음 → 이 상태가 PTQ: W3A8 **0.728** (W8A8 0.844). (4) 학습용 10,000장 · 3 epoch · lr 1e-3(처음 학습의 1/100) · cosine 감소 · SGD momentum 0.9 · weight decay 5e-4 로 fine-tuning → **QAT 0.8375**(epoch 1 · 2 · 3 = 0.8215 · 0.8335 · 0.8375), PTQ 대비 **+11.0%p** 회복 · FP32 와 0.85%p 차이. 대부분의 회복은 첫 epoch 에 일어난다.
+
+**한눈에 보기**
+직접 만드는 QAT — BN folding → 보정 → 짧은 학습
+> BN 을 접은 뒤 Conv · Linear 22개에 FakeQuant 를 붙이고, 보정(= PTQ)으로 범위를 잡은 다음 작은 lr 로 3 epoch 만 학습(= QAT)한다
+- **BN 을 먼저 접는다**: 21개 → 0, 출력 차이 4.8e-06 — fake quant 가 본 weight = 배포 때 양자화되는 weight
+- **QConv2d = 입력 Q/DQ + weight Q/DQ**: ONNX 의 QDQ 위치와 같다
+- **보정 결과(= PTQ) — W3A8 0.728**: W4A8 0.8345 · W8A8 0.844
+- **설정 — lr 1e-3 · cosine · 3 epoch**: 처음 학습 lr 의 1/100, SGD momentum 0.9 · weight decay 5e-4
+- **W3A8 PTQ 0.728 → QAT 0.8375 (+11.0%p)**: 첫 epoch 에 대부분 회복 (0.8215 · 0.8335 · 0.8375)
+- **⚠ 보정 전 lo · hi 는 1e9 · −1e9 로**: 0 으로 두면 범위가 잘못 잡힌다 · QAT 결과는 ±0.5%p 쯤 흔들린다
 
 **핵심 용어**
 - **BN folding(접기)**: W' = W · k, b' = β − μ · k (k = γ/√(σ² + ε)) — BN 을 앞 Conv 의 weight · bias 에 흡수
@@ -426,6 +464,15 @@ def calibrate(model):
 
 **개요**: ModelOpt(`nvidia-modelopt`)는 NVIDIA 의 모델 최적화 도구 — 4교시에 직접 만든 일을 한 줄로 한다: `mtq.quantize(model, mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)` = 양자화기 삽입 + 보정. Conv · Linear 마다 `TensorQuantizer` 가 붙는다(`input_quantizer` · `weight_quantizer` · `output_quantizer`). INT8 기본 설정은 weight 채널별 8비트 · 입력 텐서별 8비트 · **대칭** · max 보정. ResNet-20 에서 양자화기 110개가 들어가고 **켜진 것은 45개**(Conv 21 + Linear 1 의 입력 · weight 44 + pool 입력 1), INT8 PTQ 정확도 **0.843**. 비트를 바꾸려면 config 를 **깊은 복사**해 `*weight_quantizer` 의 `num_bits` 만 바꾼다(`make_cfg(3)`) → W3A8 PTQ **0.728** — 직접 만든 W3A8(0.728)과 같다(같은 원리). 다른 점: ModelOpt 는 **BN 을 접지 않고 그대로 둔다**(배포 때 TensorRT 가 처리).
 
+**한눈에 보기**
+NVIDIA ModelOpt PTQ — 한 줄로 양자화기 삽입 + 보정
+> `mtq.quantize(model, config, forward_loop)` 가 Conv · Linear 에 양자화기를 넣고 보정까지 한다 — 4교시에서 직접 만든 것과 같은 원리, 대칭이라 TensorRT 조건도 그대로 만족
+- **직접 만든 것 ↔ ModelOpt**: FakeQuant ↔ TensorQuantizer · quantize_model ↔ 자동 삽입 · calibrate ↔ forward_loop
+- **켜진 양자화기 45개**: Conv 21 + Linear 1 의 입력 · weight 44 + pool 입력 1 — INT8 PTQ 0.843
+- **config 를 깊은 복사해 num_bits 만 3 으로 → W3A8 0.728**: 직접 만든 결과와 같다
+- **weight · 입력 모두 대칭 (zp 0)**: Day 3 의 TensorRT INT8 조건 통과 — 4교시 직접 만든 활성값은 비대칭이라 못 넣음
+- **⚠ 깊은 복사 없이 바꾸면 `mtq.INT8_DEFAULT_CFG` 자체가 바뀐다**: BN 은 접지 않고 남는다 (배포 때 TensorRT 가 접음)
+
 **핵심 용어**
 - **ModelOpt(TensorRT Model Optimizer)**: NVIDIA 의 PyTorch 모델 양자화 · 가지치기 · 증류 도구 — `modelopt.torch.quantization` 을 `mtq` 로
 - **TensorQuantizer**: ModelOpt 의 fake quant 모듈 — 직접 만든 `FakeQuant` 에 해당 (STE 포함)
@@ -541,6 +588,15 @@ mo3 = mtq.quantize(copy.deepcopy(rn20).to(DEV), make_cfg(3), forward_loop=forwar
 
 **개요**: ModelOpt 의 QAT 는 특별한 함수가 없다 — `mtq.quantize` 로 PTQ 한 모델을 **그대로 평소처럼 학습**하면 된다(양자화기 `TensorQuantizer` 안에 STE 가 들어 있다). 그래서 4교시 `train_qat` 를 그대로 쓴다. W3A8(5-2 의 `mo3`)을 QAT 하며 epoch 마다 정확도를 기록하면 0.728 → 0.8185 → 0.8245 → **0.832**(+10.4%p) — 직접 만든 QAT(0.8375)와 비슷하다. INT8(`mo8`)은 0.843 → **0.843** — 이득 0, 8비트는 PTQ 로 충분. 체크포인트: 양자화기가 들어간 모델은 `torch.save(state_dict)` 만으로는 구조(어디에 어떤 양자화기)를 복원할 수 없다 → `mto.save(model, path)` / `mto.restore(새 FP32 모델, path)` 가 양자화 구조까지 저장 · 복원한다(복원 정확도 0.843 그대로).
 
+**한눈에 보기**
+ModelOpt QAT — PTQ 모델을 그대로 학습
+> mtq.quantize 한 모델에 평소 학습 루프를 돌리면 QAT — TensorQuantizer 안의 STE 가 기울기를 넘긴다, 저장은 mto 로 양자화 구조까지 함께
+- **W3A8 — 0.728 → 0.832 (+10.4%p)**: epoch 별 0.8185 · 0.8245 · 0.832 — 직접 만든 0.8375 와 비슷
+- **INT8 은 이득 0 (0.843 → 0.843)**: 8비트는 PTQ 로 충분
+- **mto.save / mto.restore**: FP32 구조 + 양자화기 배치 + amax 를 함께 — 복원 후 정확도 0.843 그대로
+- **state_dict 만으로는 안 된다**: 새 FP32 모델에는 `weight_quantizer` 같은 하위 모듈이 없어 키가 맞지 않음
+- **⚠ 학습은 짧게(3 epoch) · lr 1e-3**: 복원할 때도 같은 ModelOpt 버전 · 같은 FP32 구조
+
 **핵심 용어**
 - **정확도 곡선(learning curve)**: epoch 마다 잰 정확도를 이은 선 — epoch 0 은 QAT 전(= PTQ) 값
 - **mto(modelopt.torch.opt)**: ModelOpt 의 저장 · 복원 도구 — 모델에 적용한 변환(양자화) 기록까지 함께 저장
@@ -634,6 +690,15 @@ acc_torch(restored)                                           # 0.843 = acc_torc
 **키워드**: `torch.onnx.export → QuantizeLinear · DequantizeLinear`, `explicit 경로`, `Q/DQ 45쌍`, `trt_check ok`, `보정 없이 INT8 엔진`, `trtexec --int8 --fp16`, `BN 은 ONNX 에 남음`, `QDQ ONNX ≈ FP32 크기`
 
 **개요**: ModelOpt 로 양자화한 모델을 `torch.onnx.export`(여기서는 `export_b1`, 배치 1 고정) 하면 양자화기가 **QuantizeLinear · DequantizeLinear** 로 바뀐 **QDQ ONNX** 가 나온다 — Day 3 의 explicit 경로. `rn20_qat.onnx`: Q 45 · DQ 45 (켜진 양자화기 45개와 같음), `trt_check` → qdq 90 · uint8 0 · nonzero_zp 0 → **ok True**(ModelOpt 는 대칭), ORT 정확도 **0.843** = PyTorch. scale 이 이미 들어 있으므로 TensorRT 빌드에 **보정이 필요 없다** — `build_once(…, fp16=True, int8=True)` 는 `trtexec --onnx=rn20_qat.onnx --int8 --fp16` 과 같다. Netron 으로 보면 Conv 마다 입력 쪽 Q→DQ · weight 쪽 Q→DQ(채널별 scale)가 붙고, BN(21개)은 Conv 뒤에 남아 있어 TensorRT 가 빌드할 때 접는다. QDQ ONNX 의 weight 는 아직 FP32 라 파일이 FP32 와 비슷(1,135 KB vs 1,074 KB) — 진짜로 작아지는 것은 **엔진**이다.
+
+**한눈에 보기**
+QAT 모델 배포 — QDQ ONNX → TensorRT INT8
+> ModelOpt 의 TensorQuantizer 는 export 때 Q · DQ 노드 쌍이 되고 scale 이 상수로 들어가, 보정 없이 TensorRT INT8 플래그만 켜면 엔진이 된다
+- **Q 45 · DQ 45 = 켜진 양자화기 45개**: Conv 21 · BatchNormalization 21 · Gemm 1
+- **trt_check 합격**: uint8 0 · nonzero_zp 0 — 대칭이라 따로 맞출 필요 없음, ORT 정확도 0.843
+- **TensorRT 는 `int8=True, fp16=True` 만**: calibrator 없음 — Day 3 와 같은 `build_once`
+- **GPU 가 없으면 ORT CPU 로**: 0.843 · 1.60 ms · 1,135 KB (weight 는 FP32 + Q/DQ, 엔진에서 INT8 로 작아짐)
+- **⚠ ORT CPU 에서는 FP32(0.71 ms)보다 느리다**: BN 미접기 · S8 활성값 · Q/DQ 때문 — 속도는 TensorRT GPU 에서 · scale 은 Constant 노드
 
 **핵심 용어**
 - **QDQ ONNX**: QuantizeLinear → DequantizeLinear 쌍으로 양자화 위치 · scale 을 표시한 ONNX (QP D2·5교시)
@@ -730,6 +795,16 @@ mean_ms = bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)["mean"]
 **키워드**: `5가지 방법`, `duel_df`, `acc_int8 · acc_w3a8 · train_min · latency_ms`, `deploy_lat()`, `gain = max(QAT) − max(PTQ)`, `need_qat (> 1%p)`, `ptq_vs_qat.csv · qp_baseline.csv`, `qat_curve.png`
 
 **개요**: 같은 ResNet-20 을 **5가지 방법**(FP32 · ORT PTQ · ModelOpt PTQ · 수작업 QAT · ModelOpt QAT)으로 양자화해 한 표(`duel_df`)에 놓고, "QAT 가 필요한 경우" 를 숫자로 결론 낸다. 이 실행 결과: INT8 — ORT PTQ 0.842 · ModelOpt PTQ 0.843 · 수작업 QAT **0.849** · ModelOpt QAT 0.843 → QAT 이득 **+0.6%p** → **필요 없음**(기준 1%p). W3A8 — ModelOpt PTQ 0.728 · 수작업 QAT 0.8375 · ModelOpt QAT 0.832 → 이득 **+10.95%p** → **필요**. QAT 의 비용(학습 분 · GPU)과 이득(%p)을 함께 적어야 결론이 선다. 지연(배치 1)은 GPU 면 TensorRT 엔진, 아니면 ORT CPU — 이 실행(ORT CPU)에서는 INT8 모델이 FP32(0.71 ms)보다 느렸다(1.18 ~ 1.68 ms). 배포는 ModelOpt → QDQ ONNX → TensorRT, 저비트(W3A8)는 실행 커널이 있는지까지 확인한다.
+
+**한눈에 보기**
+PTQ vs QAT 대결 — QAT 가 필요한지 숫자로 판정
+> 5가지 방법을 INT8 · W3A8 정확도 · 학습 분 · 지연으로 같은 표에 두고, gain = max(QAT) − max(PTQ) 가 1%p 를 넘을 때만 QAT 를 고른다
+- **INT8 — gain +0.6%p → QAT 불필요**: 수작업 QAT 0.849 − ModelOpt PTQ 0.843 (2,000장에서 12장, 잡음 수준)
+- **W3A8 — gain +10.95%p → QAT 필요**: 수작업 QAT 0.8375 − PTQ 0.728
+- **학습 비용도 함께**: 수작업 9.98분 · ModelOpt 1.96분 (CPU), PTQ 는 0
+- **배포라면 ModelOpt QAT**: 대칭 QDQ ONNX → TensorRT 로 바로 이어진다 (수작업은 비대칭 · 내보내기 없음)
+- **qp_baseline.csv 에 Day4 5행**: `drop_duplicates(subset=["day", "model"], keep="last")`
+- **⚠ W3A8 을 실제로 빠르게 돌리려면 3비트 커널 · 장치 지원이 필요**: 없으면 메모리만 줄고 계산은 8비트
 
 **핵심 용어**
 - **대결 표(duel table)**: 방법마다 같은 자(정확도 2종 · 학습 분 · 지연)로 잰 한 표

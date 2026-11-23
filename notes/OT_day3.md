@@ -6,6 +6,15 @@
 
 **개요**: 오늘은 ONNX 파일은 그대로 두고 **실행하는 쪽 손잡이**(스레드 · 최적화 레벨 · 장치 · 배치)를 바꿔 가며 속도를 잰다. 잴 모델 두 개 — `mnv3s.onnx`(MobileNetV3-small, 입력 `(배치, 3, 224, 224)`, opset 17, 배치 자유)와 `mnist_cnn_dyn.onnx`(SimpleConvNet, `(배치, 1, 28, 28)`). 실험 원칙 3개: ① 한 번에 하나만 바꾼다 ② 조건을 표의 열로 적는다 ③ 바꾼 뒤에도 결과는 같아야 한다(`allclose`).
 
+**한눈에 보기**
+ORT 성능 실험 준비 — providers 확인 · 한 번에 하나만
+> 오늘은 같은 ONNX 를 스레드 · 최적화 레벨 · 장치 · 배치를 바꿔 가며 재는 날 — 실제 쓰는 실행기를 확인하고, 손잡이는 한 번에 하나만 바꾼다
+- **providers 는 희망 목록**: 세션은 앞에서부터 쓸 수 있는 실행기를 고른다 — 실제는 `sess.get_providers()` 로 확인
+- **설치됨 ≠ 실제 사용**: `get_available_providers()` 에 CUDA 가 있어도 라이브러리가 안 맞으면 CPU 로 폴백
+- **실험 원칙 — 한 번에 하나, 조건을 열로**: 모델 · 실행기 · 스레드 · 레벨 · 배치 · 장치를 표의 열로 남긴다
+- **빨라져도 답이 같아야 한다**: `np.allclose` 로 결과 동일 확인
+- **⚠ CUDA 를 적었다고 GPU 인 것이 아니다**: CPU 를 목록 맨 뒤에 두면 조용히 CPU 로 돌아간다
+
 **핵심 용어**
 - **providers**: 어디서 계산할지 적는 우선순위 목록 — `["CUDAExecutionProvider", "CPUExecutionProvider"]`
 - **dynamic_axes**: 배치 축을 숫자 대신 이름(`batch`)으로 열어 두는 export 옵션 (Day 2)
@@ -89,6 +98,15 @@ Day 1 · 2 에서 ONNX 파일을 만들고 고쳤다. 오늘은 **파일은 그�
 **키워드**: `warm-up`, `time.perf_counter`, `평균 · p50 · p95`, `FPS = 1000 ÷ 평균(ms)`, `bench()`
 
 **개요**: 한 번만 재면 첫 실행(준비 비용)이 섞여 믿을 수 없다. **warm-up 을 버리고 → 여러 번 재서 → 평균 · p50 · p95 · FPS** 로 요약한다. 이 과정을 함수 `bench(sess, x, n=100, warm=10)` 로 묶어 오늘 내내 쓴다.
+
+**한눈에 보기**
+시간을 재는 법 — warm-up · 평균 · p95 · FPS
+> 첫 실행은 버리고(warm-up 10번), 측정 100번의 평균 · p50 · p95 와 FPS = 1000 ÷ 평균(ms) × 배치 를 bench() 한 함수로 낸다
+- **첫 실행은 1회성 비용이 섞인다**: 메모리 할당 · 커널 준비 — `first5[0] / mean(first5[1:])` 로 몇 배인지 확인
+- **p50 = 보통의 한 번, p95 = 느린 쪽 5% 경계**: 실시간 시스템은 p95 로 판단
+- **평균 20 ms → FPS 50**: 배치가 b 면 × b
+- **같은 노트북 안에서 조건만 바꿔 비교**: Colab 장비가 사람마다 달라 절대 숫자는 다르다
+- **⚠ `time.time()` 으로 한 번만 재지 말 것**: `perf_counter()` · 측정 중 다른 셀 실행 금지
 
 **핵심 용어**
 - **warm-up**: 재기 전에 몇 번 돌려 버리는 준비 실행
@@ -200,6 +218,14 @@ MobileNetV3 평균 1.95 ms vs SimpleConvNet 0.079 ms → **25배**. 같은 방�
 
 **개요**: 첫 번째 손잡이 = 연산 하나를 몇 명(스레드)이 나눠 계산하나. `SessionOptions` 를 만들어 값을 정하고 **그 다음에** `InferenceSession(path, so, providers)` 로 세션을 만든다. 기본값 0 = 자동. 이후 손잡이를 인자로 받는 `make_session` 을 오늘의 세션 공장으로 쓴다.
 
+**한눈에 보기**
+스레드 수 — SessionOptions 와 make_session
+> `SessionOptions.intra_op_num_threads` 로 일꾼(스레드) 수를 정한다 — 작업대(코어)보다 많으면 기다리느라 오히려 느려질 수 있다
+- **기본값 0 = ORT 자동**: 직접 정할 땐 `so.intra_op_num_threads = k` → `InferenceSession(path, so, ...)`
+- **고르는 기준은 p95 가 가장 작은 것**: 실시간이면 평균이 아니라 p95
+- **make_session — 손잡이를 한 곳에**: threads · level(4교시) · providers(5교시) · profile(7교시)을 한 함수로
+- **⚠ 세션을 만든 뒤에 옵션을 바꾸면 적용되지 않는다**: 스레드를 늘린다고 무조건 빨라지지 않음 — 작은 연산은 나누는 비용이 더 크다
+
 **핵심 용어**
 - **스레드(thread)**: 계산을 나눠 맡는 일꾼 — 코어 = 작업대
 - **intra_op_num_threads**: 연산 하나를 나눠 계산할 스레드 수 (0 = 자동)
@@ -285,6 +311,14 @@ print(bench(s, x1))
 **키워드**: `graph_optimization_level`, `DISABLE · BASIC · EXTENDED · ALL`, `FusedConv`, `FusedGemm`, `optimized_model_filepath`
 
 **개요**: ORT 는 세션을 만들 때 그래프를 스스로 고친다. 얼마나 고칠지가 레벨이다. **BASIC**: 상수 접기 등 → **EXTENDED**: 노드 합치기(Conv+Relu → `FusedConv`, Gemm+Relu → `FusedGemm`) → **ALL**: 데이터 배치(레이아웃)까지 CPU 에 맞게 (기본값). 합치면 메모리 왕복이 줄어 빨라지고, **결과는 같다**.
+
+**한눈에 보기**
+그래프 최적화 레벨 — 노드를 합쳐 빠르게
+> DISABLE → BASIC(상수 접기) → EXTENDED(노드 합치기) → ALL(레이아웃, 기본값) — 레벨을 올려도 출력은 같고, 연산 사이 메모리 왕복이 줄어 빨라진다
+- **EXTENDED 는 노드를 합친다**: Conv+Relu → FusedConv, Gemm+Relu → FusedGemm
+- **speedup = 기준(DISABLE) 평균 ÷ 해당 레벨 평균**: DISABLE 40 ms, ALL 20 ms 면 2.0배 (기준 자신은 1.0)
+- **결과는 그대로**: 레벨별 출력을 `allclose` 로 확인
+- **⚠ 저장한 최적화 그래프는 그 장치 전용**: FusedConv 가 든 파일은 ORT 전용이라 TensorRT 등 다른 실행기가 못 읽는다
 
 **핵심 용어**
 - **노드 합치기(fusion)**: 연달아 있는 연산 여러 개를 하나로 묶기
@@ -380,6 +414,14 @@ ONNX Runtime 은 세션을 만들 때 **그래프를 스스로 고친다**. 어�
 
 **개요**: 세 번째 손잡이 = 어디서 계산하나. `providers` 맨 앞에 `CUDAExecutionProvider` 를 두면 GPU 에서 실행한다. 코드는 한 단어지만 **CPU ↔ GPU 사이 데이터 복사**와 **첫 실행 준비** 비용이 새로 생긴다. 그래서 배치 1 에서는 이득이 작고, 배치가 클수록 GPU 가 유리하다. `GPU_OK` 가 False 면 이 교시 셀은 "건너뜀".
 
+**한눈에 보기**
+CPU → GPU — CUDAExecutionProvider
+> GPU 실행은 입력 복사 → GPU 계산 → 출력 복사 — 계산이 빨라도 복사 · 준비 비용이 붙어, 일이 작은 배치 1 에서는 이득이 작고 배치 32 처럼 클수록 유리하다
+- **providers 에 CUDA 를 앞에**: `['CUDAExecutionProvider', 'CPUExecutionProvider']` — `get_providers()` 로 실제 장치 확인
+- **장치가 달라도 같은 모델**: CPU · GPU 출력 최대 차이 < 0.001
+- **⚠ `onnxruntime` 과 `onnxruntime-gpu` 를 둘 다 설치하면 GPU 가 안 보인다**: CPU 판 삭제
+- **⚠ GPU 첫 실행 시간을 기록하지 말 것**: warm-up 먼저 · 배치 1 하나만 재고 "GPU 가 별로" 결론 금지 · 큰 배치는 `Failed to allocate memory`
+
 **핵심 용어**
 - **CUDAExecutionProvider**: GPU(NVIDIA CUDA)에서 실행하는 실행기
 - **복사 비용**: 입력을 GPU 로, 출력을 CPU 로 옮기는 시간
@@ -474,6 +516,14 @@ GPU 와 CPU 는 계산 순서 · 라이브러리가 달라 끝자리가 다를 �
 
 **개요**: 배치를 1 → 64 로 늘리며 두 숫자를 따로 본다. **지연** = 한 번 `run` 이 끝날 때까지 걸린 ms(실시간 카메라는 프레임마다 바로 답이 필요). **처리량** = 1초에 처리하는 장 수(녹화 일괄 처리 · 여러 카메라). 배치가 커지면 지연은 늘고, 장당 시간 · 처리량은 어느 지점에서 멈춘다.
 
+**한눈에 보기**
+배치 크기 — 지연 vs 처리량
+> 처리량 = 배치 × 1000 ÷ 지연(ms) — 배치를 키우면 처리량은 늘 수 있지만 지연도 같이 늘어난다, 목적에 따라 고른다
+- **실시간 카메라는 배치 1 · p95**: 프레임마다 바로 답해야 한다
+- **일괄 처리 · 여러 카메라는 처리량**: 배치 8, 지연 40 ms → 200 장/초, 장당 5 ms
+- **감당 카메라 수 = 처리량 ÷ 카메라 FPS**: 200 ÷ 30 = 6.67 → `//` 로 6대
+- **⚠ 배치 b 의 시간을 "한 장 시간" 으로 착각 금지**: 장당 = 지연 ÷ b · 지연이 예산(30 FPS 면 33.3 ms)을 넘으면 실시간 불가
+
 **핵심 용어**
 - **지연(latency)**: 한 번 `run` 의 시간 (ms)
 - **처리량(throughput)**: 초당 처리 장 수 = 배치 × 1000 ÷ 지연
@@ -567,6 +617,14 @@ for b in [1, 4, 16, 64]:
 **키워드**: `enable_profiling`, `end_profiling()`, `cat == "Node"`, `op_name`, `dur (µs)`
 
 **개요**: 지금까지는 전체 시간만 쟀다. 더 빠르게 하려면 **어느 노드(연산)가 시간을 먹는지** 알아야 한다. 세션에 `enable_profiling=True` → `run` 여러 번 → **`end_profiling()`** 으로 JSON 파일을 닫고 → `cat == "Node"` 인 기록의 `op_name` 별 `dur` 합을 비율로 계산한다. 병목은 모델마다 다르다 — MobileNetV3 = `Conv`, SimpleConvNet = `FusedGemm`.
+
+**한눈에 보기**
+profiling — 어디가 느린가
+> 프로파일을 켜고 여러 번 실행한 뒤 `end_profiling()` 으로 JSON 을 받아, 연산(op)별 시간(dur)을 합쳐 비율로 본다 — 줄일 곳을 숫자로 찾는다
+- **5단계**: 켜기 → 여러 번 실행 → `end_profiling()` → JSON 읽기 → op 별 dur 합산
+- **노드 기록만 추린다**: `cat == "Node"` 이고 이름이 `_kernel_time` 으로 끝나는 것
+- **share_% = op 의 dur 합 ÷ 전체 × 100**: 1회당 ms = dur 합 ÷ 실행 횟수 ÷ 1000
+- **⚠ dur 는 µs, ms 가 아니다**: `end_profiling()` 을 안 부르면 파일이 비어 있음 · 기록하는 세션으로 속도를 재면 느려진다
 
 **핵심 용어**
 - **profiling**: 노드마다 걸린 시간을 파일로 남기는 기능
@@ -668,6 +726,15 @@ node_ev = [e for e in events if e.get("cat") == "Node" and e["name"].endswith("_
 | 4 | best 설정 profiling Top 3 | 20 |
 | 5 | `ot_baseline.csv` 저장 · p95 막대그래프 | 10 |
 | 6 | 추천 설정과 근거 (마크다운) | 10 |
+
+**한눈에 보기**
+카메라 4대용 설정 정하기 — 표가 결정의 근거
+> 조건 열(실행기 · 스레드 · 레벨 · 배치) + 결과 열(지연 · p95 · fps)을 한 줄씩 쌓아, 목적(카메라 4대 = 120장/초)을 만족하는 것 중 지연이 가장 작은 설정을 고른다
+- **카메라 4대 조건 — 4 × 30 = 120장/초 이상**: `fps >= 120` 으로 감당 가능한 것만 거른다
+- **그 중 지연 최소를 고른다**: 실시간은 p95 · 지연, 여러 카메라는 처리량이 기준
+- **아슬아슬하면 손잡이부터**: 스레드 · 최적화 레벨 · 배치 조정, profiling 의 Top 연산 줄이기 (Day 4 · 양자화)
+- **그래도 모자라면 장치 변경**: GPU (5교시) · TensorRT (Day 4)
+- **⚠ 감당하는 배치가 하나도 없으면 None**: 추천은 "스레드 · 장치 변경" 쪽으로
 
 **핵심 용어**
 - **ot_baseline.csv**: 조건 열(model · provider · threads · level · batch) + 결과 열(mean · p50 · p95 · fps)의 성능표

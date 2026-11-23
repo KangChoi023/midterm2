@@ -6,6 +6,14 @@
 
 **개요**: 지금까지 모델은 Colab(PyTorch)에서 만들고 Colab 에서 썼다. 현장 카메라 옆 작은 장치에는 Python · PyTorch 가 없을 수 있다. 실행하는 쪽에는 **계산 순서**(무엇을 곱하고 더하고 어떤 함수를 거치나)와 **가중치**(학습으로 얻은 숫자) 두 가지만 있으면 된다. ONNX 는 이 둘을 **파일 하나**에 담는 공용 형식(설계도)이다. 이 과목 5일: Day 1 내보내기 · 실행 → Day 2 그래프 읽기 · 배치 자유롭게 → Day 3 ONNX Runtime 성능 측정 → Day 4 TensorRT → Day 5 YOLOv8n 침입 감지.
 
+**한눈에 보기**
+ONNX — 학습하는 곳과 실행하는 곳을 잇는 파일 형식
+> `.pt` 는 숫자(가중치)만 담지만 ONNX 는 숫자 + "무엇을 어떤 순서로 계산하나"(그래프)를 담아, 파이썬 · PyTorch 없이 실행기만으로 추론할 수 있게 한다
+- **`.pt` 는 모델 코드가 있어야 쓸 수 있다**: Linear(3, 2) 면 weight (2, 3) + bias (2,) = 숫자 8개뿐 — 계산 순서는 파이썬 코드에
+- **ONNX 에는 forward 만 담긴다**: loss · backward · step 은 안 담김 → ONNX 로 학습을 이어 할 수 없다
+- **전처리 · 결과 해석은 ONNX 밖**: `/255` · 정규화 · 크기 · argmax · 클래스 이름은 실행 쪽 코드가 한다 (7교시)
+- **⚠ ONNX 로 바꾸면 무조건 빨라지는 게 아니다**: ONNX 는 형식, 속도는 실행기가 정한다 (Day 3 · 4)
+
 **핵심 용어**
 - **ONNX(Open Neural Network Exchange)**: 계산 순서(그래프) + 가중치를 한 파일에 담는 모델 공용 형식
 - **추론(inference)**: 학습된 모델에 입력을 넣어 결과를 얻는 일 — forward 만 한다
@@ -100,6 +108,14 @@ VB 에서 만든 모델은 Colab 안에서만 돌았다. 현장 카메라 옆 �
 **키워드**: `torch.onnx.export`, `더미 입력`, `tracing(녹화)`, `eval()`, `파일 크기 ≈ 파라미터 × 4 B`
 
 **개요**: 가장 중요한 한 줄 `torch.onnx.export(모델, 더미 입력, 파일 이름)`. 더미 입력으로 모델을 **한 번 실행하며 연산을 녹화**해 그래프로 저장한다. 값은 상관없고 **shape · dtype** 이 중요. 손으로 확인되도록 가중치를 `W = [[1, 2, 3], [0, -1, 1]]`, `b = [0.5, -0.5]` 로 직접 정한다. 순서: ① 모델 만들기 → ② 더미 입력 → ③ export → ④ 파일 확인.
+
+**한눈에 보기**
+torch.onnx.export — 더미 입력으로 한 번 실행하며 녹화
+> `torch.onnx.export(모델, 더미 입력, 파일 이름)` — 더미 입력이 지나간 연산을 그래프로 저장하고, 더미의 shape · dtype 이 입력 규격으로 굳는다
+- **4단계 — eval → 더미 입력 → export → 파일 확인**: eval() 은 습관으로 (Dropout · BN 이 있으면 비교 기준이 달라짐)
+- **더미 값은 아무거나, shape 는 정확히**: (1, 3) float32 로 녹화하면 그 규격만 받는다
+- **파일 크기 = 파라미터 × 4 B + 그래프 설명**: Linear(3, 2) 파라미터 32 B, `tiny.onnx` 249 B · OUT = 100 이면 1,821 B
+- **⚠ 배치 축 없는 더미 `torch.randn(3)` 은 배치 축 없는 파일을 만든다**: float64 더미면 입력도 float64 로 굳음
 
 **핵심 용어**
 - **더미 입력(dummy input)**: export 때 한 번 흘려 보내는 가짜 입력 — shape · dtype 만 의미 있음
@@ -204,6 +220,15 @@ print(os.path.getsize("tiny.onnx"), "B")       # 249
 
 **개요**: Netron 은 ONNX 를 그림으로 보여 주는 뷰어(상자 = 연산 노드, 화살표 = 데이터 흐름, 상자 옆 `B` · `C` = 가중치). `tiny.onnx` 는 **Gemm 상자 1개**: `B` = weight ⟨2×3⟩, `C` = bias ⟨2⟩, 입출력 `float32[1,3] → float32[1,2]`. 같은 내용을 `onnx.load(path).graph.node / .initializer` 로 코드에서도 꺼낼 수 있다. 층을 쌓으면(`Linear → ReLU → Linear`) `Gemm → Relu → Gemm`.
 
+**한눈에 보기**
+Netron — ONNX 그래프를 눈으로 읽기
+> 상자 = 노드(연산), 화살표 = 데이터 흐름, 상자 옆 B · C = 가중치(initializer) — PyTorch 계층이 ONNX 의 어떤 연산이 됐는지 확인한다
+- **nn.Linear → Gemm, nn.ReLU → Relu**: Gemm 의 B = weight ⟨2×3⟩, C = bias ⟨2⟩ · Relu 는 가중치 없음
+- **Gemm 의 transB = 1**: PyTorch 는 weight 를 (out, in) 으로 저장하고 x @ Wᵀ 로 계산
+- **Linear-ReLU-Linear → 노드 3 · initializer 4**: `['Gemm', 'Relu', 'Gemm']`, weight · bias × 2
+- **자동 입력 이름은 `onnx::Gemm_0`**: 5교시에서 `input` 으로 바꾼다
+- **⚠ `initializer[0]` 이 항상 weight 라고 가정하지 말 것**: 큰 모델은 순서가 다르다 — `.name` 으로 찾기 · Netron 은 파일마다 다른 port
+
 **핵심 용어**
 - **노드(node)**: 그래프의 연산 하나 — `op_type` 이 이름 (`Gemm` · `Relu` · `Conv` …)
 - **initializer**: 노드에 붙는 가중치 상수 (weight · bias)
@@ -299,6 +324,14 @@ PyTorch 의 `nn.Linear` 는 weight 를 **(출력 2, 입력 3)** 모양으로 저
 **키워드**: `ONNX Runtime`, `InferenceSession`, `get_inputs`, `run(None, {이름: 배열})`, `np.allclose`
 
 **개요**: ONNX Runtime(ORT)은 ONNX 설계도를 읽어 바로 실행하는 기계 — PyTorch 없이 `onnxruntime` 만 설치하면 된다. 실행 4단계: ① `InferenceSession(path, providers)` 로 열기 → ② `get_inputs()[0].name` 으로 입력 이름 → ③ `run(None, {이름: float32 NumPy 배열})` → ④ `np.allclose` 로 PyTorch 와 비교. **입력 = 딕셔너리, 출력 = 리스트.**
+
+**한눈에 보기**
+ONNX Runtime — 실행해서 PyTorch 와 같은지 확인
+> `InferenceSession` 을 열고 `run(None, {입력 이름: float32 배열})[0]` 으로 실행한 뒤, PyTorch 결과와 `np.allclose` 로 비교한다
+- **입력은 {이름: NumPy float32} 딕셔너리, 출력은 리스트**: 출력이 하나여도 `[0]`, 첫 인자 None = 출력 전부
+- **x = [1, 1, 1] → [[6.5, −0.5]]**: 손계산 1+2+3+0.5, 0−1+1−0.5 와 같다
+- **== 대신 allclose(atol=1e-5)**: float32 는 계산 순서에 따라 끝자리가 다르다 — 1e-7 정도 차이는 정상
+- **⚠ `np.ones` · `np.array` 는 float64 → `Unexpected input data type`**: `.astype(np.float32)` · torch 텐서는 `.numpy()` · 입력 이름 틀리면 missing 오류
 
 **핵심 용어**
 - **ONNX Runtime(ORT)**: ONNX 모델을 실행하는 추론 엔진
@@ -406,6 +439,14 @@ ONNX 파일을 만들었으니 이제 **PyTorch 없이** 실행해 본다. ONNX 
 
 **개요**: 자동 이름(`onnx::Gemm_0`) 대신 `input_names=["input"]`, `output_names=["output"]` 을 붙이면 실행 코드가 단순해진다(리스트로 넘길 것). 이미지 입력은 4개 축 **(N, C, H, W)** = 장 수 · 채널 · 높이 · 너비, 1장이어도 `N = 1`. 입력 shape 는 export 때의 더미 입력으로 **고정**된다 — 배치 4개를 넣으면 `Got: 4 Expected: 1`. 자유롭게 만드는 `dynamic_axes` 는 Day 2.
 
+**한눈에 보기**
+이름 붙이기 · 이미지 텐서 (N, C, H, W)
+> export 때 `input_names` · `output_names` 로 이름을 붙이면 `run(None, {"input": x})` 로 단순해지고, 이미지는 1장이어도 (N, C, H, W) 의 배치 축이 필요하다
+- **이름 인자는 리스트**: `["input"]` ✓ — 문자열 `"input"` 은 글자 단위로 쪼개져 오류
+- **(N, C, H, W) 예**: 흑백 1장 (1, 1, 28, 28) · 컬러 1장 (1, 3, 224, 224) · 컬러 8장 (8, 3, 224, 224)
+- **더미 shape 가 그대로 고정된다**: 더미가 배치 1 이면 4장을 넣을 때 `Got: 4 Expected: 1` (Day 2 dynamic_axes)
+- **⚠ 사진 1장을 (3, 224, 224) 로 넣으면 `Invalid rank`**: `x[None]` 으로 배치 축 · OpenCV (H, W, 3) 는 `transpose(2, 0, 1)`
+
 **핵심 용어**
 - **NCHW**: PyTorch · ONNX 이미지 텐서 순서 (OpenCV 는 `H, W, C`)
 - **고정 shape**: export 때의 더미 입력 shape 가 그대로 입력 규격이 됨
@@ -502,6 +543,15 @@ OpenCV 이미지는 `(H, W, C)` 라 순서가 다르다 → 7교시 `transpose(2
 **키워드**: `SimpleConvNet`, `433,890 파라미터`, `Conv · Relu · MaxPool · Flatten · Gemm`, `/255 누락`, `조용히 틀림`
 
 **개요**: VB Day 1 의 SimpleConvNet(433,890 파라미터, 학습 끝난 `mnist_cnn.pt`, MNIST test 0.984)을 `tiny` 와 똑같은 4단계로 내보낸다. 더미는 `torch.zeros(1, 1, 28, 28)`, 이름 `input` / `logits`. 그래프는 `Conv, Relu, MaxPool, Flatten, Gemm, Relu, Gemm` — 가중치 있는 노드 3개, 파일 1.74 MB. 100장 예측이 PyTorch 와 100% 일치. **전처리(`/255`)를 빼먹으면 오류 없이 조용히 정확도만 떨어진다.**
+
+**한눈에 보기**
+MNIST CNN 내보내기 — 큰 모델도 4단계는 같다
+> eval → export(이름 · 1장 shape) → Netron/코드 확인 → ORT 실행 · 일치율 — 계층이 많아져도 절차는 그대로이고, 전처리만 실행 쪽에서 똑같이 맞추면 된다
+- **그래프 7노드 · initializer 6**: Conv · Relu · MaxPool · Flatten · Gemm · Relu · Gemm — `F.relu` · `flatten` 도 노드로 남는다
+- **파일 ≈ 433,890 × 4 B ≈ 1.74 MB**: NN 과정 SimpleConvNet 과 같은 파라미터 수
+- **더미는 zeros 도 된다**: 값이 아니라 shape 를 녹화
+- **입력 준비 — `(img.astype(np.float32) / 255)[None, None]`**: (1, 1, 28, 28), 학습 때처럼 0 ~ 1
+- **⚠ `/255` 를 빼면 에러 없이 정확도만 떨어진다**: 가장 찾기 어려운 버그 · uint8 그대로면 dtype 오류
 
 **핵심 용어**
 - **일치율(agreement)**: ORT 예측 == PyTorch 예측 인 비율
@@ -605,6 +655,15 @@ tiny 로 연습한 4단계를 **진짜 모델**에 적용한다. VB Day 1 의 Si
 **키워드**: `전처리 6단계`, `BGR → RGB`, `cv2.resize(W, H)`, `ImageNet MEAN · STD`, `transpose(2, 0, 1)`, `softmax · top-5`
 
 **개요**: VB Day 5 의 `mnv3s.onnx`(MobileNetV3-Small, ImageNet 1000 클래스, 입력 `input` 224×224)로 실제 사진을 분류한다. 사진 한 장이 입력 텐서가 되기까지 6단계: ① `imread`(H, W, C · BGR) → ② BGR→RGB · `resize(224, 224)` → ③ `/255` 후 `(x − MEAN) / STD` → ④ `transpose(2, 0, 1)` → ⑤ `[None]` 배치 축 → ⑥ `run` · softmax · top-5. `preprocess` · `classify` 두 함수로 묶어 8교시에서 그대로 쓴다.
+
+**한눈에 보기**
+이미지 한 장 추론 — 전처리 6단계 · softmax top-5
+> imread → BGR→RGB · resize(W, H) → /255 · 정규화 → HWC→CHW → 배치 축 → run · softmax — 학습 때와 똑같은 전처리를 실행 쪽 코드로 다시 만든다
+- **⚠ `cv2.resize` 크기는 (W, H)**: 정사각형이면 티가 안 나서 더 위험
+- **⚠ 축 순서는 `transpose`, `reshape` 은 모양만**: `x.reshape(3, 224, 224)` 는 픽셀이 뒤섞인다
+- **MEAN · STD 는 `np.float32` 로**: float64 면 결과가 float64 가 되어 ORT 오류
+- **softmax 는 max 를 빼고**: exp overflow 방지 (NN 과정) — argmax 만 말고 top-5 와 확률로 확신 정도를 본다
+- **preprocess · classify 함수로 묶는다**: 어떤 사진에도 같은 전처리 — BGR · 정규화 · /255 하나라도 빼면 오류 없이 틀림
 
 **핵심 용어**
 - **전처리(preprocessing)**: 사진 → 모델 입력 텐서로 바꾸는 규칙 — ONNX 밖 코드
@@ -723,6 +782,15 @@ MNIST 는 `/255` 하나로 끝났지만 실제 컬러 사진은 전처리가 여
 **키워드**: `SafetyNet`, `BatchNorm 이 Conv 에 합쳐짐`, `onnx_report`, `배포 = ONNX + 전처리 + 클래스 이름`, `GlobalAveragePool`
 
 **개요**: 오늘의 4단계(eval → export → Netron·`onnx_report` → ORT 실행·allclose)를 처음 보는 모델 **SafetyNet**(64×64 컬러 → safe · warning · danger 3분류, 가중치는 seed 7 연습용)에 혼자 적용한다. 과제 6개(내보내기 20 · 그래프 요약 20 · 실행 비교 20 · `onnx_report` 20 · 사진 3장 분류 10 · 해석 10). 핵심 발견: **eval 모드로 export 하면 BN 이 Conv 에 합쳐져** Netron 에 `BatchNormalization` 이 없다.
+
+**한눈에 보기**
+미니 프로젝트 — 처음 보는 모델에 4단계 + 배포 꾸러미
+> 처음 보는 SafetyNet 을 eval → export → onnx_report · Netron → ORT · allclose 로 혼자 옮기고, .onnx + 전처리 규칙 + 클래스 이름을 함께 넘긴다
+- **SafetyNet — 노드 9개, 파일 7.3 KB**: Conv · Relu · MaxPool × 2 · GlobalAveragePool · Flatten · Gemm, 파라미터 1,491
+- **BN 노드가 없는 이유**: eval 모드의 BN 은 고정 상수라 앞 Conv 에 합쳐진다 — 그래프가 PyTorch 코드와 다르게 생길 수 있다
+- **onnx_report — 모든 모델을 먼저 살펴보는 함수**: `{size_kb, n_nodes, ops, inputs, outputs}` — 입출력은 ORT 세션의 `get_inputs()` 로
+- **배포 = ONNX + 전처리 규칙 + 클래스 이름**: 크기 · RGB · 정규화 값 · CHW 까지 적어 준다
+- **⚠ `eval()` 을 빼면 최대 차이 ≈ 0.58 로 어긋난다**: ≈ 1e-7 은 float 오차라 같은 것 · 실행기마다 지원 opset 이 다르다 (Day 2)
 
 **핵심 용어**
 - **BN 융합(fusion)**: eval 모드 export 때 `BatchNorm` 의 계산이 앞 `Conv` 의 가중치에 합쳐지는 것
