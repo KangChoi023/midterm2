@@ -836,8 +836,9 @@
     return `<details class="cx" id="K${j}" data-ci="${j}"><summary><span class="cx-ic" aria-hidden="true">💻</span><span class="cx-t">${esc(c.t)}</span>`
       + `<span class="cx-meta">${g.length ? `<span class="cx-g" title="색칠된 줄을 누르면 설명">🧭 ${g.length}</span>` : ''}${n}줄 · ${c.from === 'md' ? '강의 글' : '강의 ' + esc(c.k)}</span></summary>`
       + `<div class="cx-in">${c.q ? `<p class="cx-q"><b>문제</b> ${mdInline(c.q)}</p>` : ''}`
+      + (c.qp === 'solved' ? `<p class="cx-own" title="QP 교안의 정답은 강사 잠금 코드로 잠겨 있어, 직접 작성한 풀이를 교안의 확인 셀(assert)로 실행해 확인했습니다">✍️ 직접 작성한 풀이 · 교안 확인 셀 통과 (공식 정답 아님)</p>` : c.qp === 'todo' ? `<p class="cx-own">✍️ 아직 풀이가 없어 빈칸(TODO) 그대로</p>` : '')
       + `<div class="cb code cx-cb"><div class="cb-h"><span class="k code">코드</span><span class="cx-hint">${g.length ? '색칠된 줄 · ' : ''}점선 함수 이름을 누르면 설명</span><button type="button" data-copy>복사</button></div><pre${g.length ? ' class="has-guide"' : ''}><code data-lang="${esc(c.lang)}">${esc(c.code.replace(/\n+$/, ''))}</code></pre></div>`
-      + outs + (c.expl ? `<div class="cx-expl"><b>💡 해설</b>${md(c.expl)}</div>` : '') + `</div></details>`;
+      + outs + (c.expl ? `<div class="cx-expl"><b>💡 ${c.qp ? '강사님 힌트' : '해설'}</b>${md(c.expl)}</div>` : '') + `</div></details>`;
   }
   function studyWithCode(text, L) {
     const used = new Set(), slots = [];

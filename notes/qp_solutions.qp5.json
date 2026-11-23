@@ -1,0 +1,80 @@
+{
+  "_설명": "QP Day 5 직접 구현 풀이 — 교안 정답이 강사 잠금 코드로 잠겨 있어 직접 작성 (TODO 줄 순서대로 바꿔 끼움). tools/cell_outputs.py 로 실행해 교안의 assert 통과를 확인한 것만 둔다. GPU 가 없는 곳에서 확인 — TensorRT 줄은 GPU 일 때만 실행된다.",
+  "1-1": [
+    "k = int(round(sparsity * w.numel()))\nif k == 0:\n    return torch.ones_like(w)\nthr = w.detach().abs().flatten().kthvalue(k).values      # k 번째로 작은 |w|\nreturn (w.detach().abs() > thr).float()                   # 임계값 이하는 0"
+  ],
+  "1-2": [
+    "return conv.weight.detach().abs().sum(dim=(1, 2, 3))      # filter (출력 채널) 마다 |w| 합",
+    "plt.figure(figsize=(6, 2.6)); plt.bar(range(len(n1)), n1.numpy())\nplt.xlabel(\"filter\"); plt.ylabel(\"L1-norm\"); plt.title(\"layer1[0].conv1\"); plt.show()",
+    "units_df = pd.DataFrame({\"unit\": [\"weight\", \"filter\", \"in_channel\", \"layer\"],\n                         \"removed\": [1, w2[0].numel(), w2[:, 0].numel(), w2.numel()]})"
+  ],
+  "2-1": [
+    "prune.l1_unstructured(conv, \"weight\", amount=0.5)",
+    "params_before = sorted(n for n, _ in conv.named_parameters())\nbuffers = sorted(n for n, _ in conv.named_buffers())\nsp_masked = float((conv.weight == 0).float().mean())",
+    "prune.remove(conv, \"weight\")",
+    "params_after = sorted(n for n, _ in conv.named_parameters())"
+  ],
+  "2-2": [
+    "ws = [mod.weight for _, mod in convs(model)]\nreturn sum((w == 0).sum().item() for w in ws) / sum(w.numel() for w in ws)",
+    "m = copy.deepcopy(model)\ntargets = [(mod, \"weight\") for _, mod in convs(m)]\nif scope == \"global\":\n    prune.global_unstructured(targets, pruning_method=prune.L1Unstructured, amount=amount)\nelse:\n    for mod, name in targets:\n        prune.l1_unstructured(mod, name, amount=amount)\nfor mod, name in targets:\n    prune.remove(mod, name)                               # mask 를 weight 에 굳힌다\nreturn m"
+  ],
+  "3-1": [
+    "import io, gzip\nbuf = io.BytesIO(); torch.save(model.state_dict(), buf); raw = buf.getvalue()\nreturn len(raw) / 1024, len(gzip.compress(raw)) / 1024",
+    "m90 = prune_unstructured(rn20, 0.9, \"global\")",
+    "size_df = pd.DataFrame([{\"model\": name, \"raw_kb\": r, \"gzip_kb\": g}\n                        for name, (r, g) in [(\"FP32\", state_kb(rn20)), (\"global 90%\", state_kb(m90))]])"
+  ],
+  "3-2": [
+    "wp = w.detach().permute(0, 2, 3, 1)                     # 입력 채널을 마지막 축으로\ng = wp.abs().reshape(-1, 4)                               # 한 행 = 연속한 입력 채널 4개\nm = torch.zeros_like(g).scatter_(1, g.topk(2, dim=1).indices, 1.0)\nreturn m.reshape(wp.shape).permute(0, 3, 1, 2).contiguous()",
+    "with torch.no_grad():\n    for c in m24.modules():\n        if isinstance(c, nn.Conv2d) and c.in_channels % 4 == 0:\n            c.weight.mul_(mask_2to4(c.weight))"
+  ],
+  "4-1": [
+    "n_keep = int(round(c1.out_channels * (1 - ratio)))\nkeep = filter_l1(c1).argsort(descending=True)[:n_keep].sort().values\nnc1 = nn.Conv2d(c1.in_channels, n_keep, 3, stride=c1.stride, padding=1, bias=False)\nnc1.weight.data = c1.weight.data[keep].clone()\nnb1 = nn.BatchNorm2d(n_keep).train(b1.training)\nfor k in [\"weight\", \"bias\", \"running_mean\", \"running_var\"]:\n    getattr(nb1, k).data = getattr(b1, k).data[keep].clone()\nnc2 = nn.Conv2d(n_keep, c2.out_channels, 3, stride=c2.stride, padding=1, bias=False)\nnc2.weight.data = c2.weight.data[:, keep].clone()        # conv2 는 입력 채널을 같은 keep 으로\nblock.conv1, block.bn1, block.conv2 = nc1, nb1, nc2\nreturn keep"
+  ],
+  "4-2": [
+    "m = copy.deepcopy(model)\nfor layer in [m.layer1, m.layer2, m.layer3]:\n    for block in layer:\n        prune_block(block, ratio)\nreturn m",
+    "for r in [0.0, 0.25, 0.5]:\n    m = manual_prune(rn20, r)\n    rows.append({\"ratio\": r, \"params\": n_params(m), \"acc\": acc_torch(m), \"latency_ms\": latency_torch(m)})"
+  ],
+  "5-1": [
+    "return tp.pruner.MetaPruner(model, EX_IN, importance=tp.importance.MagnitudeImportance(p=1),\n                            pruning_ratio=ratio, iterative_steps=steps, ignored_layers=[model.fc])",
+    "m = copy.deepcopy(model).cpu().eval()\nmake_pruner(m, ratio).step()\nreturn m",
+    "for name, m in [(\"FP32\", rn20), (\"structured 50%\", p50)]:\n    macs, params = tp.utils.count_ops_and_params(m, EX_IN)\n    rows.append({\"model\": name, \"macs_m\": macs / 1e6, \"params\": int(params)})"
+  ],
+  "5-2": [
+    "for r in [0.0, 0.2, 0.4, 0.6]:\n    m = prune_channels(rn20, r) if r > 0 else rn20\n    macs, params = tp.utils.count_ops_and_params(m, EX_IN)\n    rows.append({\"ratio\": r, \"macs_m\": macs / 1e6, \"params\": int(params), \"acc\": acc_torch(m), \"latency_ms\": latency_torch(m)})"
+  ],
+  "6-1": [
+    "model.to(DEV); t0 = time.time()\nopt = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)\nsched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * (len(Xtr_u8) // 128 + 1))\nfor ep in range(epochs):\n    model.train()\n    for xb, yb in batches(seed=ep):\n        loss = F.cross_entropy(model(xb), yb)\n        opt.zero_grad(); loss.backward(); opt.step(); sched.step()\n    model.eval()\n    if on_epoch:\n        on_epoch(ep, model)\nreturn time.time() - t0",
+    "hist = [{\"epoch\": 0, \"acc\": acc_torch(p50_ft)}]",
+    "t_ft = finetune(p50_ft, on_epoch=lambda ep, m: hist.append({\"epoch\": ep + 1, \"acc\": acc_torch(m)}))",
+    "torch.save(p50_ft.cpu(), \"rn20_p50_ft.pth\")"
+  ],
+  "6-2": [
+    "pruner = make_pruner(m_it, 0.5, steps=3)",
+    "for step in range(1, 4):\n    m_it.cpu(); pruner.step()                             # 0.5 의 1/3 씩 더 자른다\n    macs, _ = tp.utils.count_ops_and_params(m_it, EX_IN)\n    finetune(m_it, epochs=1)\n    rows.append({\"step\": step, \"macs_m\": macs / 1e6, \"acc\": acc_torch(m_it)})",
+    "compare = {\"one-shot\": float(hist_df.acc.iloc[-1]), \"iterative\": float(iter_df.acc.iloc[-1])}"
+  ],
+  "7-1": [
+    "models = {\"dense\": rn20, \"unstructured 50%\": prune_unstructured(rn20, 0.5),\n          \"structured 50% + FT\": torch.load(\"rn20_p50_ft.pth\", weights_only=False)}",
+    "for name, m in models.items():\n    p = export_b1(m, paths[name])\n    rows.append({\"model\": name, \"size_kb\": size_kb(p), **onnx_conv_stats(p), \"acc\": onnx_acc(p)})"
+  ],
+  "7-2": [
+    "deploy_df = onnx_df[[\"model\", \"acc\"]].copy()\ndeploy_df[\"latency_ms\"] = [deploy_lat(paths[m]) for m in deploy_df.model]\ndeploy_df[\"speedup\"] = deploy_df.latency_ms[0] / deploy_df.latency_ms",
+    "s_kb = onnx_df.set_index(\"model\").size_kb\nout = pd.DataFrame([{\"day\": \"Day5\", \"model\": tags[r.model], \"quant\": f\"FP32 ({r.model})\", \"size_kb\": s_kb[r.model],\n                     \"acc\": r.acc, \"mean_ms\": r.latency_ms, \"p95_ms\": np.nan, \"fps_b32\": np.nan} for r in deploy_df.itertuples()])\nif os.path.exists(\"qp_baseline.csv\"):\n    out = pd.concat([pd.read_csv(\"qp_baseline.csv\"), out]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nout.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 1": [
+    "for r in RATIOS:\n    m = (copy.deepcopy(rn20) if r == 0 else prune_channels(rn20, r)).cpu().eval()\n    macs, params = tp.utils.count_ops_and_params(m, EX_IN)          # fine-tuning 전 · CPU\n    acc_before = acc_torch(m)\n    t = finetune(m)\n    acc = acc_torch(m)\n    lat = deploy_lat(export_b1(m, f\"rn20_s{int(r * 100)}.onnx\"))\n    sweep_models[r] = m\n    rows.append({\"ratio\": r, \"macs_m\": macs / 1e6, \"params\": int(params), \"acc_before\": acc_before,\n                 \"acc\": acc, \"latency_ms\": lat, \"ft_s\": t})"
+  ],
+  "과제 2": [
+    "fig_, axs = plt.subplots(1, 2, figsize=(10, 3.6))\nfor ax, col, xl in [(axs[0], \"macs_m\", \"MACs (M)\"), (axs[1], \"latency_ms\", \"latency (ms)\")]:\n    ax.plot(sweep_df[col], sweep_df.acc, \"o-\")\n    for r in sweep_df.itertuples():\n        ax.annotate(f\"{int(r.ratio * 100)}%\", (getattr(r, col), r.acc), textcoords=\"offset points\", xytext=(5, 5))\n    ax.axhline(FP32_ACC - 0.03, ls=\"--\", c=\"gray\", label=\"FP32 - 3%p\")\n    ax.set_xlabel(xl); ax.set_ylabel(\"accuracy\"); ax.legend(); ax.grid(alpha=.3)\naxs[0].set_title(\"MACs vs accuracy\"); axs[1].set_title(\"latency vs accuracy\")\nfig_.tight_layout(); fig_.savefig(\"prune_curve.png\", dpi=120); plt.show()"
+  ],
+  "과제 3": [
+    "ok_ = sweep_df[sweep_df.acc >= FP32_ACC - 0.03]\nbest_ratio = float(ok_.ratio.max()) if len(ok_) else 0.0",
+    "best_row = sweep_df.set_index(\"ratio\").loc[best_ratio]"
+  ],
+  "과제 4": [
+    "sweep_df.to_csv(\"pruning_sweep.csv\", index=False)\nexport_b1(sweep_models[best_ratio], \"rn20_pruned_best.onnx\")\nout = pd.DataFrame([{\"day\": \"Day5\", \"model\": \"rn20_pruned_best\", \"quant\": f\"FP32 (structured {int(best_ratio * 100)}% + FT)\",\n                     \"size_kb\": size_kb(\"rn20_pruned_best.onnx\"), \"acc\": best_row.acc, \"mean_ms\": best_row.latency_ms,\n                     \"p95_ms\": np.nan, \"fps_b32\": np.nan}])\nif os.path.exists(\"qp_baseline.csv\"):\n    out = pd.concat([pd.read_csv(\"qp_baseline.csv\"), out]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nout.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 5": [
+    "b0 = sweep_df.set_index(\"ratio\").loc[0.0]                # 비율 0 (fine-tuning 한 dense)\nsummary = {\"best_ratio\": best_ratio, \"macs_x\": b0.macs_m / best_row.macs_m, \"params_x\": b0.params / best_row.params,\n           \"speedup\": b0.latency_ms / best_row.latency_ms, \"acc_drop_pp\": (FP32_ACC - best_row.acc) * 100}"
+  ]
+}

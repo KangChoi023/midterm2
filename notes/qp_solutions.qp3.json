@@ -1,0 +1,89 @@
+{
+  "_설명": "QP Day 3 직접 구현 풀이 — 교안 정답이 강사 잠금 코드로 잠겨 있어 직접 작성 (TODO 줄 순서대로 바꿔 끼움). tools/cell_outputs.py 로 실행해 교안의 assert 통과를 확인한 것만 둔다. GPU 가 없는 곳에서 확인 — TensorRT 줄은 GPU 일 때만 실행된다.",
+  "1-1": [
+    "for name, m in [(\"rn20\", rn20), (\"bad\", bad)]:\n    export_onnx(m, f\"{name}.onnx\")\n    with quiet():\n        quant_pre_process(f\"{name}.onnx\", f\"{name}_pre.onnx\")\n    ptq_ort(f\"{name}_pre.onnx\", f\"{name}_int8.onnx\")\n    rows.append({\"model\": name, \"fp32\": ort_acc(f\"{name}_pre.onnx\"), \"int8\": ort_acc(f\"{name}_int8.onnx\")})",
+    "cmp_df = pd.DataFrame(rows)"
+  ],
+  "1-2": [
+    "with torch.no_grad():\n    xt = torch.from_numpy(X_ev[:200])\n    fp32_diff = float((rn20(xt) - bad(xt)).abs().max())",
+    "hooks = [mod.bn1.register_forward_hook(lambda m_, inp, out, name=name: acts.__setitem__(name, out.detach().numpy()))\n         for name, mod in bad.named_modules() if isinstance(mod, BasicBlock)]\nwith torch.no_grad():\n    bad(torch.from_numpy(X_cal[:100]))\nfor h in hooks:\n    h.remove()",
+    "rows_ = []\nfor name, a in acts.items():\n    cmax = np.abs(a).max(axis=(0, 2, 3))                      # 채널마다 최댓값\n    rows_.append({\"block\": name, \"ratio\": float(cmax.max() / np.median(cmax)), \"channel\": int(cmax.argmax())})\nratio_df = pd.DataFrame(rows_)"
+  ],
+  "2-1": [
+    "x, y = np.ravel(x).astype(np.float64), np.ravel(y).astype(np.float64)\nreturn float(20 * np.log10(np.linalg.norm(x) / (np.linalg.norm(x - y) + 1e-12)))",
+    "x, y = np.ravel(x).astype(np.float64), np.ravel(y).astype(np.float64)\nreturn float(x @ y / (np.linalg.norm(x) * np.linalg.norm(y) + 1e-12))"
+  ],
+  "2-2": [
+    "ref = make_session(\"bad_pre.onnx\", 0).run(None, {\"input\": X_ev[:500]})[0]\nrows_ = []\nfor b in BLK + [\"fc\"]:\n    sel = [n.name for n in g_bad.node if n.name.startswith(PREFIX[b])]\n    ptq_ort(\"bad_pre.onnx\", \"one_block.onnx\", quantize=sel, X=X_cal[:100])\n    out = make_session(\"one_block.onnx\", 0).run(None, {\"input\": X_ev[:500]})[0]\n    rows_.append({\"block\": b, \"n_nodes\": len(sel), \"sqnr\": sqnr(ref, out)})",
+    "sens_df = pd.DataFrame(rows_)",
+    "suspects = list(sens_df[sens_df.sqnr < 20].block)"
+  ],
+  "3-1": [
+    "p = f\"/{block.split('.')[0]}/{block}/\"\nwant = {p + \"conv1/Conv\", p + \"Relu\", p + \"conv2/Conv\"}\nreturn [n.name for n in graph.node if n.name in want]"
+  ],
+  "3-2": [
+    "s0 = make_session(\"bad_pre.onnx\")\nfp32_ms = bench_fn(lambda: s0.run(None, {\"input\": x1}), n=200, warm=20)[\"mean\"]",
+    "order = list(sens_df[sens_df.block.isin(suspects)].sort_values(\"sqnr\").block)",
+    "excl = [n for b in order[:k] for n in block_nodes(b)]\npath = ptq_ort(\"bad_pre.onnx\", f\"bad_mix{k}.onnx\", exclude=excl)\ns = make_session(path)\nrows.append({\"n_blocks\": k, \"n_nodes\": len(excl), \"acc\": ort_acc(path),\n             \"mean_ms\": bench_fn(lambda: s.run(None, {\"input\": x1}), n=200, warm=20)[\"mean\"], \"size_kb\": size_kb(path)})"
+  ],
+  "4-1": [
+    "with quiet():\n    quantize_static(src, dst, reader, quant_format=QuantFormat.QDQ, per_channel=True, reduce_range=True,\n                    activation_type=QuantType.QInt8, weight_type=QuantType.QInt8, nodes_to_exclude=list(exclude),\n                    extra_options={\"ActivationSymmetric\": True, \"WeightSymmetric\": True, \"QuantizeBias\": False})\nreturn dst",
+    "export_onnx(rn20, \"rn20_b1.onnx\", batch=1)\nwith quiet():\n    quant_pre_process(\"rn20_b1.onnx\", \"rn20_b1_pre.onnx\")\nmake_trt_int8(\"rn20_b1_pre.onnx\", \"rn20_trt_int8.onnx\", CifarReader(X_cal, bs=1))",
+    "acc_trt_int8 = ort_acc(\"rn20_trt_int8.onnx\", bs=1)"
+  ],
+  "4-2": [
+    "if int8:\n    config.set_flag(trt.BuilderFlag.INT8)",
+    "if TRT_OK:\n    build_once(\"rn20_trt_int8.onnx\", \"rn20_int8.engine\", fp16=True, int8=True)"
+  ],
+  "5-1": [
+    "return float(np.mean([infer(X[i:i + 1]).argmax() == y[i] for i in range(len(X))]))",
+    "for prec, src, f16, i8 in ENG:\n    if TRT_OK:\n        eng = build_once(src, f\"rn20_{prec.lower()}.engine\", fp16=f16, int8=i8)\n        infer, fsize = TRTInfer(eng), eng\n    elif prec == \"FP16\":                                       # CPU 에는 FP16 실행기가 없다\n        infer, fsize = None, None\n    else:\n        s = make_session(src)\n        infer, fsize = (lambda x, s=s: s.run(None, {\"input\": x})[0]), src\n    INFER5[prec] = infer\n    if infer is None:\n        rows.append({\"precision\": prec, \"backend\": BACKEND, \"acc\": np.nan, \"mean_ms\": np.nan, \"size_mb\": np.nan})\n        continue\n    rows.append({\"precision\": prec, \"backend\": BACKEND, \"acc\": run_acc(infer),\n                 \"mean_ms\": bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)[\"mean\"], \"size_mb\": size_kb(fsize) / 1024})"
+  ],
+  "5-2": [
+    "s_ref = make_session(\"rn20_trt_int8.onnx\")\nref_l = np.concatenate([s_ref.run(None, {\"input\": X_ev[i:i + 1]})[0] for i in range(300)])\ntrt_l = np.concatenate([INFER5[\"INT8\"](X_ev[i:i + 1]) for i in range(300)])",
+    "max_abs, agree = float(np.abs(ref_l - trt_l).max()), float((ref_l.argmax(1) == trt_l.argmax(1)).mean())"
+  ],
+  "6-1": [
+    "make_trt_int8(\"yolov8n_pre.onnx\", \"yolov8n_int8_all.onnx\", YoloReader(CAL_IDX))",
+    "n_fp32, n_all = len(detect(im0, yolo_fp32)[0]), len(detect(im0, ort_infer(\"yolov8n_int8_all.onnx\"))[0])",
+    "g_all = onnx.load(\"yolov8n_int8_all.onnx\").graph\ndq_out = [n for n in g_all.node if \"output0\" in n.output][0]",
+    "out_scale = float(numpy_helper.to_array([i for i in g_all.initializer if i.name == dq_out.input[1]][0]))",
+    "score_levels = 1 / out_scale"
+  ],
+  "6-2": [
+    "head = [n.name for n in g_y.node if n.name.startswith(\"/model.22/\") and not re.match(r\"/model.22/cv[23]\\.\\d/\", n.name)]",
+    "make_trt_int8(\"yolov8n_pre.onnx\", \"yolov8n_int8.onnx\", YoloReader(CAL_IDX), exclude=head)",
+    "yolo_int8 = ort_infer(\"yolov8n_int8.onnx\")",
+    "b32, b8 = detect(im0, yolo_fp32)[0], detect(im0, yolo_int8)[0]",
+    "head_iou = float(np.median(iou_matrix(b8, b32).max(1)))"
+  ],
+  "7-1": [
+    "dets = []\nfor i in idx:\n    b, s = detect(imgs[i], infer, conf=0.01)\n    dets.append(np.concatenate([b, s[:, None]], 1))\ng = [gts[i] for i in idx]\nreturn evaluate_ap(dets, g), map_50_95(dets, g)",
+    "for model, f, split, idx in [(\"FP32\", yolo_fp32, \"eval\", EVAL_IDX), (\"INT8\", yolo_int8, \"eval\", EVAL_IDX),\n                             (\"INT8\", yolo_int8, \"calib\", CAL_IDX), (\"FP32\", yolo_fp32, \"calib\", CAL_IDX)]:\n    ap, m = eval_map(f, idx)\n    rows.append({\"model\": model, \"split\": split, \"AP50\": ap, \"mAP\": m})"
+  ],
+  "7-2": [
+    "if TRT_OK:\n    return TRTInfer(build_once(onnx_path, f\"yolov8n_{prec.lower().replace('-', '_')}.engine\", fp16=fp16, int8=int8))\nreturn None if prec == \"FP16\" else ort_infer(onnx_path)",
+    "for prec, path, f16, i8 in [(\"FP16\", YOLO_ONNX, True, False), (\"INT8\", \"yolov8n_int8.onnx\", True, True)]:\n    f = make_infer(prec, path, f16, i8)\n    ap, m = eval_map(f, EVAL_IDX) if f is not None else (np.nan, np.nan)\n    rows.append({\"prec\": prec, \"AP50\": ap, \"mAP\": m})"
+  ],
+  "과제 1": [
+    "last_convs = [n.name for n in g_y.node if re.match(r\"/model.22/cv[23]\\.\\d/cv[23]\\.\\d\\.2/Conv$\", n.name)]",
+    "mixed_nodes = head + [\"/model.0/conv/Conv\"] + last_convs",
+    "make_trt_int8(\"yolov8n_pre.onnx\", \"yolov8n_int8_mixed.onnx\", YoloReader(CAL_IDX), exclude=mixed_nodes)"
+  ],
+  "과제 2": [
+    "f = make_infer(prec, onnx_path, fp16, int8)\nif f is None:\n    return {\"prec\": prec, \"backend\": BACKEND, \"latency_ms\": np.nan, \"fps\": np.nan, \"AP50\": np.nan, \"mAP\": np.nan, \"size_mb\": np.nan}\nx = to_input(imgs[EVAL_IDX[0]])[0]\nr = bench_fn(lambda: f(x), n=200 if TRT_OK else 10, warm=20 if TRT_OK else 2)\nap, m = eval_map(f, EVAL_IDX)\npath = f\"yolov8n_{prec.lower().replace('-', '_')}.engine\" if TRT_OK else onnx_path\nreturn {\"prec\": prec, \"backend\": BACKEND, \"latency_ms\": r[\"mean\"], \"fps\": 1000 / r[\"mean\"],\n        \"AP50\": ap, \"mAP\": m, \"size_mb\": size_kb(path) / 1024}"
+  ],
+  "과제 3": [
+    "SPEC = [(\"FP32\", YOLO_ONNX, False, False), (\"FP16\", YOLO_ONNX, True, False),\n        (\"INT8\", \"yolov8n_int8.onnx\", True, True), (\"INT8-mixed\", \"yolov8n_int8_mixed.onnx\", True, True)]",
+    "review_df = pd.DataFrame([measure(*s) for s in SPEC])"
+  ],
+  "과제 4": [
+    "f32 = review_df.set_index(\"prec\").loc[\"FP32\"]\nreview_df[\"pass\"] = (review_df.AP50 >= f32.AP50 - 0.01 - 1e-9) & (review_df.mAP >= f32.mAP - 0.02 - 1e-9)\nrecommend = review_df[review_df[\"pass\"]].sort_values(\"latency_ms\").iloc[0].prec",
+    "review_df[\"recommend\"] = review_df.prec == recommend\nreview_df.to_csv(\"deploy_review.csv\", index=False)\nrows_b = [{\"day\": \"Day3\", \"model\": f\"yolov8n_{r.prec}\", \"quant\": f\"{r.prec} ({r.backend})\", \"size_kb\": r.size_mb * 1024,\n           \"acc\": r.AP50, \"mean_ms\": r.latency_ms, \"p95_ms\": np.nan, \"fps_b32\": np.nan} for r in review_df.itertuples()]\nout = pd.DataFrame(rows_b)\nif os.path.exists(\"qp_baseline.csv\"):\n    out = pd.concat([pd.read_csv(\"qp_baseline.csv\"), out]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nout.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 5": [
+    "f_rec = make_infer(*[s for s in SPEC if s[0] == recommend][0])",
+    "for i in EVAL_IDX[:20]:\n    b32_, br = detect(imgs[i], yolo_fp32)[0], detect(imgs[i], f_rec)[0]\n    count_diff += abs(len(b32_) - len(br))\n    if len(b32_) and len(br):\n        ious += list(iou_matrix(br, b32_).max(1))",
+    "pair_iou_med = float(np.median(ious))"
+  ]
+}

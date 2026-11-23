@@ -1,0 +1,90 @@
+{
+  "_설명": "QP Day 6 직접 구현 풀이 — 교안 정답이 강사 잠금 코드로 잠겨 있어 직접 작성 (TODO 줄 순서대로 바꿔 끼움). tools/cell_outputs.py 로 실행해 교안의 assert 통과를 확인한 것만 둔다. GPU 가 없는 곳에서 확인 — TensorRT 줄은 GPU 일 때만 실행된다.",
+  "1-1": [
+    "return F.softmax(logits / T, dim=1)                       # dim=1 = 클래스 축",
+    "with torch.no_grad():\n    t_logits = rn20.cpu()(torch.from_numpy(X_ev[:500]))",
+    "dark = {T: float(1 - soft(t_logits, T).max(1).values.mean()) for T in [1, 2, 4, 8]}"
+  ],
+  "1-2": [
+    "ce = F.cross_entropy(s_logits, y)                         # 정답 레이블과\nkl = F.kl_div(F.log_softmax(s_logits / T, dim=1), soft(t_logits, T), reduction=\"batchmean\")   # 선생님 분포와\nreturn alpha * ce + (1 - alpha) * T * T * kl"
+  ],
+  "2-1": [
+    "teacher = teacher.to(DEV).eval()\nstudent.to(DEV); t0 = time.time()\nopt = torch.optim.SGD(student.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)\nsched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * (len(Xtr_u8) // 128 + 1))\nfor ep in range(epochs):\n    student.train()\n    for xb, yb in batches(seed=ep):\n        with torch.no_grad():\n            t_out = teacher(xb)                           # 선생님은 답만 낸다 (학습 X)\n        loss = kd_loss(student(xb), t_out, yb, T, alpha)\n        opt.zero_grad(); loss.backward(); opt.step(); sched.step()\n    student.eval()\n    if on_epoch:\n        on_epoch(ep, student)\nreturn time.time() - t0",
+    "p50 = prune_channels(rn20, 0.5)",
+    "p50_kd = copy.deepcopy(p50)",
+    "hist_kd = [acc_torch(p50_kd)]",
+    "t_kd = train_kd(p50_kd, rn20, on_epoch=lambda ep, m: hist_kd.append(acc_torch(m)))"
+  ],
+  "2-2": [
+    "p50_ft = copy.deepcopy(p50)\nt_ft = finetune(p50_ft)",
+    "kd_df = pd.DataFrame([{\"method\": \"fine-tuning\", \"acc\": acc_torch(p50_ft), \"train_s\": t_ft},\n                      {\"method\": \"KD\", \"acc\": hist_kd[-1], \"train_s\": t_kd}])",
+    "kd_gain = float(kd_df.acc[1] - kd_df.acc[0])",
+    "torch.save(p50_kd.cpu(), \"rn20_p50_kd.pth\")"
+  ],
+  "3-1": [
+    "with quiet():\n    return mtq.quantize(copy.deepcopy(model).to(DEV), mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)",
+    "q_kd = to_int8(p50_kd)",
+    "acc_kd, acc_int8 = acc_torch(p50_kd), acc_torch(q_kd)",
+    "need_qat = (acc_kd - acc_int8) > 0.01",
+    "export_b1(copy.deepcopy(q_kd), \"rn20_p50_kd_int8.onnx\")\nacc_int8_onnx = onnx_acc(\"rn20_p50_kd_int8.onnx\")"
+  ],
+  "3-2": [
+    "q_first = to_int8(rn20)",
+    "acc_q_first = acc_torch(q_first)",
+    "m_bad = copy.deepcopy(q_first).cpu().eval()\nmake_pruner(m_bad, 0.5).step()",
+    "try:\n    acc_torch(m_bad); err_order = None\nexcept RuntimeError as e:\n    err_order = str(e)"
+  ],
+  "4-1": [
+    "CAL_IDX = list(range(0, EVAL_START, 10))",
+    "cal_frames = read_frames(CAL_IDX)",
+    "self.it = iter([{\"images\": to_input(f)[0]} for f in frames])",
+    "return next(self.it, None)"
+  ],
+  "4-2": [
+    "head = [n.name for n in g_y.node if n.name.startswith(\"/model.22/\") and not re.match(r\"/model.22/cv[23]\\.\\d/\", n.name)]",
+    "last_convs = [n.name for n in g_y.node if re.match(r\"/model.22/cv[23]\\.\\d/cv[23]\\.\\d\\.2/Conv$\", n.name)]",
+    "make_yolo_int8(\"yolov8n_int8.onnx\", FrameReader(cal_frames), exclude=head)          # reader 는 매번 새로\nmake_yolo_int8(\"yolov8n_int8_mixed.onnx\", FrameReader(cal_frames), exclude=head + [\"/model.0/conv/Conv\"] + last_convs)",
+    "ENG = {\"FP16\": make_infer(YOLO_ONNX, fp16=True),\n       \"INT8\": make_infer(\"yolov8n_int8.onnx\", fp16=True, int8=True),\n       \"INT8-mixed\": make_infer(\"yolov8n_int8_mixed.onnx\", fp16=True, int8=True)}",
+    "n_people = {k: len(detect(frame530, f)[0]) for k, f in ENG.items()}"
+  ],
+  "5-1": [
+    "t0 = time.perf_counter()\nok, frame = cap.read()\nt1 = time.perf_counter()\nx, r, (pl, pt) = to_input(frame)\nt2 = time.perf_counter()\nout = infer(x)\nt3 = time.perf_counter()\nboxes, scores = decode_yolo(out, conf, 0.7)\nboxes = (boxes - [pl, pt, pl, pt]) / r\ninside = [in_zone(p) for p in foot_points(boxes)]\nt4 = time.perf_counter()\nreturn {\"read\": (t1 - t0) * 1000, \"pre\": (t2 - t1) * 1000, \"infer\": (t3 - t2) * 1000, \"post\": (t4 - t3) * 1000}",
+    "for name, f in ENG.items():\n    cap = cv2.VideoCapture(VIDEO); cap.set(cv2.CAP_PROP_POS_FRAMES, 500)\n    for _ in range(3):\n        time_stages(cap, f)                               # warm-up\n    ts = pd.DataFrame([time_stages(cap, f) for _ in range(30)]).mean()\n    cap.release()\n    rows.append({\"engine\": name, **ts.to_dict(), \"total\": ts.sum()})",
+    "stage_df = pd.DataFrame(rows).set_index(\"engine\")\nstage_df[\"infer_share\"] = stage_df.infer / stage_df.total"
+  ],
+  "5-2": [
+    "cap = cv2.VideoCapture(source); cap.set(cv2.CAP_PROP_POS_FRAMES, start)\nfps_v = cap.get(cv2.CAP_PROP_FPS)\nW, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))\nwriter = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*\"mp4v\"), fps_v, (W, H))\nlog, streak, i = [], 0, 0\nwhile max_frames is None or i < max_frames:\n    ok, frame = cap.read()\n    if not ok:\n        break\n    t0 = time.perf_counter()\n    vis, info, streak = process_frame(frame, infer, streak, tag=tag)\n    ms = (time.perf_counter() - t0) * 1000\n    writer.write(vis)\n    log.append({\"frame\": start + i, \"time_s\": round((start + i) / fps_v, 1), **info, \"ms\": ms})\n    i += 1\ncap.release(); writer.release()\nreturn pd.DataFrame(log)",
+    "LOGS[name] = run_intrusion(VIDEO, f\"intrusion_{tag}.mp4\", f, *SEG, tag=name)\nEVENTS[name] = find_events(LOGS[name].alarm.values, V_FPS, first=SEG[0])\npd.DataFrame(EVENTS[name], columns=[\"start_s\", \"end_s\"]).to_csv(f\"events_{tag}.csv\", index=False)"
+  ],
+  "6-1": [
+    "return {c: float((ref[c].values == log[c].values).mean()) for c in [\"n_people\", \"n_inside\", \"alarm\"]}",
+    "agree_df = pd.DataFrame([{\"engine\": k, **agreement(LOGS[\"FP16\"], v), \"events\": len(EVENTS[k])} for k, v in LOGS.items()])"
+  ],
+  "6-2": [
+    "for a, b in ref:\n    hit = [(s, e) for s, e in ev if s <= b + tol and e >= a - tol]     # 시간 구간이 겹치는 이벤트\n    rows.append({\"ref_start\": a, \"ref_end\": b, \"matched\": bool(hit),\n                 \"start_diff_s\": round(hit[0][0] - a, 1) if hit else np.nan})",
+    "event_df = pd.concat([match_events(EVENTS[\"FP16\"], EVENTS[k]).assign(engine=k) for k in [\"INT8\", \"INT8-mixed\"]], ignore_index=True)",
+    "recall = {k: float(event_df[event_df.engine == k].matched.mean()) for k in [\"INT8\", \"INT8-mixed\"]}"
+  ],
+  "7-1": [
+    "for name, path, int8 in [(\"rn20_p50_kd\", \"rn20_p50_kd.onnx\", False), (\"rn20_p50_kd_int8\", \"rn20_p50_kd_int8.onnx\", True)]:\n    rows.append({\"day\": \"Day6\", \"model\": name, \"quant\": (\"INT8\" if int8 else \"FP32\") + \" (prune 50% + KD)\", \"size_kb\": size_kb(path),\n                 \"acc\": onnx_acc(path), \"mean_ms\": deploy_lat(path, int8=int8), \"p95_ms\": np.nan, \"fps_b32\": np.nan})\n_al = agree_df.set_index(\"engine\").alarm\nfor k, lg in LOGS.items():\n    rows.append({\"day\": \"Day6\", \"model\": \"yolov8n_intrusion\", \"quant\": k, \"size_kb\": size_kb(YOLO_FILES[k]), \"acc\": _al[k],\n                 \"mean_ms\": lg.ms.mean(), \"p95_ms\": np.percentile(lg.ms, 95), \"fps_b32\": 1000 / lg.ms.mean()})",
+    "base = pd.read_csv(\"qp_baseline.csv\") if os.path.exists(\"qp_baseline.csv\") else pd.DataFrame()\n(pd.concat([base, pd.DataFrame(rows)], ignore_index=True)\n   .drop_duplicates(subset=[\"day\", \"model\", \"quant\"], keep=\"last\").to_csv(\"qp_baseline.csv\", index=False))"
+  ],
+  "7-2": [
+    "tiny = dev[\"ram_mb\"] < 1                                  # MB 단위 — 1 MB 도 안 되면 MCU\nif dev[\"nvidia_gpu\"]:\n    runtime, precision = \"TensorRT\", \"INT8 (QDQ) + FP16\"\nelif tiny:\n    runtime, precision = \"TFLite Micro\", \"INT8 only\"\nelse:\n    runtime, precision = \"ONNX Runtime / TFLite\", \"INT8 (static PTQ)\"\nreturn {\"runtime\": runtime, \"precision\": precision, \"pruning\": \"structured\", \"kd\": dev[\"ram_mb\"] < 1024}",
+    "decision_df = pd.DataFrame([{\"device\": d[\"device\"], **recommend(d)} for d in DEVICES])\ndecision_df.to_csv(\"decision_table.csv\", index=False)"
+  ],
+  "과제 1": [
+    "export_b1(copy.deepcopy(rn20), \"eval_fp32.onnx\")\nmake_trt_int8(\"eval_fp32.onnx\", \"eval_int8.onnx\")",
+    "ptq_df = pd.DataFrame([{\"model\": name, \"size_kb\": size_kb(p), \"acc\": onnx_acc(p), \"latency_ms\": deploy_lat(p, int8=i8)}\n                       for name, p, i8 in [(\"FP32\", \"eval_fp32.onnx\", False), (\"INT8\", \"eval_int8.onnx\", True)]])"
+  ],
+  "과제 2": [
+    "p30 = prune_channels(rn20, 0.3)",
+    "p30_tuned = copy.deepcopy(p30)\ntrain_kd(p30_tuned, rn20)                                 # 선생님 = 원본 rn20",
+    "method = \"kd\"",
+    "rows_ = []\nfor name, m, f in [(\"FP32\", rn20, \"pj_fp32.onnx\"), (\"pruned 30%\", p30, \"pj_p30.onnx\"), (\"pruned 30% + tuned\", p30_tuned, \"pj_p30_tuned.onnx\")]:\n    export_b1(copy.deepcopy(m), f)\n    rows_.append({\"model\": name, \"macs_m\": macs_m(m), \"params\": n_params(m), \"acc\": acc_torch(m), \"latency_ms\": deploy_lat(f)})\nprune_df = pd.DataFrame(rows_)"
+  ],
+  "과제 3": [
+    "pd.concat([ptq_df.assign(task=\"ptq\"), prune_df.assign(task=\"prune\")], ignore_index=True).to_csv(\"eval_practice.csv\", index=False)",
+    "answer = {\"ptq_size_x\": ptq_df.size_kb[0] / ptq_df.size_kb[1], \"ptq_acc_drop_pp\": (ptq_df.acc[0] - ptq_df.acc[1]) * 100,\n          \"prune_macs_x\": prune_df.macs_m[0] / prune_df.macs_m[2], \"prune_acc_drop_pp\": (prune_df.acc[0] - prune_df.acc[2]) * 100,\n          \"pass_3pp\": bool(prune_df.acc[2] >= FP32_ACC - 0.03)}"
+  ]
+}

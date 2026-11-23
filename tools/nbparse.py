@@ -168,6 +168,65 @@ def _cell_outputs(path):
         _OUTS[key] = json.load(open(f, encoding='utf8')) if os.path.exists(f) else {}
     return _OUTS[key]
 
+# ---- QP 노트북: "✍️ 직접 구현 N-M" 셀 (TODO 칸) · 💡 힌트 셀 · 🔒 잠긴 정답 ----
+# 정답이 강사 잠금 코드로 잠겨 있어, 풀이는 notes/qp_solutions.qp<N>.json 에 직접 쓴다 (assert 로 실행해 확인한 것):
+#   {"1-1": ["n_params = …", "fp32_mb = …"], …}  — TODO 줄 순서대로 하나씩 바꿔 끼운다 (여러 줄은 \n,
+#   들여쓰기는 TODO 줄을 따른다). "# TODO …" 주석 줄 바로 다음의 pass 줄은 지운다.
+QP_TODO_RE = re.compile(r'^#\s*✍️\s*(?:직접 구현\s*(\d+-\d+)|과제\s*(\d+))')
+QP_MD_RE = re.compile(r'^\s*\*\*(?:✍️\s*직접 구현\s*(\d+-\d+)|과제\s*(\d+)\s*\(\d+\s*점\))\*\*\s*(.*)', re.S)
+
+class _QPMatch:
+    def __init__(self, k): self.k = k
+    def group(self, i=0): return self.k
+
+class QP_TODO:
+    """'# ✍️ 직접 구현 3-1 …' → 키 '3-1', '# ✍️ 과제 2 …' (미니 프로젝트) → 키 '과제 2'"""
+    @staticmethod
+    def match(first):
+        m = QP_TODO_RE.match(first)
+        return _QPMatch(m.group(1) or f'과제 {m.group(2)}') if m else None
+
+def qp_md(body):
+    """문제 문장 마크다운 → (키, 문장) 또는 None"""
+    m = QP_MD_RE.match(body)
+    return (m.group(1) or f'과제 {m.group(2)}', m.group(3)) if m else None
+QP_HINT = re.compile(r'^#@title\s*💡\s*힌트')
+_SOLS = {}
+
+def qp_solutions(path):
+    m = re.search(r'(QP)-day(\d+)', path.replace('\\', '/'))
+    if not m: return {}
+    key = 'qp' + m.group(2)
+    if key not in _SOLS:
+        import os
+        f = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'notes', f'qp_solutions.{key}.json')
+        _SOLS[key] = json.load(open(f, encoding='utf8')) if os.path.exists(f) else {}
+    return _SOLS[key]
+
+def qp_fill(src, sol):
+    """TODO 줄을 풀이로 바꾼 코드. 풀이 수가 TODO 줄 수와 다르면 None"""
+    lines = src.split('\n'); todo = [i for i, l in enumerate(lines) if 'TODO' in l]
+    if not sol or len(sol) != len(todo): return None
+    out, skip = [], set()
+    for i, l in enumerate(lines):
+        if i in skip: continue
+        if i in todo:
+            ind = l[:len(l) - len(l.lstrip())]
+            rep = sol[todo.index(i)]
+            out.extend(ind + r for r in rep.split('\n'))
+            if l.lstrip().startswith('#'):                             # "# TODO …" 다음의 (주석 줄들 +) pass 는 지운다
+                j = i + 1
+                while j < len(lines) and lines[j].strip().startswith('#') and 'TODO' not in lines[j]: j += 1
+                if j < len(lines) and lines[j].strip() == 'pass': skip.update(range(i + 1, j + 1))
+            continue
+        out.append(l)
+    return '\n'.join(out)
+
+def qp_hints(src):
+    b = re.findall(r'"([A-Za-z0-9+/=]{16,})"', src)
+    try: return [h.strip() for h in base64.b64decode(''.join(b)).decode('utf8').split('\x1e') if h.strip()]
+    except Exception: return []
+
 def assert_parts(src):
     """검증 셀의 assert 들 → [(식, 기대값 또는 None, 표시 기호)]  (식 = 실행하면 값을 얻을 수 있는 코드)"""
     import ast
@@ -241,8 +300,10 @@ def parse_ipynb(path):
     nb = json.load(open(path, encoding='utf8'))
     lessons = {}
     st = {'cur': None, 'topic': None, 'fill': None, 'blank': None,   # blank: 마지막 빈칸(____) 코드가 들어간 곳
-          'checks': [], 'solved': None}    # checks: 빈칸 뒤 · 정답 앞에 온 검증 셀 / solved: 방금 넣은 정답 (번호, 토픽, 위치)
+          'checks': [], 'solved': None, 'qp_q': {}, 'qp_hint': []}    # checks: 빈칸 뒤 · 정답 앞에 온 검증 셀 / solved: 방금 넣은 정답 (번호, 토픽, 위치)
     outs = _cell_outputs(path)
+    sols = qp_solutions(path)
+    is_qp = bool(re.search(r'QP-day\d+', path.replace('\\', '/')))
 
     def insert_after(t, k, blocks):
         """토픽 t 의 블록 k 바로 뒤에 blocks 를 넣고 md 의 [[BLOCK]] 순서도 맞춘다"""
@@ -290,6 +351,8 @@ def parse_ipynb(path):
                     st['cur']['fills'].append(st['fill']); st['topic'] = None; continue
                 if head:
                     new_topic(re.sub(r'^#+\s*', '', head).strip(), body); continue
+                qm = qp_md(body)
+                if qm: st['qp_q'][qm[0]] = re.split(r'\n\s*>|막히면 아래', qm[1])[0].strip(); st['qp_next'] = qm[0]
                 pm = PROBLEM_RE.match(body)
                 if pm:                                          # NN 노트북: "**문제 1-1** …" 다음 코드 셀이 빈칸
                     st['fill'] = {'title': '빈칸 채우기 ' + pm.group(1).strip(), 'q': [body], 'code': [], 'ans': ''}
@@ -299,6 +362,24 @@ def parse_ipynb(path):
                 st['topic']['md'].append(body)
         elif c['cell_type'] == 'code' and st['cur'] is not None:
             first = src.split('\n', 1)[0]
+            if QP_HINT.match(first):                                      # QP 💡 힌트 — 다음 직접 구현 블록의 해설로
+                flush(); st['qp_hint'] = qp_hints(src); continue
+            qt = QP_TODO.match(first)
+            nxt = st.pop('qp_next', None)
+            if qt or (nxt and 'TODO' in src):                             # QP 직접 구현 — TODO 를 풀이로 채운 코드
+                flush()                                                   # (첫 줄이 %%writefile 이어도 바로 앞 문제 문장으로 번호를 안다)
+                num = qt.group(1) if qt else nxt
+                filled = qp_fill(src, sols.get(num))
+                q = _text(md_html(st['qp_q'].get(num, '')))
+                q = re.split(r'(?<=[.?!다요])\s', q, 1)[0] if len(q) > 90 else q
+                hint = '\n'.join(f'{k + 1}. {h}' for k, h in enumerate(st['qp_hint']))      # 강사님 힌트 (번호 목록)
+                body = filled if filled is not None else src
+                b = dict(_block(f'# ✏️ 문제 {num} — ' + ('풀이를 채운 코드' if filled is not None else '빈칸(TODO) 그대로') + '\n' + (body.split('\n', 1)[1] if qt else body)),
+                         solved=num, q=q, expl=hint, qp=('solved' if filled is not None else 'todo'))
+                if st['topic'] is None: new_topic('들어가며')
+                t = st['topic']; t['blocks'].append(b); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
+                st['solved'] = (num, t, len(t['blocks']) - 1); st['qp_hint'] = []
+                continue
             if '정답 보기' in first or ('b64decode' in src and '@title' in first):
                 ans = _answer(src)
                 if st['fill'] is not None: st['fill']['ans'] += ('\n' if st['fill']['ans'] else '') + ans
@@ -329,6 +410,13 @@ def parse_ipynb(path):
                 st['checks'].append(src); continue                          # 정답이 나오면 출력 상자로
             if st['solved'] is not None and is_check(src):
                 flush(src); continue
+            if sols is not None and is_qp and is_check(src) and st['topic'] is not None and st['topic']['blocks'] \
+                    and st['topic']['blocks'][-1]['kind'] in ('code', 'out'):        # QP: 시연 코드 뒤 확인 셀 → 그 코드의 기대값 상자
+                flush()
+                t = st['topic']
+                for b in _run_blocks({}, '', src):
+                    t['blocks'].append(b); t['md'].append(f'[[BLOCK {len(t["blocks"]) - 1}]]')
+                continue
             if re.match(r'\s*score\s*=\s*0\b', src) and is_check(src):        # 과제 채점 셀 — 점수만 매기는 검증 코드라 보여 주지 않는다
                 flush(); continue
             flush()
@@ -415,6 +503,8 @@ def lesson_codes(n, topics, fills):
                        'outs': [], 'topic': title}
                 if b.get('solved') in info:
                     cur.update(q=info[b['solved']]['q'], expl=info[b['solved']]['expl']); used.add(b['solved'])
+                elif b.get('qp'):                        # QP 직접 구현: 문제 문장 · 힌트 · 풀이 여부
+                    cur.update(q=b.get('q', ''), expl=b.get('expl', ''), qp=b['qp'])
                 codes.append(cur)
             elif b['kind'] == 'out' and cur is not None and not skip:
                 cur['outs'].append({'text': b['text'], 'run': b.get('run', '')})

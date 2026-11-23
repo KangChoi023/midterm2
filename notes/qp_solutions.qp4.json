@@ -1,0 +1,75 @@
+{
+  "_설명": "QP Day 4 직접 구현 풀이 — 교안 정답이 강사 잠금 코드로 잠겨 있어 직접 작성 (TODO 줄 순서대로 바꿔 끼움). tools/cell_outputs.py 로 실행해 교안의 assert 통과를 확인한 것만 둔다. GPU 가 없는 곳에서 확인 — TensorRT 줄은 GPU 일 때만 실행된다.",
+  "1-1": [
+    "qmax = 2 ** (bits - 1) - 1\namax = w.abs().flatten(1).amax(1).view(-1, *[1] * (w.dim() - 1))      # 채널별 |w| 최댓값 (C, 1, 1, 1)\nscale = (amax / qmax).clamp(min=1e-8)\nreturn torch.clamp(torch.round(w / scale), -qmax, qmax) * scale"
+  ],
+  "1-2": [
+    "for b in [8, 6, 4, 3, 2]:\n    m = copy.deepcopy(rn20)\n    with torch.no_grad():\n        for mod in m.modules():\n            if isinstance(mod, (nn.Conv2d, nn.Linear)):\n                mod.weight.copy_(quant_weight(mod.weight, b))\n    rows.append({\"bits\": b, \"acc\": acc_torch(m)})"
+  ],
+  "2-1": [
+    "return (torch.clamp(torch.round(x / scale) + zp, qmin, qmax) - zp) * scale"
+  ],
+  "2-2": [
+    "if self.per_channel:                                     # weight — 채널별 대칭\n    qmax = 2 ** (self.bits - 1) - 1\n    amax = x.detach().abs().flatten(1).amax(1).view(-1, *[1] * (x.dim() - 1)).clamp(min=1e-8)\n    return fake_quant(x, amax / qmax, 0.0, -qmax, qmax)\nif self.calib:                                           # 보정 — 범위만 기록하고 그대로 통과\n    self.lo = torch.minimum(self.lo, x.detach().min())\n    self.hi = torch.maximum(self.hi, x.detach().max())\n    return x\nlo, hi = min(float(self.lo), 0.0), max(float(self.hi), 1e-8)   # 활성값 — 텐서 하나 · 비대칭\nqmax = 2 ** self.bits - 1\ns = (hi - lo) / qmax\nreturn fake_quant(x, s, round(-lo / s), 0, qmax)"
+  ],
+  "3-1": [
+    "@staticmethod\ndef forward(ctx, x):\n    return torch.round(x)                                # 앞으로: 진짜 반올림\n\n@staticmethod\ndef backward(ctx, g):\n    return g                                             # 뒤로: 기울기를 그대로 (Straight-Through)"
+  ],
+  "3-2": [
+    "return (torch.clamp(RoundSTE.apply(x / scale) + zp, qmin, qmax) - zp) * scale",
+    "fake_quant(x, 0.25, 0, -4, 3).sum().backward()",
+    "g_ste = x.grad"
+  ],
+  "4-1": [
+    "def swap(parent):\n    for name, ch in parent.named_children():\n        if isinstance(ch, nn.Conv2d):\n            q = QConv2d(ch.in_channels, ch.out_channels, ch.kernel_size, ch.stride, ch.padding, bias=True).setup(wbits, abits)\n        elif isinstance(ch, nn.Linear):\n            q = QLinear(ch.in_features, ch.out_features, bias=True).setup(wbits, abits)\n        else:\n            swap(ch); continue                           # 그 밖의 모듈은 안으로 더 들어간다\n        q.weight.data, q.bias.data = ch.weight.data.clone(), ch.bias.data.clone()\n        setattr(parent, name, q)\nswap(m)",
+    "fqs = [f for f in model.modules() if isinstance(f, FakeQuant) and not f.per_channel]\nfor f in fqs:                                            # 활성값 양자화기만 보정 모드로\n    f.calib = True; f.lo.fill_(1e9); f.hi.fill_(-1e9)\nforward_loop(model)\nfor f in fqs:\n    f.calib = False"
+  ],
+  "4-2": [
+    "t0 = time.time()\nopt = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)\nsched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * ((len(Xtr_u8) + 127) // 128))\nfor ep in range(epochs):\n    model.train()\n    for xb, yb in batches(seed=ep):\n        loss = F.cross_entropy(model(xb), yb)\n        opt.zero_grad(); loss.backward(); opt.step(); sched.step()\n    model.eval()\n    if on_epoch:\n        on_epoch(ep, model)\nreturn time.time() - t0"
+  ],
+  "5-1": [
+    "mo8 = mtq.quantize(copy.deepcopy(rn20).to(DEV), mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)",
+    "acc_mo_ptq8 = acc_torch(mo8)",
+    "n_on = sum(1 for n, m in mo8.named_modules() if n.endswith(\"_quantizer\") and m.is_enabled)"
+  ],
+  "5-2": [
+    "cfg = copy.deepcopy(mtq.INT8_DEFAULT_CFG)                # 원본을 건드리지 않게 깊은 복사\nqc = cfg[\"quant_cfg\"]\nif isinstance(qc, list):                                 # ModelOpt 0.48: [{quantizer_name, cfg}, …]\n    for e in qc:\n        if e.get(\"quantizer_name\") == \"*weight_quantizer\":\n            e[\"cfg\"][\"num_bits\"] = wbits\nelse:                                                    # 옛 버전: {이름: cfg}\n    qc[\"*weight_quantizer\"][\"num_bits\"] = wbits\nreturn cfg",
+    "mo3 = mtq.quantize(copy.deepcopy(rn20).to(DEV), make_cfg(3), forward_loop=forward_loop)",
+    "acc_mo_ptq3 = acc_torch(mo3)"
+  ],
+  "6-1": [
+    "hist = [{\"epoch\": 0, \"acc\": acc_mo_ptq3}]\nt_mo_qat3 = train_qat(mo3, on_epoch=lambda ep, m: hist.append({\"epoch\": ep + 1, \"acc\": acc_torch(m)}))\nhist_df = pd.DataFrame(hist)",
+    "# t_mo_qat3 — 바로 위 train_qat 가 돌려준 학습 시간 (초)",
+    "acc_mo_qat3 = float(hist_df.acc.iloc[-1])"
+  ],
+  "6-2": [
+    "t_mo_qat8 = train_qat(mo8)\nacc_mo_qat8 = acc_torch(mo8)",
+    "mto.save(mo8, \"rn20_mo_qat8.pth\")\nrestored = mto.restore(load_rn20().to(DEV), \"rn20_mo_qat8.pth\")   # 빈 FP32 모델에 양자화 구조 + 값",
+    "acc_restored = acc_torch(restored)"
+  ],
+  "7-1": [
+    "export_b1(copy.deepcopy(mo8), \"rn20_qat.onnx\")",
+    "cnt = Counter(n.op_type for n in onnx.load(\"rn20_qat.onnx\").graph.node)\nn_q, n_dq = cnt[\"QuantizeLinear\"], cnt[\"DequantizeLinear\"]",
+    "acc_qat_onnx = onnx_acc(\"rn20_qat.onnx\")"
+  ],
+  "7-2": [
+    "if TRT_OK:\n    eng = build_once(\"rn20_qat.onnx\", \"rn20_qat.engine\", fp16=True, int8=True)\n    infer, fsize = TRTInfer(eng), eng\nelse:\n    s = make_session(\"rn20_qat.onnx\")\n    infer, fsize = (lambda x, s=s: s.run(None, {\"input\": x})[0]), \"rn20_qat.onnx\"\ndeploy_row = {\"model\": \"rn20_qat.onnx\", \"backend\": BACKEND,\n              \"acc\": float(np.mean([infer(X_ev[i:i + 1]).argmax() == y_ev[i] for i in range(len(X_ev))])),\n              \"mean_ms\": bench_fn(lambda: infer(X_ev[:1]), n=300, warm=30)[\"mean\"], \"size_kb\": size_kb(fsize)}"
+  ],
+  "과제 1": [
+    "q8 = calibrate(quantize_model(rn20, 8, 8))\nt_qat8 = train_qat(q8)\nacc_qat8 = acc_torch(q8)",
+    "mo_ptq8 = mtq.quantize(copy.deepcopy(rn20).to(DEV), mtq.INT8_DEFAULT_CFG, forward_loop=forward_loop)\nexport_b1(mo_ptq8, \"rn20_mo_ptq8.onnx\")\nacc_mo_ptq8_onnx = onnx_acc(\"rn20_mo_ptq8.onnx\")"
+  ],
+  "과제 2": [
+    "b_ = base_df.set_index(\"model\").acc\nduel_df = pd.DataFrame([\n    {\"method\": \"FP32\", \"acc_int8\": b_[\"FP32\"], \"acc_w3a8\": np.nan, \"train_min\": 0.0, \"latency_ms\": deploy_lat(\"rn20_b1_pre.onnx\")},\n    {\"method\": \"ORT PTQ\", \"acc_int8\": b_[\"ORT PTQ INT8\"], \"acc_w3a8\": np.nan, \"train_min\": 0.0, \"latency_ms\": deploy_lat(\"rn20_ptq8.onnx\")},\n    {\"method\": \"ModelOpt PTQ\", \"acc_int8\": acc_mo_ptq8, \"acc_w3a8\": acc_mo_ptq3, \"train_min\": 0.0, \"latency_ms\": deploy_lat(\"rn20_mo_ptq8.onnx\")},\n    {\"method\": \"수작업 QAT\", \"acc_int8\": acc_qat8, \"acc_w3a8\": acc_qat3, \"train_min\": (t_qat8 + t_qat3) / 60, \"latency_ms\": np.nan},\n    {\"method\": \"ModelOpt QAT\", \"acc_int8\": acc_mo_qat8, \"acc_w3a8\": acc_mo_qat3, \"train_min\": (t_mo_qat8 + t_mo_qat3) / 60,\n     \"latency_ms\": deploy_lat(\"rn20_qat.onnx\")}])"
+  ],
+  "과제 3": [
+    "d_ = duel_df.set_index(\"method\")\ngain = {\"INT8\": max(d_.acc_int8[\"수작업 QAT\"], d_.acc_int8[\"ModelOpt QAT\"]) - max(d_.acc_int8[\"ORT PTQ\"], d_.acc_int8[\"ModelOpt PTQ\"]),\n        \"W3A8\": max(d_.acc_w3a8[\"수작업 QAT\"], d_.acc_w3a8[\"ModelOpt QAT\"]) - d_.acc_w3a8[\"ModelOpt PTQ\"]}",
+    "need_qat = {k: bool(v > 0.01) for k, v in gain.items()}"
+  ],
+  "과제 4": [
+    "duel_df.to_csv(\"ptq_vs_qat.csv\", index=False)\nout = pd.DataFrame([{\"day\": \"Day4\", \"model\": f\"rn20_{r.method}\", \"quant\": f\"INT8 ({r.method})\", \"size_kb\": np.nan,\n                     \"acc\": r.acc_int8, \"mean_ms\": r.latency_ms, \"p95_ms\": np.nan, \"fps_b32\": np.nan} for r in duel_df.itertuples()])\nif os.path.exists(\"qp_baseline.csv\"):\n    out = pd.concat([pd.read_csv(\"qp_baseline.csv\"), out]).drop_duplicates(subset=[\"day\", \"model\"], keep=\"last\")\nout.to_csv(\"qp_baseline.csv\", index=False)"
+  ],
+  "과제 5": [
+    "plt.figure(figsize=(6, 3.6))\nplt.plot(hist_df.epoch, hist_df.acc, \"o-\", label=\"ModelOpt QAT W3A8\")\nplt.axhline(acc_mo_ptq3, ls=\"--\", label=\"PTQ W3A8\")\nplt.axhline(0.846, ls=\"--\", c=\"gray\", label=\"FP32\")\nplt.title(\"QAT accuracy (ResNet-20, W3A8)\"); plt.xlabel(\"epoch\"); plt.ylabel(\"accuracy\"); plt.legend(); plt.grid(alpha=.3)\nplt.savefig(\"qat_curve.png\", dpi=120); plt.show()"
+  ]
+}
