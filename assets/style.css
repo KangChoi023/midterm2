@@ -802,7 +802,7 @@ details.dent > summary .dp-k { margin-left: auto; flex: none; font-size: 11px; p
 .apid-box { margin: 7px 0 0; padding: 7px 10px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .apid-box > .apid-k:first-child { margin-top: 0; }
 /* 코드 탭 — 넓게 보기 · 교시 코드 전부 펼치기 */
-body.rp-wide { --rp-w: min(1100px, 68vw); }
+body.rp-wide { --rp-w: min(880px, 54vw); }      /* 넓게 보기 = 예전(1100px · 68vw)의 80% */
 #rpWide { margin-left: auto; margin-right: 6px; }
 .clsn { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 10px; background: var(--panel); }
 .clsn > summary { list-style: none; border-radius: 10px 10px 0 0; }
