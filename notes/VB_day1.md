@@ -6,6 +6,15 @@
 
 **개요**: NN 과정에서는 원리를 보려고 모든 것을 NumPy 로 직접 만들었다. ① 그 부품(Affine · Conv · Pooling · 손실 · 옵티마이저 · 미니배치 루프)은 PyTorch 에 **이미 빠르고 검증된 형태로** 모두 들어 있다 — 이번 과정은 그 부품으로 더 큰 모델 · 실제 이미지 · 영상으로 간다. ② NN Day 5 의 SimpleConvNet 은 `nn.Sequential` 에 계층을 늘어놓기만 하면 되고 파라미터 수(**433,890**)도 똑같다. ③ `CrossEntropyLoss` 는 softmax 를 포함하므로 모델 끝은 logits 그대로.
 
+**한눈에 보기**
+mynn → PyTorch — 손수 만든 부품을 한 줄로
+> NN 과정에서 NumPy 로 만든 계층 · 역전파 · 학습 루프 = PyTorch 의 검증된 부품 한 줄 — 원리는 같고 이름만 바뀐다
+- **텐서 = ndarray + GPU + 연산 기록**: 계층마다 짜던 backward 를 `loss.backward()` 한 줄로 (autograd)
+- **계층 이름 대응**: Affine = `nn.Linear` · Convolution = `nn.Conv2d` (im2col 은 내부, GPU 는 cuDNN) · Pooling = `nn.MaxPool2d` · Sequential = `nn.Sequential`
+- **SimpleConvNet 도 그대로 — 파라미터 433,890**: (N, 1, 28, 28) → (N, 30, 24, 24) → (N, 30, 12, 12) → (N, 4320) → (N, 100) → (N, 10)
+- **`nn.CrossEntropyLoss` = softmax + CE + 평균**: 모델 끝은 softmax 전 점수(logits) 그대로
+- **⚠ 모델 끝에 softmax 를 붙이면 두 번 적용된다**: 런타임이 끊기면 맨 위 환경 셀부터 다시
+
 **핵심 용어**
 - **텐서(Tensor)**: `np.ndarray` 의 PyTorch 판 — GPU 에 올릴 수 있고 연산 기록(autograd)을 남긴다
 - **autograd**: 순전파 연산을 기록했다가 `loss.backward()` 한 줄로 역전파를 자동 계산하는 기능
@@ -123,6 +132,16 @@ NN Day 5 에서 만든 구조를 그대로 늘어놓는다.
 **키워드**: `torch.Tensor`, `float32 기본`, `axis → dim`, `keepdims → keepdim`, `from_numpy = 공유`, `torch.tensor = 복사`, `reshape · view · permute · unsqueeze`, `.to(device)`, `synchronize()`
 
 **개요**: Tensor 는 ndarray 에 세 가지(**device** · **requires_grad** · 기본 float32)를 더한 것이다. ① 함수 이름은 NumPy 와 거의 같고 축 인자만 `axis` → `dim`, `keepdims` → `keepdim`. ② `from_numpy` 는 같은 메모리를 **공유**하고 `torch.tensor` 는 **복사**한다 — NN Day 1 "b = a 는 복사가 아니다" 와 같은 이야기. ③ GPU 는 수천 개 코어로 행렬곱을 한꺼번에 계산하지만, 데이터와 모델이 **같은 device** 에 있어야 한다.
+
+**한눈에 보기**
+Tensor — NumPy 배열 + device + requires_grad
+> PyTorch 의 기본 자료형 — 함수 이름은 NumPy 와 거의 같고(axis → dim), 기본 실수형은 float32, 어느 장치(CPU · GPU)에 있는지와 미분 기록 여부를 함께 가진다
+- **⚠ float64 ndarray 를 그대로 모델에 넣으면 dtype 오류**: `.float()` 로 float32 — NumPy 기본은 float64
+- **from_numpy 는 메모리 공유, torch.tensor 는 복사**: `b = from_numpy(a)` 에서 `b[0] = 7` 이면 a 도 [7, 0, 0]
+- **모양 바꾸기 — reshape · permute · unsqueeze**: (2, 3, 4) 를 `permute(0, 2, 1)` → (2, 4, 3) · 이미지 HWC → CHW, 1장 → 배치 (1, C, H, W)
+- **데이터와 모델은 같은 device 에**: `Tensor.to(device)` — 2048 × 2048 행렬곱 ≈ 17.2 GFLOP 로 CPU · GPU 속도 비교
+- **GPU 시간은 synchronize 후에 잰다**: GPU 는 명령만 받고 바로 돌아오는 비동기 실행 · 준비 운동 1회
+- **⚠ GPU 텐서는 `.cpu().numpy()`**: 모델 GPU · 데이터 CPU 면 `Expected all tensors to be on the same device`
 
 **핵심 용어**
 - **device**: 텐서가 놓인 곳 — `cpu` 또는 `cuda`(GPU 메모리)
@@ -257,6 +276,15 @@ GPU 는 수천 개 코어로 행렬곱을 한꺼번에 계산한다. 2048 × 204
 
 **개요**: NN Day 3 에서는 계층마다 `backward()` 를 손으로 짜고 gradient check 로 확인했다. ① PyTorch 는 `requires_grad=True` 인 텐서로 한 연산을 **계산 그래프**로 기록해 두었다가 `loss.backward()` 한 번에 연쇄 법칙을 거꾸로 적용한다. ② 결과는 잎(leaf) 텐서의 `.grad` 에 **더해진다** — 그래서 매번 비워야 한다. ③ autograd 결과는 손으로 유도한 Xᵀ(y − t)/N 과 같고, 학습 한 step 은 `zero_grad() → backward() → step()`.
 
+**한눈에 보기**
+autograd — 기록했다가 거꾸로
+> `requires_grad=True` 텐서로 한 연산을 계산 그래프로 기록해 두고, `backward()` 가 연쇄 법칙을 거꾸로 적용해 잎 텐서의 `.grad` 에 기울기를 채운다
+- **f = x² + 3y², (1, 2) → x.grad = 2, y.grad = 12**: backward 는 손실처럼 값 하나인 텐서에서 부른다
+- **기울기는 누적된다 — 매번 비운다**: x = 1, f = x² 를 두 번 backward → 2 가 아니라 4 (큰 배치를 나눠 모을 때 쓰는 기능)
+- **autograd 의 dW = 손으로 유도한 Xᵀ(y − t)/N**: NN 과정의 식과 같은 값인지 비교해 확인
+- **직접 경사하강 = `torch.optim.SGD`**: `zero_grad() → backward() → step()` — (−4, 2), lr 0.1 이면 매 step p₀ × 0.8, p₁ × 0.4
+- **⚠ 직접 갱신은 `torch.no_grad()` 안에서**: 밖에서 하면 leaf in-place 오류 · 그래프가 붙은 텐서는 `.detach()` 후 `.numpy()`
+
 **핵심 용어**
 - **계산 그래프(computational graph)**: 연산을 노드로 기록한 구조 — 각 노드가 미분에 필요한 값을 저장 (NN 의 `self.x`, `self.mask` 와 같은 일)
 - **잎 텐서(leaf)**: 사용자가 직접 만든 `requires_grad=True` 텐서 — `.grad` 가 여기에 쌓인다
@@ -368,6 +396,15 @@ Affine + softmax + CE 의 dW 는 NN Day 3 에서 Xᵀ(Y − T)/N 으로 유도�
 **키워드**: `nn.Module`, `__init__ = 부품`, `forward = 연결`, `parameters()`, `79,510`, `Dataset (__len__ · __getitem__)`, `DataLoader`, `transforms.ToTensor`, `600 iteration`, `long 레이블`
 
 **개요**: 모델과 데이터를 PyTorch 의 표준 틀에 담는다. ① 모델은 `nn.Module` 을 상속한 클래스 — `__init__` 에서 계층을 만들고 `forward` 에서 데이터가 지나가는 길을 쓴다, 파라미터는 `parameters()` 로 자동 수집(NN 의 `Sequential.params()`). ② 데이터는 `Dataset` 이 한 장씩 주고 `DataLoader` 가 섞어서 `batch_size` 개씩 쌓아 준다(NN 의 `rng.permutation` 루프). ③ `CrossEntropyLoss` 를 풀어 쓰면 log_softmax 의 정답 칸 평균 — NN Day 2 와 같은 팬시 인덱싱.
+
+**한눈에 보기**
+nn.Module · Dataset · DataLoader — 모델과 데이터의 틀
+> 모델은 nn.Module 을 상속해 `__init__`(부품) + `forward`(데이터 길)로, 데이터는 Dataset(한 장씩) → DataLoader(섞어서 배치로)로 만든다
+- **`self.` 에 붙인 계층은 parameters() 가 자동 수집**: MLP 784-100-10 → 79,510개 — `model(x)` 로 호출
+- **DataLoader 는 batch_size 개씩 텐서 하나로**: MNIST 60,000장 · batch 100 → epoch 당 600 iteration
+- **Dataset 은 `__len__` + `__getitem__`**: NumPy 배열이면 `from_numpy(X[i]).float() / 255`, `unsqueeze(0)` 으로 직접 만든다
+- **CrossEntropyLoss = −log_softmax 의 정답 칸 평균**: 팬시 인덱싱 `[torch.arange(N), yb]` 로 행마다 정답 하나 (NN Day 3 와 같음)
+- **⚠ `self.` 에 붙이지 않은 계층은 학습되지 않는다**: 평가 로더는 `shuffle=False` · 레이블은 long(int64)
 
 **핵심 용어**
 - **nn.Module 상속 클래스**: `__init__` 에서 `self.` 에 계층을 붙이고 `forward(x)` 를 정의한 모델 — `model(x)` 로 호출
@@ -488,6 +525,15 @@ Dataset 은 `__len__`(전체 개수) 과 `__getitem__`(i 번째 한 쌍) 만 있
 **키워드**: `train() / eval()`, `to device → forward → loss → zero_grad → backward → step`, `no_grad`, `argmax(dim=1)`, `loss.item()`, `state_dict`, `torch.save / load_state_dict`, `map_location`
 
 **개요**: 모든 PyTorch 학습 코드는 **같은 모양**이다 — 모델이 ResNet 이든 YOLO 든 바뀌는 건 모델 · 데이터 · 손실 함수뿐. ① 학습: `train()` → 배치마다 (device 로 → 순전파 → 손실 → zero_grad → backward → step). ② 평가: `eval()` + `no_grad()` + `argmax` — 두 가지는 하는 일이 다르다. ③ 저장은 모델 객체가 아니라 `state_dict()`(이름 → 파라미터)만, 불러오기는 같은 클래스로 새 모델을 만든 뒤 `load_state_dict`.
+
+**한눈에 보기**
+학습 루프 · 평가 · 저장 — 모델이 무엇이든 같은 모양
+> 배치 → device → 순전파 → 손실 → zero_grad → backward → step 을 반복하고, 평가는 eval() + no_grad(), 저장은 state_dict 만
+- **학습 루프 한 바퀴**: 함수 첫 줄 `model.train()` · Adam(lr 1e-3) · 손실은 `loss.item() * len(yb)` 를 모아 평균
+- **eval() 과 no_grad() 는 다른 일**: eval() = Dropout · BN 을 평가 모드로, no_grad() = 기울기 기록 끄기 — 둘 다 필요
+- **정확도 = argmax 가 정답인 비율**: softmax 없이도 순서가 같아 `model(xb).argmax(dim=1)`
+- **저장은 state_dict(이름 → 파라미터)만**: `torch.save(model.state_dict(), "mlp.pt")` → 같은 클래스로 `load_state_dict` — 정확도가 저장 전과 같아야
+- **⚠ `loss` 텐서를 그대로 리스트에 모으면 메모리 누수**: `.item()` · 모델을 먼저 `.to(device)` 한 뒤 옵티마이저를 만든다
 
 **핵심 용어**
 - **학습 모드 / 평가 모드**: `model.train()` / `model.eval()` — Dropout · BatchNorm 동작이 바뀐다
@@ -617,6 +663,16 @@ def evaluate(model, loader):
 
 **개요**: MNIST 는 이미 다듬어진 28×28 흑백이었다. 실제 사진은 크고, 컬러이고, uint8 이다. ① OpenCV · NumPy 는 **(H, W, C) uint8 BGR**, PyTorch 는 **(C, H, W) float32 RGB 0~1** 에 채널별 평균 · 표준편차 정규화, 모델에는 배치 축을 붙인 (N, C, H, W). ② 흑백은 세 채널의 가중 평균이고, uint8 끼리 계산하면 255 를 넘어 **overflow** — 계산은 float 로. ③ 사진 → 입력 텐서: crop → resize → ToTensor → Normalize → unsqueeze(0), 그리고 **학습 때와 추론 때의 전처리가 같아야** 한다.
 
+**한눈에 보기**
+디지털 이미지 — OpenCV 와 PyTorch 의 약속 맞추기
+> OpenCV 는 (H, W, C) uint8 BGR 0 ~ 255, PyTorch 는 (N, C, H, W) float32 RGB 0 ~ 1 — 그 사이를 BGR→RGB · HWC→CHW · /255 · 정규화로 잇는다
+- **⚠ BGR 그대로 사전학습 모델에 넣으면 오류 없이 정확도만 떨어진다**: `img[:, :, ::-1]` 로 RGB
+- **흑백 = 0.299R + 0.587G + 0.114B**: 눈은 초록에 가장 민감 — `cv2.cvtColor(COLOR_BGR2GRAY)` 와 같은 값
+- **uint8 은 255 를 넘으면 돌아간다**: 200 + 100 = 44 — 계산은 float 로, `cv2.add()` 는 255 에서 멈춤(포화)
+- **ToTensor = permute(2, 0, 1) + float / 255**: HWC → CHW, 0 ~ 1
+- **입력 파이프라인 — crop → resize → ToTensor → 정규화 → unsqueeze**: ImageNet mean [0.485, 0.456, 0.406] · std [0.229, 0.224, 0.225] → (1, 3, 224, 224)
+- **⚠ `cv2.resize` 크기는 (W, H)**: 학습 때와 추론 때 전처리가 같아야 한다
+
 **핵심 용어**
 - **채널(channel)**: 같은 크기의 밝기 판 — 컬러 사진은 B · G · R 3장의 겹침
 - **uint8 overflow**: 0~255 정수끼리 더해 255 를 넘으면 0 부터 다시 세는 현상 (300 → 44)
@@ -745,6 +801,15 @@ ImageNet 사전학습 모델의 mean = [0.485, 0.456, 0.406], std = [0.229, 0.22
 
 **개요**: 영상은 **같은 크기 이미지(프레임)의 연속**이다. ① 카메라든 파일이든 `cv2.VideoCapture` 로 열어 한 프레임씩 꺼내는 루프 — 열 때 주소만 바꾸면 카메라에서도 같은 코드가 돈다. ② 오늘은 MNIST 숫자가 지나가는 테스트 영상을 직접 만들고(`VideoWriter`), 다시 읽어 처리한 뒤 결과 영상을 저장한다. ③ 길이(초) = 프레임 수 / FPS, 원본 그대로면 용량이 커서 코덱으로 압축한다.
 
+**한눈에 보기**
+영상 파이프라인 — 프레임을 읽고 처리하고 쓰기
+> 영상은 프레임의 연속(길이 = 프레임 수 / FPS) — VideoCapture 로 한 장씩 읽어 처리하고 VideoWriter 로 쓰는 루프 하나로 파일 · 카메라를 모두 다룬다
+- **6초 × 30 FPS = 180 프레임**: (120, 320, 3) 프레임 180장은 압축 없이 약 20.7 MB → 코덱(mp4v · H.264)으로 압축
+- **속성 읽기 — `cap.get(cv2.CAP_PROP_FPS)`**: 프레임 수 · 폭 · 높이도 같은 방식
+- **읽기 → 처리 → 쓰기 → release**: 그리기는 `cv2.rectangle` · `cv2.putText` (색은 BGR) — 카메라는 `VideoCapture(0)`
+- **실시간이면 프레임당 33 ms 안**: 30 FPS 기준, `time.perf_counter()` 로 처리 시간을 잰다
+- **⚠ VideoWriter 크기를 (H, W) 로 주면 오류 없이 빈 영상**: `ok` 확인 안 하면 끝에서 frame 이 None · `release()` 를 안 하면 파일이 덜 써짐
+
 **핵심 용어**
 - **프레임(frame)**: 영상 속 이미지 한 장 — 오늘은 (120, 320, 3) uint8 BGR
 - **FPS(frames per second)**: 1초에 보여 주는 프레임 수 — 오늘 **30**
@@ -858,6 +923,16 @@ cap.release(); writer.release()
 **키워드**: `domain shift`, `그냥 줄이기 vs 전처리`, `전처리 6단계`, `조명 보정 divide`, `Otsu 이진화`, `contour · boundingRect`, `20×20 + 무게중심 (14, 14)`, `프레임별 추론`, `신뢰도 · 투표`
 
 **개요**: 오늘 배운 것을 모두 엮는다. ① NN Day 5 의 SimpleConvNet 을 `nn.Module` 로 쓰고 2 epoch 학습해 MNIST test 0.98 이상. ② 그런데 종이 사진을 그냥 28×28 로 줄여 넣으면 거의 못 맞힌다 — MNIST 는 검은 배경 · 흰 글씨 · 20×20 상자 · 무게중심이 가운데인 데이터이기 때문(**domain shift**). ③ 입력을 학습 데이터 모양으로 맞추는 **전처리 6단계**로 해결하고, 같은 모델로 7교시 영상을 프레임마다 인식한다.
+
+**한눈에 보기**
+도메인 이동 — 학습 데이터와 실제 입력이 다르면
+> MNIST(검은 배경 · 흰 글씨 · 가운데 정렬)로 학습한 모델은 종이 사진(흰 배경 · 그림자 · 치우침)을 그냥 넣으면 거의 못 맞힌다 — 입력을 학습 데이터 쪽으로 옮기는 전처리로 해결
+- **모델 — SimpleConvNet 을 nn.Module 로**: Adam 0.001 · 2 epoch → test 0.98 이상
+- **전처리 6단계로 종이 사진을 MNIST 모양으로**: 흑백 → 조명 보정 → 반전 · Otsu 이진화 → 가장 큰 윤곽 자르기 → 20 × 20 → 무게중심 (14, 14)
+- **조명 보정 — 흐린 배경으로 나누기**: `GaussianBlur(g, (0, 0), 25)` 로 배경만 남기고 `cv2.divide` → 밝기가 평평
+- **영상 숫자 인식 — 7교시 루프에 predict 를 끼운다**: 신뢰도(최대 확률) > 0.9 면 초록, 아니면 주황 — 가운데 프레임 예측 = [7, 2, 1, 0, 4, 1]
+- **다른 해법은 모델이 실제 데이터를 보게**: 증강(Day 2) · 전이학습(Day 3)
+- **⚠ 두 숫자 사이 프레임은 예측이 흔들린다**: 신뢰도 문턱 · 연속 프레임 투표 · 조명 보정을 빼면 그림자 사진에서 이진화가 무너짐
 
 **핵심 용어**
 - **도메인 이동(domain shift)**: 학습 데이터와 실제 입력의 분포가 다른 문제 — "실험실에선 되는데 현장에서 안 된다"의 가장 흔한 원인
