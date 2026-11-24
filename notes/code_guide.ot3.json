@@ -1,133 +1,38 @@
 {
   "_설명": "OT Day 3 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "ot/3/1-1": [
-    {
-      "at": "mnv3s = make_mnv3s()",
-      "to": "dynamic_axes={\"input\": {0: \"batch\"}, \"logits\": {0: \"batch\"}}, opset_version=17",
-      "t": "MobileNetV3-Small 내보내기 (배치 축 열기)",
-      "d": "6교시에서 배치 크기를 바꿔 재기 위해 dynamic_axes."
-    },
-    {
-      "at": "cnn = SimpleConvNet().eval()",
-      "to": "dynamic_axes={\"input\": {0: \"batch\"}, \"logits\": {0: \"batch\"}}, opset_version=17",
-      "t": "SimpleConvNet 도 같은 방식으로",
-      "d": "작은 모델과 큰 모델을 함께 재면 병목이 다르다는 게 보인다 (7교시)."
-    },
-    {
-      "at": "x1 = np.random.rand(1, 3, 224, 224)",
-      "to": "\"| 입력\"",
-      "t": "오늘 계속 쓸 입력 · PyTorch 와 같은지",
-      "d": "속도를 재기 전에 결과가 맞는지부터."
-    }
+    {"at": "mnv3s = make_mnv3s()", "to": "dynamic_axes={\"input\": {0: \"batch\"}, \"logits\": {0: \"batch\"}}, opset_version=17", "t": "MobileNetV3-Small 내보내기 (배치 축 열기)", "d": "6교시에서 배치 크기를 바꿔 재기 위해 dynamic_axes."},
+    {"at": "cnn = SimpleConvNet().eval()", "to": "dynamic_axes={\"input\": {0: \"batch\"}, \"logits\": {0: \"batch\"}}, opset_version=17", "t": "SimpleConvNet 도 같은 방식으로", "d": "작은 모델과 큰 모델을 함께 재면 병목이 다르다는 게 보인다 (7교시)."},
+    {"at": "x1 = np.random.rand(1, 3, 224, 224)", "to": "\"| 입력\"", "t": "오늘 계속 쓸 입력 · PyTorch 와 같은지", "d": "속도를 재기 전에 결과가 맞는지부터. → 개념 3 의 결과는 같아야 한다"}
   ],
   "ot/3/2-2": [
-    {
-      "at": "for _ in range(10):",
-      "to": "sess.run(None, {\"input\": x1})",
-      "t": "warm-up — 재지 않고 버린다",
-      "d": "첫 몇 번은 메모리 준비 · 캐시 때문에 느리다."
-    },
-    {
-      "at": "times = []",
-      "to": "times.append((time.perf_counter() - t0) * 1000)",
-      "t": "100번, 한 번씩 ms 로",
-      "d": "perf_counter 는 초 단위 → × 1000 으로 ms."
-    },
-    {
-      "at": "mean, p50, p95 =",
-      "to": "fps = 1000 / mean",
-      "t": "평균 · 중앙값 · p95 · FPS",
-      "d": "p95 = 100번 중 느린 5번을 뺀 최악 — 실시간 시스템은 평균보다 p95 를 본다."
-    }
+    {"at": "for _ in range(10):", "to": "sess.run(None, {\"input\": x1})", "t": "warm-up — 재지 않고 버린다", "d": "첫 몇 번은 메모리 준비 · 캐시 때문에 느리다. → 개념 1 의 warm-up"},
+    {"at": "times = []", "to": "times.append((time.perf_counter() - t0) * 1000)", "t": "100번, 한 번씩 ms 로", "d": "perf_counter 는 초 단위 → × 1000 으로 ms. → 개념 2"},
+    {"at": "mean, p50, p95 =", "to": "fps = 1000 / mean", "t": "평균 · 중앙값 · p95 · FPS", "d": "p95 = 100번 중 느린 5번을 뺀 최악 — 실시간 시스템은 평균보다 p95 를 본다. → 개념 2 의 평균 · p50 · p95 · FPS"}
   ],
   "ot/3/2-3": [
-    {
-      "at": "def bench(sess, x, n=100, warm=10):",
-      "to": "\"fps\": 1000 / t.mean() * x.shape[0]}",
-      "t": "2-2 를 함수로",
-      "d": "입력 이름은 세션에서 읽어 어떤 모델에도 쓸 수 있게. 배치 b 장이면 FPS × b."
-    },
-    {
-      "at": "r_mn = bench(sess, x1)",
-      "to": "print(\"SimpleConvNet\"",
-      "t": "두 모델 재기",
-      "d": "같은 함수로 재야 숫자를 비교할 수 있다."
-    }
+    {"at": "def bench(sess, x, n=100, warm=10):", "to": "\"fps\": 1000 / t.mean() * x.shape[0]}", "t": "2-2 를 함수로", "d": "입력 이름은 세션에서 읽어 어떤 모델에도 쓸 수 있게. 배치 b 장이면 FPS × b. → 개념 3 의 bench()"},
+    {"at": "r_mn = bench(sess, x1)", "to": "print(\"SimpleConvNet\"", "t": "두 모델 재기", "d": "같은 함수로 재야 숫자를 비교할 수 있다. → 개념 3 의 25배"}
   ],
   "ot/3/3-c1": [
-    {
-      "at": "LEVELS = {",
-      "to": "\"EXTENDED\":",
-      "t": "최적화 레벨 4단계 이름표",
-      "d": "DISABLE (끔) → BASIC → EXTENDED → ALL."
-    },
-    {
-      "at": "def make_session(",
-      "to": "return ort.InferenceSession(path, so, providers=providers or CPU)",
-      "t": "옵션 먼저, 세션은 나중에",
-      "d": "SessionOptions 에 값을 넣고 세션을 만들 때 넘긴다 — 세션을 만든 뒤 바꾸면 반영되지 않는다. threads 0 = 자동."
-    }
+    {"at": "LEVELS = {", "to": "\"EXTENDED\":", "t": "최적화 레벨 4단계 이름표", "d": "DISABLE (끔) → BASIC → EXTENDED → ALL. → 4교시 개념 1 의 레벨 4단계"},
+    {"at": "def make_session(", "to": "return ort.InferenceSession(path, so, providers=providers or CPU)", "t": "옵션 먼저, 세션은 나중에", "d": "SessionOptions 에 값을 넣고 세션을 만들 때 넘긴다 — 세션을 만든 뒤 바꾸면 반영되지 않는다. threads 0 = 자동. → 개념 2 의 옵션 → 세션 순서"}
   ],
   "ot/3/5-1": [
-    {
-      "at": "gpu_sess = make_session(",
-      "to": "print(\"실제 실행기:\"",
-      "t": "CUDA 를 첫 희망으로",
-      "d": "GPU 를 못 쓰면 다음 후보(CPU)로 조용히 넘어간다 — 실제 실행기를 꼭 확인."
-    },
-    {
-      "at": "g5 = []",
-      "to": "print(\"GPU 첫 5번 (ms):\"",
-      "t": "첫 5번 시간",
-      "d": "GPU 는 첫 실행에 준비(커널 로드 · 메모리 할당)가 커서 warm-up 이 더 중요하다."
-    }
+    {"at": "gpu_sess = make_session(", "to": "print(\"실제 실행기:\"", "t": "CUDA 를 첫 희망으로", "d": "GPU 를 못 쓰면 다음 후보(CPU)로 조용히 넘어간다 — 실제 실행기를 꼭 확인. → 개념 1"},
+    {"at": "g5 = []", "to": "print(\"GPU 첫 5번 (ms):\"", "t": "첫 5번 시간", "d": "GPU 는 첫 실행에 준비(커널 로드 · 메모리 할당)가 커서 warm-up 이 더 중요하다. → 개념 1 의 첫 실행"}
   ],
   "ot/3/7-1": [
-    {
-      "at": "ps = make_session(\"mnv3s.onnx\", profile=True)",
-      "to": "prof_path = ps.end_profiling()",
-      "t": "profiling 켜고 20번 → 파일 닫기",
-      "d": "end_profiling() 이 기록 파일 경로를 돌려준다."
-    },
-    {
-      "at": "events = json.load(open(prof_path))",
-      "to": "node_ev = [",
-      "t": "노드 실행 기록만 고르기",
-      "d": "cat 이 'Node' 이고 이름이 '_kernel_time' 으로 끝나는 것 = 연산 하나의 실제 계산 시간 (dur, µs)."
-    }
+    {"at": "ps = make_session(\"mnv3s.onnx\", profile=True)", "to": "prof_path = ps.end_profiling()", "t": "profiling 켜고 20번 → 파일 닫기", "d": "end_profiling() 이 기록 파일 경로를 돌려준다. → 개념 1 의 ① 켜기 ~ ③ 끝내기"},
+    {"at": "events = json.load(open(prof_path))", "to": "node_ev = [", "t": "노드 실행 기록만 고르기", "d": "cat 이 'Node' 이고 이름이 '_kernel_time' 으로 끝나는 것 = 연산 하나의 실제 계산 시간 (dur, µs). → 개념 1 의 ⑤ 고르기"}
   ],
   "ot/3/7-3": [
-    {
-      "at": "s_ = make_session(path, profile=True)",
-      "to": "ev = json.load(open(s_.end_profiling()))",
-      "t": "profiling 세션으로 n 번 실행",
-      "d": "입력 이름은 세션에서 읽는다."
-    },
-    {
-      "at": "ag = collections.Counter()",
-      "to": "ag[e[\"args\"][\"op_name\"]] += e[\"dur\"]",
-      "t": "연산 종류별 시간 합",
-      "d": "Counter 는 없는 키를 0 으로 시작하는 딕셔너리."
-    },
-    {
-      "at": "tot = sum(ag.values())",
-      "to": "return pd.DataFrame(",
-      "t": "상위 k 개 비율 표",
-      "d": "MobileNetV3 와 SimpleConvNet 의 1등 연산이 다르다 — 병목은 모델마다."
-    }
+    {"at": "s_ = make_session(path, profile=True)", "to": "ev = json.load(open(s_.end_profiling()))", "t": "profiling 세션으로 n 번 실행", "d": "입력 이름은 세션에서 읽는다. → 개념 1"},
+    {"at": "ag = collections.Counter()", "to": "ag[e[\"args\"][\"op_name\"]] += e[\"dur\"]", "t": "연산 종류별 시간 합", "d": "Counter 는 없는 키를 0 으로 시작하는 딕셔너리. → 개념 1 의 ⑤ 합치기"},
+    {"at": "tot = sum(ag.values())", "to": "return pd.DataFrame(", "t": "상위 k 개 비율 표", "d": "MobileNetV3 와 SimpleConvNet 의 1등 연산이 다르다 — 병목은 모델마다. → 개념 2"}
   ],
   "ot/3/8-5": [
-    {
-      "at": "table = pd.concat(",
-      "to": "table.to_csv(\"ot_baseline.csv\", index=False)",
-      "t": "실험 표 합치기 · GPU 행 · CSV 저장",
-      "d": "조건 열(장치 · 스레드 · 레벨 · 배치) + 결과 열(평균 · p95 · FPS). Day 4 TensorRT 와 비교할 기준선."
-    },
-    {
-      "at": "labels_ =",
-      "to": "display(pd.read_csv(",
-      "t": "설정별 p95 막대그래프",
-      "d": "막대가 낮을수록 좋은 설정."
-    }
+    {"at": "table = pd.concat(", "to": "table.to_csv(\"ot_baseline.csv\", index=False)", "t": "실험 표 합치기 · GPU 행 · CSV 저장", "d": "조건 열(장치 · 스레드 · 레벨 · 배치) + 결과 열(평균 · p95 · FPS). Day 4 TensorRT 와 비교할 기준선. → 개념 2 의 조건 열 + 결과 열"},
+    {"at": "labels_ =", "to": "display(pd.read_csv(", "t": "설정별 p95 막대그래프", "d": "막대가 낮을수록 좋은 설정. → 개념 3 의 p95"}
   ]
 }
