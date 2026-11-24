@@ -1,166 +1,47 @@
 {
   "_설명": "OT Day 4 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "ot/4/1-2": [
-    {
-      "at": "mnv3s = make_mnv3s()",
-      "to": "opset_version=17, **EXPORT_KW)",
-      "t": "dynamic_axes 없이 — 배치 1 고정",
-      "d": "TensorRT 는 크기가 정해져 있으면 그 크기에 딱 맞는 커널을 고른다."
-    },
-    {
-      "at": "x1 = np.random.rand(1, 3, 224, 224)",
-      "to": "ref = cpu_sess.run(None, {\"input\": x1})[0]",
-      "t": "오늘의 '정답' = ORT CPU 출력",
-      "d": "엔진 결과는 모두 이 ref 와 비교한다."
-    }
+    {"at": "mnv3s = make_mnv3s()", "to": "opset_version=17, **EXPORT_KW)", "t": "dynamic_axes 없이 — 배치 1 고정", "d": "TensorRT 는 크기가 정해져 있으면 그 크기에 딱 맞는 커널을 고른다. → 개념 3 의 배치 1 고정"},
+    {"at": "x1 = np.random.rand(1, 3, 224, 224)", "to": "ref = cpu_sess.run(None, {\"input\": x1})[0]", "t": "오늘의 '정답' = ORT CPU 출력", "d": "엔진 결과는 모두 이 ref 와 비교한다. → 개념 3 의 오늘의 정답"}
   ],
   "ot/4/2-2": [
-    {
-      "at": "warn = [l for l in log if l.startswith(\"[W]\")]",
-      "to": "took = [",
-      "t": "로그에서 [W] 경고 · [E] 오류 · 시간 줄",
-      "d": "경고는 보통 괜찮지만 [E] 가 있으면 엔진이 없다."
-    },
-    {
-      "at": "sizes = {",
-      "t": ".onnx vs .engine 크기",
-      "d": "엔진에는 이 GPU 용 커널 선택까지 들어 있어 다른 GPU 에선 다시 빌드해야 한다."
-    }
+    {"at": "warn = [l for l in log if l.startswith(\"[W]\")]", "to": "took = [", "t": "로그에서 [W] 경고 · [E] 오류 · 시간 줄", "d": "경고는 보통 괜찮지만 [E] 가 있으면 엔진이 없다. → 개념 2 의 로그 읽기"},
+    {"at": "sizes = {", "t": ".onnx vs .engine 크기", "d": "엔진에는 이 GPU 용 커널 선택까지 들어 있어 다른 GPU 에선 다시 빌드해야 한다. → 개념 1 (.engine 크기)"}
   ],
   "ot/4/3-2": [
-    {
-      "at": "def verdict(log_path):",
-      "to": "return result, (float(m[-1]) if m else None)",
-      "t": "로그에서 판정 · 최대 절대 차이 뽑기",
-      "d": "정규식으로 'PASSED | Runtime' 과 'max=' 숫자를 찾는다."
-    },
-    {
-      "at": "sh(\"polygraphy run mnv3s_b1.onnx --onnxrt --trt --fp16 --atol 1e-3",
-      "to": "print(f.ljust(22), verdict(f))",
-      "t": "FP16 을 FP32 기준(1e-3)과 느슨한 기준(5e-2)으로",
-      "d": "FP16 은 간격이 거칠어 1e-3 에선 FAILED — FP16 에는 FP16 의 기준을 쓴다."
-    }
+    {"at": "def verdict(log_path):", "to": "return result, (float(m[-1]) if m else None)", "t": "로그에서 판정 · 최대 절대 차이 뽑기", "d": "정규식으로 'PASSED | Runtime' 과 'max=' 숫자를 찾는다. → 개념 1 의 판정식"},
+    {"at": "sh(\"polygraphy run mnv3s_b1.onnx --onnxrt --trt --fp16 --atol 1e-3", "to": "print(f.ljust(22), verdict(f))", "t": "FP16 을 FP32 기준(1e-3)과 느슨한 기준(5e-2)으로", "d": "FP16 은 간격이 거칠어 1e-3 에선 FAILED — FP16 에는 FP16 의 기준을 쓴다. → 개념 2 의 FP16 기준"}
   ],
   "ot/4/4-3": [
-    {
-      "at": "builder = trt.Builder(LOGGER)",
-      "to": "raise RuntimeError(\"\\n\".join(",
-      "t": "② Builder ③ Network ④ Parser",
-      "d": "파싱에 실패하면 parser 의 오류를 모두 보여 준다."
-    },
-    {
-      "at": "config = builder.create_builder_config()",
-      "to": "config.set_flag(trt.BuilderFlag.FP16)",
-      "t": "⑤ Config — 메모리 1 GB · 상세 기록 · (FP16)",
-      "d": "fp16=True 면 FP16 커널도 후보에 넣는다."
-    },
-    {
-      "at": "blob = builder.build_serialized_network(network, config)",
-      "to": "return engine_path",
-      "t": "⑥ 빌드 · 파일로 저장",
-      "d": "빌드 실패면 None — 꼭 확인. 수십 초 걸리는 한 번의 작업."
-    }
+    {"at": "builder = trt.Builder(LOGGER)", "to": "raise RuntimeError(\"\\n\".join(", "t": "② Builder ③ Network ④ Parser", "d": "파싱에 실패하면 parser 의 오류를 모두 보여 준다. → 개념 1 의 ② ~ ④"},
+    {"at": "config = builder.create_builder_config()", "to": "config.set_flag(trt.BuilderFlag.FP16)", "t": "⑤ Config — 메모리 1 GB · 상세 기록 · (FP16)", "d": "fp16=True 면 FP16 커널도 후보에 넣는다. → 개념 2 의 Config 세 줄"},
+    {"at": "blob = builder.build_serialized_network(network, config)", "to": "return engine_path", "t": "⑥ 빌드 · 파일로 저장", "d": "빌드 실패면 None — 꼭 확인. 수십 초 걸리는 한 번의 작업. → 개념 1 의 ⑥ 빌드 · 저장"}
   ],
   "ot/4/5-2": [
-    {
-      "at": "d_in = torch.from_numpy(x1).to(\"cuda\")",
-      "to": "d_out = torch.empty(",
-      "t": "④ GPU 메모리에 입력 · 출력 자리",
-      "d": "TensorRT 는 GPU 주소만 받는다 — 입력은 CPU → GPU 로 복사, 출력 자리는 미리 만들어 둔다."
-    },
-    {
-      "at": "context.set_tensor_address(in_name",
-      "to": "torch.cuda.synchronize()",
-      "t": "⑤ 주소 알려 주고 실행 · 기다리기",
-      "d": "execute_async_v3 는 일을 맡기고 바로 돌아온다(비동기) — synchronize 로 끝날 때까지 기다려야 결과가 있다."
-    },
-    {
-      "at": "y_trt = d_out.cpu().numpy()",
-      "to": "diff32 =",
-      "t": "⑥ GPU → CPU · 비교",
-      "d": "FP32 엔진은 ORT CPU 와 1e-3 안에서 같다."
-    }
+    {"at": "d_in = torch.from_numpy(x1).to(\"cuda\")", "to": "d_out = torch.empty(", "t": "④ GPU 메모리에 입력 · 출력 자리", "d": "TensorRT 는 GPU 주소만 받는다 — 입력은 CPU → GPU 로 복사, 출력 자리는 미리 만들어 둔다. → 개념 2 의 GPU 주소"},
+    {"at": "context.set_tensor_address(in_name", "to": "torch.cuda.synchronize()", "t": "⑤ 주소 알려 주고 실행 · 기다리기", "d": "execute_async_v3 는 일을 맡기고 바로 돌아온다(비동기) — synchronize 로 끝날 때까지 기다려야 결과가 있다. → 개념 2 의 synchronize"},
+    {"at": "y_trt = d_out.cpu().numpy()", "to": "diff32 =", "t": "⑥ GPU → CPU · 비교", "d": "FP32 엔진은 ORT CPU 와 1e-3 안에서 같다. → 개념 1 의 ⑥ 비교"}
   ],
   "ot/4/5-3": [
-    {
-      "at": "eng = RUNTIME.deserialize_cuda_engine(",
-      "to": "o_name = [",
-      "t": "엔진 읽기 · 입력 · 출력 이름 찾기",
-      "d": "입출력 모드(INPUT · OUTPUT)로 이름을 가려낸다."
-    },
-    {
-      "at": "d_i = torch.empty(",
-      "to": "ctx.set_tensor_address(o_name, d_o.data_ptr())",
-      "t": "GPU 버퍼는 한 번만 만들고 주소 등록",
-      "d": "실행할 때마다 새로 만들지 않아 빠르다."
-    },
-    {
-      "at": "def run(x):",
-      "to": "return d_o.cpu().numpy()",
-      "t": "run(x) — 복사 · 실행 · 기다리기 · 꺼내기",
-      "d": "ORT 의 sess.run 과 같은 모양(입력 → 출력)으로 맞춰 비교하기 쉽게."
-    },
-    {
-      "at": "run.engine, run.context = eng, ctx",
-      "to": "return run",
-      "t": "엔진을 붙잡아 두기",
-      "d": "함수 밖에서 엔진이 지워지면 run 이 망가진다."
-    }
+    {"at": "eng = RUNTIME.deserialize_cuda_engine(", "to": "o_name = [", "t": "엔진 읽기 · 입력 · 출력 이름 찾기", "d": "입출력 모드(INPUT · OUTPUT)로 이름을 가려낸다. → 개념 1 의 ① ~ ③"},
+    {"at": "d_i = torch.empty(", "to": "ctx.set_tensor_address(o_name, d_o.data_ptr())", "t": "GPU 버퍼는 한 번만 만들고 주소 등록", "d": "실행할 때마다 새로 만들지 않아 빠르다. → 개념 2 의 버퍼는 한 번만"},
+    {"at": "def run(x):", "to": "return d_o.cpu().numpy()", "t": "run(x) — 복사 · 실행 · 기다리기 · 꺼내기", "d": "ORT 의 sess.run 과 같은 모양(입력 → 출력)으로 맞춰 비교하기 쉽게. → 개념 2 의 비동기 · 기다리기"},
+    {"at": "run.engine, run.context = eng, ctx", "to": "return run", "t": "엔진을 붙잡아 두기", "d": "함수 밖에서 엔진이 지워지면 run 이 망가진다. → 개념 1 의 ① Runtime"}
   ],
   "ot/4/6-3": [
-    {
-      "at": "d = np.load(",
-      "to": "build_engine(\"mnist_cnn_b1.onnx\", \"cnn_fp16.engine\", fp16=True)",
-      "t": "MNIST 100장 · FP16 엔진",
-      "d": "(100, 1, 28, 28) · 0 ~ 1."
-    },
-    {
-      "at": "runners = {",
-      "to": "print(acc)",
-      "t": "실행기 3가지로 정확도",
-      "d": "차이가 작아도 결국 중요한 것은 정확도 — FP16 도 같은 정확도면 쓸 만하다."
-    }
+    {"at": "d = np.load(", "to": "build_engine(\"mnist_cnn_b1.onnx\", \"cnn_fp16.engine\", fp16=True)", "t": "MNIST 100장 · FP16 엔진", "d": "(100, 1, 28, 28) · 0 ~ 1."},
+    {"at": "runners = {", "to": "print(acc)", "t": "실행기 3가지로 정확도", "d": "차이가 작아도 결국 중요한 것은 정확도 — FP16 도 같은 정확도면 쓸 만하다. → 개념 2 의 실제 데이터 정확도"}
   ],
   "ot/4/7-2": [
-    {
-      "at": "fused = [n for n in names if \" + \" in n]",
-      "to": "print(\"합쳐진 레이어\"",
-      "t": "합쳐진 레이어 · 들어간 노드 수 · Reformat",
-      "d": "Conv + BN + ReLU 처럼 여러 노드를 커널 하나로 — 중간 결과를 메모리에 썼다 읽는 왕복이 줄어든다."
-    },
-    {
-      "at": "if fused:",
-      "to": "p[:100]",
-      "t": "가장 많이 합친 레이어 펼쳐 보기",
-      "d": "' + ' 로 잘라 원래 ONNX 노드 이름을 하나씩."
-    }
+    {"at": "fused = [n for n in names if \" + \" in n]", "to": "print(\"합쳐진 레이어\"", "t": "합쳐진 레이어 · 들어간 노드 수 · Reformat", "d": "Conv + BN + ReLU 처럼 여러 노드를 커널 하나로 — 중간 결과를 메모리에 썼다 읽는 왕복이 줄어든다. → 개념 2 의 ' + ' · Reformat"},
+    {"at": "if fused:", "to": "p[:100]", "t": "가장 많이 합친 레이어 펼쳐 보기", "d": "' + ' 로 잘라 원래 ONNX 노드 이름을 하나씩. → 개념 2"}
   ],
   "ot/4/8-c1": [
-    {
-      "at": "for onnx_p, eng_p, half in",
-      "to": "print(\"빌드:\", eng_p); build_engine(",
-      "t": "엔진이 없으면 다시 빌드",
-      "d": "Colab 런타임이 바뀌면 파일이 사라지므로."
-    },
-    {
-      "at": "RUN = {",
-      "to": "PREC = {",
-      "t": "같은 모양의 실행 함수 4개",
-      "d": "모두 '입력 → 출력' 함수라 같은 bench_fn · 같은 비교 코드로 잴 수 있다."
-    }
+    {"at": "for onnx_p, eng_p, half in", "to": "print(\"빌드:\", eng_p); build_engine(", "t": "엔진이 없으면 다시 빌드", "d": "Colab 런타임이 바뀌면 파일이 사라지므로."},
+    {"at": "RUN = {", "to": "PREC = {", "t": "같은 모양의 실행 함수 4개", "d": "모두 '입력 → 출력' 함수라 같은 bench_fn · 같은 비교 코드로 잴 수 있다. → 개념 1 의 같은 모양의 함수"}
   ],
   "ot/4/8-5": [
-    {
-      "at": "old = pd.read_csv(",
-      "to": "print(\"Day 3 줄\"",
-      "t": "Day 3 기준선에 오늘 결과 이어 붙이기",
-      "d": "Day 3 표엔 precision 열이 없어서 FP32 로 채운다."
-    },
-    {
-      "at": "plt.figure(figsize=(7, 3))",
-      "to": "plt.ylabel(\"p95 ms\")",
-      "t": "실행기별 p95 막대",
-      "d": "막대 위에 숫자를 써서 바로 읽게."
-    }
+    {"at": "old = pd.read_csv(", "to": "print(\"Day 3 줄\"", "t": "Day 3 기준선에 오늘 결과 이어 붙이기", "d": "Day 3 표엔 precision 열이 없어서 FP32 로 채운다."},
+    {"at": "plt.figure(figsize=(7, 3))", "to": "plt.ylabel(\"p95 ms\")", "t": "실행기별 p95 막대", "d": "막대 위에 숫자를 써서 바로 읽게. → 개념 3 의 p95"}
   ]
 }
