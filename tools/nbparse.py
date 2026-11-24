@@ -469,6 +469,7 @@ def _fill_info(f):
     q = re.split(r'(?<=[.?!다요])\s', q, 1)[0] if len(q) > 90 else q            # 첫 문장
     parts = re.split(r'\n\s*💡\s*해설\s*\n?', f['ans'] or '', 1)
     expl = parts[1].strip() if len(parts) > 1 else ''
+    expl = re.split(r'\n\s*[─—-]{2,}\s*정답', expl, 1)[0].strip()      # 정답 셀 하나에 다음 문제 정답이 이어 붙은 경우 (NN D4 4-3 → 4-4)
     return num, q.strip(), expl, sol
 
 def lesson_codes(n, topics, fills):
