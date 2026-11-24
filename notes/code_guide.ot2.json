@@ -1,206 +1,59 @@
 {
   "_설명": "OT Day 2 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "ot/2/1-1": [
-    {
-      "at": "cnn.eval()",
-      "to": "input_names=[\"input\"], output_names=[\"logits\"]",
-      "t": "0 실행 모드 · 1 내보내기",
-      "d": "더미 입력은 zeros(1, 1, 28, 28) — 모양만 맞으면 값은 상관없다."
-    },
-    {
-      "at": "sess_cnn = ort.InferenceSession(",
-      "to": "y_pt = cnn(torch.from_numpy(x0)).numpy()",
-      "t": "3 실행 — 같은 이미지를 ORT 와 PyTorch 에",
-      "d": "/255 로 0 ~ 1, `[None, None]` 으로 (1, 1, 28, 28)."
-    },
-    {
-      "at": "same = np.allclose(",
-      "t": "4 확인 — allclose",
-      "d": "== 대신 허용 오차 안이면 같다고 본다."
-    }
+    {"at": "cnn.eval()", "to": "input_names=[\"input\"], output_names=[\"logits\"]", "t": "0 실행 모드 · 1 내보내기", "d": "더미 입력은 zeros(1, 1, 28, 28) — 모양만 맞으면 값은 상관없다. → 개념 1 의 0 실행 모드 · 1 내보내기"},
+    {"at": "sess_cnn = ort.InferenceSession(", "to": "y_pt = cnn(torch.from_numpy(x0)).numpy()", "t": "3 실행 — 같은 이미지를 ORT 와 PyTorch 에", "d": "/255 로 0 ~ 1, `[None, None]` 으로 (1, 1, 28, 28). → 개념 1 의 3 실행"},
+    {"at": "same = np.allclose(", "t": "4 확인 — allclose", "d": "== 대신 허용 오차 안이면 같다고 본다. → 개념 1 의 4 확인"}
   ],
   "ot/2/3-3": [
-    {
-      "at": "model = onnx.load(path)",
-      "to": "W_ = {t.name: onnx.numpy_helper.to_array(t)",
-      "t": "가중치를 이름 → 배열로",
-      "d": "어떤 노드 입력이 가중치인지 이름으로 가려낼 수 있게."
-    },
-    {
-      "at": "for n in gr.node:",
-      "to": "return pd.DataFrame(rows)",
-      "t": "노드 한 줄씩 — 종류 · 데이터 입력 · 출력 · 가중치 수 · 속성",
-      "d": "입력 중 가중치가 아닌 것 = 앞 노드에서 온 데이터 화살표. 가중치 수는 그 노드가 가진 배열 크기의 합."
-    },
-    {
-      "at": "df = describe_onnx(\"mnist_cnn.onnx\")",
-      "to": "print(\"노드\"",
-      "t": "표로 보기 · 가중치 합계",
-      "d": "합계 = PyTorch 파라미터 수와 같아야 한다 (433,890)."
-    }
+    {"at": "model = onnx.load(path)", "to": "W_ = {t.name: onnx.numpy_helper.to_array(t)", "t": "가중치를 이름 → 배열로", "d": "어떤 노드 입력이 가중치인지 이름으로 가려낼 수 있게. → 개념 1 의 to_array"},
+    {"at": "for n in gr.node:", "to": "return pd.DataFrame(rows)", "t": "노드 한 줄씩 — 종류 · 데이터 입력 · 출력 · 가중치 수 · 속성", "d": "입력 중 가중치가 아닌 것 = 앞 노드에서 온 데이터 화살표. 가중치 수는 그 노드가 가진 배열 크기의 합. → 개념 2 의 표 한 줄"},
+    {"at": "df = describe_onnx(\"mnist_cnn.onnx\")", "to": "print(\"노드\"", "t": "표로 보기 · 가중치 합계", "d": "합계 = PyTorch 파라미터 수와 같아야 한다 (433,890). → 개념 2 의 가중치 합계"}
   ],
   "ot/2/4-c2": [
-    {
-      "at": "bad.graph.node[1].input[0] = \"nope\"",
-      "t": "Relu 의 입력 이름을 없는 이름으로",
-      "d": "화살표 = 이름 맞추기라서, 이름 하나만 틀려도 연결이 끊긴다."
-    },
-    {
-      "at": "try:",
-      "to": "print(\"ORT     →\"",
-      "t": "checker 와 ORT 가 각각 잡는다",
-      "d": "checker 는 실행 전에 파일 구조를 검사 — 받은 파일은 먼저 checker 로."
-    }
+    {"at": "bad.graph.node[1].input[0] = \"nope\"", "t": "Relu 의 입력 이름을 없는 이름으로", "d": "화살표 = 이름 맞추기라서, 이름 하나만 틀려도 연결이 끊긴다. → 개념 3 의 끊긴 화살표"},
+    {"at": "try:", "to": "print(\"ORT     →\"", "t": "checker 와 ORT 가 각각 잡는다", "d": "checker 는 실행 전에 파일 구조를 검사 — 받은 파일은 먼저 checker 로. → 개념 3 의 checker · ORT"}
   ],
   "ot/2/5-c1": [
-    {
-      "at": "sess_dyn.run(None, {\"input\": X[:1]})",
-      "t": "첫 실행은 준비(warm-up)",
-      "d": "처음 한 번은 메모리 준비 시간이 섞여 느리므로 재기 전에 한 번 돌린다."
-    },
-    {
-      "at": "t = time.perf_counter()",
-      "to": "t_batch = (time.perf_counter() - t) * 1000",
-      "t": "1장씩 100번 vs 100장 1번",
-      "d": "호출마다 드는 고정 비용을 100번 내느냐 1번 내느냐의 차이."
-    }
+    {"at": "sess_dyn.run(None, {\"input\": X[:1]})", "t": "첫 실행은 준비(warm-up)", "d": "처음 한 번은 메모리 준비 시간이 섞여 느리므로 재기 전에 한 번 돌린다. → 개념 2 의 warm-up"},
+    {"at": "t = time.perf_counter()", "to": "t_batch = (time.perf_counter() - t) * 1000", "t": "1장씩 100번 vs 100장 1번", "d": "호출마다 드는 고정 비용을 100번 내느냐 1번 내느냐의 차이. → 개념 2 의 고정 비용"}
   ],
   "ot/2/6-c1": [
-    {
-      "at": "def verify(model, path, cases, atol=1e-4):",
-      "to": "return ok_all",
-      "t": "verify — 입력 여러 개로 PyTorch vs ORT",
-      "d": "더미와 다른 입력을 넣어야 '조용히 틀리는' export 가 드러난다. shape 가 다르거나 실행 오류면 ❌."
-    },
-    {
-      "at": "def export_warn(",
-      "to": "print(\"export 완료 →\"",
-      "t": "export_warn — TracerWarning 만 골라 보여 주기",
-      "d": "TracerWarning = 'Python 값으로 굳었다' 는 신호. 무시하면 안 되는 경고."
-    }
+    {"at": "def verify(model, path, cases, atol=1e-4):", "to": "return ok_all", "t": "verify — 입력 여러 개로 PyTorch vs ORT", "d": "더미와 다른 입력을 넣어야 '조용히 틀리는' export 가 드러난다. shape 가 다르거나 실행 오류면 ❌. → 개념 3 의 verify"},
+    {"at": "def export_warn(", "to": "print(\"export 완료 →\"", "t": "export_warn — TracerWarning 만 골라 보여 주기", "d": "TracerWarning = 'Python 값으로 굳었다' 는 신호. 무시하면 안 되는 경고. → 개념 1 (TracerWarning)"}
   ],
   "ot/2/6-c2": [
-    {
-      "at": "class Gate(nn.Module):",
-      "to": "return x - 1",
-      "t": "평균이 양수면 ×2, 아니면 −1",
-      "d": "export 는 더미 입력이 지나간 길만 녹화한다 — if 는 한쪽만 남는다."
-    },
-    {
-      "at": "gate = Gate()",
-      "to": "verify(gate, \"gate.onnx\", cases_gate)",
-      "t": "양수 더미로 내보내고 음수 입력으로 확인",
-      "d": "음수 입력에서 ❌ — 그래프엔 Mul 하나뿐."
-    }
+    {"at": "class Gate(nn.Module):", "to": "return x - 1", "t": "평균이 양수면 ×2, 아니면 −1", "d": "export 는 더미 입력이 지나간 길만 녹화한다 — if 는 한쪽만 남는다. → 개념 1 의 파이썬 if"},
+    {"at": "gate = Gate()", "to": "verify(gate, \"gate.onnx\", cases_gate)", "t": "양수 더미로 내보내고 음수 입력으로 확인", "d": "음수 입력에서 ❌ — 그래프엔 Mul 하나뿐. → 개념 1 의 한쪽 길만 녹화"}
   ],
   "ot/2/6-c4": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return self.fc(x.view(1, -1))",
-      "t": "view(1, -1) — 배치 1 을 숫자로 고정",
-      "d": "배치 4 를 넣으면 (1, 64) 가 되어 Linear(16, 2) 와 안 맞는다."
-    },
-    {
-      "at": "export_warn(hard,",
-      "to": "verify(hard, \"hard.onnx\", cases_h)",
-      "t": "dynamic_axes 를 줘도 소용없다",
-      "d": "dynamic 은 약속일 뿐 — 모델 안에서 1 로 굳힌 것은 못 푼다."
-    }
+    {"at": "def forward(self, x):", "to": "return self.fc(x.view(1, -1))", "t": "view(1, -1) — 배치 1 을 숫자로 고정", "d": "배치 4 를 넣으면 (1, 64) 가 되어 Linear(16, 2) 와 안 맞는다. → 개념 1 의 숫자로 쓴 크기"},
+    {"at": "export_warn(hard,", "to": "verify(hard, \"hard.onnx\", cases_h)", "t": "dynamic_axes 를 줘도 소용없다", "d": "dynamic 은 약속일 뿐 — 모델 안에서 1 로 굳힌 것은 못 푼다. → 개념 1 (dynamic_axes 도 소용없음)"}
   ],
   "ot/2/7-c1": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return self.fc(med)",
-      "t": "센서 5개의 중앙값 → 경보",
-      "d": "torch.median 은 ONNX 에 대응하는 연산이 없다."
-    },
-    {
-      "at": "try:",
-      "to": "print(type(e).__name__, \":\", err_msg)",
-      "t": "export 오류 메시지 보기",
-      "d": "메시지 안의 'aten::median' 이 바꾸지 못한 연산 이름."
-    }
+    {"at": "def forward(self, x):", "to": "return self.fc(med)", "t": "센서 5개의 중앙값 → 경보", "d": "torch.median 은 ONNX 에 대응하는 연산이 없다. → 개념 1"},
+    {"at": "try:", "to": "print(type(e).__name__, \":\", err_msg)", "t": "export 오류 메시지 보기", "d": "메시지 안의 'aten::median' 이 바꾸지 못한 연산 이름. → 개념 1 의 aten"}
   ],
   "ot/2/7-2": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return self.fc(med)",
-      "t": "중앙값 = 정렬 후 가운데",
-      "d": "sort 는 ONNX 에 있다 (TopK). 5개면 k = 2 번째 칸."
-    },
-    {
-      "at": "med_fix = MedianAlarmFix().eval()",
-      "to": "ok_m = verify(med_net, \"median_fix.onnx\", cases_m)",
-      "t": "같은 가중치로 내보내 원래 모델과 비교",
-      "d": "고친 모델이 아니라 원래 모델(med_net)과 비교해야 '같은 계산' 인지 확인된다."
-    }
+    {"at": "def forward(self, x):", "to": "return self.fc(med)", "t": "중앙값 = 정렬 후 가운데", "d": "sort 는 ONNX 에 있다 (TopK). 5개면 k = 2 번째 칸. → 개념 1 의 지원 연산의 조합"},
+    {"at": "med_fix = MedianAlarmFix().eval()", "to": "ok_m = verify(med_net, \"median_fix.onnx\", cases_m)", "t": "같은 가중치로 내보내 원래 모델과 비교", "d": "고친 모델이 아니라 원래 모델(med_net)과 비교해야 '같은 계산' 인지 확인된다. → 개념 1 의 원래 모델과 비교"}
   ],
   "ot/2/7-c2": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return self.fc(x)",
-      "t": "view(x.size(0), -1) — 배치 크기를 읽어서 편다",
-      "d": "배치 크기를 읽는 과정(Shape · Gather · Concat …)까지 노드로 녹화된다."
-    },
-    {
-      "at": "torch.onnx.export(view_net,",
-      "to": "display(describe_onnx(",
-      "t": "내보내고 표로 노드 보기",
-      "d": "onnxslim 이 이런 군더더기를 줄인다 (7-3)."
-    }
+    {"at": "def forward(self, x):", "to": "return self.fc(x)", "t": "view(x.size(0), -1) — 배치 크기를 읽어서 편다", "d": "배치 크기를 읽는 과정(Shape · Gather · Concat …)까지 노드로 녹화된다. → 개념 2 의 Shape → Gather"},
+    {"at": "torch.onnx.export(view_net,", "to": "display(describe_onnx(", "t": "내보내고 표로 노드 보기", "d": "onnxslim 이 이런 군더더기를 줄인다 (7-3). → 개념 2"}
   ],
   "ot/2/8-c1": [
-    {
-      "at": "class BrightNet(nn.Module):",
-      "to": "return self.fc(x)",
-      "t": "고장 3곳 — if · NumPy · view(1, -1)",
-      "d": "6교시의 세 가지 함정을 한 모델에 모두 넣었다."
-    },
-    {
-      "at": "def make_bright():",
-      "to": "bright = make_bright()",
-      "t": "모델 만들기 (BN 통계 채우기)",
-      "d": "BN 이동 평균 · 분산을 연습용 값으로 채워 BN 이 하는 일이 보이게."
-    },
-    {
-      "at": "def load64(name, scale=1.0):",
-      "to": "print(k.ljust(14)",
-      "t": "사진 3장 + 어둡게(×0.25) 3장",
-      "d": "64×64 · RGB · 0 ~ 1 · (1, 3, 64, 64)."
-    },
-    {
-      "at": "def intended(x):",
-      "to": "return np.concatenate(",
-      "t": "채점 기준 = 한 장씩 넣은 PyTorch 결과",
-      "d": "한 장씩이면 고장 난 모델도 의도대로 동작한다."
-    }
+    {"at": "class BrightNet(nn.Module):", "to": "return self.fc(x)", "t": "고장 3곳 — if · NumPy · view(1, -1)", "d": "6교시의 세 가지 함정을 한 모델에 모두 넣었다. → 개념 1 의 고장 3곳"},
+    {"at": "def make_bright():", "to": "bright = make_bright()", "t": "모델 만들기 (BN 통계 채우기)", "d": "BN 이동 평균 · 분산을 연습용 값으로 채워 BN 이 하는 일이 보이게."},
+    {"at": "def load64(name, scale=1.0):", "to": "print(k.ljust(14)", "t": "사진 3장 + 어둡게(×0.25) 3장", "d": "64×64 · RGB · 0 ~ 1 · (1, 3, 64, 64). → 개념 2 의 어두운 사진"},
+    {"at": "def intended(x):", "to": "return np.concatenate(", "t": "채점 기준 = 한 장씩 넣은 PyTorch 결과", "d": "한 장씩이면 고장 난 모델도 의도대로 동작한다. → 개념 2 의 의도가 기준"}
   ],
   "ot/2/8-2": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return self.fc(x)",
-      "t": "세 곳 고치기 — torch.where · torch 평균 · flatten(1)",
-      "d": "평균도 사진마다 (dim=(1, 2, 3)) 따로 — 배치로 넣어도 한 장씩과 같게."
-    },
-    {
-      "at": "fixed = BrightNetFixed().eval()",
-      "to": "print(\"고친 모델 (배치 6) vs 의도",
-      "t": "같은 가중치 · 배치 6장 vs 한 장씩",
-      "d": "최대 차이가 1e-6 수준이면 고친 모델이 의도와 같다."
-    }
+    {"at": "def forward(self, x):", "to": "return self.fc(x)", "t": "세 곳 고치기 — torch.where · torch 평균 · flatten(1)", "d": "평균도 사진마다 (dim=(1, 2, 3)) 따로 — 배치로 넣어도 한 장씩과 같게. → 개념 1 의 고치기"},
+    {"at": "fixed = BrightNetFixed().eval()", "to": "print(\"고친 모델 (배치 6) vs 의도", "t": "같은 가중치 · 배치 6장 vs 한 장씩", "d": "최대 차이가 1e-6 수준이면 고친 모델이 의도와 같다. → 개념 3 의 배치 6 vs 의도"}
   ],
   "ot/2/8-4": [
-    {
-      "at": "onnx.checker.check_model(onnx.load(\"brightnet_fixed.onnx\"))",
-      "to": "onnx.checker.check_model(onnx.load(\"brightnet_final.onnx\"))",
-      "t": "배포 파일 만들기 4단계",
-      "d": "① 검사 ② 단순화 ③ 중간 shape 채우기 · 저장 ④ 다시 검사."
-    },
-    {
-      "at": "n_before =",
-      "to": "display(describe_onnx(",
-      "t": "노드 수 · 중간 shape · opset 확인",
-      "d": "onnxslim 이 Shape · Gather 같은 군더더기 노드를 줄인다."
-    }
+    {"at": "onnx.checker.check_model(onnx.load(\"brightnet_fixed.onnx\"))", "to": "onnx.checker.check_model(onnx.load(\"brightnet_final.onnx\"))", "t": "배포 파일 만들기 4단계", "d": "① 검사 ② 단순화 ③ 중간 shape 채우기 · 저장 ④ 다시 검사. → 개념 3 의 배포 순서"},
+    {"at": "n_before =", "to": "display(describe_onnx(", "t": "노드 수 · 중간 shape · opset 확인", "d": "onnxslim 이 Shape · Gather 같은 군더더기 노드를 줄인다. → 개념 3 의 결과"}
   ]
 }
