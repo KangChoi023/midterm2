@@ -1,85 +1,25 @@
 {
   "_설명": "QP Day 4 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "qp/4/2-2": [
-    {
-      "at": "if self.per_channel:",
-      "to": "return fake_quant(x, amax / qmax, 0.0, -qmax, qmax)",
-      "t": "weight — 채널별 대칭",
-      "d": "scale 은 학습 대상이 아니라 detach."
-    },
-    {
-      "at": "if self.calib:",
-      "to": "return x",
-      "t": "보정 모드 — 최솟값 · 최댓값만 기록",
-      "d": ""
-    },
-    {
-      "at": "lo, hi = min(float(self.lo), 0.0)",
-      "to": "return fake_quant(x, s, round(-lo / s), 0, qmax)",
-      "t": "활성값 — 보정 범위로 비대칭 UINT8",
-      "d": ""
-    }
+    {"at": "if self.per_channel:", "to": "return fake_quant(x, amax / qmax, 0.0, -qmax, qmax)", "t": "weight — 채널별 대칭", "d": "scale 은 학습 대상이 아니라 detach. → 1교시 개념 1 의 채널별 대칭"},
+    {"at": "if self.calib:", "to": "return x", "t": "보정 모드 — 최솟값 · 최댓값만 기록", "d": " → 개념 2 의 보정"},
+    {"at": "lo, hi = min(float(self.lo), 0.0)", "to": "return fake_quant(x, s, round(-lo / s), 0, qmax)", "t": "활성값 — 보정 범위로 비대칭 UINT8", "d": " → 개념 2 의 lo · hi → s · zp"}
   ],
   "qp/4/3-c2": [
-    {
-      "at": "def fake_quant_round(",
-      "to": "return (torch.clamp(torch.round(",
-      "t": "비교용 — 기울기 0 인 반올림",
-      "d": ""
-    },
-    {
-      "at": "def toy_train(fq, steps=50):",
-      "to": "return float(",
-      "t": "w 3개를 목표 칸으로 50 step 학습",
-      "d": ""
-    },
-    {
-      "at": "loss_round, w_round =",
-      "to": "loss_ste, w_ste =",
-      "t": "round vs STE",
-      "d": "round 는 기울기가 0 이라 w 가 그대로, STE 는 목표 칸으로 움직인다."
-    }
+    {"at": "def fake_quant_round(", "to": "return (torch.clamp(torch.round(", "t": "비교용 — 기울기 0 인 반올림", "d": " → 개념 1 의 round 기울기 0"},
+    {"at": "def toy_train(fq, steps=50):", "to": "return float(", "t": "w 3개를 목표 칸으로 50 step 학습", "d": " → 개념 2"},
+    {"at": "loss_round, w_round =", "to": "loss_ste, w_ste =", "t": "round vs STE", "d": "round 는 기울기가 0 이라 w 가 그대로, STE 는 목표 칸으로 움직인다. → 개념 2 의 STE 로 칸 경계 넘기"}
   ],
   "qp/4/4-c2": [
-    {
-      "at": "def fold(conv, bn):",
-      "to": "return c",
-      "t": "Conv + BN → Conv 하나",
-      "d": "Day 2 의 fold_bn 과 같은 식."
-    },
-    {
-      "at": "def fold_all(model):",
-      "to": "return m",
-      "t": "모든 Conv-BN 쌍 접기",
-      "d": "BN 이 없어진 모델에 FakeQuant 를 붙인다 (TensorRT 도 BN 을 접는다)."
-    }
+    {"at": "def fold(conv, bn):", "to": "return c", "t": "Conv + BN → Conv 하나", "d": "Day 2 의 fold_bn 과 같은 식. → 개념 1 의 1 BN folding"},
+    {"at": "def fold_all(model):", "to": "return m", "t": "모든 Conv-BN 쌍 접기", "d": "BN 이 없어진 모델에 FakeQuant 를 붙인다 (TensorRT 도 BN 을 접는다). → 개념 1 의 1 BN folding"}
   ],
   "qp/4/4-1": [
-    {
-      "at": "def swap(parent):",
-      "to": "swap(m)",
-      "t": "Conv2d → QConv2d, Linear → QLinear (재귀)",
-      "d": "같은 모양의 Q 계층을 만들고 weight · bias 복사."
-    },
-    {
-      "at": "fqs = [",
-      "to": "f.calib = False",
-      "t": "calibrate — 활성값 양자화기만 보정",
-      "d": "보정 데이터 500장을 흘려 범위를 정한 뒤 보정 모드 끄기."
-    }
+    {"at": "def swap(parent):", "to": "swap(m)", "t": "Conv2d → QConv2d, Linear → QLinear (재귀)", "d": "같은 모양의 Q 계층을 만들고 weight · bias 복사. → 개념 1 의 2 층 바꾸기"},
+    {"at": "fqs = [", "to": "f.calib = False", "t": "calibrate — 활성값 양자화기만 보정", "d": "보정 데이터 500장을 흘려 범위를 정한 뒤 보정 모드 끄기. → 개념 1 의 3 보정"}
   ],
   "qp/4/4-2": [
-    {
-      "at": "t0 = time.time()",
-      "to": "sched = torch.optim.lr_scheduler.CosineAnnealingLR(",
-      "t": "SGD · cosine 감소",
-      "d": "QAT 는 이미 학습된 모델을 조금만 고치므로 lr 1e-3 · 3 epoch."
-    },
-    {
-      "at": "for ep in range(epochs):",
-      "to": "on_epoch(ep, model)",
-      "t": "epoch 마다 학습 · 평가",
-      "d": "STE 덕분에 fake quant 가 있어도 기울기가 흐른다."
-    }
+    {"at": "t0 = time.time()", "to": "sched = torch.optim.lr_scheduler.CosineAnnealingLR(", "t": "SGD · cosine 감소", "d": "QAT 는 이미 학습된 모델을 조금만 고치므로 lr 1e-3 · 3 epoch. → 개념 2 의 lr 1e-3 · cosine"},
+    {"at": "for ep in range(epochs):", "to": "on_epoch(ep, model)", "t": "epoch 마다 학습 · 평가", "d": "STE 덕분에 fake quant 가 있어도 기울기가 흐른다. → 개념 2 의 3 epoch"}
   ]
 }
