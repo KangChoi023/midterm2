@@ -1,103 +1,28 @@
 {
   "_설명": "QP Day 6 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "qp/6/2-1": [
-    {
-      "at": "teacher = teacher.to(DEV).eval()",
-      "to": "sched = torch.optim.lr_scheduler.CosineAnnealingLR(",
-      "t": "선생님은 eval · 학생만 학습",
-      "d": ""
-    },
-    {
-      "at": "for xb, yb in batches(seed=ep):",
-      "to": "opt.zero_grad(); loss.backward(); opt.step(); sched.step()",
-      "t": "선생님 답(no_grad) + 정답으로 KD loss",
-      "d": "선생님 logits 의 '2등 · 3등 확률' 이 정답 하나보다 많은 정보를 준다."
-    },
-    {
-      "at": "p50 = prune_channels(rn20, 0.5)",
-      "to": "t_kd = train_kd(",
-      "t": "50% 모델을 KD 로 3 epoch",
-      "d": ""
-    }
+    {"at": "teacher = teacher.to(DEV).eval()", "to": "sched = torch.optim.lr_scheduler.CosineAnnealingLR(", "t": "선생님은 eval · 학생만 학습", "d": " → 개념 1 의 선생님은 eval"},
+    {"at": "for xb, yb in batches(seed=ep):", "to": "opt.zero_grad(); loss.backward(); opt.step(); sched.step()", "t": "선생님 답(no_grad) + 정답으로 KD loss", "d": "선생님 logits 의 '2등 · 3등 확률' 이 정답 하나보다 많은 정보를 준다. → 1교시 개념 2 의 KD loss"},
+    {"at": "p50 = prune_channels(rn20, 0.5)", "to": "t_kd = train_kd(", "t": "50% 모델을 KD 로 3 epoch", "d": " → 개념 1 의 같은 예산"}
   ],
   "qp/6/4-c1": [
-    {
-      "at": "VIDEO, YOLO_ONNX =",
-      "to": "GRASS = np.array(",
-      "t": "영상 · 모델 · 보정/평가 구간 · 금지 구역",
-      "d": "0 ~ 479 프레임은 보정용, 480 ~ 은 평가용."
-    },
-    {
-      "at": "def read_frames(idx):",
-      "to": "def detect(frame, infer, conf=0.25, iou_thr=0.7):",
-      "t": "프레임 읽기 · NMS · letterbox · YOLO 해석",
-      "d": "VB Day 4 · OT Day 5 와 같은 함수."
-    },
-    {
-      "at": "def in_zone(pt, poly=GRASS):",
-      "to": "def find_events(alarm, fps, first=0):",
-      "t": "구역 판정 · 그리기 · 프레임 처리 · 이벤트",
-      "d": "연속 3 프레임 구역 안이면 경보."
-    },
-    {
-      "at": "def make_yolo_int8(",
-      "to": "def make_infer(onnx_path, fp16=False, int8=False):",
-      "t": "YOLO INT8 만들기 · 추론기",
-      "d": "GPU 면 TensorRT, 아니면 ORT CPU — 같은 모양의 함수."
-    }
+    {"at": "VIDEO, YOLO_ONNX =", "to": "GRASS = np.array(", "t": "영상 · 모델 · 보정/평가 구간 · 금지 구역", "d": "0 ~ 479 프레임은 보정용, 480 ~ 은 평가용."},
+    {"at": "def read_frames(idx):", "to": "def detect(frame, infer, conf=0.25, iou_thr=0.7):", "t": "프레임 읽기 · NMS · letterbox · YOLO 해석", "d": "VB Day 4 · OT Day 5 와 같은 함수."},
+    {"at": "def in_zone(pt, poly=GRASS):", "to": "def find_events(alarm, fps, first=0):", "t": "구역 판정 · 그리기 · 프레임 처리 · 이벤트", "d": "연속 3 프레임 구역 안이면 경보."},
+    {"at": "def make_yolo_int8(", "to": "def make_infer(onnx_path, fp16=False, int8=False):", "t": "YOLO INT8 만들기 · 추론기", "d": "GPU 면 TensorRT, 아니면 ORT CPU — 같은 모양의 함수. → 개념 1 의 INT8 · INT8 mixed"}
   ],
   "qp/6/5-1": [
-    {
-      "at": "t0 = time.perf_counter()",
-      "to": "t4 = time.perf_counter()",
-      "t": "다섯 번 시계 — read · pre · infer · post",
-      "d": ""
-    },
-    {
-      "at": "for name, f in ENG.items():",
-      "to": "rows.append({\"engine\": name",
-      "t": "엔진마다 warm-up 3 · 30 프레임 평균",
-      "d": ""
-    },
-    {
-      "at": "stage_df = pd.DataFrame(rows)",
-      "to": "stage_df[\"infer_share\"]",
-      "t": "추론 비율",
-      "d": "이 비율이 Amdahl 의 p — 추론만 빨라져서는 전체가 그만큼 빨라지지 않는다."
-    }
+    {"at": "t0 = time.perf_counter()", "to": "t4 = time.perf_counter()", "t": "다섯 번 시계 — read · pre · infer · post", "d": " → 개념 1 의 네 단계"},
+    {"at": "for name, f in ENG.items():", "to": "rows.append({\"engine\": name", "t": "엔진마다 warm-up 3 · 30 프레임 평균", "d": " → 개념 1 의 단계별 시간"},
+    {"at": "stage_df = pd.DataFrame(rows)", "to": "stage_df[\"infer_share\"]", "t": "추론 비율", "d": "이 비율이 Amdahl 의 p — 추론만 빨라져서는 전체가 그만큼 빨라지지 않는다. → 개념 1 의 추론 비율"}
   ],
   "qp/6/5-2": [
-    {
-      "at": "cap = cv2.VideoCapture(source)",
-      "to": "writer = cv2.VideoWriter(",
-      "t": "영상 열기 · start 로 이동 · 저장기",
-      "d": ""
-    },
-    {
-      "at": "while max_frames is None or i < max_frames:",
-      "to": "i += 1",
-      "t": "프레임마다 처리 · 저장 · 로그",
-      "d": "ms 는 process_frame (탐지 + 판정 + 그리기) 시간."
-    },
-    {
-      "at": "LOGS[name] = run_intrusion(",
-      "to": "pd.DataFrame(EVENTS[name]",
-      "t": "엔진마다 실행 · 이벤트 CSV",
-      "d": ""
-    }
+    {"at": "cap = cv2.VideoCapture(source)", "to": "writer = cv2.VideoWriter(", "t": "영상 열기 · start 로 이동 · 저장기", "d": ""},
+    {"at": "while max_frames is None or i < max_frames:", "to": "i += 1", "t": "프레임마다 처리 · 저장 · 로그", "d": "ms 는 process_frame (탐지 + 판정 + 그리기) 시간."},
+    {"at": "LOGS[name] = run_intrusion(", "to": "pd.DataFrame(EVENTS[name]", "t": "엔진마다 실행 · 이벤트 CSV", "d": " → 개념 1 의 infer 만 교체"}
   ],
   "qp/6/7-2": [
-    {
-      "at": "tiny = dev[\"ram_mb\"] < 1",
-      "to": "return {\"runtime\": runtime",
-      "t": "장치 조건 → 런타임 · 정밀도",
-      "d": "NVIDIA GPU → TensorRT, 메모리 1 MB 미만 → TFLite Micro, 그 밖 → ONNX Runtime."
-    },
-    {
-      "at": "decision_df = pd.DataFrame(",
-      "to": "decision_df.to_csv(",
-      "t": "결정표 · CSV",
-      "d": ""
-    }
+    {"at": "tiny = dev[\"ram_mb\"] < 1", "to": "return {\"runtime\": runtime", "t": "장치 조건 → 런타임 · 정밀도", "d": "NVIDIA GPU → TensorRT, 메모리 1 MB 미만 → TFLite Micro, 그 밖 → ONNX Runtime. → 개념 1 의 장치 순서"},
+    {"at": "decision_df = pd.DataFrame(", "to": "decision_df.to_csv(", "t": "결정표 · CSV", "d": " → 개념 1 의 결정표"}
   ]
 }
