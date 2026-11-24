@@ -1,228 +1,61 @@
 {
   "_설명": "NN Day 3 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "nn/3/1-2": [
-    {
-      "at": "for h in [1, 2, 4]:",
-      "to": "times[count_params(params)]",
-      "t": "작은 망 세 개로 수치 미분 1 step 시간",
-      "d": "모든 파라미터를 하나씩 ±h 흔들어 손실을 2번씩 계산 — 파라미터 수 P 에 비례해 느려진다."
-    },
-    {
-      "at": "params100 = init_params(100)",
-      "to": "t_loss = (time.perf_counter() - t0) / 20",
-      "t": "784-100-10 손실 한 번 시간",
-      "d": "20번 평균."
-    },
-    {
-      "at": "est_100 = t_loss * n_loss_evals(",
-      "t": "손실 한 번 × 2P = 추정 시간",
-      "d": "P = 79,510 이면 1 step 에 손실 159,020번 — 몇 분 단위. 그래서 역전파가 필요하다."
-    }
+    {"at": "for h in [1, 2, 4]:", "to": "times[count_params(params)]", "t": "작은 망 세 개로 수치 미분 1 step 시간", "d": "모든 파라미터를 하나씩 ±h 흔들어 손실을 2번씩 계산 — 파라미터 수 P 에 비례해 느려진다. → 개념 1 의 O(P²)"},
+    {"at": "params100 = init_params(100)", "to": "t_loss = (time.perf_counter() - t0) / 20", "t": "784-100-10 손실 한 번 시간", "d": "20번 평균. → 개념 1 의 순전파 한 번 비용"},
+    {"at": "est_100 = t_loss * n_loss_evals(", "t": "손실 한 번 × 2P = 추정 시간", "d": "P = 79,510 이면 1 step 에 손실 159,020번 — 몇 분 단위. 그래서 역전파가 필요하다. → 개념 1 의 2P × 손실 한 번"}
   ],
   "nn/3/2-2": [
-    {
-      "at": "dprice = 1",
-      "t": "출발 — 자기 자신에 대한 미분 = 1",
-      "d": "∂price/∂price = 1 — 여기서부터 곱해 가며 왼쪽으로."
-    },
-    {
-      "at": "dall_price = dprice * tax",
-      "to": "dtax = dprice * all_price",
-      "t": "곱셈 노드 — 상대편 값을 곱해 보낸다",
-      "d": "price = all_price × tax 라서 all_price 쪽엔 tax(1.1), tax 쪽엔 all_price(650)."
-    },
-    {
-      "at": "dapple_price = dall_price * 1",
-      "to": "dorange_price = dall_price * 1",
-      "t": "덧셈 노드 — 그대로 나눠 준다",
-      "d": "더하기는 국소 미분이 1."
-    },
-    {
-      "at": "dapple = dapple_price * apple_num",
-      "to": "dorange_num = dorange_price * orange",
-      "t": "다시 곱셈 노드",
-      "d": "사과값 1원 오르면 최종 가격은 2 × 1.1 = 2.2원 오른다."
-    }
+    {"at": "dprice = 1", "t": "출발 — 자기 자신에 대한 미분 = 1", "d": "∂price/∂price = 1 — 여기서부터 곱해 가며 왼쪽으로. → 개념 1 의 출발 기울기 1"},
+    {"at": "dall_price = dprice * tax", "to": "dtax = dprice * all_price", "t": "곱셈 노드 — 상대편 값을 곱해 보낸다", "d": "price = all_price × tax 라서 all_price 쪽엔 tax(1.1), tax 쪽엔 all_price(650). → 개념 2 의 국소 계산"},
+    {"at": "dapple_price = dall_price * 1", "to": "dorange_price = dall_price * 1", "t": "덧셈 노드 — 그대로 나눠 준다", "d": "더하기는 국소 미분이 1. → 개념 2 의 국소 계산"},
+    {"at": "dapple = dapple_price * apple_num", "to": "dorange_num = dorange_price * orange", "t": "다시 곱셈 노드", "d": "사과값 1원 오르면 최종 가격은 2 × 1.1 = 2.2원 오른다. → 개념 2 의 국소 계산"}
   ],
   "nn/3/3-1": [
-    {
-      "at": "def forward(self, x, y):",
-      "to": "return x * y",
-      "t": "forward — 값 계산 + 입력 저장",
-      "d": "역전파 때 '상대편 입력' 이 필요해서 x · y 를 기억해 둔다."
-    },
-    {
-      "at": "def backward(self, dout):",
-      "to": "return dx, dy",
-      "t": "backward — 위에서 온 기울기 × 상대편 입력",
-      "d": "∂(xy)/∂x = y, ∂(xy)/∂y = x. 연쇄 법칙으로 dout 을 곱한다."
-    }
+    {"at": "def forward(self, x, y):", "to": "return x * y", "t": "forward — 값 계산 + 입력 저장", "d": "역전파 때 '상대편 입력' 이 필요해서 x · y 를 기억해 둔다. → 개념 2 의 곱셈은 입력 저장"},
+    {"at": "def backward(self, dout):", "to": "return dx, dy", "t": "backward — 위에서 온 기울기 × 상대편 입력", "d": "∂(xy)/∂x = y, ∂(xy)/∂y = x. 연쇄 법칙으로 dout 을 곱한다. → 개념 2 의 dx = dout × y"}
   ],
   "nn/3/3-3": [
-    {
-      "at": "apple_price = mul_apple.forward(100, 2)",
-      "to": "price = mul_tax.forward(all_price, 1.1)",
-      "t": "순전파 — 왼쪽에서 오른쪽",
-      "d": "100 × 2 = 200, 150 × 3 = 450, 합 650, × 1.1 = 715."
-    },
-    {
-      "at": "dall_price, dtax = mul_tax.backward(1)",
-      "to": "dapple, dapple_num = mul_apple.backward(dapple_price)",
-      "t": "역전파 — 호출 순서를 정확히 반대로",
-      "d": "각 계층이 자기 국소 미분만 알면 끝까지 전달된다 — 신경망 계층도 똑같은 구조."
-    }
+    {"at": "apple_price = mul_apple.forward(100, 2)", "to": "price = mul_tax.forward(all_price, 1.1)", "t": "순전파 — 왼쪽에서 오른쪽", "d": "100 × 2 = 200, 150 × 3 = 450, 합 650, × 1.1 = 715. → 개념 1"},
+    {"at": "dall_price, dtax = mul_tax.backward(1)", "to": "dapple, dapple_num = mul_apple.backward(dapple_price)", "t": "역전파 — 호출 순서를 정확히 반대로", "d": "각 계층이 자기 국소 미분만 알면 끝까지 전달된다 — 신경망 계층도 똑같은 구조. → 개념 1 의 뒤에서부터 차례로"}
   ],
   "nn/3/4-1": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return out",
-      "t": "0 이하인 자리를 기억하고 0 으로",
-      "d": "`mask` = True/False 지도. 원본을 건드리지 않게 `copy()`."
-    },
-    {
-      "at": "def backward(self, dout):",
-      "to": "return dx",
-      "t": "막혔던 자리는 기울기도 0",
-      "d": "통과한 자리는 그대로(미분 1), 막힌 자리는 0 — 전기 스위치."
-    }
+    {"at": "def forward(self, x):", "to": "return out", "t": "0 이하인 자리를 기억하고 0 으로", "d": "`mask` = True/False 지도. 원본을 건드리지 않게 `copy()`. → 개념 1 의 mask"},
+    {"at": "def backward(self, dout):", "to": "return dx", "t": "막혔던 자리는 기울기도 0", "d": "통과한 자리는 그대로(미분 1), 막힌 자리는 0 — 전기 스위치. → 개념 1 의 기울기 1 또는 0"}
   ],
   "nn/3/4-2": [
-    {
-      "at": "def forward(self, x):",
-      "to": "return out",
-      "t": "sigmoid 계산 · 출력 저장",
-      "d": "역전파에 입력 x 가 아니라 출력 y 를 쓴다."
-    },
-    {
-      "at": "def backward(self, dout):",
-      "to": "return dout * self.out * (1.0 - self.out)",
-      "t": "기울기 = dout × y(1 − y)",
-      "d": "y 가 0 이나 1 에 가까우면 거의 0 — 기울기 소실의 원인."
-    }
+    {"at": "def forward(self, x):", "to": "return out", "t": "sigmoid 계산 · 출력 저장", "d": "역전파에 입력 x 가 아니라 출력 y 를 쓴다. → 개념 2 의 self.out"},
+    {"at": "def backward(self, dout):", "to": "return dout * self.out * (1.0 - self.out)", "t": "기울기 = dout × y(1 − y)", "d": "y 가 0 이나 1 에 가까우면 거의 0 — 기울기 소실의 원인. → 개념 2 의 dout · y(1 − y)"}
   ],
   "nn/3/5-1": [
-    {
-      "at": "def forward(self, X):",
-      "to": "return X @ self.W + self.b",
-      "t": "forward — 입력 X 저장",
-      "d": "dW 를 계산하려면 X 가 필요하다."
-    },
-    {
-      "at": "dX = dout @ self.W.T",
-      "to": "self.db = dout.sum(axis=0)",
-      "t": "shape 를 맞추면 식이 나온다",
-      "d": "dX (N, D) = dout (N, M) @ Wᵀ (M, D), dW (D, M) = Xᵀ (D, N) @ dout (N, M), db = 배치 방향 합 — 편향은 모든 샘플에 더해졌으므로."
-    }
+    {"at": "def forward(self, X):", "to": "return X @ self.W + self.b", "t": "forward — 입력 X 저장", "d": "dW 를 계산하려면 X 가 필요하다. → 개념 1"},
+    {"at": "dX = dout @ self.W.T", "to": "self.db = dout.sum(axis=0)", "t": "shape 를 맞추면 식이 나온다", "d": "dX (N, D) = dout (N, M) @ Wᵀ (M, D), dW (D, M) = Xᵀ (D, N) @ dout (N, M), db = 배치 방향 합 — 편향은 모든 샘플에 더해졌으므로. → 개념 1 의 dX = dout @ Wᵀ · dW = Xᵀ @ dout"}
   ],
   "nn/3/5-3": [
-    {
-      "at": "def forward(self, X, t):",
-      "to": "return self.loss",
-      "t": "softmax → cross-entropy",
-      "d": "정답 t 와 확률 y 를 저장해 둔다."
-    },
-    {
-      "at": "N = self.y.shape[0]",
-      "to": "dX = (self.y - self.t) / N",
-      "t": "one-hot 이면 (Y − T) / N",
-      "d": "softmax 와 cross-entropy 를 같이 미분하면 이렇게 깔끔해진다. 평균 손실이라 N 으로 나눔."
-    },
-    {
-      "at": "else:",
-      "to": "dX = dX / N",
-      "t": "레이블이면 정답 칸에서 1 빼기",
-      "d": "one-hot 을 만들지 않고 같은 결과 — `dX[np.arange(N), t] -= 1`."
-    }
+    {"at": "def forward(self, X, t):", "to": "return self.loss", "t": "softmax → cross-entropy", "d": "정답 t 와 확률 y 를 저장해 둔다. → 개념 2"},
+    {"at": "N = self.y.shape[0]", "to": "dX = (self.y - self.t) / N", "t": "one-hot 이면 (Y − T) / N", "d": "softmax 와 cross-entropy 를 같이 미분하면 이렇게 깔끔해진다. 평균 손실이라 N 으로 나눔. → 개념 2 의 (Y − T) / N"},
+    {"at": "else:", "to": "dX = dX / N", "t": "레이블이면 정답 칸에서 1 빼기", "d": "one-hot 을 만들지 않고 같은 결과 — `dX[np.arange(N), t] -= 1`. → 개념 2 의 정답 칸에서 1 빼기"}
   ],
   "nn/3/6-1": [
-    {
-      "at": "self.params = {",
-      "to": "\"b2\": np.zeros(output_size),",
-      "t": "파라미터 — 작은 난수와 0",
-      "d": "weight_init_std 0.01 — Day 4 에서 이 값이 왜 문제인지(He 초기화) 본다."
-    },
-    {
-      "at": "self.layers = OrderedDict()",
-      "to": "self.lastLayer = SoftmaxWithLoss()",
-      "t": "계층을 순서대로 쌓기",
-      "d": "Affine → Relu → Affine, 마지막에 손실 계층. Affine 은 params 와 **같은 배열**을 가리켜 갱신이 바로 반영된다."
-    },
-    {
-      "at": "def predict(self, X):",
-      "to": "return np.mean(self.predict(X).argmax(axis=1) == t)",
-      "t": "predict · loss · accuracy",
-      "d": "predict 는 softmax 전 점수 — 정확도엔 argmax 만 필요."
-    },
-    {
-      "at": "def gradient(self, X, t):",
-      "to": "\"W2\": self.layers[\"Affine2\"].dW",
-      "t": "역전파 = 순전파 한 번 + 반대 순서로 backward",
-      "d": "① 순전파로 값 저장 ② 손실 계층 backward(1) ③ reversed 로 계층마다. 수치 미분(numerical_gradient)은 검증용으로만."
-    }
+    {"at": "self.params = {", "to": "\"b2\": np.zeros(output_size),", "t": "파라미터 — 작은 난수와 0", "d": "weight_init_std 0.01 — Day 4 에서 이 값이 왜 문제인지(He 초기화) 본다. → 개념 1 의 제자리 갱신"},
+    {"at": "self.layers = OrderedDict()", "to": "self.lastLayer = SoftmaxWithLoss()", "t": "계층을 순서대로 쌓기", "d": "Affine → Relu → Affine, 마지막에 손실 계층. Affine 은 params 와 **같은 배열**을 가리켜 갱신이 바로 반영된다. → 개념 1 의 OrderedDict"},
+    {"at": "def predict(self, X):", "to": "return np.mean(self.predict(X).argmax(axis=1) == t)", "t": "predict · loss · accuracy", "d": "predict 는 softmax 전 점수 — 정확도엔 argmax 만 필요. → 개념 1"},
+    {"at": "def gradient(self, X, t):", "to": "\"W2\": self.layers[\"Affine2\"].dW", "t": "역전파 = 순전파 한 번 + 반대 순서로 backward", "d": "① 순전파로 값 저장 ② 손실 계층 backward(1) ③ reversed 로 계층마다. 수치 미분(numerical_gradient)은 검증용으로만. → 개념 1 의 gradient 네 단계"}
   ],
   "nn/3/6-3": [
-    {
-      "at": "def failing(g_bp, g_num, tol=1e-7):",
-      "t": "상대 오차가 기준을 넘는 파라미터 이름",
-      "d": "역전파 기울기와 수치 기울기의 상대 오차가 1e-7 을 넘으면 틀린 것."
-    },
-    {
-      "at": "class AffineBug1(Affine):",
-      "to": "self.db = dout.mean(axis=0)",
-      "t": "버그 ① — 합 대신 평균",
-      "d": "shape 는 맞아서 실행은 되지만 값이 1/N 배 — b2 에서 걸린다."
-    },
-    {
-      "at": "class AffineBug2(Affine):",
-      "to": "return dout @ self.W",
-      "t": "버그 ② — 전치 빠뜨림",
-      "d": "W2 가 (10, 10) 정사각이라 shape 오류가 안 난다. 앞 층(W1 · b1)의 기울기가 틀린다."
-    },
-    {
-      "at": "for name, Bug in [(\"bug1\", AffineBug1)",
-      "to": "results[name] = failing(",
-      "t": "두 번째 Affine 에만 버그를 넣어 확인",
-      "d": "gradient check 는 'shape 가 맞아도 틀리는 버그' 를 잡는 유일한 방법."
-    }
+    {"at": "def failing(g_bp, g_num, tol=1e-7):", "t": "상대 오차가 기준을 넘는 파라미터 이름", "d": "역전파 기울기와 수치 기울기의 상대 오차가 1e-7 을 넘으면 틀린 것. → 개념 2 의 상대 오차"},
+    {"at": "class AffineBug1(Affine):", "to": "self.db = dout.mean(axis=0)", "t": "버그 ① — 합 대신 평균", "d": "shape 는 맞아서 실행은 되지만 값이 1/N 배 — b2 에서 걸린다. → 개념 3 의 평균 버그"},
+    {"at": "class AffineBug2(Affine):", "to": "return dout @ self.W", "t": "버그 ② — 전치 빠뜨림", "d": "W2 가 (10, 10) 정사각이라 shape 오류가 안 난다. 앞 층(W1 · b1)의 기울기가 틀린다. → 개념 3 의 전치 빠뜨림"},
+    {"at": "for name, Bug in [(\"bug1\", AffineBug1)", "to": "results[name] = failing(", "t": "두 번째 Affine 에만 버그를 넣어 확인", "d": "gradient check 는 'shape 가 맞아도 틀리는 버그' 를 잡는 유일한 방법. → 개념 3 의 앞쪽에서 드러남"}
   ],
   "nn/3/7-2": [
-    {
-      "at": "for epoch in range(1, epochs + 1):",
-      "to": "idx = rng7.permutation(len(X_tr))",
-      "t": "epoch 마다 순서 섞기",
-      "d": "같은 순서로 보면 편향이 생긴다."
-    },
-    {
-      "at": "for i in range(iters_per_epoch):",
-      "to": "net7.params[k] -= lr * grads[k]",
-      "t": "배치 하나 → 역전파 → 갱신",
-      "d": "30개씩 잘라 기울기를 구하고 파라미터를 lr 만큼 이동. 전체를 한 번 다 보면 1 epoch."
-    },
-    {
-      "at": "hist7.append(",
-      "to": "snaps[epoch] =",
-      "t": "기록 · 결정 경계용 스냅샷",
-      "d": "epoch 1 · 10 · 50 · 300 의 파라미터를 복사해 두고 7-3 에서 경계가 어떻게 자라는지 그린다."
-    }
+    {"at": "for epoch in range(1, epochs + 1):", "to": "idx = rng7.permutation(len(X_tr))", "t": "epoch 마다 순서 섞기", "d": "같은 순서로 보면 편향이 생긴다. → 개념 1 의 셔플"},
+    {"at": "for i in range(iters_per_epoch):", "to": "net7.params[k] -= lr * grads[k]", "t": "배치 하나 → 역전파 → 갱신", "d": "30개씩 잘라 기울기를 구하고 파라미터를 lr 만큼 이동. 전체를 한 번 다 보면 1 epoch. → 개념 1 의 iteration"},
+    {"at": "hist7.append(", "to": "snaps[epoch] =", "t": "기록 · 결정 경계용 스냅샷", "d": "epoch 1 · 10 · 50 · 300 의 파라미터를 복사해 두고 7-3 에서 경계가 어떻게 자라는지 그린다. → 개념 2"}
   ],
   "nn/3/8-3": [
-    {
-      "at": "lr, batch_size, epochs = 0.1, 100, 10",
-      "to": "loss_list, train_acc_list, test_acc_list",
-      "t": "설정 — 1 epoch = 600 iteration",
-      "d": "60,000 / 100 = 600."
-    },
-    {
-      "at": "for epoch in range(1, epochs + 1):",
-      "to": "loss_list.append(network.lastLayer.loss)",
-      "t": "7교시와 같은 미니배치 루프",
-      "d": "손실 계층이 forward 때 저장한 손실을 매 iteration 기록."
-    },
-    {
-      "at": "train_acc_list.append(",
-      "to": "f\"loss {np.mean(",
-      "t": "epoch 끝마다 train · test 정확도",
-      "d": "둘의 차이가 작으면 과적합이 적다. 10 epoch 이면 test 약 0.97."
-    }
+    {"at": "lr, batch_size, epochs = 0.1, 100, 10", "to": "loss_list, train_acc_list, test_acc_list", "t": "설정 — 1 epoch = 600 iteration", "d": "60,000 / 100 = 600. → 개념 3 의 6,000 iteration"},
+    {"at": "for epoch in range(1, epochs + 1):", "to": "loss_list.append(network.lastLayer.loss)", "t": "7교시와 같은 미니배치 루프", "d": "손실 계층이 forward 때 저장한 손실을 매 iteration 기록. → 개념 3"},
+    {"at": "train_acc_list.append(", "to": "f\"loss {np.mean(", "t": "epoch 끝마다 train · test 정확도", "d": "둘의 차이가 작으면 과적합이 적다. 10 epoch 이면 test 약 0.97. → 개념 3 의 train · test"}
   ]
 }

@@ -1,324 +1,85 @@
 {
- "_설명": "NN Day 4 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
- "nn/4/1-1": [
-  {
-   "at": "def grad_f(p):",
-   "to": "return np.array([p[0] / 10.0, 2.0 * p[1]])",
-   "t": "f = x²/20 + y² 의 기울기",
-   "d": "x 방향 기울기는 x/10 (완만), y 방향은 2y (가파름) — 방향마다 20배 차이 = 비등방성."
-  },
-  {
-   "at": "class SGD:",
-   "to": "params[k] -= self.lr * grads[k]",
-   "t": "옵티마이저 공통 모양 — update(params, grads)",
-   "d": "params · grads 는 같은 이름표의 딕셔너리. 이 모양만 지키면 옵티마이저를 바꿔 끼울 수 있다."
-  },
-  {
-   "at": "def run_optimizer(",
-   "to": "return np.array(path)",
-   "t": "(−7, 2) 에서 30 step 경로 기록",
-   "d": "`copy()` 로 저장해야 경로가 덮어써지지 않는다."
-  }
- ],
- "nn/4/2-1": [
-  {
-   "at": "class Momentum:",
-   "to": "params[k] += self.v[k]",
-   "t": "Momentum — v ← 0.9v − lr·g, p ← p + v",
-   "d": "같은 방향 기울기는 쌓이고(가속), 부호가 바뀌는 방향은 서로 지워진다(흔들림 감소). v 는 처음 update 때 params 와 같은 모양으로 만든다."
-  },
-  {
-   "at": "class AdaGrad:",
-   "to": "params[k] -= self.lr * grads[k] / (np.sqrt(self.h[k]) + 1e-7)",
-   "t": "AdaGrad — h 에 g² 누적, lr / √h",
-   "d": "많이 움직인 파라미터는 학습률이 작아진다. h 가 계속 커져 결국 거의 멈춤 — 그래서 RMSProp. 1e-7 은 0 으로 나누기 방지."
-  }
- ],
- "nn/4/2-2": [
-  {
-   "at": "class RMSProp:",
-   "to": "params[k] -= self.lr * grads[k] / (np.sqrt(self.h[k]) + 1e-7)",
-   "t": "RMSProp — g² 의 지수 이동 평균",
-   "d": "h = 0.99h + 0.01g² — 오래된 기울기는 잊으므로 학습률이 0 으로 줄지 않는다."
-  },
-  {
-   "at": "class Adam:",
-   "to": "self.t += 1",
-   "t": "Adam — m(1차) · v(2차) · step 수 t",
-   "d": "m = Momentum 의 방향, v = RMSProp 의 크기."
-  },
-  {
-   "at": "for k in params:",
-   "to": "params[k] -= self.lr * m_hat / (np.sqrt(v_hat) + 1e-7)",
-   "t": "편향 보정 후 갱신",
-   "d": "m · v 가 0 에서 시작해 초반에 작게 나오는 것을 1 − β^t 로 나눠 바로잡는다 (t = 1 이면 m 을 10배)."
-  }
- ],
- "nn/4/2-c1": [
-  {
-   "at": "def init_scale(weight_init_std, n_in):",
-   "to": "return float(weight_init_std)",
-   "t": "초기화 표준편차 고르기",
-   "d": "'he' = √(2/n), 'xavier' = √(1/n), 숫자면 그대로 — 3교시에서 비교."
-  },
-  {
-   "at": "rng_ = np.random.default_rng(seed)",
-   "to": "Act = {\"relu\": Relu, \"sigmoid\": Sigmoid}[activation]",
-   "t": "층 크기 목록 · 설정 저장",
-   "d": "784, [100, 100], 10 → sizes = [784, 100, 100, 10], 층 3개."
-  },
-  {
-   "at": "for i in range(1, self.n_layers + 1):",
-   "to": "self.lastLayer = SoftmaxWithLoss()",
-   "t": "층마다 Affine → [BN] → 활성화 → [Dropout]",
-   "d": "BN · Dropout 은 옵션으로 끼운다. 마지막 층은 Affine 만, 그 뒤 손실 계층."
-  },
-  {
-   "at": "def loss(self, x, t, train_flg=False):",
-   "to": "return L",
-   "t": "손실 + weight decay 벌점 ½λΣW²",
-   "d": "train_flg 로 BN · Dropout 의 학습/추론 모드를 정한다."
-  },
-  {
-   "at": "def gradient(self, x, t):",
-   "to": "return grads",
-   "t": "역전파 + λW",
-   "d": "Day 3 과 같은 순서 · 반대 순서 backward. W 기울기에 벌점의 미분 λW 를 더한다."
-  },
-  {
-   "at": "def fit(net, optimizer,",
-   "to": "return h",
-   "t": "미니배치 학습 루프",
-   "d": "epochs 또는 iters 로 길이. eval_every epoch 마다 train · val 정확도와 val 손실 기록."
-  }
- ],
- "nn/4/3-1": [
-  {
-   "at": "def xavier_std(n_in):",
-   "to": "return np.sqrt(2.0 / n_in)",
-   "t": "Xavier √(1/n) · He √(2/n)",
-   "d": "ReLU 는 절반을 0 으로 만들어 분산이 반으로 줄기 때문에 He 는 2배."
-  },
-  {
-   "at": "def activation_stats(",
-   "to": "return outs",
-   "t": "100 뉴런 × 5층에 데이터 1,000개 통과",
-   "d": "층마다 활성화값을 모아 히스토그램으로 — 0 · 1 에 몰리면 기울기 소실, 한 값에 몰리면 표현력 상실."
-  }
- ],
- "nn/4/4-1": [
-  {
-   "at": "if train_flg:",
-   "to": "self.xc, self.xn, self.std = xc, xn, std",
-   "t": "학습 — 미니배치 열마다 평균 0 · 분산 1",
-   "d": "axis=0 (배치 방향)으로 평균 · 분산. eps 는 0 으로 나누기 방지. backward 용 값 저장. → 개념 1 의 x̂ = (x − μ) / √(σ² + ε)"
-  },
-  {
-   "at": "self.running_mean = self.momentum",
-   "to": "self.running_var = self.momentum",
-   "t": "추론용 이동 평균 갱신",
-   "d": "0.9 × 이전 + 0.1 × 이번 배치. → 개념 2 의 running = 0.9 · running + 0.1 · 배치값"
-  },
-  {
-   "at": "else:",
-   "to": "return self.gamma * xn + self.beta",
-   "t": "추론 — 저장한 평균 · 분산, 그리고 γ · β",
-   "d": "추론은 한 장씩 들어와도 결과가 같아야 하므로 배치 통계를 쓰지 않는다. γ · β 로 필요한 만큼 되돌릴 수 있다. → 개념 2 추론 모드 · 개념 1 의 y = γx̂ + β"
-  }
- ],
- "nn/4/4-2": [
-  {
-   "at": "self.dbeta = dout.sum(axis=0)",
-   "to": "self.dgamma = np.sum(self.xn * dout, axis=0)",
-   "t": "dβ · dγ — Affine 의 db · dW 와 같은 모양",
-   "d": "y = γ·x̂ + β 이므로. → 개념 3 의 ① · ②"
-  },
-  {
-   "at": "dxn = self.gamma * dout",
-   "to": "return dx",
-   "t": "dx — 평균 · 분산을 거친 길까지 한 식으로",
-   "d": "x 하나가 바뀌면 배치 평균 · 분산도 바뀌므로 세 항. 4-3 에서 수치 미분으로 맞는지 확인. → 개념 3 의 ③ (세 갈래) — 결과의 열 합은 0 (④)"
-  }
- ],
- "nn/4/6-2": [
-  {
-   "at": "def forward(self, x, train_flg=True):",
-   "to": "return x * (1.0 - self.ratio)",
-   "t": "학습: 무작위로 끄기, 추론: 전부 켜고 비율만큼 줄이기",
-   "d": "ratio 0.5 면 학습 땐 절반만 살아남으므로 추론 땐 0.5 를 곱해 크기를 맞춘다."
-  },
-  {
-   "at": "def backward(self, dout):",
-   "to": "return dout * self.mask",
-   "t": "꺼진 뉴런은 기울기도 0",
-   "d": "ReLU 의 mask 와 같은 원리."
-  }
- ],
- "nn/4/7-2": [
-  {
-   "at": "def log_uniform(rng_, low, high):",
-   "to": "return 10 ** rng_.uniform(low, high)",
-   "t": "지수를 고르게 뽑기",
-   "d": "−4 ~ 0 이면 0.0001 ~ 1 사이를 자릿수마다 같은 확률로."
-  },
-  {
-   "at": "for trial in range(30):",
-   "to": "results.append(",
-   "t": "30번 — 뽑고, 학습하고, 검증 정확도 기록",
-   "d": "검증 데이터로만 고른다. test 는 마지막에 한 번."
-  }
- ],
- "nn/4/8-c1": [
-  {
-   "at": "def softmax(A):",
-   "to": "return float(weight_init)",
-   "t": "함수 — Day 2 · 3 에서 만든 것 모음",
-   "d": "softmax · cross_entropy_error · numerical_gradient · rel_error · init_std."
-  },
-  {
-   "at": "class Layer:",
-   "to": "def backward(self, dout):",
-   "t": "모든 계층의 공통 틀",
-   "d": "params · grads · buffers 딕셔너리 + forward(x, train_flg) · backward(dout). 이 약속을 지키면 어떤 계층이든 Sequential 에 넣을 수 있다."
-  },
-  {
-   "at": "class Affine(Layer):",
-   "to": "class BatchNorm(Layer):",
-   "t": "계층 ① — Affine · Relu · Sigmoid",
-   "d": "Day 3 코드를 공통 틀에 맞춰 다시 쓴 것. 이제 W · b 를 계층이 직접 갖는다 (params['W'])."
-  },
-  {
-   "at": "def __init__(self, size, momentum=0.9, eps=1e-7):",
-   "to": "return dx / N * dout",
-   "t": "계층 ② — BatchNorm · Dropout · SoftmaxWithLoss",
-   "d": "BN 의 running 평균 · 분산은 buffers 에 — 학습은 안 되지만 저장해야 하는 값."
-  },
-  {
-   "at": "class SGD:",
-   "to": "params[k] -= self.lr * m_hat",
-   "t": "옵티마이저 — SGD · Momentum · AdaGrad · RMSProp · Adam",
-   "d": "2교시 코드 그대로. update(params, grads) 모양."
-  }
- ],
- "nn/4/8-1": [
-  {
-   "at": "def params(self):",
-   "to": "return g",
-   "t": "모든 계층의 파라미터 · 기울기를 '번호.이름' 으로 모으기",
-   "d": "'0.W', '1.gamma' 처럼. 배열을 복사하지 않고 같은 객체를 모아서 옵티마이저가 고치면 계층에 바로 반영된다. W 기울기엔 λW."
-  },
-  {
-   "at": "def predict(self, x, train_flg=False):",
-   "to": "return correct / len(x)",
-   "t": "predict · loss · accuracy",
-   "d": "accuracy 는 1,000장씩 나눠 계산 — 메모리 절약."
-  },
-  {
-   "at": "def gradient(self, x, t):",
-   "to": "return self.grads()",
-   "t": "역전파 — 계층 목록을 거꾸로",
-   "d": "Day 3 TwoLayerNet 의 gradient 와 같은 순서 — 기울기는 각 계층의 grads 에 들어 있다."
-  },
-  {
-   "at": "def state(self):",
-   "to": "return s",
-   "t": "저장할 것 = params + buffers",
-   "d": "BN 의 running 평균 · 분산은 학습되는 파라미터는 아니지만 추론에 꼭 필요하다."
-  }
- ],
- "nn/4/8-2": [
-  {
-   "at": "class Trainer:",
-   "to": "self.history = {",
-   "t": "모델 · 옵티마이저 · 배치 크기를 묶기",
-   "d": "history 에 iteration 손실과 epoch 별 정확도를 쌓는다."
-  },
-  {
-   "at": "def fit(self, X, t, epochs=1,",
-   "to": "return self.history",
-   "t": "fit — 섞기 → 배치 → gradient → update",
-   "d": "params() 를 한 번만 만들어 두고 계속 같은 배열을 갱신."
-  },
-  {
-   "at": "def save_params(model, path):",
-   "to": "p[...] = data[k]",
-   "t": "npz 로 저장 · 제자리 복사로 불러오기",
-   "d": "`p[...] = ` 는 새 배열을 만들지 않고 안의 숫자만 바꾼다 — 계층과의 연결이 끊기지 않는다."
-  }
- ],
- "nn/4/8-3": [
-  {
-   "at": "sizes = [784, 100, 100, 100, 100, 10]",
-   "to": "model = mynn.Sequential(layers)",
-   "t": "[Affine → BN → ReLU] × 4 + Affine = 13계층",
-   "d": "파라미터 110,610개 = Affine 109,810 + BN γ · β 800."
-  },
-  {
-   "at": "trainer = mynn.Trainer(",
-   "to": "history = trainer.fit(",
-   "t": "Adam 0.001 · 배치 100 · 5 epoch",
-   "d": "5 epoch 후 test 0.9757."
-  }
- ],
- "nn/4/8-4": [
-  {
-   "at": "mynn.save_params(model, \"day4_mlp.npz\")",
-   "t": "학습한 모델 저장",
-   "d": "state() — 파라미터와 BN 이동 평균을 npz 파일 하나로."
-  },
-  {
-   "at": "layers2 = []",
-   "to": "acc_after = model2.accuracy(X_test, t_test)",
-   "t": "다른 seed 로 같은 구조 → 불러오기",
-   "d": "불러오기 전 0.1103 (찍기 수준) → 후 0.9757 (원래 모델과 같음)."
-  },
-  {
-   "at": "drive_dir =",
-   "to": "print(\"Drive 가 연결되지 않아",
-   "t": "(Colab) Drive 에 복사",
-   "d": "Day 5 에서 mynn.py 를 다시 쓴다."
-  }
- ],
- "nn/4/8-c4": [
-  {
-   "at": "for i in range(0, 12, 3):",
-   "to": "folded += [(W2, b2), \"relu\"]",
-   "t": "Affine + BN → Affine 하나로",
-   "d": "추론 땐 BN 도 '곱하고 더하기' 라서 W' = W·γ/√(σ²+ε), b' = (b − μ)·γ/√(σ²+ε) + β 로 합칠 수 있다."
-  },
-  {
-   "at": "def predict_folded(x):",
-   "to": "acc_fold = np.mean(",
-   "t": "접은 9계층으로 예측",
-   "d": "정확도는 그대로 — 학습 기법(BN)이 추론 비용을 늘리지 않는다."
-  }
- ],
- "nn/4/4-3": [
-  {
-   "at": "dout4 = rng4",
-   "to": "bn = BatchNorm(gamma_ex, beta_ex); bn.forward",
-   "t": "역전파로 기울기 구하기",
-   "d": "아무 dout 이나 '위에서 내려온 기울기' 로 보고 forward → backward. → 개념 3 의 dx · dγ · dβ"
-  },
-  {
-   "at": "f4 = lambda",
-   "to": "\"dbeta\": rel_error",
-   "t": "수치 미분과 상대 오차로 비교",
-   "d": "L = Σ(BN 출력 × dout) 를 수치 미분하면 정답 기울기 (NN D3 계층 검증과 같은 방법). 상대 오차가 작으면 backward 식이 맞다"
-  }
- ],
- "nn/4/4-4": [
-  {
-   "at": "for w in [1.0",
-   "to": "net = MultiLayerNet",
-   "t": "초기화 std 4가지 × BN 있음/없음 = 망 8개",
-   "d": "use_batchnorm=True 면 은닉층마다 Affine → BN → ReLU. → 개념 3 의 ⑤ (초기화에 둔감)"
-  },
-  {
-   "at": "h = fit(net",
-   "to": "print(f\"std",
-   "t": "같은 조건으로 학습해 정확도 비교",
-   "d": "1000장 · 20 epoch · SGD 0.01 로 모두 같게 — std 0.01 은 BN 없으면 0.117, 있으면 train 1.000"
-  }
- ]
+  "_설명": "NN Day 4 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
+  "nn/4/1-1": [
+    {"at": "def grad_f(p):", "to": "return np.array([p[0] / 10.0, 2.0 * p[1]])", "t": "f = x²/20 + y² 의 기울기", "d": "x 방향 기울기는 x/10 (완만), y 방향은 2y (가파름) — 방향마다 20배 차이 = 비등방성. → 개념 1 의 ∇f = (x/10, 2y)"},
+    {"at": "class SGD:", "to": "params[k] -= self.lr * grads[k]", "t": "옵티마이저 공통 모양 — update(params, grads)", "d": "params · grads 는 같은 이름표의 딕셔너리. 이 모양만 지키면 옵티마이저를 바꿔 끼울 수 있다. → 개념 1"},
+    {"at": "def run_optimizer(", "to": "return np.array(path)", "t": "(−7, 2) 에서 30 step 경로 기록", "d": "`copy()` 로 저장해야 경로가 덮어써지지 않는다. → 개념 1 의 지그재그"}
+  ],
+  "nn/4/2-1": [
+    {"at": "class Momentum:", "to": "params[k] += self.v[k]", "t": "Momentum — v ← 0.9v − lr·g, p ← p + v", "d": "같은 방향 기울기는 쌓이고(가속), 부호가 바뀌는 방향은 서로 지워진다(흔들림 감소). v 는 처음 update 때 params 와 같은 모양으로 만든다. → 개념 1 의 v ← αv − ηg"},
+    {"at": "class AdaGrad:", "to": "params[k] -= self.lr * grads[k] / (np.sqrt(self.h[k]) + 1e-7)", "t": "AdaGrad — h 에 g² 누적, lr / √h", "d": "많이 움직인 파라미터는 학습률이 작아진다. h 가 계속 커져 결국 거의 멈춤 — 그래서 RMSProp. 1e-7 은 0 으로 나누기 방지. → 개념 2 의 h ← h + g²"}
+  ],
+  "nn/4/2-2": [
+    {"at": "class RMSProp:", "to": "params[k] -= self.lr * grads[k] / (np.sqrt(self.h[k]) + 1e-7)", "t": "RMSProp — g² 의 지수 이동 평균", "d": "h = 0.99h + 0.01g² — 오래된 기울기는 잊으므로 학습률이 0 으로 줄지 않는다. → 개념 2 의 RMSProp"},
+    {"at": "class Adam:", "to": "self.t += 1", "t": "Adam — m(1차) · v(2차) · step 수 t", "d": "m = Momentum 의 방향, v = RMSProp 의 크기. → 개념 3 의 m · v"},
+    {"at": "for k in params:", "to": "params[k] -= self.lr * m_hat / (np.sqrt(v_hat) + 1e-7)", "t": "편향 보정 후 갱신", "d": "m · v 가 0 에서 시작해 초반에 작게 나오는 것을 1 − β^t 로 나눠 바로잡는다 (t = 1 이면 m 을 10배). → 개념 3 의 편향 보정"}
+  ],
+  "nn/4/2-c1": [
+    {"at": "def init_scale(weight_init_std, n_in):", "to": "return float(weight_init_std)", "t": "초기화 표준편차 고르기", "d": "'he' = √(2/n), 'xavier' = √(1/n), 숫자면 그대로 — 3교시에서 비교. → 3교시 개념 3 의 Xavier · He"},
+    {"at": "rng_ = np.random.default_rng(seed)", "to": "Act = {\"relu\": Relu, \"sigmoid\": Sigmoid}[activation]", "t": "층 크기 목록 · 설정 저장", "d": "784, [100, 100], 10 → sizes = [784, 100, 100, 10], 층 3개."},
+    {"at": "for i in range(1, self.n_layers + 1):", "to": "self.lastLayer = SoftmaxWithLoss()", "t": "층마다 Affine → [BN] → 활성화 → [Dropout]", "d": "BN · Dropout 은 옵션으로 끼운다. 마지막 층은 Affine 만, 그 뒤 손실 계층. → 4교시 · 6교시 의 BN · Dropout"},
+    {"at": "def loss(self, x, t, train_flg=False):", "to": "return L", "t": "손실 + weight decay 벌점 ½λΣW²", "d": "train_flg 로 BN · Dropout 의 학습/추론 모드를 정한다. → 6교시 개념 1 의 ½λΣW²"},
+    {"at": "def gradient(self, x, t):", "to": "return grads", "t": "역전파 + λW", "d": "Day 3 과 같은 순서 · 반대 순서 backward. W 기울기에 벌점의 미분 λW 를 더한다. → 6교시 개념 1 의 λW"},
+    {"at": "def fit(net, optimizer,", "to": "return h", "t": "미니배치 학습 루프", "d": "epochs 또는 iters 로 길이. eval_every epoch 마다 train · val 정확도와 val 손실 기록."}
+  ],
+  "nn/4/3-1": [
+    {"at": "def xavier_std(n_in):", "to": "return np.sqrt(2.0 / n_in)", "t": "Xavier √(1/n) · He √(2/n)", "d": "ReLU 는 절반을 0 으로 만들어 분산이 반으로 줄기 때문에 He 는 2배. → 개념 3 의 √(1/n) · √(2/n)"},
+    {"at": "def activation_stats(", "to": "return outs", "t": "100 뉴런 × 5층에 데이터 1,000개 통과", "d": "층마다 활성화값을 모아 히스토그램으로 — 0 · 1 에 몰리면 기울기 소실, 한 값에 몰리면 표현력 상실. → 개념 2 의 활성화 분포"}
+  ],
+  "nn/4/4-1": [
+    {"at": "if train_flg:", "to": "self.xc, self.xn, self.std = xc, xn, std", "t": "학습 — 미니배치 열마다 평균 0 · 분산 1", "d": "axis=0 (배치 방향)으로 평균 · 분산. eps 는 0 으로 나누기 방지. backward 용 값 저장. → 개념 1 의 x̂ = (x − μ) / √(σ² + ε)"},
+    {"at": "self.running_mean = self.momentum", "to": "self.running_var = self.momentum", "t": "추론용 이동 평균 갱신", "d": "0.9 × 이전 + 0.1 × 이번 배치. → 개념 2 의 running = 0.9 · running + 0.1 · 배치값"},
+    {"at": "else:", "to": "return self.gamma * xn + self.beta", "t": "추론 — 저장한 평균 · 분산, 그리고 γ · β", "d": "추론은 한 장씩 들어와도 결과가 같아야 하므로 배치 통계를 쓰지 않는다. γ · β 로 필요한 만큼 되돌릴 수 있다. → 개념 2 추론 모드 · 개념 1 의 y = γx̂ + β"}
+  ],
+  "nn/4/4-2": [
+    {"at": "self.dbeta = dout.sum(axis=0)", "to": "self.dgamma = np.sum(self.xn * dout, axis=0)", "t": "dβ · dγ — Affine 의 db · dW 와 같은 모양", "d": "y = γ·x̂ + β 이므로. → 개념 3 의 ① · ②"},
+    {"at": "dxn = self.gamma * dout", "to": "return dx", "t": "dx — 평균 · 분산을 거친 길까지 한 식으로", "d": "x 하나가 바뀌면 배치 평균 · 분산도 바뀌므로 세 항. 4-3 에서 수치 미분으로 맞는지 확인. → 개념 3 의 ③ (세 갈래) — 결과의 열 합은 0 (④)"}
+  ],
+  "nn/4/6-2": [
+    {"at": "def forward(self, x, train_flg=True):", "to": "return x * (1.0 - self.ratio)", "t": "학습: 무작위로 끄기, 추론: 전부 켜고 비율만큼 줄이기", "d": "ratio 0.5 면 학습 땐 절반만 살아남으므로 추론 땐 0.5 를 곱해 크기를 맞춘다. → 개념 2 의 (1 − ratio)"},
+    {"at": "def backward(self, dout):", "to": "return dout * self.mask", "t": "꺼진 뉴런은 기울기도 0", "d": "ReLU 의 mask 와 같은 원리. → 개념 2 의 dout · mask"}
+  ],
+  "nn/4/7-2": [
+    {"at": "def log_uniform(rng_, low, high):", "to": "return 10 ** rng_.uniform(low, high)", "t": "지수를 고르게 뽑기", "d": "−4 ~ 0 이면 0.0001 ~ 1 사이를 자릿수마다 같은 확률로. → 개념 2 의 η = 10ᵘ"},
+    {"at": "for trial in range(30):", "to": "results.append(", "t": "30번 — 뽑고, 학습하고, 검증 정확도 기록", "d": "검증 데이터로만 고른다. test 는 마지막에 한 번. → 개념 1 의 검증 정확도"}
+  ],
+  "nn/4/8-c1": [
+    {"at": "def softmax(A):", "to": "return float(weight_init)", "t": "함수 — Day 2 · 3 에서 만든 것 모음", "d": "softmax · cross_entropy_error · numerical_gradient · rel_error · init_std."},
+    {"at": "class Layer:", "to": "def backward(self, dout):", "t": "모든 계층의 공통 틀", "d": "params · grads · buffers 딕셔너리 + forward(x, train_flg) · backward(dout). 이 약속을 지키면 어떤 계층이든 Sequential 에 넣을 수 있다. → 개념 1 의 같은 규약"},
+    {"at": "class Affine(Layer):", "to": "class BatchNorm(Layer):", "t": "계층 ① — Affine · Relu · Sigmoid", "d": "Day 3 코드를 공통 틀에 맞춰 다시 쓴 것. 이제 W · b 를 계층이 직접 갖는다 (params['W'])."},
+    {"at": "def __init__(self, size, momentum=0.9, eps=1e-7):", "to": "return dx / N * dout", "t": "계층 ② — BatchNorm · Dropout · SoftmaxWithLoss", "d": "BN 의 running 평균 · 분산은 buffers 에 — 학습은 안 되지만 저장해야 하는 값."},
+    {"at": "class SGD:", "to": "params[k] -= self.lr * m_hat", "t": "옵티마이저 — SGD · Momentum · AdaGrad · RMSProp · Adam", "d": "2교시 코드 그대로. update(params, grads) 모양. → 2교시 의 옵티마이저"}
+  ],
+  "nn/4/8-1": [
+    {"at": "def params(self):", "to": "return g", "t": "모든 계층의 파라미터 · 기울기를 '번호.이름' 으로 모으기", "d": "'0.W', '1.gamma' 처럼. 배열을 복사하지 않고 같은 객체를 모아서 옵티마이저가 고치면 계층에 바로 반영된다. W 기울기엔 λW. → 개념 1 의 params() — 복사하지 않음"},
+    {"at": "def predict(self, x, train_flg=False):", "to": "return correct / len(x)", "t": "predict · loss · accuracy", "d": "accuracy 는 1,000장씩 나눠 계산 — 메모리 절약."},
+    {"at": "def gradient(self, x, t):", "to": "return self.grads()", "t": "역전파 — 계층 목록을 거꾸로", "d": "Day 3 TwoLayerNet 의 gradient 와 같은 순서 — 기울기는 각 계층의 grads 에 들어 있다. → 개념 1 의 반대로 backward"},
+    {"at": "def state(self):", "to": "return s", "t": "저장할 것 = params + buffers", "d": "BN 의 running 평균 · 분산은 학습되는 파라미터는 아니지만 추론에 꼭 필요하다. → 개념 1 의 buffers"}
+  ],
+  "nn/4/8-2": [
+    {"at": "class Trainer:", "to": "self.history = {", "t": "모델 · 옵티마이저 · 배치 크기를 묶기", "d": "history 에 iteration 손실과 epoch 별 정확도를 쌓는다. → 개념 1 의 Trainer"},
+    {"at": "def fit(self, X, t, epochs=1,", "to": "return self.history", "t": "fit — 섞기 → 배치 → gradient → update", "d": "params() 를 한 번만 만들어 두고 계속 같은 배열을 갱신. → 개념 1 의 학습 루프"},
+    {"at": "def save_params(model, path):", "to": "p[...] = data[k]", "t": "npz 로 저장 · 제자리 복사로 불러오기", "d": "`p[...] = ` 는 새 배열을 만들지 않고 안의 숫자만 바꾼다 — 계층과의 연결이 끊기지 않는다. → 개념 1 의 제자리 복사"}
+  ],
+  "nn/4/8-3": [
+    {"at": "sizes = [784, 100, 100, 100, 100, 10]", "to": "model = mynn.Sequential(layers)", "t": "[Affine → BN → ReLU] × 4 + Affine = 13계층", "d": "파라미터 110,610개 = Affine 109,810 + BN γ · β 800. → 개념 2 의 Affine → BN → ReLU"},
+    {"at": "trainer = mynn.Trainer(", "to": "history = trainer.fit(", "t": "Adam 0.001 · 배치 100 · 5 epoch", "d": "5 epoch 후 test 0.9757. → 개념 2"}
+  ],
+  "nn/4/8-4": [
+    {"at": "mynn.save_params(model, \"day4_mlp.npz\")", "t": "학습한 모델 저장", "d": "state() — 파라미터와 BN 이동 평균을 npz 파일 하나로."},
+    {"at": "layers2 = []", "to": "acc_after = model2.accuracy(X_test, t_test)", "t": "다른 seed 로 같은 구조 → 불러오기", "d": "불러오기 전 0.1103 (찍기 수준) → 후 0.9757 (원래 모델과 같음)."},
+    {"at": "drive_dir =", "to": "print(\"Drive 가 연결되지 않아", "t": "(Colab) Drive 에 복사", "d": "Day 5 에서 mynn.py 를 다시 쓴다."}
+  ],
+  "nn/4/8-c4": [
+    {"at": "for i in range(0, 12, 3):", "to": "folded += [(W2, b2), \"relu\"]", "t": "Affine + BN → Affine 하나로", "d": "추론 땐 BN 도 '곱하고 더하기' 라서 W' = W·γ/√(σ²+ε), b' = (b − μ)·γ/√(σ²+ε) + β 로 합칠 수 있다. → 개념 3 의 W' · b'"},
+    {"at": "def predict_folded(x):", "to": "acc_fold = np.mean(", "t": "접은 9계층으로 예측", "d": "정확도는 그대로 — 학습 기법(BN)이 추론 비용을 늘리지 않는다. → 개념 3 의 13 → 9계층"}
+  ],
+  "nn/4/4-3": [
+    {"at": "dout4 = rng4", "to": "bn = BatchNorm(gamma_ex, beta_ex); bn.forward", "t": "역전파로 기울기 구하기", "d": "아무 dout 이나 '위에서 내려온 기울기' 로 보고 forward → backward. → 개념 3 의 dx · dγ · dβ"},
+    {"at": "f4 = lambda", "to": "\"dbeta\": rel_error", "t": "수치 미분과 상대 오차로 비교", "d": "L = Σ(BN 출력 × dout) 를 수치 미분하면 정답 기울기 (NN D3 계층 검증과 같은 방법). 상대 오차가 작으면 backward 식이 맞다"}
+  ],
+  "nn/4/4-4": [
+    {"at": "for w in [1.0", "to": "net = MultiLayerNet", "t": "초기화 std 4가지 × BN 있음/없음 = 망 8개", "d": "use_batchnorm=True 면 은닉층마다 Affine → BN → ReLU. → 개념 3 의 ⑤ (초기화에 둔감)"},
+    {"at": "h = fit(net", "to": "print(f\"std", "t": "같은 조건으로 학습해 정확도 비교", "d": "1000장 · 20 epoch · SGD 0.01 로 모두 같게 — std 0.01 은 BN 없으면 0.117, 있으면 train 1.000"}
+  ]
 }

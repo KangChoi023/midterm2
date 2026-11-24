@@ -1,33 +1,33 @@
 {
   "_설명": "OT Day 1 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "ot/1/4-4": [
-    {"at": "for _ in range(20):", "to": "out = sess.run(None, {in_name: xr.numpy()})[0]", "t": "같은 입력을 PyTorch 와 ORT 에", "d": "`torch.no_grad()` 로 기울기 기록 없이 계산, ORT 에는 NumPy 배열로 넣는다."},
-    {"at": "max_diff = max(", "to": "same_all = same_all and np.allclose(", "t": "최대 차이와 allclose", "d": "실수 계산은 순서만 달라도 끝자리가 달라진다 — == 대신 허용 오차(atol 1e-5) 안이면 같다고 본다."}
+    {"at": "for _ in range(20):", "to": "out = sess.run(None, {in_name: xr.numpy()})[0]", "t": "같은 입력을 PyTorch 와 ORT 에", "d": "`torch.no_grad()` 로 기울기 기록 없이 계산, ORT 에는 NumPy 배열로 넣는다. → 개념 2"},
+    {"at": "max_diff = max(", "to": "same_all = same_all and np.allclose(", "t": "최대 차이와 allclose", "d": "실수 계산은 순서만 달라도 끝자리가 달라진다 — == 대신 허용 오차(atol 1e-5) 안이면 같다고 본다. → 개념 2 의 allclose"}
   ],
   "ot/1/6-c1": [
     {"at": "class SimpleConvNet(nn.Module):", "to": "return self.fc2(x)", "t": "VB Day 1 과 같은 구조 정의", "d": ".pt 에는 숫자만 있으므로 구조(클래스)를 코드로 다시 써야 불러올 수 있다."},
-    {"at": "cnn = SimpleConvNet()", "to": "cnn.eval()", "t": "가중치 불러오기 · 추론 모드", "d": "`eval()` 을 빼면 Dropout · BN 이 학습 모드로 내보내진다."},
-    {"at": "d = np.load(", "to": "plt.show()", "t": "MNIST 샘플 100장 (uint8 0 ~ 255)", "d": "모델은 0 ~ 1 로 학습했으므로 실행 전에 /255 가 필요하다 (6-3)."}
+    {"at": "cnn = SimpleConvNet()", "to": "cnn.eval()", "t": "가중치 불러오기 · 추론 모드", "d": "`eval()` 을 빼면 Dropout · BN 이 학습 모드로 내보내진다. → 2교시 개념 2 의 eval()"},
+    {"at": "d = np.load(", "to": "plt.show()", "t": "MNIST 샘플 100장 (uint8 0 ~ 255)", "d": "모델은 0 ~ 1 로 학습했으므로 실행 전에 /255 가 필요하다 (6-3). → 개념 3 (uint8 0 ~ 255)"}
   ],
   "ot/1/6-3": [
-    {"at": "for img in digits:", "to": "pred_torch.append(", "t": "한 장씩 전처리 → ORT · PyTorch 예측", "d": "`[None, None]` 으로 (28, 28) → (1, 1, 28, 28). 모델 입력 shape 에 맞춘다."},
-    {"at": "agree = (pred_ort == pred_torch).mean()", "to": "acc = (pred_ort == labels).mean()", "t": "일치율 (ORT = PyTorch?) · 정확도 (= 정답?)", "d": "일치율은 변환이 맞았는지, 정확도는 모델이 잘하는지 — 두 질문은 다르다."}
+    {"at": "for img in digits:", "to": "pred_torch.append(", "t": "한 장씩 전처리 → ORT · PyTorch 예측", "d": "`[None, None]` 으로 (28, 28) → (1, 1, 28, 28). 모델 입력 shape 에 맞춘다. → 개념 3 의 /255"},
+    {"at": "agree = (pred_ort == pred_torch).mean()", "to": "acc = (pred_ort == labels).mean()", "t": "일치율 (ORT = PyTorch?) · 정확도 (= 정답?)", "d": "일치율은 변환이 맞았는지, 정확도는 모델이 잘하는지 — 두 질문은 다르다. → 개념 1 의 일치율 · 정확도"}
   ],
   "ot/1/7-c1": [
     {"at": "def get_mnv3s(", "to": "return path", "t": "파일이 없으면 다시 내보내기", "d": "dynamic_axes 로 배치 축을 'batch' 로 열어 둔다 — 몇 장이든 넣을 수 있다."},
-    {"at": "sess_mn = ort.InferenceSession(", "to": "print(\"클래스 예:\"", "t": "세션 열기 · 클래스 이름 1000개", "d": "ONNX 파일엔 클래스 이름이 없다 — 배포할 때 따로 챙겨야 한다."}
+    {"at": "sess_mn = ort.InferenceSession(", "to": "print(\"클래스 예:\"", "t": "세션 열기 · 클래스 이름 1000개", "d": "ONNX 파일엔 클래스 이름이 없다 — 배포할 때 따로 챙겨야 한다. → 4교시 개념 1 의 세션 열기"}
   ],
   "ot/1/7-c3": [
-    {"at": "def preprocess(img_bgr, size=224):", "to": "return x.transpose(2, 0, 1)[None]", "t": "전처리 6단계를 한 함수로", "d": "BGR→RGB · 크기 · /255 · 정규화 · HWC→CHW · 배치 축."},
-    {"at": "def classify(sess, img_bgr, k=5):", "to": "return [(CLASSES[i], float(p[i])) for i in top]", "t": "실행 · softmax · top-k", "d": "`logits - logits.max()` 는 exp 넘침을 막는 요령 — 결과는 같다."},
+    {"at": "def preprocess(img_bgr, size=224):", "to": "return x.transpose(2, 0, 1)[None]", "t": "전처리 6단계를 한 함수로", "d": "BGR→RGB · 크기 · /255 · 정규화 · HWC→CHW · 배치 축. → 개념 1 의 전처리 6단계"},
+    {"at": "def classify(sess, img_bgr, k=5):", "to": "return [(CLASSES[i], float(p[i])) for i in top]", "t": "실행 · softmax · top-k", "d": "`logits - logits.max()` 는 exp 넘침을 막는 요령 — 결과는 같다. → 개념 3 의 softmax · top-5"},
     {"at": "plt.figure(figsize=(12, 3.6))", "to": "plt.tight_layout(); plt.show()", "t": "사진 3장 분류", "d": "`im[:, :, ::-1]` — 화면에 그릴 때도 BGR → RGB."}
   ],
   "ot/1/8-c1": [
     {"at": "class SafetyNet(nn.Module):", "to": "return self.head(self.features(x))", "t": "64×64 컬러 → 3 클래스", "d": "Conv-BN-ReLU-Pool 두 번 → 평균 풀링 → Linear(16, 3)."},
-    {"at": "with torch.no_grad():", "to": "m_.running_mean.uniform_(", "t": "BN 통계를 연습용 값으로", "d": "학습하지 않은 모델이라 BN 이 하는 일이 보이도록 이동 평균 · 분산을 채운다. export 하면 BN 은 Conv 에 접혀 노드가 사라진다 (8-2)."}
+    {"at": "with torch.no_grad():", "to": "m_.running_mean.uniform_(", "t": "BN 통계를 연습용 값으로", "d": "학습하지 않은 모델이라 BN 이 하는 일이 보이도록 이동 평균 · 분산을 채운다. export 하면 BN 은 Conv 에 접혀 노드가 사라진다 (8-2). → 개념 2 의 BN 통계"}
   ],
   "ot/1/8-4": [
-    {"at": "def onnx_report(path):", "to": "\"outputs\":", "t": "크기 · 노드 수 · 연산 종류 · 입출력 이름과 shape", "d": "처음 받은 .onnx 를 실행하기 전에 늘 확인할 것들."},
-    {"at": "for p in [", "to": "print(p, onnx_report(p))", "t": "오늘 만든 모델 세 개", "d": "tiny_named · mnist_cnn · safety 를 같은 눈금으로 비교."}
+    {"at": "def onnx_report(path):", "to": "\"outputs\":", "t": "크기 · 노드 수 · 연산 종류 · 입출력 이름과 shape", "d": "처음 받은 .onnx 를 실행하기 전에 늘 확인할 것들. → 개념 3"},
+    {"at": "for p in [", "to": "print(p, onnx_report(p))", "t": "오늘 만든 모델 세 개", "d": "tiny_named · mnist_cnn · safety 를 같은 눈금으로 비교. → 개념 3"}
   ]
 }
