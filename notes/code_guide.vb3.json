@@ -1,66 +1,66 @@
 {
   "_설명": "VB Day 3 코드 읽기 가이드 — 상세 학습 코드 블록(키 = 교안 문제 번호)의 줄 묶음 설명. 처음 보는 코드 · 긴 코드만. at = 시작 줄에 들어 있는 글자, to = 끝 줄에 들어 있는 글자",
   "vb/3/1-2": [
-    {"at": "m = copy.deepcopy(model)", "t": "원본은 그대로 두고 CPU 복사본으로", "d": "학습 중인 모델(GPU)을 건드리지 않게 **복사본**을 CPU 로 옮기고 `eval()` — 작은 장치는 GPU 가 없다고 가정한다."},
-    {"at": "old = torch.get_num_threads()", "to": "torch.set_num_threads(threads)", "t": "스레드를 1개로 — 작은 장치 흉내", "d": "지금 스레드 수를 기억해 두고 `threads`(기본 1) 로 줄인다. 코어가 많은 Colab 에서도 작은 장치처럼 잰다."},
-    {"at": "for _ in range(3):", "to": "m(x)", "t": "warm-up 3번 — 재지 않고 버림", "d": "첫 실행은 메모리 할당 · 준비 때문에 느리다. 버리고 나서 잰다."},
-    {"at": "t0 = time.perf_counter()", "to": "dt = (time.perf_counter() - t0) / reps", "t": "reps 번 실행한 시간 ÷ reps", "d": "여러 번 돌린 평균이라 한 번의 우연한 흔들림이 줄어든다. `perf_counter` 는 초 단위 정밀 시계."},
+    {"at": "m = copy.deepcopy(model)", "t": "원본은 그대로 두고 CPU 복사본으로", "d": "학습 중인 모델(GPU)을 건드리지 않게 **복사본**을 CPU 로 옮기고 `eval()` — 작은 장치는 GPU 가 없다고 가정한다. → 개념 2 의 CPU"},
+    {"at": "old = torch.get_num_threads()", "to": "torch.set_num_threads(threads)", "t": "스레드를 1개로 — 작은 장치 흉내", "d": "지금 스레드 수를 기억해 두고 `threads`(기본 1) 로 줄인다. 코어가 많은 Colab 에서도 작은 장치처럼 잰다. → 개념 2 의 스레드 1"},
+    {"at": "for _ in range(3):", "to": "m(x)", "t": "warm-up 3번 — 재지 않고 버림", "d": "첫 실행은 메모리 할당 · 준비 때문에 느리다. 버리고 나서 잰다. → 개념 2 의 warm-up 3회"},
+    {"at": "t0 = time.perf_counter()", "to": "dt = (time.perf_counter() - t0) / reps", "t": "reps 번 실행한 시간 ÷ reps", "d": "여러 번 돌린 평균이라 한 번의 우연한 흔들림이 줄어든다. `perf_counter` 는 초 단위 정밀 시계. → 개념 2 의 30회 평균"},
     {"at": "torch.set_num_threads(old)", "to": "return dt * 1000", "t": "스레드 원래대로 · ms 로", "d": "다른 셀이 느려지지 않게 스레드 수를 되돌리고, 초 × 1000 = ms 로 돌려준다."}
   ],
   "vb/3/1-3": [
-    {"at": "models_224 = {", "to": "}", "t": "가중치 없이 구조만 만들기", "d": "`weights=None` — 파라미터 수 · MAC · 속도는 **구조**만으로 정해지므로 내려받지 않는다."},
-    {"at": "speed = {", "to": "speed[name", "t": "모델마다 (파라미터, MAC, 지연시간)", "d": "ResNet-20 은 32×32, ImageNet 모델은 224×224 입력으로 잰다. 큰 모델은 느려서 `reps=5`."},
-    {"at": "print(f\"{'모델'", "t": "한 표로 출력", "d": "`:>11,` = 오른쪽 정렬 + 천 단위 쉼표. 같은 조건의 숫자를 나란히 놓아야 비교가 된다."}
+    {"at": "models_224 = {", "to": "}", "t": "가중치 없이 구조만 만들기", "d": "`weights=None` — 파라미터 수 · MAC · 속도는 **구조**만으로 정해지므로 내려받지 않는다. → 개념 1 의 네 지표"},
+    {"at": "speed = {", "to": "speed[name", "t": "모델마다 (파라미터, MAC, 지연시간)", "d": "ResNet-20 은 32×32, ImageNet 모델은 224×224 입력으로 잰다. 큰 모델은 느려서 `reps=5`. → 개념 1 · 개념 2"},
+    {"at": "print(f\"{'모델'", "t": "한 표로 출력", "d": "`:>11,` = 오른쪽 정렬 + 천 단위 쉼표. 같은 조건의 숫자를 나란히 놓아야 비교가 된다. → 개념 1 의 표"}
   ],
   "vb/3/2-1": [
-    {"at": "acts = [0]", "to": "acts[0] += out.numel()", "t": "hook — 층이 실행될 때마다 출력 크기를 더한다", "d": "`acts` 를 리스트로 둔 건 안쪽 함수에서 값을 바꾸려고. `out.numel()` = 출력 원소 개수 = 활성화 메모리의 재료."},
-    {"at": "hs = [m.register_forward_hook(hook)", "t": "Conv · Linear 층에만 hook 걸기", "d": "`register_forward_hook` 은 그 층의 forward 가 끝날 때 `hook(층, 입력, 출력)` 을 불러 준다. 나중에 떼려고 손잡이(hs)를 모아 둔다."},
-    {"at": "model.eval()", "to": "for h in hs: h.remove()", "t": "가짜 입력 한 번 통과 → hook 떼기", "d": "0 으로 채운 입력이면 충분 (크기만 필요). 끝나면 hook 을 꼭 떼야 다음 실행에 쌓이지 않는다."},
-    {"at": "p = count_params(model)", "to": "\"param_MB\"", "t": "파라미터 · MAC · 메모리(MB)", "d": "float32 = 숫자 하나 4 bytes → 개수 × 4 ÷ 10⁶ = MB."}
+    {"at": "acts = [0]", "to": "acts[0] += out.numel()", "t": "hook — 층이 실행될 때마다 출력 크기를 더한다", "d": "`acts` 를 리스트로 둔 건 안쪽 함수에서 값을 바꾸려고. `out.numel()` = 출력 원소 개수 = 활성화 메모리의 재료. → 개념 1 의 활성화"},
+    {"at": "hs = [m.register_forward_hook(hook)", "t": "Conv · Linear 층에만 hook 걸기", "d": "`register_forward_hook` 은 그 층의 forward 가 끝날 때 `hook(층, 입력, 출력)` 을 불러 준다. 나중에 떼려고 손잡이(hs)를 모아 둔다. → 개념 1 (Conv · Linear 만 센다)"},
+    {"at": "model.eval()", "to": "for h in hs: h.remove()", "t": "가짜 입력 한 번 통과 → hook 떼기", "d": "0 으로 채운 입력이면 충분 (크기만 필요). 끝나면 hook 을 꼭 떼야 다음 실행에 쌓이지 않는다. → 개념 1 — hook 으로 세는 이유"},
+    {"at": "p = count_params(model)", "to": "\"param_MB\"", "t": "파라미터 · MAC · 메모리(MB)", "d": "float32 = 숫자 하나 4 bytes → 개수 × 4 ÷ 10⁶ = MB. → 개념 1 의 세 지표"}
   ],
   "vb/3/3-1": [
-    {"at": "self.dw = nn.Sequential", "to": "nn.BatchNorm2d(cin), nn.ReLU", "t": "① Depthwise 3×3 — 채널마다 공간만", "d": "`groups=cin` 이 핵심 — 입력 채널마다 자기 3×3 필터 하나. 채널 수는 그대로(cin → cin)."},
-    {"at": "self.pw = nn.Sequential", "to": "nn.BatchNorm2d(cout), nn.ReLU", "t": "② Pointwise 1×1 — 위치마다 채널만", "d": "1×1 합성곱이 채널을 섞으며 cin → cout 으로 바꾼다. 연산의 대부분(93%)이 여기."},
-    {"at": "def forward(self, x):", "to": "return self.pw(self.dw(x))", "t": "depthwise → pointwise 순서로", "d": "두 단계를 이어 붙이면 일반 3×3 과 같은 모양의 출력."},
-    {"at": "ds = DSConv(64, 128)", "to": "print(tuple(ds(", "t": "일반 3×3 과 출력 모양 비교", "d": "둘 다 (1, 64, 32, 32) → (1, 128, 32, 32). 모양은 같고 가중치 수만 다르다 (3-2)."}
+    {"at": "self.dw = nn.Sequential", "to": "nn.BatchNorm2d(cin), nn.ReLU", "t": "① Depthwise 3×3 — 채널마다 공간만", "d": "`groups=cin` 이 핵심 — 입력 채널마다 자기 3×3 필터 하나. 채널 수는 그대로(cin → cin). → 개념 1 의 ① Depthwise (groups = Cin)"},
+    {"at": "self.pw = nn.Sequential", "to": "nn.BatchNorm2d(cout), nn.ReLU", "t": "② Pointwise 1×1 — 위치마다 채널만", "d": "1×1 합성곱이 채널을 섞으며 cin → cout 으로 바꾼다. 연산의 대부분(93%)이 여기. → 개념 1 의 ② Pointwise 1×1"},
+    {"at": "def forward(self, x):", "to": "return self.pw(self.dw(x))", "t": "depthwise → pointwise 순서로", "d": "두 단계를 이어 붙이면 일반 3×3 과 같은 모양의 출력. → 개념 1 의 순서"},
+    {"at": "ds = DSConv(64, 128)", "to": "print(tuple(ds(", "t": "일반 3×3 과 출력 모양 비교", "d": "둘 다 (1, 64, 32, 32) → (1, 128, 32, 32). 모양은 같고 가중치 수만 다르다 (3-2). → 개념 1 의 표 (같은 출력 모양)"}
   ],
   "vb/3/4-1": [
-    {"at": "hid = cin * t", "to": "self.use_res", "t": "늘릴 채널 수 · 지름길을 쓸지", "d": "`t=6` 배로 늘린다. 지름길(x + out)은 **모양이 같을 때만** — stride 1 이고 cin == cout."},
-    {"at": "nn.Conv2d(cin, hid, 1", "t": "① 1×1 로 늘리기", "d": "채널을 6배로 넓혀 depthwise 가 일할 공간을 준다 (ReLU6)."},
-    {"at": "nn.Conv2d(hid, hid, 3", "t": "② depthwise 3×3", "d": "`groups=hid` — 넓힌 채널마다 공간만 섞는다. stride 2 면 여기서 크기가 반."},
-    {"at": "nn.Conv2d(hid, cout, 1", "t": "③ 1×1 로 줄이기 — 활성화 없음", "d": "linear bottleneck: 좁은 채널에서 ReLU 를 쓰면 정보가 잘려 나가므로 BN 까지만."},
-    {"at": "def forward(self, x):", "to": "return x + out if self.use_res else out", "t": "조건이 맞으면 지름길 더하기", "d": "ResNet 의 skip 과 같은 아이디어 — 단, 좁은 쪽(줄인 뒤)끼리 더한다."}
+    {"at": "hid = cin * t", "to": "self.use_res", "t": "늘릴 채널 수 · 지름길을 쓸지", "d": "`t=6` 배로 늘린다. 지름길(x + out)은 **모양이 같을 때만** — stride 1 이고 cin == cout. → 개념 2 의 늘렸다 줄이기 (×6)"},
+    {"at": "nn.Conv2d(cin, hid, 1", "t": "① 1×1 로 늘리기", "d": "채널을 6배로 넓혀 depthwise 가 일할 공간을 준다 (ReLU6). → 개념 2 의 ① 1×1 늘리기"},
+    {"at": "nn.Conv2d(hid, hid, 3", "t": "② depthwise 3×3", "d": "`groups=hid` — 넓힌 채널마다 공간만 섞는다. stride 2 면 여기서 크기가 반. → 개념 2 의 ② depthwise"},
+    {"at": "nn.Conv2d(hid, cout, 1", "t": "③ 1×1 로 줄이기 — 활성화 없음", "d": "linear bottleneck: 좁은 채널에서 ReLU 를 쓰면 정보가 잘려 나가므로 BN 까지만. → 개념 2 의 linear bottleneck"},
+    {"at": "def forward(self, x):", "to": "return x + out if self.use_res else out", "t": "조건이 맞으면 지름길 더하기", "d": "ResNet 의 skip 과 같은 아이디어 — 단, 좁은 쪽(줄인 뒤)끼리 더한다. → 개념 2 — 지름길 조건"}
   ],
   "vb/3/5-2": [
-    {"at": "fe = copy.deepcopy(mnet)", "t": "사전학습 모델의 복사본", "d": "5-3 · 처음부터 학습과 같은 출발점에서 비교하려고 원본(mnet)은 그대로 둔다."},
-    {"at": "for p in fe.features.parameters():", "to": "p.requires_grad = False", "t": "특징 추출기(features) 동결", "d": "`requires_grad = False` 인 파라미터는 기울기를 계산하지 않아 학습해도 바뀌지 않는다."},
-    {"at": "opt = torch.optim.Adam([p for p", "t": "학습되는 파라미터만 옵티마이저에", "d": "동결된 건 빼고 분류기 601,098개만 넘긴다 — 1 epoch 이 빠르다."}
+    {"at": "fe = copy.deepcopy(mnet)", "t": "사전학습 모델의 복사본", "d": "5-3 · 처음부터 학습과 같은 출발점에서 비교하려고 원본(mnet)은 그대로 둔다. → 개념 2"},
+    {"at": "for p in fe.features.parameters():", "to": "p.requires_grad = False", "t": "특징 추출기(features) 동결", "d": "`requires_grad = False` 인 파라미터는 기울기를 계산하지 않아 학습해도 바뀌지 않는다. → 개념 2 의 feature extraction (동결)"},
+    {"at": "opt = torch.optim.Adam([p for p", "t": "학습되는 파라미터만 옵티마이저에", "d": "동결된 건 빼고 분류기 601,098개만 넘긴다 — 1 epoch 이 빠르다. → 개념 2 — 학습되는 부분만"}
   ],
   "vb/3/5-3": [
-    {"at": "ft = copy.deepcopy(mnet)", "to": "hist_ft = fit(", "t": "fine-tuning — 동결 없이 전체 학습", "d": "같은 사전학습 모델을 모든 층까지 조금씩 고친다. 5-2 보다 정확도가 높다."},
-    {"at": "scratch = torchvision.models.mobilenet_v3_small(weights=None", "to": "hist_sc = fit(", "t": "비교 기준 — 처음부터 학습", "d": "`weights=None` 이면 무작위 가중치. 같은 1 epoch 이면 사전학습 쪽이 훨씬 앞선다. BN momentum 은 6교시 참고."}
+    {"at": "ft = copy.deepcopy(mnet)", "to": "hist_ft = fit(", "t": "fine-tuning — 동결 없이 전체 학습", "d": "같은 사전학습 모델을 모든 층까지 조금씩 고친다. 5-2 보다 정확도가 높다. → 개념 2 의 fine-tuning"},
+    {"at": "scratch = torchvision.models.mobilenet_v3_small(weights=None", "to": "hist_sc = fit(", "t": "비교 기준 — 처음부터 학습", "d": "`weights=None` 이면 무작위 가중치. 같은 1 epoch 이면 사전학습 쪽이 훨씬 앞선다. BN momentum 은 6교시 참고. → 개념 2 의 처음부터 (비교)"}
   ],
   "vb/3/6-2": [
-    {"at": "for name, w in [(\"scratch\", None)", "t": "같은 코드로 두 모델 — 가중치만 다르게", "d": "`None` = 처음부터, `W_MNV3S` = 사전학습. 나머지 조건(데이터 1,000장 · 10 epoch · Adam)은 똑같이 — 공정한 비교."},
-    {"at": "m.classifier[3] = nn.Linear(1024, 10)", "to": "m = set_bn_momentum(m)", "t": "분류기 교체 · BN momentum 0.1", "d": "torchvision MobileNetV3 의 BN momentum 은 0.01 이라 적은 데이터 · 짧은 학습에서 평균이 늦게 따라온다 → 0.1 로."},
-    {"at": "h = fit(m, small_loader", "to": "small_res[name] = (m, h)", "t": "학습하고 결과 모으기", "d": "모델과 기록을 이름별로 저장 — 6-3 에서 클래스별 정확도를 비교한다."}
+    {"at": "for name, w in [(\"scratch\", None)", "t": "같은 코드로 두 모델 — 가중치만 다르게", "d": "`None` = 처음부터, `W_MNV3S` = 사전학습. 나머지 조건(데이터 1,000장 · 10 epoch · Adam)은 똑같이 — 공정한 비교. → 개념 1"},
+    {"at": "m.classifier[3] = nn.Linear(1024, 10)", "to": "m = set_bn_momentum(m)", "t": "분류기 교체 · BN momentum 0.1", "d": "torchvision MobileNetV3 의 BN momentum 은 0.01 이라 적은 데이터 · 짧은 학습에서 평균이 늦게 따라온다 → 0.1 로. → 개념 2 의 BN momentum 함정"},
+    {"at": "h = fit(m, small_loader", "to": "small_res[name] = (m, h)", "t": "학습하고 결과 모으기", "d": "모델과 기록을 이름별로 저장 — 6-3 에서 클래스별 정확도를 비교한다. → 개념 1 의 결과 표"}
   ],
   "vb/3/7-1": [
-    {"at": "self.model, self.acts, self.grads", "to": "self.handle = layer.register_forward_hook", "t": "지정한 층에 forward hook", "d": "그 층이 실행되면 `_save` 가 불린다. 손잡이(handle)는 나중에 `remove()` 로 떼려고."},
-    {"at": "def _save(self, module, inp, out):", "to": "out.register_hook(self._save_grad)", "t": "특징맵 A 저장 + 그 텐서에 기울기 hook", "d": "역전파 때 A 의 기울기가 지나가면 `_save_grad` 가 받는다. `no_grad` 안에서는 기울기가 없으니 건너뛴다."},
-    {"at": "logits = self.model(x)", "to": "cls = logits.argmax(1)", "t": "어느 클래스의 CAM 인가", "d": "`cls` 를 안 주면 모델이 예측한 클래스, 주면 그 클래스 (7-2: 정답 클래스의 CAM)."},
-    {"at": "self.model.zero_grad()", "to": "logits[torch.arange(len(x)), cls].sum().backward()", "t": "그 클래스 점수만 역전파", "d": "이미지마다 자기 클래스 점수 하나만 골라 더한 뒤 backward — 그 점수가 A 에 얼마나 민감한지(기울기)를 얻는다."},
-    {"at": "alpha = self.grads.mean", "to": "cam = cam / (cam.amax", "t": "α 가중합 → ReLU → 0~1", "d": "α = 채널별 기울기 평균(중요도). 특징맵에 α 를 곱해 더하고, 음수는 버리고, 이미지마다 최댓값으로 나눠 0~1."},
-    {"at": "cam_r20 = GradCAM(r20, r20.layer3)", "to": "print(tuple(cams.shape)", "t": "ResNet-20 마지막 단(layer3)으로 16장", "d": "layer3 특징맵이 8×8 이라 CAM 도 (16, 8, 8)."}
+    {"at": "self.model, self.acts, self.grads", "to": "self.handle = layer.register_forward_hook", "t": "지정한 층에 forward hook", "d": "그 층이 실행되면 `_save` 가 불린다. 손잡이(handle)는 나중에 `remove()` 로 떼려고. → 개념 1 의 마지막 합성곱 A"},
+    {"at": "def _save(self, module, inp, out):", "to": "out.register_hook(self._save_grad)", "t": "특징맵 A 저장 + 그 텐서에 기울기 hook", "d": "역전파 때 A 의 기울기가 지나가면 `_save_grad` 가 받는다. `no_grad` 안에서는 기울기가 없으니 건너뛴다. → 개념 1 의 A^k · 기울기"},
+    {"at": "logits = self.model(x)", "to": "cls = logits.argmax(1)", "t": "어느 클래스의 CAM 인가", "d": "`cls` 를 안 주면 모델이 예측한 클래스, 주면 그 클래스 (7-2: 정답 클래스의 CAM). → 개념 1 의 y^c"},
+    {"at": "self.model.zero_grad()", "to": "logits[torch.arange(len(x)), cls].sum().backward()", "t": "그 클래스 점수만 역전파", "d": "이미지마다 자기 클래스 점수 하나만 골라 더한 뒤 backward — 그 점수가 A 에 얼마나 민감한지(기울기)를 얻는다. → 개념 1 의 ∂y^c/∂A^k"},
+    {"at": "alpha = self.grads.mean", "to": "cam = cam / (cam.amax", "t": "α 가중합 → ReLU → 0~1", "d": "α = 채널별 기울기 평균(중요도). 특징맵에 α 를 곱해 더하고, 음수는 버리고, 이미지마다 최댓값으로 나눠 0~1. → 개념 1 의 CAM = ReLU(Σ α_k A^k)"},
+    {"at": "cam_r20 = GradCAM(r20, r20.layer3)", "to": "print(tuple(cams.shape)", "t": "ResNet-20 마지막 단(layer3)으로 16장", "d": "layer3 특징맵이 8×8 이라 CAM 도 (16, 8, 8). → 개념 2 의 해상도 8 × 8"}
   ],
   "vb/3/7-c1": [
-    {"at": "up = F.interpolate(", "t": "작은 CAM 을 이미지 크기로 키우기", "d": "8×8 (또는 3×3) CAM 을 bilinear 로 32×32 까지 늘려야 사진 위에 겹칠 수 있다."},
-    {"at": "fig, ax = plt.subplots(2, n", "to": "plt.tight_layout(); plt.show()", "t": "위: 원본 · 아래: 원본 + 히트맵", "d": "`alpha=0.45` 로 반투명하게 겹친다. 제목 = '정답→예측'."},
+    {"at": "up = F.interpolate(", "t": "작은 CAM 을 이미지 크기로 키우기", "d": "8×8 (또는 3×3) CAM 을 bilinear 로 32×32 까지 늘려야 사진 위에 겹칠 수 있다. → 개념 2 (작은 CAM 을 키워 겹치기)"},
+    {"at": "fig, ax = plt.subplots(2, n", "to": "plt.tight_layout(); plt.show()", "t": "위: 원본 · 아래: 원본 + 히트맵", "d": "`alpha=0.45` 로 반투명하게 겹친다. 제목 = '정답→예측'. → 개념 2"},
     {"at": "titles = [f\"{CLASSES[t][:5]}", "to": "show_cams(test_cifar.data[:8]", "t": "앞 8장 그리기", "d": "7-1 의 cams · preds 를 그대로 쓴다."}
   ],
   "vb/3/8-1": [
-    {"at": "mn_loader = DataLoader(train_mn", "t": "CIFAR-10 전체 (50,000장) 로더", "d": "batch 128 → epoch 당 391 step."},
-    {"at": "model = torchvision.models.mobilenet_v3_small(weights=W_MNV3S)", "to": "model = model.to(device)", "t": "사전학습 모델 + 10 클래스 분류기", "d": "5-1 과 같은 방법 — 마지막 Linear 만 10 개 출력으로."},
-    {"at": "opt = torch.optim.AdamW(", "to": "sched = torch.optim.lr_scheduler.OneCycleLR(", "t": "AdamW + OneCycleLR", "d": "AdamW = 가중치 감쇠를 제대로 분리한 Adam. OneCycleLR 은 학습률을 올렸다가 내린다 (Day 2 에서 본 일정) — step 마다 `sched.step()`."}
+    {"at": "mn_loader = DataLoader(train_mn", "t": "CIFAR-10 전체 (50,000장) 로더", "d": "batch 128 → epoch 당 391 step. → 개념 1 의 입력"},
+    {"at": "model = torchvision.models.mobilenet_v3_small(weights=W_MNV3S)", "to": "model = model.to(device)", "t": "사전학습 모델 + 10 클래스 분류기", "d": "5-1 과 같은 방법 — 마지막 Linear 만 10 개 출력으로. → 개념 1 의 모델"},
+    {"at": "opt = torch.optim.AdamW(", "to": "sched = torch.optim.lr_scheduler.OneCycleLR(", "t": "AdamW + OneCycleLR", "d": "AdamW = 가중치 감쇠를 제대로 분리한 Adam. OneCycleLR 은 학습률을 올렸다가 내린다 (Day 2 에서 본 일정) — step 마다 `sched.step()`. → 개념 1 의 옵티마이저 · 스케줄러"}
   ]
 }
