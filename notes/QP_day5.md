@@ -90,6 +90,13 @@ def filter_l1(conv):
 | 0.02 | 0.4002 |
 | 0.05 | 0.7619 |
 
+##### 🔎 왜 이렇게 되나
+- **비유**: 회의에서 거의 발언하지 않는 사람을 빼도 결론이 크게 안 바뀐다
+- **① 작은 것부터인 이유**: |w| 가 작으면 그 입력이 출력에 주는 영향 w·x 도 작다
+- **② 많이 지울 수 있는 이유**: weight 가 0 근처에 몰려 있다 — |w| < 0.05 가 76%
+- **③ magnitude 기준**: 가장 단순하고 잘 동작하는 중요도 — 크기 = 중요도라고 가정
+- ⚠ 작은 weight 도 많이 모이면 영향이 커진다 — 지우는 비율이 높아지면 정확도가 급히 떨어진다 (2교시)
+
 <<CODE 1-c1 | weight 절댓값 분포 — 작은 값이 많다>>
 <<CODE 1-1 | magnitude_mask — 작은 |w| 를 0 으로>>
 
@@ -105,6 +112,13 @@ def filter_l1(conv):
 | layer | depth | 4,608 | 매우 큼 | 빨라짐 |
 
 - filter L1-norm 은 "filter 하나 = weight 144개" 의 \|w\| 합 — 4교시 structured pruning 에서 지울 filter 를 고르는 점수.
+
+##### 🔎 왜 이렇게 되나
+- **비유**: 책에서 글자를 하나씩 지우느냐(unstructured), 페이지를 통째로 빼느냐(structured)
+- **① 단위가 클수록 정확도 손해가 큰 이유**: 한 번에 사라지는 weight 가 많다 — filter 하나 144개
+- **② 단위가 클수록 빨라지는 이유**: 모양 자체가 작아져 어떤 하드웨어든 계산이 준다
+- **③ unstructured 가 안 빨라지는 이유**: 0 도 일반 Conv 는 그대로 곱한다
+- ⚠ N:M (2:4) 은 중간 — Ampere 이상 GPU 의 전용 하드웨어에서만 빨라진다
 
 <<CODE 1-2 | filter_l1 · 단위별로 사라지는 weight 수>>
 
@@ -211,6 +225,12 @@ def prune_unstructured(model, amount, scope="global"):
 
 - buffer = 모델에 저장되지만 학습(gradient)은 안 하는 텐서 — BatchNorm 의 running_mean 과 같은 종류.
 
+##### 🔎 왜 이렇게 되나
+- **① mask 로 두는 이유**: 원래 weight 를 지우지 않고 곱셈으로 가린다 — 되돌리거나 다시 고를 수 있다
+- **② buffer 인 이유**: mask 는 저장은 되지만 학습하지 않는다 — BN 의 running 통계처럼
+- **③ remove 로 굳히는 이유**: weight_orig × mask 를 진짜 weight 로 — 배포 · 저장이 간단해진다
+- ⚠ remove 전에는 parameter 이름이 weight_orig — state_dict 키가 달라진다
+
 <<CODE 2-c1 | prune 이 weight 를 weight_orig × weight_mask 로>>
 <<CODE 2-1 | l1_unstructured 직후 parameter · buffer · remove>>
 
@@ -226,6 +246,13 @@ def prune_unstructured(model, amount, scope="global"):
 | 0.9 | 0.100 | 0.100 |
 
 (fine-tuning 없음 · 평가 2,000장 · 직접 실행 — 교안 강사 실측과 같다.)
+
+##### 🔎 왜 이렇게 되나
+- **비유**: 반마다 같은 인원을 빼느냐(layer 별), 학교 전체에서 가장 조용한 학생을 빼느냐(global)
+- **① global 이 나은 이유**: 층마다 중요한 weight 의 비율이 다르다 — 덜 중요한 층에서 더 많이 지운다
+- **② 숫자로**: 50% 에서 global 0.8125 vs layer 별 0.789, 70% 에서 0.482 vs 0.2945
+- **③ 90% 는 둘 다 0.100**: 찍기 수준 — fine-tuning 없이는 회복 불가
+- ⚠ global 은 어떤 층을 거의 다 지울 수도 있다 — 층별 sparsity 를 확인한다
 
 <<CODE 2-2 | sparsity · prune_unstructured (global / layer)>>
 <<CODE 2-c2 | sparsity 별 정확도 — global vs layer>>
@@ -326,6 +353,12 @@ with torch.no_grad():
 
 - dense 는 gzip 해도 1,109.7 → 1,003.3 KB 로 조금만 준다(실수의 bit 는 무작위에 가까움). 90% sparse 는 191.7 KB.
 
+##### 🔎 왜 이렇게 되나
+- **① 저장 크기가 같은 이유**: 0 도 FP32 4 byte — 1,109.7 KB 그대로
+- **② gzip 이 줄어드는 이유**: 0 이 반복되면 압축이 잘 된다 — 5.2배
+- **③ 지연이 같은 이유**: 일반 Conv 는 0 도 곱한다 — 2.02 vs 2.17 ms (잡음 수준)
+- ⚠ "sparsity 90% = 10배 빠름" 은 오해 — 전용 sparse 연산이 있어야 한다
+
 <<CODE 3-1 | state_kb — 저장 크기 vs gzip 크기>>
 <<CODE 3-c2 | 0 이 많아도 PyTorch 지연은 그대로>>
 
@@ -337,6 +370,12 @@ with torch.no_grad():
 | topk(2) | 행마다 \|w\| 큰 2개 위치 → mask 1 |
 
 - 하드웨어는 남은 2개 값 + 위치 정보(2bit)만 읽어 절반만 곱한다 → 이론상 2배, 실제로는 그보다 작다.
+
+##### 🔎 왜 이렇게 되나
+- **① 4개 중 2개인 이유**: 규칙이 정해져 있어 하드웨어가 위치 정보(2bit)만으로 절반만 곱할 수 있다
+- **② 입력 채널 축으로 묶는 이유**: 하드웨어가 곱하는 방향 — permute 로 in 을 마지막 축에
+- **③ 이론상 2배**: 실제로는 위치 정보 처리 비용 때문에 그보다 작다
+- ⚠ T4 같은 이전 세대 GPU 는 2:4 를 지원하지 않는다
 
 <<CODE 3-c1 | 2:4 규칙 예>>
 <<CODE 3-2 | mask_2to4 — 입력 채널 4개마다 큰 2개>>
@@ -440,6 +479,13 @@ def prune_block(block, ratio):
 - keep (layer2[1], 50%) = `[1, 2, 3, 4, 6, 7, 15, 17, 18, 21, 23, 25, 27, 28, 30, 31]` — L1 이 큰 16개를 오름차순으로.
 - ratio 0 이면 모든 채널을 남기므로 출력이 원래와 같아야 한다 (확인 셀의 atol 1e-5 검사).
 
+##### 🔎 왜 이렇게 되나
+- **비유**: 파이프 하나를 빼면 그 파이프에 연결된 다음 이음새도 같이 줄여야 한다
+- **① 사슬인 이유**: conv1 의 출력 채널 = bn1 의 채널 = conv2 의 입력 채널
+- **② 같은 keep 을 쓰는 이유**: 남긴 채널 번호가 셋 모두 같아야 연결이 맞다
+- **③ 블록 출력이 그대로인 이유**: conv2 의 출력 채널은 건드리지 않는다 — residual 덧셈이 깨지지 않게
+- ⚠ bn1 의 γ · β · μ · σ² 네 개를 모두 잘라야 한다 — 하나라도 빠지면 shape 오류
+
 <<CODE 4-c1 | 채널을 빼면 고쳐야 하는 사슬>>
 <<CODE 4-1 | prune_block — conv1 · bn1 · conv2 를 keep 만>>
 
@@ -451,6 +497,12 @@ def prune_block(block, ratio):
 | 0.5 | 138,506 | 0.168 | 1.36 ms (1.26배) | 1.51 ms (1.32배) |
 
 - 블록 안쪽 50% → 블록마다 conv1 · conv2 weight 가 각각 절반. stem · shortcut · fc 는 그대로라 전체는 51% (272,474 − 138,506 = 133,968 줄어듦).
+
+##### 🔎 왜 이렇게 되나
+- **① 정확도가 크게 떨어지는 이유**: 블록마다 절반의 filter 를 한 번에 — fine-tuning 전 0.168
+- **② params 가 절반이 안 되는 이유**: stem · shortcut · fc 는 그대로 — 272,474 → 138,506
+- **③ 빨라지는 이유**: 모양 자체가 작아졌다 — 1.32배
+- ⚠ 블록 출력 채널까지 자르면 residual 덧셈의 양쪽 채널이 달라져 깨진다
 
 <<CODE 4-2 | manual_prune — 9개 블록 모두 · params · 정확도 · 지연>>
 <<CODE 4-c2 | 블록 출력 채널까지 자르면 residual 이 깨진다>>
@@ -559,6 +611,13 @@ macs, params = tp.utils.count_ops_and_params(prune_channels(rn20, 0.5), EX_IN)
 
 - BN 4개 = stem.1 · layer1.0~2 bn2 (통로 채널을 정규화하는 BN).
 
+##### 🔎 왜 이렇게 되나
+- **비유**: 수도관 한 줄기에 연결된 모든 꼭지 — 하나를 줄이면 같은 관을 쓰는 모든 꼭지를 같이 줄여야 한다
+- **① group 인 이유**: residual 덧셈으로 묶인 Conv · BN 은 같은 채널을 공유한다
+- **② 자동으로 찾는 이유**: 모델이 크면 사람이 사슬을 다 찾기 어렵다 — DependencyGraph
+- **③ fc 를 제외하는 이유**: 출력 10 은 클래스 수 — 줄이면 안 된다
+- ⚠ 통로를 자르면 그 통로를 읽는 다음 stage 의 입력까지 같이 바뀐다
+
 <<CODE 5-c1 | DependencyGraph — residual 로 묶인 그룹>>
 <<CODE 5-1 | MetaPruner · prune_channels · MACs>>
 
@@ -580,6 +639,12 @@ macs, params = tp.utils.count_ops_and_params(prune_channels(rn20, 0.5), EX_IN)
 | 0.6 | 6.15 | 41,293 | 0.100 | 6 · 12 · 25 |
 
 (직접 실행 · 지연은 7 · 8교시 표에.)
+
+##### 🔎 왜 이렇게 되나
+- **① 25% 가 되는 이유**: 출력 · 입력 채널이 둘 다 절반 → ½ × ½ = ¼
+- **② 예**: layer3.1.conv1 2,359,296 → 589,824
+- **③ 전체가 25.5% 인 이유**: stem(입력 3) · fc(출력 10)는 한쪽만 줄어든다
+- ⚠ MACs 는 계산량 — 실제 지연은 고정 비용 때문에 그만큼 줄지 않는다 (7교시)
 
 <<CODE 5-2 | 비율 0 · 0.2 · 0.4 · 0.6 — MACs · 정확도 · 지연>>
 
@@ -676,6 +741,13 @@ for st in range(3):
 - 이 실행: CPU 에서 3 epoch 95초(다른 작업과 CPU 공유) · 교안 기준 GPU 십여 초 · CPU 40 ~ 60초.
 - 저장 `rn20_p50_ft.pth` 323.6 KB — 모양이 바뀐 모델이라 state_dict 가 아니라 모델 통째로 저장(읽을 때 `weights_only=False`).
 
+##### 🔎 왜 이렇게 되나
+- **비유**: 수술 뒤 재활 — 잘라 낸 뒤 남은 근육이 일을 나눠 맡도록 다시 훈련한다
+- **① 회복되는 이유**: 남은 weight 가 사라진 채널의 역할을 학습으로 나눠 맡는다
+- **② 숫자로**: 0.100 → 1 epoch 0.632 → 3 epoch 0.7225
+- **③ 모델 통째로 저장하는 이유**: 모양이 바뀌어 원래 클래스로는 state_dict 를 받을 수 없다
+- ⚠ 읽을 때 `weights_only=False` — 신뢰할 수 있는 파일만 이렇게 연다
+
 <<CODE 6-1 | finetune — 50% 모델 회복 곡선 · 저장>>
 
 #### 개념 2 · 같은 예산 비교
@@ -691,6 +763,12 @@ for st in range(3):
 | 3 | 10.53 | 0.68 |
 
 - 마지막 단계에서 크게 자른 직후 회복이 1 epoch 뿐 → one-shot 의 3 epoch 회복보다 짧다.
+
+##### 🔎 왜 이렇게 되나
+- **① one-shot 이 나았던 이유**: 같은 학습 예산 3 epoch 를 마지막 모양에 몰아 썼다 — 0.7225 vs 0.68
+- **② iterative 의 약점**: 마지막 단계에서 크게 자른 직후 1 epoch 만으로는 회복이 부족
+- **③ 일반적인 기대와 다른 이유**: 보통은 iterative 가 낫지만 예산이 작으면 결과가 바뀐다
+- ⚠ 결론은 "같은 예산" 조건에서만 — 예산이 크면 다시 비교한다
 
 <<CODE 6-2 | iterative pruning 3단계 × 1 epoch>>
 
@@ -794,6 +872,12 @@ deploy_df["speedup"] = deploy_df.latency_ms[0] / deploy_df.latency_ms
 
 - ONNX 크기 비율 276.6 / 1,070.8 = 25.8% ≈ Conv weight 비율 67,672 / 270,256 = 25.0%.
 
+##### 🔎 왜 이렇게 되나
+- **① unstructured 가 그대로인 이유**: ONNX 크기 · 지연이 dense 와 같다 — 0 도 저장 · 계산
+- **② structured 가 빠른 이유**: Conv weight 270,256 → 67,672 — 모양 자체가 작다, 2.06배
+- **③ 대가**: 정확도 0.846 → 0.7225 — 짧은 fine-tuning 의 한계
+- ⚠ 배포 장치에서 이 표를 다시 만든다 — CPU 결과와 GPU 결과는 다르다
+
 <<CODE 7-c1 | deploy_lat 사용법>>
 <<CODE 7-c2 | deploy_lat · onnx_conv_stats>>
 <<CODE 7-1 | dense · unstructured · structured 를 ONNX 로>>
@@ -801,6 +885,12 @@ deploy_df["speedup"] = deploy_df.latency_ms[0] / deploy_df.latency_ms
 #### 개념 2 · 왜 MACs 비율(4배)만큼은 안 빨라지나
 - MACs 41.24 → 10.53M 은 이론상 3.9배. 실제 지연에는 연산마다 붙는 고정 비용(커널 실행 · 메모리 이동)이 있어 작은 모델일수록 비율이 줄어든다.
 - 채널 수가 묶음 단위(8 · 16)와 맞지 않으면 더 손해 — 20% 모델(12 · 25 · 51)은 MACs 가 줄어도 dense 보다 느릴 수 있다.
+
+##### 🔎 왜 이렇게 되나
+- **① MACs 만큼 안 빨라지는 이유**: 연산마다 고정 비용(커널 실행 · 메모리 이동)이 있다 — 이론 3.9배, 실제 약 2배
+- **② 작은 모델일수록 손해**: 계산이 작으면 고정 비용 비중이 커진다
+- **③ 채널 수가 묶음 단위와 안 맞으면**: 12 · 25 · 51 처럼 8 · 16 배수가 아니면 하드웨어가 비효율적
+- ⚠ MACs 가 줄어도 dense 보다 느려질 수 있다 — 실제로 잰다
 
 <<CODE 7-2 | 세 ONNX 지연 · speedup · 기준선 저장>>
 
@@ -923,6 +1013,12 @@ best_row = sweep_df.set_index("ratio").loc[best_ratio]
 | speedup | 0.704 / 0.839 | 0.84 (느려짐) |
 | acc_drop_pp | (0.846 − 0.8195) × 100 | 2.65 |
 
+##### 🔎 왜 이렇게 되나
+- **① 0.2 가 선택된 이유**: 3%p 기준 안에서 가장 큰 비율 — 0.8195
+- **② 0.4 부터 탈락**: 0.7595 — 짧은 fine-tuning 으로는 회복 부족
+- **③ 0.2 의 지연이 오히려 느린 이유**: 채널 수가 8 · 16 배수가 아니다 — MACs 는 줄었는데 0.839 ms
+- ⚠ 비율만 보고 고르지 말고 실제 지연 · 크기를 함께 본다
+
 <<CODE 과제 2 | 과제 2 — MACs · 지연 vs 정확도 곡선>>
 <<CODE 과제 3 | 과제 3 — 3%p 안에서 가장 큰 비율>>
 <<CODE 과제 4 | 과제 4 — CSV · ONNX 저장>>
@@ -933,6 +1029,12 @@ best_row = sweep_df.set_index("ratio").loc[best_ratio]
 - **T4 배포: unstructured 70% vs structured 20%**: unstructured 는 T4 에서 속도 이득 0(2:4 도 T4 미지원) · 70% 는 FT 없이 0.482 → structured 20% + FT 가 낫다 (단 채널 수를 8 배수로).
 - **MACs ↓ 지연 ↑ (이 실행의 20%)**: 층별 채널 수(12 · 25 · 51) 확인 → `round_to=8` 로 다시 자르기 · profiling 으로 느린 층 찾기.
 - **INT8 과 합치는 순서**: prune → fine-tuning → (PTQ 또는 QAT) — 모양을 먼저 정하고, 그 모양에서 scale 을 잡는다. 반대로 하면 자른 뒤 scale 을 다시 보정해야 한다.
+
+##### 🔎 왜 이렇게 되나
+- **① 1%p 기준이면**: 자를 수 있는 비율이 0 뿐 — 더 긴 fine-tuning · 지식 증류(Day 6)로 회복 폭을 키운다
+- **② T4 에서 unstructured 가 안 되는 이유**: 속도 이득 0, 2:4 도 미지원 — structured 20% + FT 가 낫다
+- **③ 채널 수를 8 배수로**: MACs ↓ 지연 ↑ 를 막는 실무 규칙
+- ⚠ 가지치기 결과는 장치마다 속도가 다르다 — 배포 장치에서 고른다
 
 #### 한 번에 정리
 - 비율 하나가 아니라 곡선(MACs – 정확도 – 지연)에서 무릎을 찾는다.
