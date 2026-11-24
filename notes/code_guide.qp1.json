@@ -1,91 +1,26 @@
 {
   "_설명": "QP Day 1 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "qp/1/1-c1": [
-    {
-      "at": "class SimpleConvNet(nn.Module):",
-      "to": "return self.fc2(x)",
-      "t": "VB · OT 와 같은 SimpleConvNet",
-      "d": "Conv 30 → Pool → FC 100 → FC 10. 파라미터 433,890 개."
-    },
-    {
-      "at": "cnn = SimpleConvNet()",
-      "to": "cnn.eval()",
-      "t": "학습된 가중치 불러오기",
-      "d": "오늘은 학습 없이 이 가중치를 양자화만 한다."
-    },
-    {
-      "at": "d = np.load(",
-      "to": "pred_fp32 = logits_fp32.argmax(1)",
-      "t": "MNIST 100장 · FP32 기준 출력",
-      "d": "양자화 결과를 비교할 기준 — logits_fp32 · pred_fp32."
-    }
+    {"at": "class SimpleConvNet(nn.Module):", "to": "return self.fc2(x)", "t": "VB · OT 와 같은 SimpleConvNet", "d": "Conv 30 → Pool → FC 100 → FC 10. 파라미터 433,890 개."},
+    {"at": "cnn = SimpleConvNet()", "to": "cnn.eval()", "t": "학습된 가중치 불러오기", "d": "오늘은 학습 없이 이 가중치를 양자화만 한다."},
+    {"at": "d = np.load(", "to": "pred_fp32 = logits_fp32.argmax(1)", "t": "MNIST 100장 · FP32 기준 출력", "d": "양자화 결과를 비교할 기준 — logits_fp32 · pred_fp32. → 개념 1 의 FP32 기준"}
   ],
   "qp/1/6-2": [
-    {
-      "at": "def mse_clip(x, clip, bits=8):",
-      "to": "return mse(dequantize(",
-      "t": "clip 하나의 MSE",
-      "d": "범위 0 ~ clip 을 2^bits 칸에 겹쳐 왕복한 오차."
-    },
-    {
-      "at": "clips = np.linspace(",
-      "to": "best[bits] = clips[",
-      "t": "비트마다 MSE 곡선 · 최솟점",
-      "d": "clip 을 좁히면 칸 간격이 줄고(반올림 오차 ↓), 너무 좁히면 잘림 오차가 커진다."
-    },
-    {
-      "at": "plt.semilogy(",
-      "to": "plt.xlabel(",
-      "t": "로그 축 그림",
-      "d": "4비트는 칸이 적어 더 좁게 잘라야 최적."
-    }
+    {"at": "def mse_clip(x, clip, bits=8):", "to": "return mse(dequantize(", "t": "clip 하나의 MSE", "d": "범위 0 ~ clip 을 2^bits 칸에 겹쳐 왕복한 오차. → 개념 1"},
+    {"at": "clips = np.linspace(", "to": "best[bits] = clips[", "t": "비트마다 MSE 곡선 · 최솟점", "d": "clip 을 좁히면 칸 간격이 줄고(반올림 오차 ↓), 너무 좁히면 잘림 오차가 커진다. → 개념 1 의 비트마다 최적이 다름"},
+    {"at": "plt.semilogy(", "to": "plt.xlabel(", "t": "로그 축 그림", "d": "4비트는 칸이 적어 더 좁게 잘라야 최적."}
   ],
   "qp/1/6-3": [
-    {
-      "at": "A_out = A.copy()",
-      "to": "A_out = A.copy()",
-      "t": "outlier 하나 넣기",
-      "d": "첫 값을 최댓값의 20배로."
-    },
-    {
-      "at": "def roundtrip(x, clip):",
-      "to": "return dequantize(quantize(x, s_c, zp_c), s_c, zp_c)",
-      "t": "범위 0 ~ clip 으로 왕복",
-      "d": ""
-    },
-    {
-      "at": "r_mm = roundtrip(",
-      "to": "mm_rest, pc_rest =",
-      "t": "MinMax vs Percentile — 전체 · 나머지 MSE",
-      "d": "MinMax 는 outlier 하나 때문에 칸이 넓어져 나머지 431,999 개가 거칠어진다."
-    }
+    {"at": "A_out = A.copy()", "to": "A_out = A.copy()", "t": "outlier 하나 넣기", "d": "첫 값을 최댓값의 20배로. → 개념 1 (outlier)"},
+    {"at": "def roundtrip(x, clip):", "to": "return dequantize(quantize(x, s_c, zp_c), s_c, zp_c)", "t": "범위 0 ~ clip 으로 왕복", "d": " → 개념 1 의 clip"},
+    {"at": "r_mm = roundtrip(", "to": "mm_rest, pc_rest =", "t": "MinMax vs Percentile — 전체 · 나머지 MSE", "d": "MinMax 는 outlier 하나 때문에 칸이 넓어져 나머지 431,999 개가 거칠어진다. → 개념 2 의 MinMax vs Percentile"}
   ],
   "qp/1/8-2": [
-    {
-      "at": "qmax = 2 ** (bits - 1) - 1",
-      "to": "s = np.maximum(s, 1e-12)",
-      "t": "per-channel 이면 채널마다, 아니면 하나의 scale",
-      "d": "0 으로 나누지 않게 아주 작은 값으로 막는다."
-    },
-    {
-      "at": "return (np.clip(",
-      "to": "return (np.clip(",
-      "t": "양자화 → 역양자화 (fake quant)",
-      "d": "결과는 다시 실수 — PyTorch 로 그대로 실행할 수 있다."
-    }
+    {"at": "qmax = 2 ** (bits - 1) - 1", "to": "s = np.maximum(s, 1e-12)", "t": "per-channel 이면 채널마다, 아니면 하나의 scale", "d": "0 으로 나누지 않게 아주 작은 값으로 막는다. → 5교시 개념 1 의 per-channel"},
+    {"at": "return (np.clip(", "to": "return (np.clip(", "t": "양자화 → 역양자화 (fake quant)", "d": "결과는 다시 실수 — PyTorch 로 그대로 실행할 수 있다. → 3교시 개념 2 의 왕복"}
   ],
   "qp/1/8-3": [
-    {
-      "at": "m = copy.deepcopy(cnn)",
-      "to": "logits = m(X).numpy()",
-      "t": "복사본의 weight 3개를 fake quant 로 바꿔 실행",
-      "d": "원래 cnn 은 그대로 두려고 deepcopy."
-    },
-    {
-      "at": "pred = logits.argmax(1)",
-      "to": "\"max_diff\":",
-      "t": "정확도 · FP32 와 예측 일치율 · logits 최대 차이",
-      "d": "정확도만 보면 4비트도 괜찮아 보여도 max_diff 는 커진다."
-    }
+    {"at": "m = copy.deepcopy(cnn)", "to": "logits = m(X).numpy()", "t": "복사본의 weight 3개를 fake quant 로 바꿔 실행", "d": "원래 cnn 은 그대로 두려고 deepcopy."},
+    {"at": "pred = logits.argmax(1)", "to": "\"max_diff\":", "t": "정확도 · FP32 와 예측 일치율 · logits 최대 차이", "d": "정확도만 보면 4비트도 괜찮아 보여도 max_diff 는 커진다. → 개념 2 의 acc · agree · max_diff"}
   ]
 }
