@@ -1,154 +1,42 @@
 {
   "_설명": "NN Day 5 코드 읽기 가이드 — 상세 학습 코드 블록의 줄 묶음 설명 (처음 보는 코드 · 긴 코드만). at = 시작 줄의 글자, to = 끝 줄의 글자",
   "nn/5/2-3": [
-    {
-      "at": "N, C, H, Wd = x.shape",
-      "to": "out = np.zeros((N, FN, OH, OW))",
-      "t": "출력 크기 계산 · 패딩",
-      "d": "x (N, C, H, W), W (FN, C, FH, FW) → 출력 (N, FN, OH, OW). `np.pad` 로 높이 · 너비 가장자리만 0 을 두른다."
-    },
-    {
-      "at": "for n in range(N):",
-      "to": "out[n, f, i, j] = np.sum(window * W[f]) + b[f]",
-      "t": "4중 for — 이미지 · 필터 · 세로 · 가로",
-      "d": "창(C, FH, FW)과 필터 하나를 원소끼리 곱해 모두 더하고 편향. 채널 방향도 한꺼번에 더해져 출력은 필터당 한 장."
-    }
+    {"at": "N, C, H, Wd = x.shape", "to": "out = np.zeros((N, FN, OH, OW))", "t": "출력 크기 계산 · 패딩", "d": "x (N, C, H, W), W (FN, C, FH, FW) → 출력 (N, FN, OH, OW). `np.pad` 로 높이 · 너비 가장자리만 0 을 두른다. → 개념 2 의 OH = (H + 2P − FH) // S + 1"},
+    {"at": "for n in range(N):", "to": "out[n, f, i, j] = np.sum(window * W[f]) + b[f]", "t": "4중 for — 이미지 · 필터 · 세로 · 가로", "d": "창(C, FH, FW)과 필터 하나를 원소끼리 곱해 모두 더하고 편향. 채널 방향도 한꺼번에 더해져 출력은 필터당 한 장. → 개념 3 의 채널을 더하기"}
   ],
   "nn/5/3-1": [
-    {
-      "at": "N, C, H, W = x.shape",
-      "to": "col = np.zeros((N, C, FH, FW, OH, OW))",
-      "t": "6차원 상자 준비",
-      "d": "(이미지, 채널, 필터 안 세로 · 가로 위치, 출력 세로 · 가로 위치)."
-    },
-    {
-      "at": "for y in range(FH):",
-      "to": "col[:, :, y, x_, :, :] = img[",
-      "t": "루프는 필터 크기만큼만 (5×5 = 25번)",
-      "d": "필터 안 위치 (y, x) 하나를 고정하면, 모든 출력 위치에서 그 칸이 보는 픽셀은 stride 간격 슬라이싱 한 번으로 얻어진다."
-    },
-    {
-      "at": "return col.transpose(0, 4, 5, 1, 2, 3)",
-      "t": "(N·OH·OW, C·FH·FW) 로 펴기",
-      "d": "행 = 출력 위치 하나, 열 = 그 위치의 창 전체. MNIST 1장 · 5×5 → (576, 25)."
-    }
+    {"at": "N, C, H, W = x.shape", "to": "col = np.zeros((N, C, FH, FW, OH, OW))", "t": "6차원 상자 준비", "d": "(이미지, 채널, 필터 안 세로 · 가로 위치, 출력 세로 · 가로 위치). → 개념 1 의 col (N·OH·OW, C·FH·FW)"},
+    {"at": "for y in range(FH):", "to": "col[:, :, y, x_, :, :] = img[", "t": "루프는 필터 크기만큼만 (5×5 = 25번)", "d": "필터 안 위치 (y, x) 하나를 고정하면, 모든 출력 위치에서 그 칸이 보는 픽셀은 stride 간격 슬라이싱 한 번으로 얻어진다. → 개념 2 의 루프는 필터 크기만큼"},
+    {"at": "return col.transpose(0, 4, 5, 1, 2, 3)", "t": "(N·OH·OW, C·FH·FW) 로 펴기", "d": "행 = 출력 위치 하나, 열 = 그 위치의 창 전체. MNIST 1장 · 5×5 → (576, 25). → 개념 1 의 영역 = 행"}
   ],
   "nn/5/3-2": [
-    {
-      "at": "col = im2col(x, FH, FW, stride, pad)",
-      "to": "out = col @ col_W + b",
-      "t": "영역은 행, 필터는 열 → 행렬곱 한 번",
-      "d": "(N·OH·OW, C·FH·FW) @ (C·FH·FW, FN) = (N·OH·OW, FN). Affine 과 같은 계산."
-    },
-    {
-      "at": "return out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)",
-      "t": "다시 (N, FN, OH, OW) 로",
-      "d": "행렬곱 결과는 채널이 마지막이라 transpose 로 채널을 앞으로."
-    }
+    {"at": "col = im2col(x, FH, FW, stride, pad)", "to": "out = col @ col_W + b", "t": "영역은 행, 필터는 열 → 행렬곱 한 번", "d": "(N·OH·OW, C·FH·FW) @ (C·FH·FW, FN) = (N·OH·OW, FN). Affine 과 같은 계산. → 개념 1 의 col @ col_W + b"},
+    {"at": "return out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)", "t": "다시 (N, FN, OH, OW) 로", "d": "행렬곱 결과는 채널이 마지막이라 transpose 로 채널을 앞으로. → 개념 1 의 (N, FN, OH, OW) 로 되돌리기"}
   ],
   "nn/5/4-1": [
-    {
-      "at": "def im2col(x, FH, FW, stride=1, pad=0):",
-      "to": "return col.transpose(0, 4, 5, 1, 2, 3)",
-      "t": "im2col — 3교시 코드 그대로",
-      "d": "(N, C, H, W) → (N·OH·OW, C·FH·FW)."
-    },
-    {
-      "at": "def col2im(col, input_shape,",
-      "to": "return img[:, :, pad:H + pad, pad:W + pad]",
-      "t": "col2im — 반대로 접기, 겹치는 자리는 더하기",
-      "d": "한 픽셀이 여러 창에 들어갔으므로 기울기도 그 창들에서 모두 모인다 (`+=`). 끝에서 패딩을 잘라낸다."
-    },
-    {
-      "at": "def forward(self, x, train_flg=True):",
-      "to": "return out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)",
-      "t": "Convolution forward — col · col_W 저장",
-      "d": "역전파에 im2col 결과와 펼친 필터가 필요해서 기억해 둔다."
-    },
-    {
-      "at": "dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)",
-      "to": "return col2im(dcol,",
-      "t": "Convolution backward = Affine backward + col2im",
-      "d": "db = 합, dW = colᵀ·dout, dcol = dout·col_Wᵀ — Day 3 Affine 식 그대로. 마지막에 col2im 으로 이미지 모양으로."
-    },
-    {
-      "at": "col = im2col(x, self.pool_h, self.pool_w",
-      "to": "return out.reshape(N, OH, OW, C).transpose(0, 3, 1, 2)",
-      "t": "Pooling forward — 창마다 최댓값 · 그 위치 기억",
-      "d": "채널마다 따로 하도록 창을 (pool_h · pool_w) 칸 행으로 펴고 argmax."
-    },
-    {
-      "at": "dmax = np.zeros((dout.size, pool_size))",
-      "to": "return col2im(dcol, self.x_shape, self.pool_h",
-      "t": "Pooling backward — 최댓값 자리에만 기울기",
-      "d": "나머지 칸은 출력에 영향을 주지 않았으므로 0 — ReLU mask 와 같은 원리."
-    }
+    {"at": "def im2col(x, FH, FW, stride=1, pad=0):", "to": "return col.transpose(0, 4, 5, 1, 2, 3)", "t": "im2col — 3교시 코드 그대로", "d": "(N, C, H, W) → (N·OH·OW, C·FH·FW). → 3교시 개념 1"},
+    {"at": "def col2im(col, input_shape,", "to": "return img[:, :, pad:H + pad, pad:W + pad]", "t": "col2im — 반대로 접기, 겹치는 자리는 더하기", "d": "한 픽셀이 여러 창에 들어갔으므로 기울기도 그 창들에서 모두 모인다 (`+=`). 끝에서 패딩을 잘라낸다. → 개념 1 의 col2im (겹치면 더하기)"},
+    {"at": "def forward(self, x, train_flg=True):", "to": "return out.reshape(N, OH, OW, FN).transpose(0, 3, 1, 2)", "t": "Convolution forward — col · col_W 저장", "d": "역전파에 im2col 결과와 펼친 필터가 필요해서 기억해 둔다. → 개념 1"},
+    {"at": "dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)", "to": "return col2im(dcol,", "t": "Convolution backward = Affine backward + col2im", "d": "db = 합, dW = colᵀ·dout, dcol = dout·col_Wᵀ — Day 3 Affine 식 그대로. 마지막에 col2im 으로 이미지 모양으로. → 개념 1 의 dW · db · dcol"},
+    {"at": "col = im2col(x, self.pool_h, self.pool_w", "to": "return out.reshape(N, OH, OW, C).transpose(0, 3, 1, 2)", "t": "Pooling forward — 창마다 최댓값 · 그 위치 기억", "d": "채널마다 따로 하도록 창을 (pool_h · pool_w) 칸 행으로 펴고 argmax. → 개념 2 의 arg_max"},
+    {"at": "dmax = np.zeros((dout.size, pool_size))", "to": "return col2im(dcol, self.x_shape, self.pool_h", "t": "Pooling backward — 최댓값 자리에만 기울기", "d": "나머지 칸은 출력에 영향을 주지 않았으므로 0 — ReLU mask 와 같은 원리. → 개념 2 의 최댓값 자리로만"}
   ],
   "nn/5/4-2": [
-    {
-      "at": "def layer_check(layer, x, rng_):",
-      "to": "return errs",
-      "t": "모든 계층에 쓰는 gradient check",
-      "d": "손실 L = Σ(출력 × 무작위 dout) 로 두면 ∂L/∂출력 = dout. backward 결과와 수치 미분을 dx · 각 파라미터마다 비교."
-    },
-    {
-      "at": "checks = {",
-      "to": "\"pool 2×2\":",
-      "t": "스트라이드 · 패딩 조합을 바꿔 확인",
-      "d": "stride 1 pad 1, stride 2 pad 0, pooling — 모두 상대 오차 1e-11 수준."
-    }
+    {"at": "def layer_check(layer, x, rng_):", "to": "return errs", "t": "모든 계층에 쓰는 gradient check", "d": "손실 L = Σ(출력 × 무작위 dout) 로 두면 ∂L/∂출력 = dout. backward 결과와 수치 미분을 dx · 각 파라미터마다 비교. → 개념 3"},
+    {"at": "checks = {", "to": "\"pool 2×2\":", "t": "스트라이드 · 패딩 조합을 바꿔 확인", "d": "stride 1 pad 1, stride 2 pad 0, pooling — 모두 상대 오차 1e-11 수준. → 개념 3 의 스트라이드 · 패딩 조합"}
   ],
   "nn/5/6-1": [
-    {
-      "at": "W_before = mynn.Convolution(1, 30, 5, seed=1)",
-      "to": "dW = W_after - W_before",
-      "t": "같은 seed 로 학습 전 필터를 다시 만들어 비교",
-      "d": "dW = 1 epoch 동안 바뀐 양."
-    },
-    {
-      "at": "fig, axs = plt.subplots(3, 30",
-      "to": "plt.show()",
-      "t": "30 필터 × (전 · 후 · 변화량)",
-      "d": "1 epoch 만으로는 무작위 무늬가 크게 바뀌지 않는다 — 변화량을 따로 그려야 보인다."
-    },
-    {
-      "at": "corr = [np.corrcoef(",
-      "t": "학습 전후 상관계수",
-      "d": "필터마다 거의 1 에 가깝다 = 처음 무늬를 대부분 유지한 채 조금 고쳐진다."
-    }
+    {"at": "W_before = mynn.Convolution(1, 30, 5, seed=1)", "to": "dW = W_after - W_before", "t": "같은 seed 로 학습 전 필터를 다시 만들어 비교", "d": "dW = 1 epoch 동안 바뀐 양. → 개념 1"},
+    {"at": "fig, axs = plt.subplots(3, 30", "to": "plt.show()", "t": "30 필터 × (전 · 후 · 변화량)", "d": "1 epoch 만으로는 무작위 무늬가 크게 바뀌지 않는다 — 변화량을 따로 그려야 보인다. → 개념 1"},
+    {"at": "corr = [np.corrcoef(", "t": "학습 전후 상관계수", "d": "필터마다 거의 1 에 가깝다 = 처음 무늬를 대부분 유지한 채 조금 고쳐진다. → 개념 1 의 상관계수 0.86 ~ 0.999"}
   ],
   "nn/5/7-1": [
-    {
-      "at": "def conv_cost(",
-      "to": "return params, macs, (FN, OH, OW)",
-      "t": "Conv — 파라미터 FN·C·F² + FN, MAC FN·OH·OW·C·F²",
-      "d": "필터 하나가 출력 칸 하나마다 C·F² 번 곱셈 · 덧셈."
-    },
-    {
-      "at": "def pool_cost(",
-      "to": "return n_in * n_out + n_out, n_in * n_out, (n_out,)",
-      "t": "Pool 은 0 · Affine 은 입력 × 출력",
-      "d": "Affine 은 파라미터 수 ≈ MAC 수 (가중치 하나를 한 번씩 씀). Conv 는 필터를 모든 위치에서 재사용해 MAC 이 훨씬 많다."
-    }
+    {"at": "def conv_cost(", "to": "return params, macs, (FN, OH, OW)", "t": "Conv — 파라미터 FN·C·F² + FN, MAC FN·OH·OW·C·F²", "d": "필터 하나가 출력 칸 하나마다 C·F² 번 곱셈 · 덧셈. → 개념 1 의 Conv 파라미터 · MAC"},
+    {"at": "def pool_cost(", "to": "return n_in * n_out + n_out, n_in * n_out, (n_out,)", "t": "Pool 은 0 · Affine 은 입력 × 출력", "d": "Affine 은 파라미터 수 ≈ MAC 수 (가중치 하나를 한 번씩 씀). Conv 는 필터를 모든 위치에서 재사용해 MAC 이 훨씬 많다. → 개념 1 의 Affine 1 : 1"}
   ],
   "nn/5/7-2": [
-    {
-      "at": "def cost_table(input_shape, spec):",
-      "to": "return rows",
-      "t": "앞 층의 출력 shape 를 다음 층 입력으로 넘기며 표 만들기",
-      "d": "spec 은 (\"conv\", FN, F, S, P) · (\"pool\", 2) · (\"affine\", n_out) 목록. ReLU 는 비용 0 이라 생략."
-    },
-    {
-      "at": "def show(rows, title):",
-      "to": "return P, M",
-      "t": "표 출력 · 합계 · 저장 크기",
-      "d": "float32 = 파라미터 × 4 바이트, int8 = × 1."
-    },
-    {
-      "at": "simple_spec =",
-      "to": "P_simple, M_simple = show(",
-      "t": "SimpleConvNet",
-      "d": "합계 433,890 파라미터 · 865,000 MAC — 파라미터의 99.6% 는 Affine1, MAC 의 절반은 Conv."
-    }
+    {"at": "def cost_table(input_shape, spec):", "to": "return rows", "t": "앞 층의 출력 shape 를 다음 층 입력으로 넘기며 표 만들기", "d": "spec 은 (\"conv\", FN, F, S, P) · (\"pool\", 2) · (\"affine\", n_out) 목록. ReLU 는 비용 0 이라 생략. → 개념 2"},
+    {"at": "def show(rows, title):", "to": "return P, M", "t": "표 출력 · 합계 · 저장 크기", "d": "float32 = 파라미터 × 4 바이트, int8 = × 1. → 개념 2 의 합계 433,890"},
+    {"at": "simple_spec =", "to": "P_simple, M_simple = show(", "t": "SimpleConvNet", "d": "합계 433,890 파라미터 · 865,000 MAC — 파라미터의 99.6% 는 Affine1, MAC 의 절반은 Conv. → 개념 2"}
   ]
 }
