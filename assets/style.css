@@ -70,7 +70,10 @@ blockquote { margin: .6em 0; padding: .4em 1em; border-left: 3px solid var(--acc
 .drop a { display: block; padding: 8px 10px; border-radius: 8px; color: var(--ink); }
 .drop a:hover, .drop a.sel { background: var(--accent-soft); text-decoration: none; }
 .drop .more { color: var(--accent); font-weight: 600; text-align: center; }
+.hit-where { display: inline-block; font-weight: 700; font-size: .92em; color: var(--sc, var(--accent)); border: 1.5px solid var(--sc, var(--accent)); border-radius: 6px; padding: 1px 8px; margin-right: 6px; white-space: nowrap; }
+.hit-k { font-size: .8em; color: var(--ink-3); margin-right: 8px; white-space: nowrap; }
 .hit-t { font-weight: 600; }
+.drop .hit-t, .hit .hit-t { display: block; margin-top: 3px; }
 .hit-x { color: var(--ink-2); font-size: .9em; display: block; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .hit-loc { font-size: .8em; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
 
