@@ -1577,19 +1577,18 @@
   }
   function markText(root, q) {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean); if (!words.length) return;
+    const re = looseRe(words);
     const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = [];
     while (tw.nextNode()) nodes.push(tw.currentNode);
     nodes.forEach(nd => {
-      const t = nd.nodeValue, lo = t.toLowerCase(); let i = 0, out = null;
+      const t = nd.nodeValue; let i = 0, out = null;
       const frag = document.createDocumentFragment();
-      while (true) {
-        let best = -1, bw = '';
-        words.forEach(w => { const j = lo.indexOf(w, i); if (j >= 0 && (best < 0 || j < best)) { best = j; bw = w; } });
-        if (best < 0) break;
+      for (const mm of t.matchAll(re)) {
+        if (!mm[0]) continue;
         out = true;
-        frag.appendChild(document.createTextNode(t.slice(i, best)));
-        const m = document.createElement('mark'); m.textContent = t.slice(best, best + bw.length); frag.appendChild(m);
-        i = best + bw.length;
+        frag.appendChild(document.createTextNode(t.slice(i, mm.index)));
+        const m = document.createElement('mark'); m.textContent = mm[0]; frag.appendChild(m);
+        i = mm.index + mm[0].length;
       }
       if (out) { frag.appendChild(document.createTextNode(t.slice(i))); nd.parentNode.replaceChild(frag, nd); }
     });
@@ -1597,7 +1596,11 @@
 
   /* ---------- 검색 ---------- */
   // 색인 행: [과목, day, 교시, 종류, 앵커, 제목, 본문]
+  // 느슨한 검색: 띄어쓰기 · '·' · '-' · '_' 를 지운 글자끼리도 비교 ("그대로넣을수" → "그대로 넣을 수")
+  const SQZ = /[\s·\-_]+/g, sqz = s => s.replace(SQZ, '');
+  const looseRe = words => new RegExp(words.map(w => [...sqz(w)].map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s·\\-_]*')).filter(Boolean).join('|'), 'gi');
   const ROWS = IDX.search.map((r, i) => ({ s: r[0], d: r[1], n: r[2], k: r[3], a: r[4], t: r[5], x: r[6], lt: (r[5] || '').toLowerCase(), lx: (r[6] || '').toLowerCase(), o: SORDER[r[0]] * 1e4 + r[1] * 100 + r[2], i }));
+  ROWS.forEach(r => { r.ct = sqz(r.lt); r.cx = sqz(r.lx); });
   function search(q) {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean); if (!words.length) return [];
     const ql = words.join(' ');
@@ -1605,7 +1608,8 @@
     for (const r of ROWS) {
       let ok = true, sc = KIND_W[r.k] || 0;
       for (const w of words) {
-        const inT = r.lt.includes(w), inX = r.lx.includes(w);
+        const cw = sqz(w) || w;
+        const inT = r.lt.includes(w) || r.ct.includes(cw), inX = r.lx.includes(w) || r.cx.includes(cw);
         if (!inT && !inX) { ok = false; break; }
         sc += inT ? 30 : 8;
       }
@@ -1620,17 +1624,21 @@
   }
   function snippet(text, q, len = 150) {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const lo = text.toLowerCase(); let p = -1;
-    for (const w of words) { const j = lo.indexOf(w); if (j >= 0 && (p < 0 || j < p)) p = j; }
+    text = text.replace(/(^|\s)#{2,6}\s+|\*\*/g, '$1');                  // 마크다운 기호(####, **)는 보이지 않게
+    const re = words.length ? looseRe(words) : null;
+    const m0 = re ? re.exec(text) : null, p = m0 ? m0.index : -1;
     let st = Math.max(0, p - 50); let s = text.slice(st, st + len);
     s = (st > 0 ? '…' : '') + s + (st + len < text.length ? '…' : '');
-    let h = esc(s);
-    words.forEach(w => { h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); });
-    return h;
+    if (!re) return esc(s);
+    // 원문에서 형광펜 칠할 자리를 찾은 뒤 esc — esc 된 글자(&amp; 등) 안을 칠하지 않게
+    let h = '', i = 0; re.lastIndex = 0;
+    for (const m of s.matchAll(re)) { if (!m[0]) continue; h += esc(s.slice(i, m.index)) + `<mark>${esc(m[0])}</mark>`; i = m.index + m[0].length; }
+    return h + esc(s.slice(i));
   }
   const hitHref = (r, q) => href(r.s, r.d, r.n, r.a, q);
+  // 어디서 나온 내용인지(과목 · Day · 교시)가 먼저, 크게 — 그다음 종류 · 제목 · 본문
   function hitHtml(r, q, cls = 'hit') {
-    return `<a class="${cls}" href="${hitHref(r, q)}"><span class="hit-t">${snippet(r.t || '', q, 80)}</span><span class="hit-loc">${KIND[r.k]} · ${loc(r.s, r.d, r.n)}</span><span class="hit-x">${snippet(r.x || '', q)}</span></a>`;
+    return `<a class="${cls}" href="${hitHref(r, q)}"><span class="hit-where sc-${r.s}">${loc(r.s, r.d, r.n)}</span><span class="hit-k">${KIND[r.k]}</span><span class="hit-t">${snippet(r.t || '', q, 80)}</span><span class="hit-x">${snippet(r.x || '', q)}</span></a>`;
   }
   function firstAppearance(hits) {
     const c = hits.filter(h => ['term', 'kw', 'note', 'topic', 'func'].includes(h.r.k));
