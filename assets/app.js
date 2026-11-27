@@ -250,8 +250,9 @@
   let CODE_TEXT = null;
   function codeTextRows() {
     if (CODE_TEXT) return CODE_TEXT;
-    const by = {}; (IDX.search || []).forEach(x => { if (x[3] === 'code') by[x[0] + '|' + x[1] + '|' + x[2] + '|' + x[4].slice(1)] = x[6] || ''; });
-    return (CODE_TEXT = (IDX.code || []).map(r => [r, by[r[0] + '|' + r[1] + '|' + r[2] + '|' + r[3]] || '']).filter(x => x[1]));
+    // 'X토픽' 행만 — .ipynb 교시의 'K블록' 번호가 토픽 번호와 겹쳐 다른 예제 코드가 붙던 문제. 그런 교시는 목록 행 r[10] 에 코드가 있다
+    const by = {}; (IDX.search || []).forEach(x => { if (x[3] === 'code' && x[4][0] === 'X') by[x[0] + '|' + x[1] + '|' + x[2] + '|' + x[4].slice(1)] = x[6] || ''; });
+    return (CODE_TEXT = (IDX.code || []).map(r => [r, r[10] != null ? r[10] : by[r[0] + '|' + r[1] + '|' + r[2] + '|' + r[3]] || '']).filter(x => x[1]));
   }
   function codeItem(r, cur, find) {
     const name = (r[4] ? `📄 ${esc(r[4])}` : esc(r[7])) + (r[8] ? ' <span class="cfig" title="배선·보드 그림 있음">🔌</span>' : '') + (r[9] ? ' <span class="cfig" title="코드 읽기 가이드 있음">🧭</span>' : '');
@@ -263,22 +264,27 @@
     const q = CODE.q.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
     let h = `<div class="dict-top"><input class="dict-q code-q" type="search" placeholder="파일명·하는 일 걸러 보기" autocomplete="off" spellcheck="false" value="${esc(CODE.q)}"></div>`;
     if (words.length) {
+      // 교시 머리 — 어느 과목 · 몇 교시 · 무슨 교시인지 (같은 교시 결과는 한 묶음)
+      const lhead = r => { const L = lessonMeta(r[0], r[1], r[2]); return `<div class="cloc"><span class="hit-where sc-${r[0]}">${loc(r[0], r[1], r[2])}</span>${L ? `<span class="cloc-t">${esc(L.title)}</span>` : ''}</div>`; };
+      const grouped = (list, item) => { let prev = '', out = ''; list.forEach(x => { const r = x.r || x, k = r[0] + r[1] + '-' + r[2]; if (k !== prev) out += lhead(r); prev = k; out += item(x); }); return out; };
       const hits = (IDX.code || []).filter(r => words.every(w => (r[4] + ' ' + r[5] + ' ' + r[7]).toLowerCase().includes(w)));
       if (hits.length || q.length < 2) h += `<div class="dict-h">파일명·설명 ${hits.length}개</div>`;
-      h += hits.slice(0, 80).map(r => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` + codeItem(r)).join('');
-      // 코드 본문에서 찾기: 입력한 문자열(띄어쓰기 포함 그대로)이 들어 있는 예제와 그 줄
-      const needle = q.length >= 2 ? q : '';
-      if (needle) {
+      h += grouped(hits.slice(0, 80), r => codeItem(r));
+      // 코드 본문에서 찾기 — 띄어쓰기는 무시('reshape(-1,784)' = 'reshape(-1, 784)'), 낱말이 여럿이면 한 예제 안에 모두
+      if (q.length >= 2) {
+        const ws = s => s.replace(/\s+/g, ''), cw = words.map(ws), wre = new RegExp(cw.map(w => [...w].map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*')).join('|'), 'gi');
+        const lineHit = l => { const c = ws(l.toLowerCase()); return cw.some(w => c.includes(w)); };
         const found = codeTextRows().map(([r, text]) => {
+          const flat = ws(text.toLowerCase()); if (!cw.every(w => flat.includes(w))) return null;
           const lines = text.split('\n'), at = [];
-          lines.forEach((l, i) => { if (l.toLowerCase().includes(needle)) at.push(i); });
-          return at.length ? { r, lines, at } : null;
+          lines.forEach((l, i) => { if (lineHit(l)) at.push(i); });
+          return { r, lines, at };
         }).filter(Boolean);
         const total = found.reduce((a, f) => a + f.at.length, 0);
         h += `<div class="dict-h">코드 안에서 · ${found.length}개 예제 · ${total}곳</div>`;
-        const hl = t => esc(t).replace(new RegExp(esc(needle).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`);
-        h += found.slice(0, 60).map(({ r, lines, at }) => `<div class="cloc">${loc(r[0], r[1], r[2])}</div>` +
-          codeItem(r, false, CODE.q.trim()).replace('</button>', `<span class="cfind">${at.slice(0, 3).map(i => `<code>${hl(lines[i].trim().slice(0, 90))}</code>`).join('')}${at.length > 3 ? `<small>… ${at.length - 3}곳 더</small>` : ''}</span></button>`)).join('');
+        const hl = t => { let o = '', i = 0; wre.lastIndex = 0; for (const m of t.matchAll(wre)) { if (!m[0]) continue; o += esc(t.slice(i, m.index)) + `<mark>${esc(m[0])}</mark>`; i = m.index + m[0].length; } return o + esc(t.slice(i)); };
+        h += grouped(found.slice(0, 60), ({ r, lines, at }) =>
+          codeItem(r, false, CODE.q.trim()).replace('</button>', `<span class="cfind">${at.slice(0, 3).map(i => `<code>${hl(lines[i].trim().slice(0, 90))}</code>`).join('')}${at.length > 3 ? `<small>… ${at.length - 3}곳 더</small>` : ''}</span></button>`));
         if (!found.length) h += '<div class="dict-empty">코드 안에 없습니다.</div>';
       }
     } else {
@@ -379,7 +385,7 @@
     codeHlClear();
     let keys = [];
     if (btn.dataset.hlc && CODECTX) { const c = CODECTX.LK.byId[btn.dataset.hlc]; keys = c ? c.keys.slice() : []; }
-    else if (btn.dataset.hlWord) keys = [btn.dataset.hlWord];
+    else if (btn.dataset.hlWord) keys = btn.dataset.hlWord.split(/\s+/);          // 코드 검색어가 여러 낱말이면 낱말마다
     keys = [...new Set(keys.filter(Boolean))].sort((a, b) => b.length - a.length);       // 긴 키 먼저 (sched_getaffinity > sched)
     if (!keys.length) return;
     const pats = keys.map(k => { const e = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
