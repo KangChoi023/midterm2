@@ -305,8 +305,9 @@ def attach_deps(D):
                         defs[nm] = [L['n'], j, lines[nd.lineno - 1].strip()[:90]]
     return n_dep
 
-def code_index(sid, d, n, topics, sections):
-    """오른쪽 💻 코드 목차용: 코드·명령이 있는 토픽마다 [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호]"""
+def code_index(sid, d, n, topics, sections, with_text=False):
+    """오른쪽 💻 코드 목차용: 코드·명령이 있는 토픽마다 [과목, day, 교시, 토픽 id, 파일명, 하는 일, 강의 번호, 제목, 그림, 가이드 (, 코드)]
+    with_text: 코드 블록 화면(.ipynb) 교시는 검색 색인에 토픽 코드가 없어(K 블록만) 코드 탭 본문 검색용으로 코드를 붙인다"""
     rows = {}
     for cell, what in example_rows(sections):
         tid = row_topic(cell, n, topics)
@@ -319,7 +320,8 @@ def code_index(sid, d, n, topics, sections):
         num = (re.match(r'^(\d+-\d+)\.', tp['title']) or re.search(r'예제\s*(\d+-\d+)', tp['title']))
         bare = re.sub(r'^예제\s*[\d-]+\s*[·—-]\s*', '', re.sub(r'^\d+-\d+\.\s*', '', tp['title'])).strip()
         what = strip_md(row[1]) if row else (tp.get('desc') or bare)
-        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0, len(tp.get('guide', []))])
+        out.append([sid, d, n, tp['id'], ' · '.join(files[:1]) + (f' 외 {len(files) - 1}' if len(files) > 1 else ''), what[:120], num.group(1) if num else '', bare, 1 if tp.get('figRefs') else 0, len(tp.get('guide', []))]
+                   + (['\n'.join(b['text'] for b in tp['blocks'] if b['kind'] in ('code', 'cmd'))] if with_text else []))
     return out
 
 def review_quiz(sid, d, n):
@@ -698,7 +700,7 @@ def build_subject(cfg, index):
                 if s['key'] in ('kw', 'terms', 'funcs'): continue
                 index['search'].append(loc + ['note', f's{si}', s['label'] or '노트', strip_md(s['md'])])
             for l in links: index['links'].append(loc + [l['text'], l['href']])
-            pending_code.append((n, topics, sections))
+            pending_code.append((n, topics, sections, bool(codes)))
             for ci, c in enumerate(codes):                # 코드 블록 화면: 강의 원문 · 빈칸 대신 블록 하나가 검색 결과 하나
                 index['search'].append(loc + ['code', f'K{ci}', c['t'], ' '.join([c.get('q', ''), c['code'], c.get('expl', '')])])
             for t in ([] if codes else topics):
@@ -712,13 +714,13 @@ def build_subject(cfg, index):
                 index['search'].append(loc + ['fill', f'F{fi}', x['title'], x['text']])
         # ④ 그래도 그림이 없는 '코드가 있는' 예제: 같은 Day 앞 교시의 가장 가까운 그림 (보드를 이어서 쓰는 경우)
         last = None
-        for ln, tps, _ in pending_code:
+        for ln, tps, _, _ in pending_code:
             for tp in tps:
                 if '<figure>' in tp['html']: last = (ln, tp['id'])
                 elif last and not tp.get('figRefs') and any(b['kind'] == 'code' for b in tp['blocks']) and last[0] != ln:
                     tp['figRefs'] = [{'t': 'other', 'n': last[0], 'id': last[1]}]
-        for ln, tps, secs in pending_code:
-            index['code'] += code_index(sid, d, ln, tps, secs)
+        for ln, tps, secs, cm in pending_code:
+            index['code'] += code_index(sid, d, ln, tps, secs, cm)
         attach_deps(D)
         S['days'].append(D); meta['days'].append(dm)
     EX_STAT.append((sid,) + attach_examples(sid, S, fn_rows))
